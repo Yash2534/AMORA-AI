@@ -1,0 +1,181 @@
+import 'package:amora_ai/core/theme/amora_icons.dart';
+import 'package:amora_ai/core/theme/amora_spacing.dart';
+import 'package:amora_ai/core/theme/amora_text_styles.dart';
+import 'package:amora_ai/core/theme/app_colors.dart';
+import 'package:amora_ai/core/widgets/premium_card.dart';
+import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
+import 'package:flutter/material.dart';
+
+class ReferralLeaderboardScreen extends StatefulWidget {
+  const ReferralLeaderboardScreen({super.key});
+
+  static const routeName = '/referral-leaderboard';
+
+  @override
+  State<ReferralLeaderboardScreen> createState() =>
+      _ReferralLeaderboardScreenState();
+}
+
+class _ReferralLeaderboardScreenState extends State<ReferralLeaderboardScreen> {
+  String _period = 'Weekly';
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(
+        child: ResponsiveMobileFrame(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(
+              AmoraSpacing.space20,
+              AmoraSpacing.space20,
+              AmoraSpacing.space20,
+              AmoraSpacing.navigationContentInset,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const _Header(),
+                const SizedBox(height: 18),
+                SegmentedButton<String>(
+                  segments: const [
+                    ButtonSegment(value: 'Weekly', label: Text('Weekly')),
+                    ButtonSegment(value: 'Monthly', label: Text('Monthly')),
+                  ],
+                  selected: {_period},
+                  onSelectionChanged: (value) =>
+                      setState(() => _period = value.first),
+                ),
+                const SizedBox(height: 16),
+                PremiumCard(
+                  color: AppColors.lavenderBackground,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Referral Streak',
+                        style: TextStyle(
+                          color: AppColors.deepWine,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      LinearProgressIndicator(
+                        value: _period == 'Weekly' ? .72 : .48,
+                        minHeight: 9,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        _period == 'Weekly'
+                            ? '5 day streak'
+                            : '12 successful invites',
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                for (var i = 0; i < _leaders.length; i++)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: _LeaderTile(rank: i + 1, leader: _leaders[i]),
+                  ),
+                const SizedBox(height: 14),
+                const PremiumCard(
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      Chip(label: Text('City Champion')),
+                      Chip(label: Text('Gold Inviter')),
+                      Chip(label: Text('7 Day Streak')),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Header extends StatelessWidget {
+  const _Header();
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      IconButton.filledTonal(
+        onPressed: () => Navigator.of(context).maybePop(),
+        icon: const Icon(AmoraIcons.back),
+      ),
+      const SizedBox(width: AmoraSpacing.space12),
+      Expanded(
+        child: Text(
+          'Referral Leaderboard',
+          style: AmoraTextStyles.headlineSmall.copyWith(
+            color: AppColors.deepWine,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+    ],
+  );
+}
+
+class _LeaderTile extends StatelessWidget {
+  const _LeaderTile({required this.rank, required this.leader});
+  final int rank;
+  final (String, int, String) leader;
+  @override
+  Widget build(BuildContext context) => PremiumCard(
+    padding: const EdgeInsets.all(14),
+    child: Row(
+      children: [
+        CircleAvatar(
+          backgroundColor: rank == 1
+              ? AppColors.premiumGold
+              : AppColors.lavenderBackground,
+          child: Text('$rank'),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                leader.$1,
+                style: const TextStyle(
+                  color: AppColors.deepWine,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              LinearProgressIndicator(value: leader.$2 / 2000),
+            ],
+          ),
+        ),
+        const SizedBox(width: 12),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(
+              '${leader.$2} coins',
+              style: const TextStyle(
+                color: AppColors.primaryPurple,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            Text(leader.$3),
+          ],
+        ),
+      ],
+    ),
+  );
+}
+
+const _leaders = [
+  ('Riya', 1600, 'VIP reward'),
+  ('Aarav', 1240, 'Gold bonus'),
+  ('Kavya', 980, 'Coffee pass'),
+  ('Dev', 720, 'Coins'),
+];

@@ -1,0 +1,74 @@
+import 'package:flutter/material.dart';
+
+class AmoraIcons {
+  const AmoraIcons._();
+
+  // Keep product semantics centralized while using Flutter's bundled Material
+  // icon font. Every glyph below is available when uses-material-design is on.
+  static const IconData discover = Icons.search_rounded;
+  static const IconData events = Icons.calendar_month_rounded;
+  static const IconData chats = Icons.forum_rounded;
+  static const IconData profile = Icons.person_rounded;
+  static const IconData back = Icons.arrow_back_rounded;
+  static const IconData forward = Icons.chevron_right_rounded;
+  static const IconData close = Icons.close_rounded;
+  static const IconData heart = Icons.favorite_border_rounded;
+  static const IconData heartFill = Icons.favorite_rounded;
+  static const IconData sparkle = Icons.auto_awesome_rounded;
+  static const IconData filter = Icons.tune_rounded;
+  static const IconData lock = Icons.lock_rounded;
+  static const IconData check = Icons.check_circle_rounded;
+  static const IconData search = Icons.search_rounded;
+  static const IconData phone = Icons.phone_iphone_rounded;
+  static const IconData message = Icons.chat_bubble_rounded;
+  static const IconData verified = Icons.verified_rounded;
+  static const IconData premium = Icons.workspace_premium_rounded;
+  static const IconData ai = Icons.auto_awesome_rounded;
+  static const IconData play = Icons.play_arrow_rounded;
+  static const IconData pause = Icons.pause_rounded;
+  static const IconData photo = Icons.photo_rounded;
+  static const IconData video = Icons.videocam_rounded;
+  static const IconData mic = Icons.mic_rounded;
+  static const IconData shield = Icons.shield_rounded;
+  static const IconData location = Icons.location_on_rounded;
+  static const IconData copy = Icons.content_copy_rounded;
+  static const IconData send = Icons.send_rounded;
+  static const IconData edit = Icons.edit_rounded;
+  static const IconData calendar = Icons.calendar_month_rounded;
+  static const IconData bookmark = Icons.bookmark_rounded;
+  static const IconData rewind = Icons.replay_rounded;
+  static const IconData eye = Icons.visibility_rounded;
+  static const IconData more = Icons.more_horiz_rounded;
+  static const IconData moreVertical = Icons.more_vert_rounded;
+  static const IconData chatUnread = Icons.mark_chat_unread_rounded;
+  static const IconData notifications = Icons.notifications_rounded;
+  static const IconData notificationsOff = Icons.notifications_off_rounded;
+  static const IconData pin = Icons.push_pin_rounded;
+  static const IconData archive = Icons.archive_rounded;
+  static const IconData explore = Icons.explore_rounded;
+  static const IconData report = Icons.flag_rounded;
+  static const IconData block = Icons.block_rounded;
+  static const IconData readReceipt = Icons.done_all_rounded;
+  static const IconData cafe = Icons.local_cafe_rounded;
+  static const IconData emoji = Icons.sentiment_satisfied_alt_rounded;
+  static const IconData attachment = Icons.attach_file_rounded;
+  static const IconData upload = Icons.arrow_upward_rounded;
+  static const IconData ticket = Icons.confirmation_number_rounded;
+  static const IconData map = Icons.map_rounded;
+  static const IconData savings = Icons.savings_rounded;
+  static const IconData restore = Icons.restore_rounded;
+  static const IconData policy = Icons.policy_rounded;
+  static const IconData star = Icons.star_rounded;
+  static const IconData share = Icons.share_rounded;
+  static const IconData gift = Icons.redeem_rounded;
+  static const IconData wallet = Icons.account_balance_wallet_rounded;
+  static const IconData boost = Icons.rocket_launch_rounded;
+  static const IconData logout = Icons.logout_rounded;
+  static const IconData settings = Icons.settings_rounded;
+  static const IconData language = Icons.language_rounded;
+  static const IconData accessibility = Icons.accessibility_new_rounded;
+  static const IconData help = Icons.help_outline_rounded;
+  static const IconData dashboard = Icons.dashboard_rounded;
+  static const IconData crown = Icons.workspace_premium_rounded;
+  static const IconData zodiac = Icons.brightness_2_rounded;
+}

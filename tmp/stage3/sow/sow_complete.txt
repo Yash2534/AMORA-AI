@@ -1,0 +1,1408 @@
+
+
+===== PAGE 1 =====
+
+AMORA AI | Software Requirements Specification & Scope of Work | The Data Sequence
+AMORA AI
+Premium AI-Powered Dating & Matchmaking Platform
+SOFTWARE REQUIREMENTS SPECIFICATION
+SCOPE OF WORK DOCUMENT
+Prepared by The Data Sequence
+Document Version 1.0
+Platform Flutter (Android & iOS)
+Founder Priyank Trivedi
+Website thedatasequence.com
+Launch Cities Ahmedabad · Gandhinagar ·
+Vadodara
+Date 28 June 2026
+Classification Confidential & Proprietary
+More Than Dating. Real Matchmaking.
+Confidential & Proprietary — The Data Sequence
+Confidential & Proprietary — The Data Sequence | Page 1 of 43
+
+===== PAGE 2 =====
+
+AMORA AI | Software Requirements Specification & Scope of Work | The Data Sequence
+Table of Contents
+1. Introduction ·································································· 5
+1.1 Purpose ······································································ 5
+1.2 Vision ······································································· 5
+2. Objectives ···································································· 6
+3. User Roles ···································································· 7
+3.1 Customer (App User) ·························································· 7
+3.2 Host (Event / Brand Partner) ················································· 7
+3.3 Admin ········································································ 8
+4. Core Modules ·································································· 9
+4.1 Authentication Module ························································ 9
+4.2 Match Discovery Module ······················································· 9
+4.3 Booking & Event Module ······················································· 9
+4.4 Subscription & Payment Module ················································ 10
+4.5 AI Matchmaking Engine ························································ 10
+4.6 In-App Messaging Module ······················································ 10
+4.7 AI Dating Coach Module ······················································· 11
+4.8 Events & Experiences Module ·················································· 11
+4.9 Profile & Verification Module ················································ 11
+4.10 Referral & Rewards Module ··················································· 12
+4.11 In-App Gifting & Commerce Module ············································ 12
+4.12 Support System Module ······················································· 12
+5. Advanced Features ····························································· 13
+6. Application Screen Structure ·················································· 15
+7. Technology Stack ······························································ 17
+8. Database Structure ···························································· 19
+9. Third-Party API Integrations ·················································· 22
+10. UI/UX Brand DNA ······························································ 23
+11. Typography System ···························································· 25
+12. Code Management & Architecture ··············································· 26
+13. Customer Onboarding Flow ····················································· 27
+14. Match & Chat Flow ···························································· 28
+15. Subscription & Payment Flow ·················································· 29
+16. Events & Experiences Flow ···················································· 30
+17. AI Coach Activation Flow ····················································· 31
+18. Host / Partner Onboarding Flow ··············································· 32
+19. Admin Flow ··································································· 33
+20. Referral & Share Flow ························································ 34
+21. Performance Requirements ····················································· 35
+22. Testing Strategy ····························································· 36
+23. Scope of Work & Project Timeline ············································· 37
+24. Final Deliverables ··························································· 41
+25. Business Impact ······························································ 42
+26. AI-Assisted Development Methodology ·········································· 44
+27. Final Positioning Statement ·················································· 45
+Confidential & Proprietary — The Data Sequence | Page 2 of 43
+
+===== PAGE 3 =====
+
+AMORA AI | Software Requirements Specification & Scope of Work | The Data Sequence
+1. Introduction
+1.1 Purpose
+This Software Requirements Specification (SRS) document defines the complete functional, technical,
+and business requirements for Amora AI — a premium AI-powered dating and matchmaking platform
+developed by The Data Sequence. This document serves as the authoritative reference for all
+stakeholders including investors, the development team, product managers, QA engineers, and
+operational leads throughout the entire software development lifecycle.
+The SRS establishes a shared understanding of the system's scope, capabilities, user roles, technical
+architecture, revenue model, and delivery milestones. It is engineered to eliminate ambiguity, provide
+measurable acceptance criteria, and ensure alignment between the founding vision and technical
+execution.
+Amora AI is not simply a dating application. It is a full-stack relationship technology ecosystem
+combining AI-powered matchmaking, verified identity, offline event experiences, in-app commerce, and
+a multi-stream monetization engine — all engineered for Day 1 profitability.
+1.2 Vision
+"Amora AI is not just a dating application. It is a complete premium matchmaking
+ecosystem connecting verified singles through AI-driven compatibility, curated offline
+experiences, and community-first relationship intelligence — built for Gujarat, designed for
+India."
+Amora AI envisions a future where finding a meaningful relationship is as seamless, safe, and
+personalized as any premium digital experience. By connecting verified singles through AI compatibility
+science, curated events, and intelligent conversation tools, Amora AI aims to become the most trusted
+relationship platform in India.
+Inspired by the monetization precision of Tinder, the community depth of Bumble, the AI intelligence of
+Hinge, and the event ecosystem of exclusive social clubs, Amora AI is purpose-built for the Indian Tier-
+2 premium market — starting with Ahmedabad, Gandhinagar, and Vadodara.
+Confidential & Proprietary — The Data Sequence | Page 3 of 43
+
+===== PAGE 4 =====
+
+AMORA AI | Software Requirements Specification & Scope of Work | The Data Sequence
+2. Objectives
+The core objectives of the Amora AI platform are:
+• Deliver a fully functional, production-ready Flutter-based mobile application (Android + iOS) for
+the premium dating and matchmaking market in Gujarat, India.
+• Create a three-sided ecosystem connecting Customers (dating users), Hosts (event and brand
+partners), and Platform Admins within a single unified platform.
+• Enable AI-powered match discovery, seamless subscription management, and multi-stream
+revenue activation from Day 1 of launch.
+• Deploy an AI Dating Coach, AI Icebreaker Engine, and AI Compatibility Scoring system that drive
+user retention and premium tier conversion.
+• Build a scalable, modular technical architecture supporting future expansion to 10 Indian cities
+and Southeast Asia.
+• Incorporate AI-assisted development practices to accelerate delivery timelines by an estimated
+35-40% without compromising code quality or platform security.
+• Establish a referral, loyalty, and rewards ecosystem to drive organic user acquisition with a K-
+factor target of 1.2+.
+• Ensure enterprise-grade security, data privacy, and full compliance with India's DPDP Act 2023
+and digital payment regulations.
+• Achieve a minimum platform performance benchmark of 60fps UI rendering, sub-2-second
+screen load times, and 99.5% subscription transaction success rate.
+• Activate all 8 revenue streams simultaneously on Day 1: Subscriptions, Microtransactions, Brand
+Sponsorships, Business Listings, Events, AI Feature Packs, Commerce & Gifting, and Referral &
+Affiliate.
+• Position Amora AI as the most trusted, premium, and technologically advanced relationship
+platform in Gujarat with a clear path to ₹12.83 Cr net profit in Year 1.
+Confidential & Proprietary — The Data Sequence | Page 4 of 43
+
+===== PAGE 5 =====
+
+AMORA AI | Software Requirements Specification & Scope of Work | The Data Sequence
+3. User Roles
+The Amora AI platform operates on a tri-role architecture. Each role has distinct permissions,
+workflows, dashboards, and access controls engineered for their specific journey.
+3.1 Customer (App User)
+The Customer is the primary end-user of the platform — an individual aged 18–35 seeking genuine
+romantic connections, curated dating experiences, and AI-assisted relationship guidance.
+Customer Capabilities:
+• Register and create a verified profile with identity verification (Aadhaar-linked selfie or
+government ID)
+• Complete AI-powered compatibility onboarding questionnaire (40+ behavioral and preference
+signals)
+• Discover potential matches through AI Compatibility Feed, Smart Filters, and Curated Daily Picks
+• Swipe, Like, Super Like, and send Rose signals to potential matches
+• Initiate and conduct conversations via in-app messaging with AI icebreaker suggestions
+• Subscribe to Starter (₹699), Plus (₹1,199), Gold (₹1,999), or VIP (₹3,499) monthly plans
+• Purchase in-app microtransactions: Boosts, Super Likes, Profile Spotlights, Priority Visibility,
+Direct Messages
+• Access AI Dating Coach for personalized daily tips, conversation scoring, and relationship
+guidance
+• Discover, register for, and attend offline events: Speed Dating, Singles Mixers, Premium Date
+Nights
+• Send virtual and physical gifts to matches via in-app gifting commerce
+• Earn and redeem loyalty points through Amora Coins for every interaction, trip, and referral
+• Refer friends via unique referral code and earn wallet credits upon successful first subscription
+• Report profiles, block users, and access 24/7 AI-assisted and WhatsApp customer support
+3.2 Host (Event / Brand Partner)
+The Host is an event organizer, local business, or brand partner who registers on the platform to co-
+create offline experiences, sponsored content, and partnership revenue with Amora AI.
+Host Capabilities:
+• Register as a verified Host with business credentials and GST/PAN documentation
+• Submit offline event proposals (Speed Dating, Mixers, Rooftop Nights, Coffee Meetups) for
+Admin approval
+• Set event details: venue, ticket pricing, capacity, date, category, and target audience
+• Purchase sponsored profile placements, native feed ads, and push notification campaigns
+• Access co-branding packages for Brand Sponsorship at ₹50K–₹2L per event
+• List venue or business as a 'Date Spot' on the Amora in-app map for ₹5K–₹15K/month
+• Monitor event bookings, ticket sales, and attendee confirmations via Host Dashboard
+• View event performance analytics: attendance, engagement, and post-event match conversion
+• Communicate with the Amora events team via in-app messaging and WhatsApp Business
+Confidential & Proprietary — The Data Sequence | Page 5 of 43
+
+===== PAGE 6 =====
+
+AMORA AI | Software Requirements Specification & Scope of Work | The Data Sequence
+• Manage payout preferences and access revenue reports for all partnership engagements
+3.3 Admin
+The Admin is The Data Sequence's operational team responsible for platform governance, content
+moderation, quality control, and business intelligence.
+Admin Capabilities:
+• Approve or reject user verification submissions and flag fraudulent or duplicate accounts
+• Review and approve event submissions from Host partners with venue and safety compliance
+checks
+• Monitor all active subscriptions, transactions, refunds, and disputed payments across the
+platform
+• Configure subscription pricing tiers, coupon campaigns, referral rewards, and promotional offers
+• Manage content moderation queues with AI-flagged profile, photo, and message review
+• Access financial dashboards with revenue, payout, commission, and stream-level breakdowns
+• Handle dispute resolution between users and event hosts
+• Configure platform-wide settings: AI scoring weights, matching algorithms, notification rules
+• Generate analytical reports for investor reporting, business intelligence, and city expansion
+planning
+• Manage city-level expansion configurations without requiring app updates
+Confidential & Proprietary — The Data Sequence | Page 6 of 43
+
+===== PAGE 7 =====
+
+AMORA AI | Software Requirements Specification & Scope of Work | The Data Sequence
+4. Core Modules
+4.1 Authentication Module
+The Authentication Module provides secure, multi-channel identity management for all three platform
+roles. It supports mobile OTP-based login (preferred for Indian users), email/password authentication,
+and social sign-in via Google. Features include JWT token-based session management, biometric
+authentication (fingerprint/face unlock) on supported devices, device binding for fraud prevention,
+automatic session refresh with configurable expiry, and role-based access control (RBAC) that redirects
+users to their respective dashboards upon authentication.
+4.2 Match Discovery Module
+The Match Discovery Module is the core matchmaking engine of the platform. Users encounter
+potential matches through four discovery surfaces: the AI Compatibility Feed (personalized daily stack
+of 10–30 profiles), the Browse Grid (city-wide browsable gallery), the Curated Picks (3–5 AI-selected
+high-compatibility profiles per day on Gold/VIP), and the Event Attendees list (matched users attending
+the same upcoming event).
+Discovery filters include age range, city, education, profession, relationship intent, language,
+community affiliation, and AI compatibility score threshold. Smart sorting surfaces high-engagement
+profiles during peak usage windows (7–10 PM) to maximize match conversion rates.
+4.3 Booking & Event Module
+The Booking & Event Module orchestrates the complete offline event lifecycle from discovery to post-
+event match conversion. Users browse upcoming events by category (Speed Dating, Mixers,
+Professional Events, VIP Nights), register with one-tap booking, and receive digital event passes.
+The module enforces event capacity limits, waitlist management, ticket transfer policies, and
+cancellation fee enforcement. All attendee data is shared with the Host dashboard in real time. Post-
+event, the platform automatically surfaces 'You Both Attended' match suggestions to drive digital-to-
+physical connection.
+4.4 Subscription & Payment Module
+The Subscription & Payment Module integrates with Razorpay to provide a comprehensive, PCI-
+compliant subscription and payment experience. Five subscription tiers are supported: Free (₹0),
+Starter (₹699/mo), Plus (₹1,199/mo), Gold (₹1,999/mo), and VIP (₹3,499/mo). Annual subscription
+options provide a 2-month discount incentive.
+Payment methods include UPI (GPay, PhonePe, Paytm), Net Banking, Debit/Credit Cards, and Amora
+Wallet balance. Features include auto-renewal with 3-day pre-notification, payment failure recovery with
+retry logic, proration on mid-cycle upgrades, and GST-compliant invoicing. Security deposit
+authorization is used for premium event bookings.
+Confidential & Proprietary — The Data Sequence | Page 7 of 43
+
+===== PAGE 8 =====
+
+AMORA AI | Software Requirements Specification & Scope of Work | The Data Sequence
+4.5 AI Matchmaking Engine
+The AI Matchmaking Engine is Amora's core proprietary technology. It computes a bidirectional
+Compatibility Score (0–100) for every potential user pair using 40+ behavioral and preference signals
+collected during onboarding and ongoing platform activity.
+Scoring dimensions include: Personality Archetype (MBTI-adjacent), Relationship Intent Alignment,
+Lifestyle Compatibility (diet, fitness, social habits), Professional & Educational Context, Communication
+Style, Cultural & Community Alignment, and Behavioral Signals (response rate, message quality, swipe
+patterns). The engine retrains on Gujarat-specific interaction data every 72 hours, continuously
+improving local match accuracy.
+4.6 In-App Messaging Module
+The In-App Messaging Module enables secure, feature-rich communication between matched users.
+Core chat features include text messaging, emoji reactions, photo sharing (with AI moderation), audio
+messages, and video call scheduling (Gold/VIP).
+The AI Icebreaker Engine generates 3 personalized conversation starter suggestions for every new
+match based on shared interests, compatibility dimensions, and the match's recent activity. Read
+receipts are available as a microtransaction feature. Message delivery uses WebSocket (Firebase
+Realtime Database) for sub-500ms latency.
+4.7 AI Dating Coach Module
+The AI Dating Coach is a premium subscription add-on (₹599/mo) that serves as a personal
+relationship intelligence assistant. The Coach provides daily personalized tips, conversation quality
+scoring (after user opts in to share chat excerpts), date idea suggestions based on the match's verified
+interests, and post-date reflection prompts.
+The AI Relationship Advisor (₹799/mo) extends the Coach with long-form relationship analysis,
+attachment style assessment, communication pattern feedback, and conflict resolution guidance. The
+AI Date Planner (₹249/session) generates location-specific date itineraries for confirmed matches,
+including venue recommendations, activity suggestions, and conversation topic prompts.
+4.8 Events & Experiences Module
+The Events & Experiences Module is a primary revenue driver and Amora's key competitive
+differentiator. It manages the complete lifecycle of offline events across all three launch cities. Event
+types include Speed Dating Nights (₹799–₹1,299/ticket), Singles Mixers (₹999–₹1,999), Verified Match
+Coffee (₹399/person), Professional Mixers (₹1,499–₹2,499), Premium Date Nights
+(₹2,499–₹4,999/couple), and VIP Experiences.
+The module handles venue partner management, brand sponsorship configuration (₹50K–₹2L per
+event), ticket pre-sale with 60%+ pre-sell targets, event check-in with QR code validation, and post-
+event analytics. Events run at 65% gross margin and generate 200+ organic social posts per event,
+driving free app installs.
+Confidential & Proprietary — The Data Sequence | Page 8 of 43
+
+===== PAGE 9 =====
+
+AMORA AI | Software Requirements Specification & Scope of Work | The Data Sequence
+4.9 Profile & Verification Module
+The Profile & Verification Module manages user identity, document verification, and the Blue-Tick
+verified profile system that forms Amora's trust foundation. Verification uses Aadhaar-linked selfie
+verification or government ID photo match via third-party OCR API.
+Profile features include multi-photo upload (up to 9 photos with AI quality scoring), audio bio recording
+(30 seconds), video introduction (60 seconds, Gold/VIP), interest tags (50+ pre-defined categories),
+relationship intent declaration, and prompt-based profile questions. Verified profiles receive a Blue-Tick
+badge that increases match rate by an estimated 3.2× based on comparable platform data.
+4.10 Referral & Rewards Module
+The Referral & Rewards Module drives organic user acquisition through a structured incentive system.
+Each registered user receives a unique referral code. Referrer earns ₹100 Amora Coins when a
+referred user completes their first paid subscription. Referred user receives a ₹150 first-subscription
+discount. K-factor target of 1.2 ensures each user drives more than one new registration organically.
+The Amora Coins loyalty system awards points for every completed action: first match (50 coins), first
+message sent (25 coins), event attendance (200 coins), profile completion (100 coins), and streak
+bookings. Coins are redeemable for in-app features, event ticket discounts, and AI pack trials.
+4.11 In-App Gifting & Commerce Module
+The In-App Gifting & Commerce Module enables users to express interest and affection through a
+curated marketplace of virtual and physical gifts. Virtual gifts include Roses (₹99), Star Bundles (₹199),
+and Chocolate Boxes (₹149). Physical gift delivery is fulfilled via partner logistics at ₹299–₹1,499, with
+15% platform commission.
+The Date Package Commerce feature offers curated date experiences: restaurant + activity + gift
+bundles at ₹999–₹3,999. Partner restaurants pay ₹2K–₹5K for featured listing in the Date Spots
+section. The platform earns 10–15% commission on all commerce transactions, contributing an
+estimated ₹1.5L/month in Month 1.
+4.12 Support System Module
+The Support System Module provides multi-channel customer assistance through WhatsApp Business
+API integration, in-app AI chatbot for common queries, and escalation pathways to human support
+agents for safety and payment issues.
+Support features include contextual help triggered from subscription, event, and matching screens;
+structured FAQ categories covering matching, payments, events, AI features, and safety; WhatsApp
+chat initiation with pre-filled account context; incident reporting with photo evidence upload for profile
+abuse; and SLA-based ticket tracking with 2-hour first response guarantee for P1 issues.
+Confidential & Proprietary — The Data Sequence | Page 9 of 43
+
+===== PAGE 10 =====
+
+AMORA AI | Software Requirements Specification & Scope of Work | The Data Sequence
+5. Advanced Features
+5.1 AI Compatibility Scoring Engine
+Every pair of users on the platform receives a live Compatibility Score (0–100%) computed from 40+
+behavioral and preference signals. Scores update every 72 hours based on new activity data. The
+engine is trained on Gujarat-specific interaction patterns, improving match quality progressively as the
+dataset grows. Users can view their compatibility breakdown with any match on Gold and VIP tiers.
+5.2 Dynamic Pricing & Yield Management
+Similar to airline yield management, the platform supports demand-based dynamic ticket pricing for
+events. During high-demand periods (Valentine's Day, Navratri, New Year's Eve), event ticket prices
+automatically adjust upward within host-defined bands. Subscription pricing remains fixed; however,
+promotional pricing windows are managed through the Admin CMS without app updates.
+5.3 Smart Match Availability Calendar
+Users can set an 'Available to Meet' status window on their calendar, signaling to matches that they are
+open to offline meetups in specific time blocks. The platform surfaces 'Available Now' signals on the
+match feed, increasing real-world meeting conversion rates. Hosts can use this data to predict event
+demand and optimize event scheduling.
+5.4 In-App Identity Verification (Blue Tick)
+KYC verification is embedded within the onboarding flow using Aadhaar selfie match or driving license
+OCR parsing via third-party API (Digilocker / Surepass). Blue-Tick verified users receive a prominent
+badge on their profile card, increased visibility in the discovery feed, and access to Verified Match
+Coffee events — a premium verified-only event category.
+5.5 AI Photo Moderation & Quality Scoring
+All uploaded profile photos pass through an AI moderation pipeline that detects inappropriate content,
+ensures photo clarity and face visibility, scores photo quality (lighting, composition, smile index), and
+rejects non-compliant images with user-friendly feedback. This maintains the premium visual quality
+standard of the platform and reduces manual moderation overhead by an estimated 70%.
+5.6 AI Icebreaker Engine
+For every new match, the AI Icebreaker Engine generates 3 personalized conversation starter options
+based on shared interests extracted from both users' profiles, recent activity, and compatibility
+dimensions. Users can tap one-touch to send the AI-generated opener or customize it. The Icebreaker
+Pack (₹199/month as a standalone microtransaction) provides unlimited AI openers throughout the
+month.
+Confidential & Proprietary — The Data Sequence | Page 10 of 43
+
+===== PAGE 11 =====
+
+AMORA AI | Software Requirements Specification & Scope of Work | The Data Sequence
+5.7 Real-Time Push Notifications
+Firebase Cloud Messaging (FCM) powers a comprehensive notification framework covering: new
+match alerts, message received, Super Like received, event registration confirmation, event reminder
+(24h and 2h prior), subscription renewal notice, Amora Coin credit, referral reward, AI Coach daily tip,
+and promotional offers. Notification preferences are fully configurable per category.
+5.8 Offline Mode & Cached Views
+Core screens including My Matches, Chat History, Upcoming Events, and Profile are cached locally
+using Hive database, ensuring usability in low-connectivity environments common in Indian Tier-2
+markets. Match cards are pre-loaded during active sessions so users can browse offline. Outgoing
+messages queue locally and send automatically when connectivity is restored.
+5.9 Multi-City Expansion Framework
+The platform architecture supports seamless geographic expansion. City-specific configurations
+including featured users, local event calendars, pricing zones, and operational partner lists are
+managed through a centralized Admin CMS without requiring app updates. Adding a new city requires
+only Admin configuration — no engineering work. Phase 2 targets Surat, Rajkot, Jamnagar, and
+Bhavnagar within 6 months of launch.
+5.10 Post-Event Match Conversion Engine
+After every attended event, the platform automatically generates 'You Both Attended' match
+suggestions within 24 hours, cross-referencing the attendee list with existing unmatched users on the
+platform. Post-event match conversion rates of 2.8× the standard feed rate have been demonstrated in
+pilot event data. This creates a compounding loop: events drive app engagement, app engagement
+drives event ticket sales.
+Confidential & Proprietary — The Data Sequence | Page 11 of 43
+
+===== PAGE 12 =====
+
+AMORA AI | Software Requirements Specification & Scope of Work | The Data Sequence
+6. Application Screen Structure
+The Amora AI Flutter application comprises 32 distinct screens organized across functional modules.
+Each screen is independently testable, follows Clean Architecture principles, and adheres strictly to the
+Amora brand design system.
+# Screen Name Module Role Description
+1 Splash Screen App All Animated brand launch with AI heart animation and
+Launch version check
+2 Onboarding App All 5-screen illustrated feature introduction: AI
+Launch Matching, Events, Safety, Coaching, Community
+3 Login Authentica All Mobile OTP + Email/Password + Google Sign-In
+tion with biometric option
+4 Signup Authentica All User registration with mobile, email, name, and
+tion gender fields
+5 Compatibility Authentica Custo 12-question AI compatibility quiz: personality,
+Onboarding tion mer lifestyle, relationship intent, preferences
+6 Profile Setup Profile Custo Photo upload (up to 9), bio, interests, prompts, audio
+mer bio recording
+7 KYC Verification Profile Custo Aadhaar selfie match or DL upload for Blue-Tick
+mer verification
+8 Home / Discovery Custo AI Compatibility Feed with swipe cards, Daily Picks,
+Discovery Feed mer Nearby Now
+9 Browse Grid Discovery Custo City-wide browsable user grid with smart sort and
+mer filters
+1 Advanced Filters Discovery Custo Age, city, profession, education, community, intent,
+0 mer compatibility score filters
+1 Profile Detail Discovery Custo Full user profile: photos, bio, prompts, audio,
+1 mer compatibility score, shared interests
+1 Match Screen Messaging Custo Animated match celebration with AI icebreaker
+2 mer suggestions and one-tap send
+1 Chat / Messaging Custo Full-featured chat: text, emoji, photos, audio, video
+3 Messages mer call (Gold/VIP), AI icebreakers
+1 Super Like Discovery Custo Super Like send flow with animated confirmation
+4 mer and notification to recipient
+1 Send Gift Commerce Custo Virtual and physical gift selection, quantity, personal
+5 mer message, recipient confirmation
+1 Events Browse Events Custo Upcoming events grid by city and category with
+6 mer ticket availability indicator
+1 Event Detail Events Custo Full event profile: host info, venue, agenda,
+7 mer attendees preview, ticket purchase
+Confidential & Proprietary — The Data Sequence | Page 12 of 43
+
+===== PAGE 13 =====
+
+AMORA AI | Software Requirements Specification & Scope of Work | The Data Sequence
+# Screen Name Module Role Description
+1 Ticket Booking Events Custo Seat selection, ticket quantity, payment, digital pass
+8 mer generation
+1 My Events Events Custo Upcoming, attended, and waitlisted events
+9 mer management with QR pass access
+2 Subscriptions Payment Custo Subscription tier comparison, feature matrix, annual
+0 mer vs monthly toggle, upgrade CTA
+2 Payment Payment Custo Payment method selection, order summary,
+1 mer Razorpay gateway / Amora Wallet
+2 AI Dating Coach AI Custo Daily tips, conversation scoring, date ideas,
+2 mer reflection prompts, relationship insights
+2 AI Icebreakers AI Custo AI-generated conversation starters per match with
+3 mer one-tap send or customize option
+2 Amora Wallet Payment Custo Coin balance, transaction history, redemption
+4 mer options, top-up via Razorpay
+2 Refer & Earn Referral Custo Unique referral code, earnings tracker, share via
+5 mer WhatsApp/SMS/social
+2 Profile Settings Profile All Personal info, verification status, notification
+6 preferences, privacy controls
+2 Safety & Privacy Profile All Block list, report history, data export, account
+7 deletion, DPDP Act controls
+2 FAQ & Support Support All Searchable knowledge base, WhatsApp chat
+8 initiation, ticket status tracker
+2 Host Dashboard Host Host Event bookings, ticket sales, brand sponsorship
+9 revenue, attendee management
+3 Admin Panel Admin Admin User verification queue, event approvals, transaction
+0 monitoring, analytics reports
+3 Date Spots Map Commerce Custo In-app map of partner restaurants, cafes, and
+1 mer venues with Date Package purchase
+3 Notifications System All Centralized notification feed with categorized alerts
+2 Hub and one-tap action links
+Total Screens: 32 | Estimated Flutter Widgets: 200+ | Reusable Components: 55+
+Confidential & Proprietary — The Data Sequence | Page 13 of 43
+
+===== PAGE 14 =====
+
+AMORA AI | Software Requirements Specification & Scope of Work | The Data Sequence
+7. Technology Stack
+Amora AI is built on a modern, industry-standard technology stack optimized for rapid Flutter
+development, AI feature integration, real-time messaging performance, and production scalability
+across both Android and iOS.
+Category Technology Purpose
+Frontend Framework Flutter 3.x Cross-platform UI development (Android + iOS)
+Programming Dart 3.x Type-safe, high-performance application logic
+Language
+UI Design Tool Figma Wireframes, design system, component library,
+prototyping
+State Management Riverpod + BLoC Reactive state management and dependency
+injection
+Local Database Hive Offline caching, user preferences, match card pre-
+loading
+HTTP Client Dio API communication with interceptors, retry logic,
+token refresh
+Real-time Messaging Firebase Realtime Sub-500ms message delivery for chat module
+DB
+Version Control GitHub Source code management, GitFlow branching,
+CI/CD
+Primary IDE VS Code Flutter development with Dart extensions
+Secondary IDE Android Studio Android emulation, device testing, performance
+profiling
+Backend (Planned) Node.js + Express REST API server, business logic, webhooks, cron
+jobs
+Database (Planned) Firebase Firestore Real-time NoSQL database, scalable user and
+match data
+Transactional DB PostgreSQL Financial records, subscription ledger, ACID
+(Planned) compliance
+Testing Framework Flutter Test + Unit, widget, and integration testing
+Mockito
+Push Notifications Firebase FCM All notification types across both platforms
+Crash Reporting Firebase Crashlytics Real-time crash detection and severity classification
+Analytics Firebase Analytics + User funnel analysis, retention, feature adoption
+Mixpanel
+AI Layer OpenAI API + Compatibility scoring, icebreakers, coach responses
+Custom ML
+Confidential & Proprietary — The Data Sequence | Page 14 of 43
+
+===== PAGE 15 =====
+
+AMORA AI | Software Requirements Specification & Scope of Work | The Data Sequence
+7.1 AI-Assisted Development Tools
+Amora AI is developed using a pioneering AI-assisted development workflow integrating four
+specialized AI tools across the product lifecycle, delivering an estimated 35–40% reduction in
+development timeline.
+AI Tool Application in This Project
+ChatGPT (GPT-4o) Product architecture, feature scoping, user story generation, microcopy
+writing
+GitHub Copilot / Codex Flutter widget generation, boilerplate code, navigation scaffolding, test
+generation
+Cursor AI Intelligent code completion, refactoring, BLoC state management patterns,
+bug identification
+Claude (Anthropic) SRS documentation, technical specification writing, flow architecture,
+requirement analysis
+Confidential & Proprietary — The Data Sequence | Page 15 of 43
+
+===== PAGE 16 =====
+
+AMORA AI | Software Requirements Specification & Scope of Work | The Data Sequence
+8. Database Structure
+The Amora AI platform uses Firebase Firestore (NoSQL) as the primary real-time database for user
+profiles, match data, messaging, and events. PostgreSQL is planned for financial and subscription data
+requiring ACID compliance. All personally identifiable information (PII) is encrypted at rest per DPDP
+Act 2023 requirements.
+8.1 Users Collection
+Field Type / Description
+userId String — Unique identifier (Firebase UID)
+fullName String — User's full name
+mobileNumber String — Primary contact (OTP verified)
+email String — Email address
+role Enum — CUSTOMER | HOST | ADMIN
+gender Enum — MALE | FEMALE | NON_BINARY |
+PREFER_NOT_TO_SAY
+dateOfBirth Date — For age calculation and filtering
+city String — Primary city (Ahmedabad / Gandhinagar / Vadodara)
+profilePhotos Array<String> — Firebase Storage URLs (up to 9)
+audioBioUrl String — 30-second audio bio URL
+videoBioUrl String — 60-second video intro URL (Gold/VIP)
+interests Array<String> — Selected interest tags (50+ categories)
+relationshipIntent Enum — CASUAL | SERIOUS | MARRIAGE | FRIENDS
+compatibilityProfile Map — 40-field AI scoring vector from onboarding quiz
+kycStatus Enum — PENDING | VERIFIED | REJECTED
+kycDocumentUrl String — Verification document URL
+isBlueVerified Boolean — Blue-Tick verification status
+subscriptionTier Enum — FREE | STARTER | PLUS | GOLD | VIP
+subscriptionExpiry Timestamp — Current subscription end date
+amoraCoins Integer — Loyalty coin balance
+referralCode String — Unique referral identifier (e.g., AMOR_PRIYA)
+totalMatches Integer — Lifetime match count
+totalEvents Integer — Events attended
+Confidential & Proprietary — The Data Sequence | Page 16 of 43
+
+===== PAGE 17 =====
+
+AMORA AI | Software Requirements Specification & Scope of Work | The Data Sequence
+Field Type / Description
+createdAt Timestamp — Account creation date
+isActive Boolean — Account active status
+lastSeen Timestamp — Last platform activity
+8.2 Matches Collection
+Field Type / Description
+matchId String — Unique match identifier
+user1Id String — Reference to Users.userId
+user2Id String — Reference to Users.userId
+compatibilityScore Double — Bidirectional AI compatibility score (0–100)
+initiatedBy String — userId of who liked first
+matchedAt Timestamp — When mutual like was confirmed
+conversationId String — Reference to Conversations collection
+matchStatus Enum — ACTIVE | UNMATCHED | BLOCKED | EXPIRED
+sharedEvents Array<String> — Event IDs both users attended
+icebreakerSent Boolean — Whether AI icebreaker has been sent
+lastInteractionAt Timestamp — Last message or reaction timestamp
+8.3 Subscriptions Collection
+Field Type / Description
+subscriptionId String — Unique subscription record
+userId String — Reference to Users.userId
+tier Enum — STARTER | PLUS | GOLD | VIP
+billingCycle Enum — MONTHLY | ANNUAL
+amount Double — Subscription amount charged (INR)
+razorpayOrderId String — Payment gateway order reference
+razorpayPaymentId String — Payment gateway payment reference
+startDate Timestamp — Subscription commencement
+endDate Timestamp — Subscription expiry
+Confidential & Proprietary — The Data Sequence | Page 17 of 43
+
+===== PAGE 18 =====
+
+AMORA AI | Software Requirements Specification & Scope of Work | The Data Sequence
+Field Type / Description
+autoRenew Boolean — Auto-renewal preference
+status Enum — ACTIVE | EXPIRED | CANCELLED | FAILED
+createdAt Timestamp — Record creation time
+8.4 Events Collection
+Field Type / Description
+eventId String — Unique event identifier
+hostId String — Reference to Users.userId (Host role)
+title String — Event name
+category Enum — SPEED_DATING | SINGLES_MIXER | COFFEE_DATE
+| PROFESSIONAL | VIP_NIGHT | BRAND_EVENT
+description String — Event details and agenda
+venue Map — Name, address, city, lat/lng coordinates
+eventDate Timestamp — Event start date and time
+durationMinutes Integer — Expected event duration
+ticketPrice Double — Per-person ticket price (INR)
+capacity Integer — Maximum attendees
+registeredCount Integer — Current confirmed registrations
+photos Array<String> — Event promotional photos
+brandSponsorId String — Linked sponsor (if co-branded)
+brandSponsorAmount Double — Sponsorship contract value
+eventStatus Enum — DRAFT | APPROVED | LIVE | COMPLETED |
+CANCELLED
+attendees Array<String> — Registered userId list
+postEventMatchIds Array<String> — Matches generated post-event
+createdAt Timestamp — Listing creation date
+8.5 Additional Collections
+Collection Key Fields Purpose
+Conversations conversationId, matchId, participants[], Chat thread metadata and last
+Confidential & Proprietary — The Data Sequence | Page 18 of 43
+
+===== PAGE 19 =====
+
+AMORA AI | Software Requirements Specification & Scope of Work | The Data Sequence
+Collection Key Fields Purpose
+lastMessage, updatedAt message preview
+Messages messageId, conversationId, senderId, Individual message storage with
+content, mediaUrl, type, sentAt, readAt delivery and read tracking
+Payments paymentId, userId, type, amount, Full payment audit trail for all
+razorpayId, status, gateway response, transactions
+timestamp
+AmoraWallet walletId, userId, coinBalance, Loyalty coin ledger with expiry
+transactions[], creditSource, expiryDate management
+Referrals referralId, referrerId, refereeId, Referral attribution and reward
+subscriptionId, referrerCredit, tracking
+refereeDiscount, status
+Reviews reviewId, eventId, reviewerId, rating, Post-event attendee reviews and
+comment, photos[], createdAt, isVisible ratings
+Gifts giftId, senderId, recipientId, type, productId, Virtual and physical gift
+message, price, status, deliveryInfo transaction records
+BusinessListings listingId, businessName, category, address, Date Spots partner business
+featuredPhotos, pricePerMonth, directory
+amoraScore
+Notifications notifId, userId, type, title, body, deepLink, Notification delivery and read
+readAt, createdAt status tracking
+Confidential & Proprietary — The Data Sequence | Page 19 of 43
+
+===== PAGE 20 =====
+
+AMORA AI | Software Requirements Specification & Scope of Work | The Data Sequence
+9. Third-Party API Integrations
+Amora AI integrates with best-in-class third-party services for payments, AI, communication, mapping,
+and infrastructure — all selected for Indian market reliability and developer ecosystem quality.
+Launch
+Service Provider Category Integration Purpose
+Phase
+Razorpay Payment UPI, card, netbanking, wallet, Phase 2
+Gateway subscriptions; auto-renewal; refunds; GST
+invoicing
+Firebase (Google) Auth + Realtime Phone OTP auth, Firestore, Realtime Phase 1
+DB + FCM messaging, push notifications, Storage
+Google Maps Maps & Date Spots map, event venue display, city Phase 2
+Platform Geolocation search, proximity filtering
+WhatsApp Messaging & Booking confirmations, OTP fallback, Phase 3
+Business API Support support chat, event reminders
+OpenAI API (GPT- AI Engine Icebreaker generation, AI Dating Coach Phase 2
+4o) responses, compatibility insight text
+Digilocker / KYC / Document Aadhaar verification, DL verification, Phase 3
+Surepass OCR identity Blue-Tick system
+Firebase Analytics Analytics User funnel analysis, retention reporting, Phase 2
++ Mixpanel feature adoption tracking
+Firebase Crash Reporting Real-time crash detection, stack traces, Phase 1
+Crashlytics severity classification
+Twilio / MSG91 SMS OTP Fallback OTP delivery for non-WhatsApp Phase 1
+users
+Cloudinary / Media Storage Profile photos, event photos, audio bios, Phase 1
+Firebase Storage video intros, gift images
+Shiprocket / Dunzo Gift Delivery Physical gift logistics partner for in-app Phase 3
+gifting commerce
+Agora / Jitsi Video Calls In-app video date calls for Gold and VIP Phase 4
+subscribers
+Confidential & Proprietary — The Data Sequence | Page 20 of 43
+
+===== PAGE 21 =====
+
+AMORA AI | Software Requirements Specification & Scope of Work | The Data Sequence
+10. UI/UX Brand DNA
+10.1 Brand Identity
+Amora AI's visual identity projects premium quality, emotional warmth, and trustworthy sophistication —
+qualities essential for a platform facilitating personal connections and financial transactions. The design
+language is inspired by the romantic energy of luxury perfume brands, the digital sophistication of
+premium fintech apps, and the human warmth of the world's best social platforms.
+The Amora AI design aesthetic is defined by three pillars: Intimate Luxury (dark navy backgrounds with
+rose and gold accents evoking candlelit elegance), Human Warmth (generous white space, soft
+animations, and emotionally resonant micro-interactions), and Intelligent Confidence (data-forward AI
+insights presented with calm, clear typography and purposeful iconography).
+10.2 Color System
+Color Token Hex Value Usage
+Rose Red #C8174A Primary CTAs, match animations, Super Like, heart icons, brand
+highlights
+Deep Navy #0D1B3E Headings, navigation bar, pressed states, premium section
+headers
+Luxury Gold #B8882A VIP tier, premium badges, AI Coach accents, Amora Coins,
+rewards
+Success Green #10B981 Match confirmations, verified badges, payment success, Blue-
+Tick
+Warning Amber #F59E0B Subscription renewal alerts, event reminders, pending
+verification
+Error Red #EF4444 Payment failures, report actions, blocked state, validation errors
+Dark Text #1A1A2E Primary body text, headings, labels, profile content
+Medium Gray #6B7280 Secondary text, placeholder labels, disabled states, timestamps
+Light Gray #F3F4F6 Page backgrounds, card surfaces, input field backgrounds
+Pure White #FFFFFF Card surfaces, modal backgrounds, input fields, chat bubbles
+10.3 Design Inspiration Matrix
+Platform Inspiration Element Application in Amora AI
+Tinder Swipe-first UX, match Swipe discovery feed, animated match
+animation, bold color CTAs celebration, rose CTA buttons
+Hinge Prompt-based profiles, AI depth, Profile prompts, Daily Picks feature,
+curated daily picks compatibility insight cards
+Confidential & Proprietary — The Data Sequence | Page 21 of 43
+
+===== PAGE 22 =====
+
+AMORA AI | Software Requirements Specification & Scope of Work | The Data Sequence
+Platform Inspiration Element Application in Amora AI
+Bumble Safety-first brand, verification Blue-Tick system, safety center, Bumble
+trust signals, event ecosystem Bizz-style event listings
+Airbnb Event discovery grid, host/guest Events browse grid, host dashboard, dual-
+duality, trust ecosystem role navigation
+Instagram Photo-first storytelling, stories Photo grid on profiles, audio bio stories,
+format, visual grid event photo carousels
+Apple Health Data visualization, clean Compatibility score breakdown, AI Coach
+metrics, wellness framing dashboard, streak tracking
+Confidential & Proprietary — The Data Sequence | Page 22 of 43
+
+===== PAGE 23 =====
+
+AMORA AI | Software Requirements Specification & Scope of Work | The Data Sequence
+11. Typography System
+Amora AI employs a structured dual-typeface system using Google Fonts. Playfair Display adds
+romantic premium character to hero moments; Inter provides clinical clarity to functional interfaces.
+Together they create a balance of emotional warmth and professional confidence.
+Style Token Font / Weight Size Usage
+Display XL Playfair Display Bold 36sp Hero headlines, splash brand name, match
+celebration
+Display LG Inter SemiBold 28sp Screen titles, onboarding headers,
+subscription tier names
+Heading 1 Inter SemiBold 24sp Card titles, modal headings, section
+headers
+Heading 2 Inter Medium 20sp Sub-section headings, event titles, profile
+name
+Body Large Inter Regular 16sp Primary body text, profile bios, event
+descriptions
+Body Medium Inter Regular 14sp Secondary text, list items, filter labels, chat
+messages
+Body Small Inter Regular 12sp Captions, timestamps, helper text, coin
+balances, badges
+Label Bold Inter SemiBold 14sp Button labels, CTA text, navigation items,
+tab labels
+Price Display Inter Bold 22sp / Subscription prices, ticket amounts, gift
+18sp costs, wallet balance
+AI Accent Playfair Display Italic 16sp AI Coach tips, compatibility scores, match
+percentage callouts
+Monospace Roboto Mono Regular 13sp Referral codes, booking IDs, transaction
+references
+Confidential & Proprietary — The Data Sequence | Page 23 of 43
+
+===== PAGE 24 =====
+
+AMORA AI | Software Requirements Specification & Scope of Work | The Data Sequence
+12. Code Management & Architecture
+12.1 Project Structure
+The Amora AI Flutter project follows Clean Architecture principles with feature-first folder organization,
+ensuring strict separation of concerns, testability, and horizontal scalability across team members.
+amora_ai/ ├── lib/ │ ├── core/ # Shared utilities, constants,
+themes, DI │ ├── features/ # Feature-first modules │ │ ├── auth/
+# Authentication & onboarding │ │ ├── discovery/ # Match feed & browse │
+│ ├── matching/ # AI compatibility engine client │ │ ├── messaging/
+# Chat, icebreakers, video calls │ │ ├── subscriptions/ # Tiers, payment,
+wallet │ │ ├── events/ # Event browse, booking, QR pass │ │ ├──
+ai_coach/ # Dating Coach & Advisor features │ │ ├── gifting/ #
+Virtual & physical gift commerce │ │ ├── referral/ # Referral program &
+Amora Coins │ │ ├── host/ # Host dashboard & event management │ │
+└── support/ # FAQ, WhatsApp, safety & privacy │ ├── shared/
+# Reusable widgets, services, mixins │ └── main.dart # App entry point &
+bootstrap ├── assets/ # Images, fonts, icons, Lottie animations ├──
+test/ # Unit, widget, and integration tests └── pubspec.yaml
+# Dependencies manifest
+12.2 Development Practices
+• Clean Architecture: Strict separation of Presentation, Domain, and Data layers per feature
+module
+• Reusable Component Library: 55+ shared Flutter widgets ensuring UI and brand consistency
+• API-First Design: All backend integrations abstracted through repository interfaces for testability
+• Responsive Development: Adaptive layouts tested across 6 screen size breakpoints (small to
+tablet)
+• Git Branching: GitFlow strategy with feature/, hotfix/, release/ branch naming conventions
+• Code Review: Mandatory PR reviews with minimum 1 approver before merge to main branch
+• Linting: Flutter Analyze + custom dart_code_metrics rules enforced in CI pipeline
+• Accessibility: WCAG 2.1 AA compliance for all primary user flows and CTAs
+Confidential & Proprietary — The Data Sequence | Page 24 of 43
+
+===== PAGE 25 =====
+
+AMORA AI | Software Requirements Specification & Scope of Work | The Data Sequence
+13. Customer Onboarding Flow
+The customer onboarding flow is engineered for maximum conversion with minimum friction. The
+complete journey from download to first-match-ready state is achievable in under 4 minutes.
+St
+Screen Action Validation
+ep
+1 Splash Screen App launch, version check, auth state Auto-redirect if session
+detection active
+2 Onboarding (5 Feature intro: AI Matching, Events, Verified One-time display for new
+slides) Profiles, AI Coach, Community users
+3 Login / Signup Mobile number entry with OTP dispatch Valid Indian mobile format
+(10 digits)
+4 OTP Verification 6-digit OTP entry with 60s resend timer Firebase phone auth
+5 Profile Setup Name, gender, date of birth, city, profile Minimum required fields
+photos (min 2 required) enforced
+6 AI Compatibility 12 questions across personality, lifestyle, All 12 required for AI
+Quiz intent, communication style scoring
+7 KYC Upload Aadhaar selfie match or driving license Processed within 24 hours
+(Optional) upload for Blue-Tick by AI OCR
+8 Interest Tags Select minimum 5 interests from 50+ Feeds AI matching engine
+categories
+9 Dashboard Personalized match feed with onboarding Profile completion score
+completion nudge shown
+Confidential & Proprietary — The Data Sequence | Page 25 of 43
+
+===== PAGE 26 =====
+
+AMORA AI | Software Requirements Specification & Scope of Work | The Data Sequence
+14. Match & Chat Flow
+The match and chat flow converts profile discovery into meaningful conversation through AI-assisted
+connection tools at every step.
+St
+Screen Action System Response
+ep
+1 Discovery Feed User encounters profile card in AI —
+Compatibility Feed or Browse Grid
+2 Profile Review User views full profile: photos, bio, —
+prompts, compatibility score
+3 Like / Super Like User expresses interest; notification sent Notification delivered via FCM
+/ Rose to target user
+4 Mutual Like = Both users liked each other; animated Match record created in DB
+Match match celebration screen
+5 AI Icebreaker System presents 3 personalized Icebreakers generated by
+conversation starters; one-tap send OpenAI API
+6 Chat Opens Full messaging interface with text, emoji, Real-time via Firebase RTDB
+photo, audio options
+7 Video Call Gold/VIP user schedules or initiates in- Via Agora SDK (Phase 4)
+Request app video call
+8 Report / Block User can report or block match from chat Flagged for admin
+or profile screen moderation
+Confidential & Proprietary — The Data Sequence | Page 26 of 43
+
+===== PAGE 27 =====
+
+AMORA AI | Software Requirements Specification & Scope of Work | The Data Sequence
+15. Subscription & Payment Flow
+The subscription flow converts free users to paying subscribers through a frictionless, feature-forward
+purchasing experience. Beta-validated free-to-paid conversion rate: 22%.
+St
+Screen Action System Response
+ep
+1 Subscription User opens Subscriptions from profile or All 5 tiers shown in
+Screen conversion prompt comparison matrix
+2 Tier Selection User selects desired tier (Starter / Plus / Feature matrix highlights
+Gold / VIP) benefits
+3 Billing Cycle Monthly vs Annual toggle; annual shows 2- Pricing updates
+month savings callout dynamically
+4 Coupon / Optional coupon code or referral discount Server-side validation
+Referral applied
+5 Payment UPI / Card / Net Banking / Amora Wallet Razorpay payment sheet
+Method selection opens
+6 Payment Razorpay processes payment; webhook < 3 second completion
+Processing confirms success target
+7 Subscription Account tier upgraded immediately; new Subscription record created
+Activation features unlocked
+8 Confirmation Animated success screen; subscription FCM confirmation
+details; GST invoice sent notification
+9 Auto-Renewal 3-day advance push + WhatsApp User can cancel in app
+Notice notification before renewal
+Confidential & Proprietary — The Data Sequence | Page 27 of 43
+
+===== PAGE 28 =====
+
+AMORA AI | Software Requirements Specification & Scope of Work | The Data Sequence
+16. Events & Experiences Flow
+The events flow connects digital matches to real-world connections through curated, ticketed offline
+experiences — Amora's key competitive differentiator.
+St
+Screen Action System Response
+ep
+1 Events Browse User discovers events grid by city and —
+category (Speed Dating, Mixers, etc.)
+2 Event Detail Full event page: host info, venue, agenda, —
+attendees preview, ticket price
+3 Ticket Selection Quantity selection, special requirements —
+note
+4 Payment Ticket price via Razorpay / Amora Wallet; Instant ticket confirmation
+200 Coins awarded on purchase
+5 Digital Pass QR-code event pass generated in My —
+Events section
+6 Event Push notification 24h and 2h before event FCM timed notifications
+Reminders start
+7 Check-In QR code scanned by host at venue for Host dashboard marks
+access confirmation attended
+8 Post-Event Within 24h: 'You Both Attended' match 2.8× match conversion rate
+Matches suggestions surfaced from pilot
+9 Event Review Attendee prompted to rate event (1–5 stars) Feeds host rating profile
+with optional comment
+Confidential & Proprietary — The Data Sequence | Page 28 of 43
+
+===== PAGE 29 =====
+
+AMORA AI | Software Requirements Specification & Scope of Work | The Data Sequence
+17. AI Coach Activation Flow
+The AI Coach flow converts engaged users into high-LTV AI Pack subscribers through trial-first
+activation and measurable relationship improvement metrics.
+St
+Screen Action System Response
+ep
+1 AI Coach User encounters AI Coach upsell in chat or —
+Discovery profile screens
+2 7-Day Free Trial Gold/VIP users activate Coach trial; Trial activated in
+Starter/Plus see upgrade prompt subscription backend
+3 Daily Tip Coach delivers 1 personalized tip daily at 8 OpenAI API generates tip
+Delivery PM via push + in-app card per user context
+4 Conversation User opts in to share match chat excerpt; Privacy-first: opt-in only, no
+Scoring Coach scores opener quality storage
+5 Date Idea User requests date ideas for specific match; Location-aware via Google
+Generator AI returns 3 local suggestions Maps API
+6 Coach User subscribes to AI Coach Pack Razorpay add-on
+Subscription (₹599/mo) or Advisor (₹799/mo) subscription
+7 Session User views monthly coaching impact: match Gamified progress
+Analytics rate change, response rate dashboard
+Confidential & Proprietary — The Data Sequence | Page 29 of 43
+
+===== PAGE 30 =====
+
+AMORA AI | Software Requirements Specification & Scope of Work | The Data Sequence
+18. Host / Partner Onboarding Flow
+The Host onboarding flow is a structured verification-first process ensuring only genuine, quality event
+partners reach the customer-facing platform.
+St
+Screen Action Admin Action
+ep
+1 Host Role selection or existing user switching to —
+Registration Host; business credential entry
+2 Host Profile Business name, GST/PAN, bank account for —
+Setup payouts, contact details
+3 Event Proposal Event details: title, category, date, venue, —
+capacity, ticket price, description
+4 Event Photos Minimum 5 promotional photos with AI quality AI quality gate: reject
+Upload scoring blurry images
+5 Brand Optional: co-branding details, sponsor logo, —
+Sponsorship sponsorship amount (₹50K–₹2L)
+Setup
+6 Submit for Event submitted to Admin queue; SLA: 48h Admin approval /
+Review review commitment rejection with notes
+7 Event Goes Live Approved events appear in Events Browse for Push notification to
+all users in target city relevant users
+8 Host Dashboard Ticket sales, attendee list, check-in Real-time via Firebase
+management, revenue tracking Firestore
+9 Payout Platform processes host payout within 5 After 15% commission
+Processing business days post-event deduction
+Confidential & Proprietary — The Data Sequence | Page 30 of 43
+
+===== PAGE 31 =====
+
+AMORA AI | Software Requirements Specification & Scope of Work | The Data Sequence
+19. Admin Flow
+The Admin operates a web-based or dedicated admin Flutter screen to govern platform quality,
+financial integrity, and operational health across all three cities.
+Admin Action Description SLA
+User Verification Review KYC submission, validate identity document, 24-hour
+approve / reject Blue-Tick processing
+SLA
+Event Approval Review host event proposals, check venue safety 48-hour
+compliance, approve / reject with notes processing
+SLA
+Subscription Monitoring Track all active subscriptions, failed payments, refund Real-time
+requests, chargeback flags dashboard
+Content Moderation Review AI-flagged profiles, photos, messages; action AI-assisted
+inappropriate content within 2 hours queue
+Coupon Management Create, schedule, and deactivate promotional coupon Admin CMS
+campaigns with usage limits panel
+User Management View, verify, suspend, or permanently remove user With reason
+accounts with audit log code
+Financial Reports Revenue by stream, payout processing, commission Daily
+calculation, investor reporting automated
+reports
+City Expansion Config Configure new city: pricing zones, featured users, event No app
+calendar, partner contacts update
+required
+Confidential & Proprietary — The Data Sequence | Page 31 of 43
+
+===== PAGE 32 =====
+
+AMORA AI | Software Requirements Specification & Scope of Work | The Data Sequence
+20. Referral & Share Flow
+The Referral Program is the primary organic growth lever for Amora AI, designed to create a viral
+acquisition loop while rewarding loyal platform participants with a K-factor target of 1.2+.
+20.1 Referral Mechanics
+•
+•
+•
+•
+•
+•
+•
+20.2 Share Flows
+• Profile Share: User shares another user's profile as a rich WhatsApp card (photo, name,
+compatibility hint, app deep link)
+• Event Share: Event listing shared as a formatted card with photo, date, ticket price, and
+registration deep link
+• App Share: Standard app install link with referral code embedded for attribution tracking via
+Firebase Dynamic Links
+• Post-Event Achievement Card: Customized social sharing card for Instagram Stories after
+attending an event (branded, anonymized)
+Confidential & Proprietary — The Data Sequence | Page 32 of 43
+
+===== PAGE 33 =====
+
+AMORA AI | Software Requirements Specification & Scope of Work | The Data Sequence
+21. Performance Requirements
+Amora AI is engineered to meet premium performance benchmarks across all device tiers present in
+the Indian market, including mid-range Android devices (3GB RAM, Android 8+) and iPhone SE
+onwards.
+Metric Target Measurement Method
+App Launch Time (Cold Start) < 2.5 seconds Flutter DevTools Timeline
+Screen Navigation Transition < 300ms Flutter Performance Overlay
+UI Frame Rate 60fps (stable) Flutter Performance Profiler
+Match Feed Load Time < 1.5 seconds Network interceptor timing
+Chat Message Delivery < 500ms Firebase RTDB latency
+monitoring
+Payment Processing Time < 3 seconds (gateway) Razorpay webhook response
+time
+AI Icebreaker Generation < 2 seconds OpenAI API response time
+Event Browse Load Time < 1.2 seconds Firestore query + FCM timing
+Profile Photo Load Time < 1 second (cached) Cached Network Image
+metrics
+Subscription Activation < 2 seconds end-to-end Firestore write + FCM delivery
+App Size (APK/IPA) < 30 MB Flutter build output
+Minimum Android Version Android 6.0 (API 23) Build configuration
+Minimum iOS Version iOS 13.0+ Xcode build settings
+Crash Rate < 0.1% per session Firebase Crashlytics
+Subscription Transaction Success > 99.5% Razorpay payment gateway
+Rate dashboard
+AI Compatibility Score Compute < 800ms API response monitoring
+Confidential & Proprietary — The Data Sequence | Page 33 of 43
+
+===== PAGE 34 =====
+
+AMORA AI | Software Requirements Specification & Scope of Work | The Data Sequence
+22. Testing Strategy
+Amora AI adopts a multi-layer testing pyramid ensuring quality at unit, widget, integration, AI accuracy,
+and user acceptance testing levels before any production release.
+Test Type Scope Tools Coverage Target
+Unit Tests Business logic, AI scoring, flutter_test, mockito > 80% code
+repository methods, utility coverage
+functions
+Widget Tests Individual Flutter widgets, flutter_test All core widgets
+screen rendering, state WidgetTester
+transitions
+Integration Tests Complete user flows: match, flutter_integration_test All critical paths
+chat, subscribe, attend event
+API Tests REST endpoints, Firestore Postman, Newman CI All API endpoints
+security rules, Razorpay
+webhooks
+Performance Frame rate, load times, Flutter DevTools, All screens
+Tests memory under concurrent Firebase Performance
+user load
+Device Testing Compatibility: Samsung, Physical + 5+ device models
+OnePlus, Xiaomi, Realme, BrowserStack
+Vivo, iPhone
+UAT End-to-end flows by real Manual test scripts All user stories
+users in Ahmedabad staging
+environment
+Security Testing Authentication, payment data, OWASP checklist Critical security
+API authorization, DPDP paths
+compliance
+AI Accuracy Compatibility score relevance, A/B testing framework Core AI features
+Testing icebreaker quality, Coach
+response accuracy
+Confidential & Proprietary — The Data Sequence | Page 34 of 43
+
+===== PAGE 35 =====
+
+AMORA AI | Software Requirements Specification & Scope of Work | The Data Sequence
+23. Scope of Work & Project Timeline
+The Amora AI project is structured into 5 sequential phases spanning approximately 16 weeks from
+kickoff to production deployment. Each phase has defined deliverables, acceptance criteria, and
+milestone gates.
+Phase 1: Requirements & Design (Weeks 1–3)
+Activity Deliverable Owner
+Stakeholder requirements Signed requirements sign-off document Business Analyst +
+workshops Client
+User story creation and backlog Prioritized product backlog in Product Owner
+grooming Notion/Linear
+Information architecture design App sitemap and navigation flow UX Designer
+diagram
+Wireframe creation (all 32 screens) Low + mid-fidelity wireframes in Figma UX Designer
+High-fidelity UI design (all 32 Complete Figma design system + UI Designer
+screens) screen designs
+Design system establishment Component library: colors, typography, UI Designer
+icons, spacing, animations
+Technical architecture planning System architecture document, Technical Architect
+database schema draft
+API contract definition REST API specifications document Backend Lead
+(Swagger/OpenAPI)
+AI model selection & integration OpenAI API configuration, compatibility AI Engineer
+plan scoring prototype
+Phase 2: Core Flutter Development (Weeks 4–9)
+Activity Deliverable Milestone
+Project scaffolding + CI/CD setup GitHub repo, branching strategy, Flutter Week 4
+project initialized
+Design system implementation Flutter theme, widget library (55+ Week 5
+components), Lottie animations
+Authentication module (OTP + Working login/signup with Firebase Phone Week 5
+email) Auth
+AI compatibility onboarding quiz 12-question onboarding flow with AI scoring Week 6
+backend
+Profile setup & photo upload Multi-photo, audio bio, interest tags, prompt Week 6
+module screens
+Confidential & Proprietary — The Data Sequence | Page 35 of 43
+
+===== PAGE 36 =====
+
+AMORA AI | Software Requirements Specification & Scope of Work | The Data Sequence
+Activity Deliverable Milestone
+Match discovery feed (swipe + grid) AI feed, browse grid, filters, compatibility Week 7
+score display
+In-app messaging module Real-time chat, AI icebreakers, read receipts, Week 8
+photo sharing
+Subscription & payment module All 5 tiers, Razorpay integration, wallet, Week 9
+confirmation
+AI Dating Coach module Daily tips, conversation scoring, date ideas, Week 9
+Pack subscription
+Phase 3: Events, Host & Commerce Modules (Weeks 10–12)
+Activity Deliverable Milestone
+Events module — customer side Event browse, detail, ticket booking, QR Week 10
+pass, My Events
+Host dashboard & event Host onboarding, event creation wizard, Week 11
+management attendee management
+In-app gifting & commerce module Virtual gifts, physical gift ordering, Date Spots Week 11
+map
+Referral program & Amora Coins Refer & Earn screen, coin ledger, Week 12
+leaderboard, share flows
+Business listings & Date Spots Partner listing management, map integration, Week 12
+admin approval
+KYC / Blue-Tick verification Surepass OCR integration, Blue-Tick badge, Week 12
+admin queue
+Phase 4: Testing & QA (Weeks 13–14)
+Activity Deliverable Milestone
+Unit and widget test suite Test reports with >80% coverage Week 13
+confirmation
+Integration testing of all critical Match, chat, subscribe, event, referral flows Week 13
+flows verified
+AI accuracy validation Compatibility score relevance testing, Week 13
+icebreaker quality A/B
+Device compatibility testing Compatibility report for 8 target device Week 14
+models (Android + iOS)
+Performance profiling & DevTools profiling; 60fps confirmed; < 2.5s Week 14
+optimization cold start
+Confidential & Proprietary — The Data Sequence | Page 36 of 43
+
+===== PAGE 37 =====
+
+AMORA AI | Software Requirements Specification & Scope of Work | The Data Sequence
+Activity Deliverable Milestone
+Security review and DPDP DPDP Act 2023 data handling audit, OWASP Week 14
+compliance check critical paths
+User acceptance testing (UAT) Real user beta in Ahmedabad (500 users): Week 14
+CPI ₹68 validated
+Bug triage and resolution sprint All P0/P1 bugs resolved; P2 documented for Week 14
+post-launch
+Phase 5: Deployment & Handover (Weeks 15–16)
+Activity Deliverable Milestone
+Production APK + IPA build Signed release builds with ProGuard Week 15
+obfuscation (Android)
+Google Play Store submission Store listing assets, screenshots, privacy Week 15
+policy, app description
+Apple App Store submission App Review compliance, TestFlight beta Week 15
+distribution
+Firebase production environment Production Firestore with security rules, FCM, Week 15
+Crashlytics
+Backend services deployment Production API server live with monitoring Week 15
+and alerting
+Pre-launch partner activation 10 brand sponsors contracted, 30 biz listings Week 15
+signed, 6 events booked
+Documentation handover Developer docs, API docs, AI configuration Week 16
+guide, deployment runbook
+Client training session Platform walkthrough for admin, events team, Week 16
+and operations staff
+Post-launch support setup Bug tracking, WhatsApp support channel, Week 16
+escalation process active
+Project Timeline Summary
+Total Duration: 16 Weeks | Phase 1–2: Core Platform (Weeks 1–9) | Phase 3: Events & Commerce
+(Weeks 10–12) | Phase 4–5: QA & Deployment (Weeks 13–16)
+Confidential & Proprietary — The Data Sequence | Page 37 of 43
+
+===== PAGE 38 =====
+
+AMORA AI | Software Requirements Specification & Scope of Work | The Data Sequence
+24. Final Deliverables
+Upon project completion, The Data Sequence will deliver the following artifacts to the client. All
+deliverables are included in the agreed project scope at no additional cost.
+# Deliverable Format Description
+1 Production Android .apk (signed) Production-ready signed APK for Google Play Store
+APK submission
+2 Production iOS IPA .ipa (signed) Signed iOS build for Apple App Store submission
+3 Flutter Source Code GitHub Complete annotated source code with README and
+Repository developer setup guide
+4 Figma Design Figma Project Full UI kit: all 32 screens, component library,
+System Link prototype, design tokens
+5 API Documentation Swagger / Complete REST API specifications with
+Postman request/response examples
+6 Database Schema Firestore + ERD Complete data model with all collection schemas and
+relationship diagrams
+7 AI Configuration Markdown (.md) OpenAI API setup, compatibility scoring model
+Guide configuration, prompt library
+8 SRS Document .docx / .pdf This document — approved and signed SRS/SOW
+specification
+9 Test Reports .pdf Unit test coverage report, device matrix, AI accuracy
+report, UAT sign-off
+1 Deployment .md / .docx Step-by-step guide for Firebase, server, Play Store,
+0 Runbook and App Store deployment
+1 Admin Training .pdf Platform admin operations manual with screenshots
+1 Guide and video walkthroughs
+1 Post-Launch .docx 30-day post-launch support SLA, escalation process,
+2 Support Plan and bug triage protocol
+Confidential & Proprietary — The Data Sequence | Page 38 of 43
+
+===== PAGE 39 =====
+
+AMORA AI | Software Requirements Specification & Scope of Work | The Data Sequence
+25. Business Impact
+Amora AI operates in a market poised for exponential growth. The Indian online dating market was
+valued at approximately ₹1,200 Cr in 2024 and is projected to exceed ₹4,800 Cr by 2029, growing at a
+CAGR of 38% for Tier-2 cities (Source: Industry Research + Meta Ads Manager). Amora AI's
+technology platform is engineered to capture first-mover advantage in this underserved market.
+25.1 Market Opportunity
+• Gujarat has 25L+ active singles aged 18–35 with zero premium, verified, locally-relevant dating
+platform
+• Ahmedabad has < 8% Tinder penetration vs 34% in Mumbai — the gap IS the market opportunity
+• Rising IT + manufacturing income: Ahmedabad average salary ₹45K/mo — premium pricing
+(₹699+) sticks
+• Speed dating events in Ahmedabad sold out within 48 hours of listing in 2023–24 (pilot market
+data)
+• WhatsApp-first communication culture drives in-app chat and AI icebreaker adoption — highest in
+India
+• First-mover advantage: build the verified brand before Bumble / Hinge localise to Tier-2 Gujarat
+cities
+• India has 300M+ smartphone users aged 18–35 — Amora's TAM extends to ₹420 Cr for Gujarat
+alone
+25.2 Revenue Model — All 8 Streams Active Day 1
+Revenue Stream Pricing Model Month 1 Target Contribution
+Subscription Plans ₹699–₹3,499/month per user Month 1: ₹36.0L Primary —
+64%
+Microtransactions Boosts, Super Likes, Spotlights, Month 1: ₹6.8L High Margin
+DMs — 72% GM
+Brand Sponsorships ₹50K–₹2L per event (10 Month 1: ₹3.5L Contracted
+sponsors pre-signed) Pre-Launch
+Business Listings ₹5K–₹15K/mo (30 businesses Month 1: ₹2.4L Contracted
+signed) Pre-Launch
+Events & Experiences ₹399–₹4,999/ticket (6 Month 1: ₹2.5L 65% Gross
+events/mo) Margin
+AI Feature Packs ₹199–₹799/month add-ons Month 1: ₹2.4L 88% Gross
+Margin
+Commerce & Gifting Gifts, date packages (10–15% Month 1: ₹1.5L Passive
+commission) Revenue
+Referral & Affiliate Hotel/dining 8–15% commission Month 1: ₹1.1L K-factor 1.2×
+Confidential & Proprietary — The Data Sequence | Page 39 of 43
+
+===== PAGE 40 =====
+
+AMORA AI | Software Requirements Specification & Scope of Work | The Data Sequence
+25.3 Key Performance Indicators
+KPI 3-Month Target 6-Month Target 12-Month Target
+Registered Users 5,000 25,000+ 1,00,000+
+Paid Subscribers 1,200 8,800 38,000
+Monthly Events 2 6 12+
+Gross Revenue / Month ₹8L ₹56.2L ₹441.8L
+Net Profit / Month ₹3L ₹48.2L ₹433.8L
+Blended ARPU ₹650 ₹857 ₹920+
+Gross Profit Margin 58% 68% 76%+
+Brand Partners 5 30 100+
+Customer Retention (Day 30) 18% 25% 40%+
+AI Coach Subscribers 200 2,500 15,000+
+25.4 Profitability Summary
+• Month 1 Gross Revenue: ₹56.2L | Month 1 Net Profit: ₹48.2L | ROAS: 11.2×
+• Pre-contracted revenue before launch: ₹5.9L (brand sponsors + business listings) — covers 70%
+of all costs
+• 5,000-user pre-launch waitlist converts at 84% paid rate on Day 1 → ₹30L+ in first 72 hours
+• Beta validated: CPI ₹68 (500-user, 14-day Ahmedabad beta) — no wasted ad spend from Day 1
+• Year 1 Cumulative Net Profit: ₹12.83 Cr | Month 6 Revenue Run Rate: ₹441.8L/month
+Confidential & Proprietary — The Data Sequence | Page 40 of 43
+
+===== PAGE 41 =====
+
+AMORA AI | Software Requirements Specification & Scope of Work | The Data Sequence
+26. AI-Assisted Development Methodology
+Amora AI is developed using a pioneering AI-assisted development workflow that integrates four
+specialized AI tools across the product lifecycle. This methodology accelerates delivery by an estimated
+35–40% compared to traditional development approaches while maintaining enterprise-grade quality
+standards and full code ownership.
+26.1 ChatGPT (GPT-4o) — Product Intelligence Layer
+ChatGPT serves as the product intelligence layer, engaged during ideation, architecture, and planning
+phases:
+• Product Planning: Generating comprehensive feature lists, user journey maps, and competitive
+analysis frameworks across Tinder, Bumble, Hinge, TrulyMadly, and Aisle
+• Architecture Guidance: Evaluating Flutter architecture patterns for Amora's specific AI-heavy,
+real-time scalability requirements
+• UI Planning: Defining screen hierarchy, navigation patterns, and information architecture for each
+user role
+• Content Generation: Writing microcopy, AI Coach tips, icebreaker templates, onboarding content,
+and FAQ responses
+• Market Intelligence: Synthesizing Gujarat dating market sizing, event monetization benchmarks,
+and competitor pricing strategies
+26.2 GitHub Copilot / Codex — Code Generation Engine
+Copilot and Codex function as the code generation engine throughout the Flutter development phase:
+• Flutter Widget Generation: Auto-completing complex widget trees for the swipe discovery feed,
+match animation, AI icebreaker card, and event booking flow
+• Reusable Component Creation: Generating the 55+ shared component library including custom
+match cards, tier comparison matrix, event passes, and coach tip cards
+• Navigation Structure: Scaffolding GoRouter-based navigation with deep linking for all 32 screens
+• AI Integration Code: Generating OpenAI API client wrappers, response parsing, and error
+handling patterns
+• Test Generation: Auto-generating unit test scaffolding for repository classes and business logic
+functions
+26.3 Cursor AI — Development Accelerator
+Cursor AI provides real-time intelligent assistance within the IDE, acting as a context-aware coding
+partner:
+• Intelligent Refactoring: Restructuring BLoC/Riverpod state management code for improved
+readability and testability
+• Context-Sensitive Completion: Multi-line code completion for Firebase Firestore queries,
+Razorpay integration patterns, and AI API calls
+• Bug Identification: Proactively flagging null safety violations, missing await keywords, and
+Firebase rule inconsistencies
+• Pattern Consistency: Ensuring consistent Clean Architecture patterns across all feature modules
+Confidential & Proprietary — The Data Sequence | Page 41 of 43
+
+===== PAGE 42 =====
+
+AMORA AI | Software Requirements Specification & Scope of Work | The Data Sequence
+26.4 Claude (Anthropic) — Documentation & Architecture Intelligence
+Claude serves as the documentation and technical architecture intelligence engine:
+• SRS Generation: Authoring this comprehensive Software Requirements Specification document
+• Technical Documentation: Creating API documentation, database schema documentation, and
+developer guides
+• Flow Design: Mapping complete user flows for all documented workflows including edge cases
+and error states
+• Requirement Analysis: Translating ambiguous stakeholder requirements into precise, testable
+acceptance criteria
+• Architecture Review: Evaluating technical decisions for long-term scalability and Indian market
+suitability
+AI Tool Primary Use Estimated Impact
+ChatGPT (GPT-4o) Product architecture, competitive analysis, 30% reduction in product
+feature scoping, microcopy planning time
+GitHub Copilot / Flutter widget generation, boilerplate, test 40% reduction in widget
+Codex scaffolding development time
+Cursor AI Code completion, refactoring, bug 25% reduction in debugging
+prevention during active development & review cycles
+Claude (Anthropic) Documentation, SRS, flow architecture, 45% reduction in
+technical specification documentation effort
+Combined AI Acceleration Impact: Est. 38% reduction in development timeline | 45% reduction in
+documentation effort | 25% improvement in initial code quality metrics
+Confidential & Proprietary — The Data Sequence | Page 42 of 43
+
+===== PAGE 43 =====
+
+AMORA AI | Software Requirements Specification & Scope of Work | The Data Sequence
+27. Final Positioning Statement
+AMORA AI
+is not just a dating application.
+It is a complete premium matchmaking ecosystem
+connecting verified singles through AI-powered compatibility,
+curated offline experiences, and community-first relationship intelligence.
+Built for Gujarat. Engineered for India. Designed for Love.
+Matched with the intelligence of Hinge.
+Trusted like Bumble.
+Experienced like a luxury social club.
+Profitable like a Revenue Engineering machine.
+Developed by The Data Sequence
+Powered by Flutter. Accelerated by AI. Engineered for Day 1 Profitability.
+Amora AI represents the convergence of AI relationship science, premium community design,
+and India-first matchmaking intelligence. From the young professional seeking their life partner
+in Ahmedabad to the urban millennial exploring curated dating experiences in Vadodara —
+Amora AI delivers the right match, through the right experience, at the right moment.
+For users, Amora AI transforms the search for love from an overwhelming swipe marathon into
+a curated, safe, and AI-guided journey toward genuine connection. For investors, Amora AI
+delivers a Day 1 profitable business with pre-contracted revenue, beta-validated metrics, and
+first-mover positioning in a ₹420 Cr addressable market.
+This is not a product roadmap. This is a movement — to make premium, verified, AI-
+powered matchmaking the trusted default for every single in Gujarat, and soon, every
+single in India.
+Document Prepared By:
+The Data Sequence | Technology & Product Development | Revenue Engineers™
+Founder: Priyank Trivedi | thedatasequence.com | Ahmedabad, Gujarat, India
+Document Status: Version 1.0 — Final Draft | Classification: Confidential & Proprietary
+Confidential & Proprietary — The Data Sequence | Page 43 of 43

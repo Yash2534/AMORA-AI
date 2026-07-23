@@ -1,0 +1,296 @@
+import 'package:amora_ai/core/data/amora_image_data.dart';
+import 'package:amora_ai/core/theme/app_colors.dart';
+import 'package:amora_ai/core/theme/amora_spacing.dart';
+import 'package:amora_ai/core/widgets/app_primary_button.dart';
+import 'package:amora_ai/core/widgets/premium_avatar.dart';
+import 'package:amora_ai/core/widgets/premium_card.dart';
+import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
+import 'package:amora_ai/features/chat/presentation/chat_detail_screen.dart';
+import 'package:amora_ai/features/monetization/data/monetization_data.dart';
+import 'package:amora_ai/features/monetization/presentation/widgets/monetization_widgets.dart';
+import 'package:flutter/material.dart';
+
+class AiIcebreakersScreen extends StatefulWidget {
+  const AiIcebreakersScreen({super.key});
+
+  static const routeName = '/ai-icebreakers';
+
+  @override
+  State<AiIcebreakersScreen> createState() => _AiIcebreakersScreenState();
+}
+
+class _AiIcebreakersScreenState extends State<AiIcebreakersScreen> {
+  var _tone = icebreakerTones.first;
+  late final List<String> _suggestions = List<String>.from(icebreakers);
+
+  @override
+  Widget build(BuildContext context) {
+    final profile = _IcebreakerProfile.fromArgs(
+      ModalRoute.of(context)?.settings.arguments,
+    );
+    return Scaffold(
+      body: DecoratedBox(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [AppColors.background, AppColors.lavenderBackground],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: SafeArea(
+          child: ResponsiveMobileFrame(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(
+                AmoraSpacing.x5,
+                AmoraSpacing.x5,
+                AmoraSpacing.x5,
+                110,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  MonetizationHeader(
+                    title: 'AI Icebreakers',
+                    subtitle: 'Send something specific, warm, and respectful.',
+                    icon: Icons.chat_bubble_rounded,
+                    onBack: () => Navigator.of(context).maybePop(),
+                  ),
+                  const SizedBox(height: AmoraSpacing.x4),
+                  _MatchMiniCard(profile: profile),
+                  const SizedBox(height: AmoraSpacing.x4),
+                  const SectionTitle(title: 'Tone'),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: [
+                      for (final tone in icebreakerTones)
+                        ChoiceChip(
+                          label: Text(tone),
+                          selected: _tone == tone,
+                          showCheckmark: false,
+                          selectedColor: AppColors.primaryPurple,
+                          labelStyle: TextStyle(
+                            color: _tone == tone
+                                ? AppColors.surface
+                                : AppColors.deepWine,
+                            fontWeight: FontWeight.w800,
+                          ),
+                          onSelected: (_) => setState(() => _tone = tone),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: AmoraSpacing.x4),
+                  SectionTitle(title: 'Generated icebreakers', subtitle: _tone),
+                  const SizedBox(height: 12),
+                  for (final suggestion in _suggestions)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: IcebreakerCard(
+                        text: suggestion,
+                        onCustomize: () => _customize(suggestion),
+                        onSend: () => _send(suggestion),
+                      ),
+                    ),
+                  const SizedBox(height: 8),
+                  AppPrimaryButton(
+                    label: 'Generate More',
+                    icon: Icons.auto_awesome_rounded,
+                    onPressed: _generateMore,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _generateMore() {
+    setState(() {
+      _suggestions.insert(
+        0,
+        'Since you both enjoy thoughtful dates, what is one place in Ahmedabad you never get tired of revisiting?',
+      );
+    });
+    showPremiumSnack(context, 'New icebreaker generated');
+  }
+
+  void _customize(String text) {
+    final controller = TextEditingController(text: text);
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+      ),
+      builder: (context) {
+        final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+        return SafeArea(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(20, 18, 20, 20 + bottomInset),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Customize icebreaker',
+                  style: TextStyle(
+                    color: AppColors.deepWine,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: controller,
+                  minLines: 3,
+                  maxLines: 6,
+                  decoration: const InputDecoration(
+                    hintText: 'Write your opener',
+                  ),
+                ),
+                const SizedBox(height: 16),
+                AppPrimaryButton(
+                  label: 'Save Custom Text',
+                  icon: Icons.check_rounded,
+                  onPressed: () {
+                    final index = _suggestions.indexOf(text);
+                    if (index >= 0) {
+                      setState(
+                        () => _suggestions[index] = controller.text.trim(),
+                      );
+                    }
+                    Navigator.pop(context);
+                    showPremiumSnack(context, 'Icebreaker customized');
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _send(String text) {
+    final profile = _IcebreakerProfile.fromArgs(
+      ModalRoute.of(context)?.settings.arguments,
+    );
+    showPremiumSnack(context, 'Icebreaker sent to ${profile.firstName}');
+    Navigator.of(context).pushNamed(
+      ChatDetailScreen.routeName,
+      arguments: ChatDetailSeed(prefillText: text),
+    );
+  }
+}
+
+class _IcebreakerProfile {
+  const _IcebreakerProfile({
+    required this.name,
+    required this.subtitle,
+    required this.imageUrl,
+    required this.fallbackAsset,
+    required this.initials,
+  });
+
+  final String name;
+  final String subtitle;
+  final String imageUrl;
+  final String fallbackAsset;
+  final String initials;
+
+  String get firstName => name.split(',').first.split(' ').first;
+
+  static _IcebreakerProfile fromArgs(Object? args) {
+    if (args is Map) {
+      final name = args['name']?.toString();
+      if (name != null && name.trim().isNotEmpty) {
+        return _IcebreakerProfile(
+          name: name,
+          subtitle:
+              args['subtitle']?.toString() ??
+              'Thoughtful profile, shared interests',
+          imageUrl:
+              args['imageUrl']?.toString() ?? AmoraImageData.profileAadhya,
+          fallbackAsset:
+              args['fallbackAsset']?.toString() ??
+              AmoraImageData.assetProfileAadhya,
+          initials: args['initials']?.toString() ?? 'AM',
+        );
+      }
+    }
+    return _IcebreakerProfile(
+      name: 'Aadhya, 23',
+      subtitle: 'Architecture, poetry, old-city cafes',
+      imageUrl: AmoraImageData.profileAadhya,
+      fallbackAsset: AmoraImageData.assetProfileAadhya,
+      initials: 'AA',
+    );
+  }
+}
+
+class _MatchMiniCard extends StatelessWidget {
+  const _MatchMiniCard({required this.profile});
+
+  final _IcebreakerProfile profile;
+
+  @override
+  Widget build(BuildContext context) {
+    return PremiumCard(
+      child: Row(
+        children: [
+          PremiumAvatar(
+            imageUrl: profile.imageUrl,
+            fallbackAsset: profile.fallbackAsset,
+            initials: profile.initials,
+            radius: 32,
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  profile.name,
+                  style: const TextStyle(
+                    color: AppColors.deepWine,
+                    fontSize: 19,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  profile.subtitle,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.textGray,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+            decoration: BoxDecoration(
+              color: AppColors.premiumGold.withValues(alpha: .18),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: AppColors.premiumGold),
+            ),
+            child: const Text(
+              '92%',
+              style: TextStyle(
+                color: AppColors.deepWine,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
