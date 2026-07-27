@@ -1,10 +1,7 @@
-import 'package:amora_ai/core/theme/amora_icons.dart';
-import 'package:amora_ai/core/theme/amora_spacing.dart';
-import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
-import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
+import 'package:amora_ai/features/events/presentation/widgets/events_widgets.dart';
 import 'package:amora_ai/features/subscription/presentation/subscription_screen.dart';
 import 'package:flutter/material.dart';
 
@@ -24,119 +21,158 @@ class _EventWaitlistScreenState extends State<EventWaitlistScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final progress = ((12 - _position) / 12).clamp(0, 1).toDouble();
+    if (!hasPremiumEventsAccess) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        body: SafeArea(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: AppPrimaryButton(
+                label: 'Explore Membership',
+                icon: Icons.workspace_premium_rounded,
+                onPressed: () => Navigator.of(
+                  context,
+                ).pushNamed(SubscriptionScreen.routeName),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: ResponsiveMobileFrame(
+          maxWidth: 620,
           child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(
-              AmoraSpacing.space20,
-              AmoraSpacing.space20,
-              AmoraSpacing.space20,
-              AmoraSpacing.navigationContentInset,
-            ),
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const _Header(),
-                const SizedBox(height: 18),
-                PremiumCard(
-                  color: AppColors.lavenderBackground,
+                Row(
+                  children: [
+                    IconButton(
+                      tooltip: 'Back',
+                      constraints: const BoxConstraints.tightFor(
+                        width: 48,
+                        height: 48,
+                      ),
+                      onPressed: () => Navigator.of(context).maybePop(),
+                      icon: const Icon(Icons.arrow_back_rounded),
+                    ),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        'Event Waitlist',
+                        style: TextStyle(
+                          color: AppColors.primary,
+                          fontSize: 24,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    const EventsMemberBadge(compact: true),
+                  ],
+                ),
+                const SizedBox(height: 22),
+                Container(
+                  padding: const EdgeInsets.all(26),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(28),
+                    border: Border.all(color: AppColors.tertiary),
+                  ),
                   child: Column(
                     children: [
+                      const Icon(
+                        Icons.hourglass_top_rounded,
+                        color: AppColors.secondary,
+                        size: 34,
+                      ),
+                      const SizedBox(height: 12),
                       const Text(
-                        'Current Position',
+                        'Your position',
                         style: TextStyle(
-                          color: AppColors.textGray,
-                          fontWeight: FontWeight.w800,
+                          color: AppColors.text,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 4),
                       Text(
-                        '#$_position',
+                        _joined ? '#$_position' : 'Not joined',
                         style: const TextStyle(
-                          color: AppColors.deepWine,
-                          fontSize: 46,
-                          fontWeight: FontWeight.w900,
+                          color: AppColors.primary,
+                          fontSize: 44,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      LinearProgressIndicator(value: progress, minHeight: 10),
+                      const SizedBox(height: 10),
+                      Text(
+                        _joined
+                            ? '${_position - 1} members ahead · High chance by Friday'
+                            : 'Rejoin whenever it feels right.',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: AppColors.text,
+                          fontSize: 14,
+                          height: 1.4,
+                        ),
+                      ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 14),
-                PremiumCard(
-                  child: Column(
-                    children: [
-                      _InfoRow('People ahead', '${_position - 1}'),
-                      _InfoRow('Estimated entry', 'High chance by Friday'),
-                      _InfoRow(
-                        'Queue status',
-                        _joined ? 'Joined' : 'Cancelled',
+                Container(
+                  padding: const EdgeInsets.fromLTRB(18, 8, 8, 8),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(22),
+                  ),
+                  child: SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    value: _notify,
+                    onChanged: _joined
+                        ? (value) => setState(() => _notify = value)
+                        : null,
+                    title: const Text(
+                      'Waitlist updates',
+                      style: TextStyle(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w600,
                       ),
-                      SwitchListTile(
-                        contentPadding: EdgeInsets.zero,
-                        value: _notify,
-                        onChanged: (value) => setState(() => _notify = value),
-                        title: const Text('Notify me'),
-                      ),
-                    ],
+                    ),
+                    subtitle: const Text(
+                      'Use the existing notification preference for changes.',
+                    ),
+                    secondary: const Icon(
+                      Icons.notifications_active_rounded,
+                      color: AppColors.secondary,
+                    ),
                   ),
                 ),
-                const SizedBox(height: 16),
-                if (MediaQuery.sizeOf(context).width < 380) ...[
-                  AppPrimaryButton(
-                    label: 'Upgrade VIP',
-                    icon: Icons.workspace_premium_rounded,
-                    onPressed: () => Navigator.of(
-                      context,
-                    ).pushNamed(SubscriptionScreen.routeName),
-                  ),
-                  const SizedBox(height: 12),
-                  AppPrimaryButton(
-                    label: _joined ? 'Cancel' : 'Rejoin',
-                    icon: Icons.cancel_rounded,
-                    variant: AppPrimaryButtonVariant.outlined,
-                    onPressed: () => setState(() {
+                const SizedBox(height: 18),
+                AppPrimaryButton(
+                  label: _joined ? 'Leave Waitlist' : 'Rejoin Waitlist',
+                  icon: _joined
+                      ? Icons.logout_rounded
+                      : Icons.hourglass_top_rounded,
+                  variant: _joined
+                      ? AppPrimaryButtonVariant.outlined
+                      : AppPrimaryButtonVariant.primary,
+                  onPressed: () {
+                    setState(() {
                       _joined = !_joined;
                       if (_joined) _position = 4;
-                    }),
-                  ),
-                ] else
-                  Row(
-                    children: [
-                      Expanded(
-                        child: AppPrimaryButton(
-                          label: 'Upgrade VIP',
-                          icon: Icons.workspace_premium_rounded,
-                          onPressed: () => Navigator.of(
-                            context,
-                          ).pushNamed(SubscriptionScreen.routeName),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: AppPrimaryButton(
-                          label: _joined ? 'Cancel' : 'Rejoin',
-                          icon: Icons.cancel_rounded,
-                          variant: AppPrimaryButtonVariant.outlined,
-                          onPressed: () => setState(() {
-                            _joined = !_joined;
-                            if (_joined) _position = 4;
-                          }),
-                        ),
-                      ),
-                    ],
-                  ),
-                const SizedBox(height: 12),
-                AppPrimaryButton(
-                  label: 'Simulate Queue Movement',
-                  icon: Icons.trending_up_rounded,
-                  variant: AppPrimaryButtonVariant.dark,
-                  onPressed: () {
-                    setState(() => _position = (_position - 1).clamp(1, 12));
-                    _success('Queue updated locally');
+                    });
+                    showEventSnack(
+                      context,
+                      _joined
+                          ? 'Waitlist joined'
+                          : 'You left the event waitlist',
+                    );
                   },
                 ),
               ],
@@ -146,69 +182,4 @@ class _EventWaitlistScreenState extends State<EventWaitlistScreen> {
       ),
     );
   }
-
-  void _success(String message) {
-    showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-        title: const Text('Waitlist updated'),
-        content: Text(message),
-        actions: [
-          FilledButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Done'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Header extends StatelessWidget {
-  const _Header();
-  @override
-  Widget build(BuildContext context) => Row(
-    children: [
-      IconButton.filledTonal(
-        onPressed: () => Navigator.of(context).maybePop(),
-        icon: const Icon(AmoraIcons.back),
-      ),
-      const SizedBox(width: AmoraSpacing.space12),
-      Expanded(
-        child: Text(
-          'Event Waitlist',
-          style: AmoraTextStyles.headlineSmall.copyWith(
-            color: AppColors.deepWine,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ),
-    ],
-  );
-}
-
-class _InfoRow extends StatelessWidget {
-  const _InfoRow(this.label, this.value);
-  final String label;
-  final String value;
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 7),
-    child: Row(
-      children: [
-        Expanded(child: Text(label)),
-        const SizedBox(width: 12),
-        Flexible(
-          child: Text(
-            value,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.right,
-            style: const TextStyle(fontWeight: FontWeight.w900),
-          ),
-        ),
-      ],
-    ),
-  );
 }

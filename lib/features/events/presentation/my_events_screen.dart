@@ -1,14 +1,13 @@
-import 'package:amora_ai/core/theme/amora_icons.dart';
-import 'package:amora_ai/core/theme/amora_spacing.dart';
-import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
-import 'package:amora_ai/core/widgets/amora_bottom_sheet.dart';
-import 'package:amora_ai/core/widgets/amora_dialog.dart';
-import 'package:amora_ai/core/widgets/amora_empty_state.dart';
+import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/events/data/events_dummy_data.dart';
 import 'package:amora_ai/features/events/domain/event_models.dart';
+import 'package:amora_ai/features/events/presentation/event_detail_screen.dart';
+import 'package:amora_ai/features/events/presentation/event_waitlist_screen.dart';
+import 'package:amora_ai/features/events/presentation/post_event_feedback_screen.dart';
 import 'package:amora_ai/features/events/presentation/widgets/events_widgets.dart';
+import 'package:amora_ai/features/subscription/presentation/subscription_screen.dart';
 import 'package:flutter/material.dart';
 
 class MyEventsScreen extends StatefulWidget {
@@ -21,53 +20,74 @@ class MyEventsScreen extends StatefulWidget {
 }
 
 class _MyEventsScreenState extends State<MyEventsScreen> {
-  late final List<MyEventTicket> _tickets = List<MyEventTicket>.from(
+  late final List<MyEventTicket> _entries = List<MyEventTicket>.from(
     myEventTickets,
   );
 
   @override
   Widget build(BuildContext context) {
+    if (!hasPremiumEventsAccess) {
+      return const _MembershipRequired();
+    }
     return DefaultTabController(
       length: 4,
       child: Scaffold(
+        backgroundColor: AppColors.background,
         body: SafeArea(
           child: ResponsiveMobileFrame(
+            maxWidth: 860,
             child: Column(
               children: [
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    AmoraSpacing.space20,
-                    AmoraSpacing.space20,
-                    AmoraSpacing.space20,
-                    AmoraSpacing.space0,
-                  ),
+                  padding: const EdgeInsets.fromLTRB(16, 14, 20, 0),
                   child: Row(
                     children: [
-                      IconButton.filledTonal(
+                      IconButton(
                         tooltip: 'Back',
+                        constraints: const BoxConstraints.tightFor(
+                          width: 48,
+                          height: 48,
+                        ),
                         onPressed: () => Navigator.of(context).maybePop(),
-                        icon: const Icon(AmoraIcons.back),
+                        icon: const Icon(Icons.arrow_back_rounded),
                       ),
-                      const SizedBox(width: AmoraSpacing.space12),
-                      Expanded(
-                        child: Text(
-                          'My Events',
-                          style: AmoraTextStyles.headlineMedium.copyWith(
-                            color: AppColors.deepWine,
-                            fontWeight: FontWeight.w700,
-                          ),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'My Events',
+                              style: TextStyle(
+                                color: AppColors.primary,
+                                fontSize: 26,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            Text(
+                              'Your gatherings in one calm place',
+                              style: TextStyle(
+                                color: AppColors.text,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w400,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
+                      const EventsMemberBadge(compact: true),
                     ],
                   ),
                 ),
                 const Padding(
                   padding: EdgeInsets.fromLTRB(18, 18, 18, 8),
                   child: TabBar(
+                    isScrollable: true,
+                    tabAlignment: TabAlignment.start,
                     tabs: [
                       Tab(text: 'Upcoming'),
-                      Tab(text: 'Attended'),
-                      Tab(text: 'Waitlisted'),
+                      Tab(text: 'Past'),
+                      Tab(text: 'Waitlist'),
                       Tab(text: 'Cancelled'),
                     ],
                   ),
@@ -75,22 +95,22 @@ class _MyEventsScreenState extends State<MyEventsScreen> {
                 Expanded(
                   child: TabBarView(
                     children: [
-                      _TicketList(
+                      _JoinedEventList(
                         status: TicketStatus.upcoming,
-                        tickets: _tickets,
-                        onCancel: _cancelTicket,
+                        entries: _entries,
+                        onLeave: _leaveEvent,
                       ),
-                      _TicketList(
+                      _JoinedEventList(
                         status: TicketStatus.attended,
-                        tickets: _tickets,
+                        entries: _entries,
                       ),
-                      _TicketList(
+                      _JoinedEventList(
                         status: TicketStatus.waitlisted,
-                        tickets: _tickets,
+                        entries: _entries,
                       ),
-                      _TicketList(
+                      _JoinedEventList(
                         status: TicketStatus.cancelled,
-                        tickets: _tickets,
+                        entries: _entries,
                       ),
                     ],
                   ),
@@ -103,273 +123,314 @@ class _MyEventsScreenState extends State<MyEventsScreen> {
     );
   }
 
-  void _cancelTicket(MyEventTicket ticket) {
-    showAmoraDialog<void>(
+  void _leaveEvent(MyEventTicket entry) {
+    showModalBottomSheet<void>(
       context: context,
-      title: 'Cancel ticket?',
-      message: 'Cancel your pass for ${ticket.event.title}?',
-      icon: AmoraIcons.ticket,
-      primaryLabel: 'Cancel ticket',
-      secondaryLabel: 'Keep ticket',
-      onPrimary: () {
-        Navigator.pop(context);
-        setState(() {
-          _tickets
-            ..remove(ticket)
-            ..add(
-              MyEventTicket(
-                event: ticket.event,
-                ticketNumber: ticket.ticketNumber,
-                seat: 'Cancelled',
-                status: TicketStatus.cancelled,
-                position: 0,
-                estimatedEntry: 'Cancellation requested',
+      useSafeArea: true,
+      showDragHandle: true,
+      backgroundColor: AppColors.surface,
+      builder: (sheetContext) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'Leave this event?',
+              style: TextStyle(
+                color: AppColors.primary,
+                fontSize: 21,
+                fontWeight: FontWeight.w700,
               ),
-            );
-        });
-        showEventSnack(context, 'Ticket cancellation requested');
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'You’ll leave ${entry.event.title}.',
+              style: const TextStyle(color: AppColors.text, fontSize: 15),
+            ),
+            const SizedBox(height: 20),
+            AppPrimaryButton(
+              label: 'Leave Event',
+              variant: AppPrimaryButtonVariant.outlined,
+              onPressed: () {
+                Navigator.pop(sheetContext);
+                setState(() {
+                  final index = _entries.indexOf(entry);
+                  _entries[index] = MyEventTicket(
+                    event: entry.event,
+                    ticketNumber: entry.ticketNumber,
+                    seat: entry.seat,
+                    status: TicketStatus.cancelled,
+                    position: 0,
+                    estimatedEntry: 'Left event',
+                  );
+                });
+                showEventSnack(context, 'You left ${entry.event.title}');
+              },
+            ),
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: () => Navigator.pop(sheetContext),
+              child: const Text('Stay joined'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _JoinedEventList extends StatelessWidget {
+  const _JoinedEventList({
+    required this.status,
+    required this.entries,
+    this.onLeave,
+  });
+
+  final TicketStatus status;
+  final List<MyEventTicket> entries;
+  final ValueChanged<MyEventTicket>? onLeave;
+
+  @override
+  Widget build(BuildContext context) {
+    final visible = entries
+        .where((entry) => entry.status == status)
+        .toList(growable: false);
+    if (visible.isEmpty) {
+      return ListView(
+        padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
+        children: [
+          EventsEmptyState(
+            title: status == TicketStatus.upcoming
+                ? 'You haven’t joined an event yet'
+                : 'No ${_statusLabel(status).toLowerCase()} events',
+            description: status == TicketStatus.upcoming
+                ? 'Explore curated gatherings and find one that feels right.'
+                : 'Your ${_statusLabel(status).toLowerCase()} gatherings will '
+                      'appear here.',
+            onShowAll: () => Navigator.of(context).pop(),
+          ),
+        ],
+      );
+    }
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 28),
+      itemCount: visible.length,
+      separatorBuilder: (_, _) => const SizedBox(height: 14),
+      itemBuilder: (context, index) {
+        final entry = visible[index];
+        return _JoinedEventCard(
+          key: ValueKey('joined-event-${entry.event.id}-${entry.status.name}'),
+          entry: entry,
+          onLeave: onLeave,
+        );
       },
     );
   }
 }
 
-class _TicketList extends StatelessWidget {
-  const _TicketList({
-    required this.status,
-    required this.tickets,
-    this.onCancel,
-  });
+class _JoinedEventCard extends StatelessWidget {
+  const _JoinedEventCard({super.key, required this.entry, this.onLeave});
 
-  final TicketStatus status;
-  final List<MyEventTicket> tickets;
-  final ValueChanged<MyEventTicket>? onCancel;
+  final MyEventTicket entry;
+  final ValueChanged<MyEventTicket>? onLeave;
 
   @override
   Widget build(BuildContext context) {
-    final visibleTickets = tickets
-        .where((ticket) => ticket.status == status)
-        .toList();
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(18, 12, 18, 28),
-      children: [
-        if (visibleTickets.isEmpty)
-          AmoraEmptyState(
-            icon: AmoraIcons.events,
-            title: 'No ${status.name} events',
-            message: 'Your ${status.name} event passes will appear here.',
-          )
-        else
-          for (final ticket in visibleTickets) ...[
-            _MyEventCard(ticket: ticket, onCancel: onCancel),
-            const SizedBox(height: 16),
-          ],
-      ],
-    );
-  }
-}
-
-class _MyEventCard extends StatelessWidget {
-  const _MyEventCard({required this.ticket, this.onCancel});
-
-  final MyEventTicket ticket;
-  final ValueChanged<MyEventTicket>? onCancel;
-
-  @override
-  Widget build(BuildContext context) {
+    final event = entry.event;
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: AppColors.surface),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.deepWine.withValues(alpha: .07),
-            blurRadius: 22,
-            offset: const Offset(0, 12),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(color: AppColors.tertiary.withValues(alpha: .55)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           EventImagePanel(
-            event: ticket.event,
-            height: 132,
+            event: event,
+            height: 170,
+            radius: 20,
             child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  Text(
-                    ticket.event.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: AppColors.surface,
-                      fontSize: 21,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  Text(
-                    '${ticket.event.date} - ${ticket.event.time}',
-                    style: const TextStyle(
-                      color: AppColors.surface,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
+              padding: const EdgeInsets.all(12),
+              child: Align(
+                alignment: Alignment.topLeft,
+                child: EventStatusBadge(status: entry.status),
               ),
             ),
           ),
           const SizedBox(height: 14),
           Text(
-            ticket.event.venue,
-            maxLines: 1,
+            event.title,
+            maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
-              color: AppColors.deepWine,
-              fontWeight: FontWeight.w900,
+              color: AppColors.primary,
+              fontSize: 18,
+              height: 1.2,
+              fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 12),
-          if (ticket.status == TicketStatus.upcoming)
-            _UpcomingActions(ticket: ticket, onCancel: onCancel),
-          if (ticket.status == TicketStatus.attended) _AttendedActions(),
-          if (ticket.status == TicketStatus.waitlisted)
-            _WaitlistedActions(ticket: ticket),
-          if (ticket.status == TicketStatus.cancelled)
-            const Text(
-              'Cancelled - refund and support workflow placeholder',
-              style: TextStyle(
-                color: AppColors.textGray,
-                fontWeight: FontWeight.w800,
+          const SizedBox(height: 10),
+          EventMetadataRow(
+            icon: Icons.calendar_month_rounded,
+            text: '${event.date} · ${event.time}',
+          ),
+          const SizedBox(height: 7),
+          EventMetadataRow(icon: Icons.place_rounded, text: event.venue),
+          if (entry.status == TicketStatus.waitlisted) ...[
+            const SizedBox(height: 10),
+            Text(
+              'Position ${entry.position} · ${entry.estimatedEntry}',
+              style: const TextStyle(
+                color: AppColors.primary,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
               ),
             ),
+          ],
+          if (entry.status == TicketStatus.cancelled) ...[
+            const SizedBox(height: 10),
+            const Text(
+              'This event is no longer in your upcoming plans.',
+              style: TextStyle(
+                color: AppColors.text,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+          const SizedBox(height: 14),
+          _EventActions(entry: entry, onLeave: onLeave),
         ],
       ),
     );
   }
 }
 
-class _UpcomingActions extends StatelessWidget {
-  const _UpcomingActions({required this.ticket, this.onCancel});
+class _EventActions extends StatelessWidget {
+  const _EventActions({required this.entry, this.onLeave});
 
-  final MyEventTicket ticket;
-  final ValueChanged<MyEventTicket>? onCancel;
+  final MyEventTicket entry;
+  final ValueChanged<MyEventTicket>? onLeave;
 
   @override
   Widget build(BuildContext context) {
+    final event = entry.event;
     return Wrap(
-      spacing: 10,
-      runSpacing: 10,
+      spacing: 8,
+      runSpacing: 8,
       children: [
-        _ActionChipButton(
-          icon: Icons.qr_code_2_rounded,
-          label: 'QR Pass',
-          onTap: () => _showQrPass(context, ticket),
-        ),
-        _ActionChipButton(
-          icon: Icons.near_me_rounded,
-          label: 'Directions',
-          onTap: () => showEventSnack(context, 'Directions opened'),
-        ),
-        _ActionChipButton(
-          icon: Icons.cancel_rounded,
-          label: 'Cancel Ticket',
-          onTap: () => onCancel?.call(ticket),
-        ),
-      ],
-    );
-  }
-
-  void _showQrPass(BuildContext context, MyEventTicket ticket) {
-    showAmoraBottomSheet<void>(
-      context: context,
-      child: QRPassCard(ticket: ticket),
-    );
-  }
-}
-
-class _AttendedActions extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 10,
-      runSpacing: 10,
-      children: [
-        _ActionChipButton(
-          icon: Icons.star_rounded,
-          label: 'Rating',
-          onTap: () => showEventSnack(context, 'Rating saved'),
-        ),
-        _ActionChipButton(
-          icon: Icons.ios_share_rounded,
-          label: 'Share Memory',
-          onTap: () => showEventSnack(context, 'Memory shared'),
-        ),
-        _ActionChipButton(
-          icon: Icons.photo_library_rounded,
-          label: 'Download Photos',
-          onTap: () => showEventSnack(context, 'Photo download queued'),
-        ),
-      ],
-    );
-  }
-}
-
-class _WaitlistedActions extends StatelessWidget {
-  const _WaitlistedActions({required this.ticket});
-
-  final MyEventTicket ticket;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Position ${ticket.position} - ${ticket.estimatedEntry}',
-          style: const TextStyle(
-            color: AppColors.primaryPurple,
-            fontWeight: FontWeight.w900,
+        if (entry.status != TicketStatus.cancelled)
+          _ActionButton(
+            icon: Icons.arrow_forward_rounded,
+            label: 'View Details',
+            onPressed: () => Navigator.of(
+              context,
+            ).pushNamed(EventDetailScreen.routeName, arguments: event),
           ),
-        ),
-        const SizedBox(height: 12),
-        _ActionChipButton(
-          icon: Icons.notifications_active_rounded,
-          label: 'Notify Me',
-          onTap: () => showEventSnack(context, 'Waitlist alerts enabled'),
-        ),
+        if (entry.status == TicketStatus.upcoming) ...[
+          _ActionButton(
+            icon: Icons.logout_rounded,
+            label: 'Leave Event',
+            onPressed: () => onLeave?.call(entry),
+          ),
+        ],
+        if (entry.status == TicketStatus.waitlisted)
+          _ActionButton(
+            icon: Icons.hourglass_top_rounded,
+            label: 'View Waitlist',
+            onPressed: () =>
+                Navigator.of(context).pushNamed(EventWaitlistScreen.routeName),
+          ),
+        if (entry.status == TicketStatus.attended)
+          _ActionButton(
+            icon: Icons.rate_review_rounded,
+            label: 'Share Feedback',
+            onPressed: () => Navigator.of(
+              context,
+            ).pushNamed(PostEventFeedbackScreen.routeName),
+          ),
       ],
     );
   }
 }
 
-class _ActionChipButton extends StatelessWidget {
-  const _ActionChipButton({
+class _ActionButton extends StatelessWidget {
+  const _ActionButton({
     required this.icon,
     required this.label,
-    required this.onTap,
+    required this.onPressed,
   });
 
   final IconData icon;
   final String label;
-  final VoidCallback onTap;
+  final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
-    return ActionChip(
-      avatar: Icon(icon, size: 17, color: AppColors.primaryPurple),
-      label: Text(label),
-      labelStyle: const TextStyle(
-        color: AppColors.deepWine,
-        fontWeight: FontWeight.w800,
+    return Semantics(
+      button: true,
+      label: label,
+      child: OutlinedButton.icon(
+        onPressed: onPressed,
+        icon: Icon(icon, size: 17),
+        label: Text(label),
       ),
-      backgroundColor: AppColors.lavenderBackground.withValues(alpha: .55),
-      side: BorderSide.none,
-      onPressed: onTap,
     );
   }
 }
+
+class _MembershipRequired extends StatelessWidget {
+  const _MembershipRequired();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: ResponsiveMobileFrame(
+          maxWidth: 560,
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(
+                  Icons.lock_rounded,
+                  color: AppColors.secondary,
+                  size: 46,
+                ),
+                const SizedBox(height: 14),
+                const Text(
+                  'My Events is a member benefit',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: AppColors.primary,
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                AppPrimaryButton(
+                  label: 'Explore Membership',
+                  onPressed: () => Navigator.of(
+                    context,
+                  ).pushNamed(SubscriptionScreen.routeName),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+String _statusLabel(TicketStatus status) => switch (status) {
+  TicketStatus.upcoming => 'Upcoming',
+  TicketStatus.attended => 'Past',
+  TicketStatus.waitlisted => 'Waitlist',
+  TicketStatus.cancelled => 'Cancelled',
+};

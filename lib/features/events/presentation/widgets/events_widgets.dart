@@ -1,22 +1,16 @@
-import 'dart:math' as math;
-
-import 'package:amora_ai/core/data/amora_image_data.dart';
-import 'package:amora_ai/core/theme/amora_icon_sizes.dart';
-import 'package:amora_ai/core/theme/amora_icons.dart';
-import 'package:amora_ai/core/theme/amora_shadows.dart';
-import 'package:amora_ai/core/theme/amora_spacing.dart';
-import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
-import 'package:amora_ai/core/widgets/amora_filter_chip.dart';
 import 'package:amora_ai/core/widgets/amora_snackbar.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/premium_avatar.dart';
-import 'package:amora_ai/core/widgets/premium_asset_image.dart';
+import 'package:amora_ai/core/widgets/premium_image.dart';
 import 'package:amora_ai/core/widgets/premium_motion.dart';
 import 'package:amora_ai/features/events/domain/event_models.dart';
+import 'package:amora_ai/features/monetization/data/monetization_data.dart';
 import 'package:flutter/material.dart';
 
-String formatRupees(num value) => 'Rs ${value.toStringAsFixed(0)}';
+bool get hasPremiumEventsAccess => subscriptionPlans.any(
+  (plan) => plan.current && plan.features.contains('Premium events'),
+);
 
 void showEventSnack(BuildContext context, String message) {
   showAmoraSnackBar(context, message: message);
@@ -24,20 +18,19 @@ void showEventSnack(BuildContext context, String message) {
 
 Route<T> premiumEventRoute<T>(Widget screen) {
   return PageRouteBuilder<T>(
-    pageBuilder: (context, animation, secondaryAnimation) => screen,
-    transitionDuration: AmoraMotion.standard,
-    reverseTransitionDuration: AmoraMotion.fast,
-    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+    pageBuilder: (_, _, _) => screen,
+    transitionDuration: AmoraMotion.page,
+    reverseTransitionDuration: AmoraMotion.selection,
+    transitionsBuilder: (_, animation, _, child) {
       final curved = CurvedAnimation(
         parent: animation,
         curve: AmoraMotion.curve,
-        reverseCurve: AmoraMotion.curve,
       );
       return FadeTransition(
         opacity: curved,
         child: SlideTransition(
           position: Tween<Offset>(
-            begin: const Offset(0.04, 0.02),
+            begin: const Offset(.025, .015),
             end: Offset.zero,
           ).animate(curved),
           child: child,
@@ -47,91 +40,315 @@ Route<T> premiumEventRoute<T>(Widget screen) {
   );
 }
 
-String _profileUrlForName(String name) {
-  final lower = name.toLowerCase();
-  if (lower.contains('yash')) return AmoraImageData.profileYash;
-  if (lower.contains('aadhya') || lower.contains('amora')) {
-    return AmoraImageData.profileAadhya;
-  }
-  if (lower.contains('kavya') || lower.contains('velvet')) {
-    return AmoraImageData.profileKavya;
-  }
-  if (lower.contains('aarav') || lower.contains('founder')) {
-    return AmoraImageData.profileAarav;
-  }
-  if (lower.contains('riya') ||
-      lower.contains('meera') ||
-      lower.contains('sangam')) {
-    return AmoraImageData.profileRiya;
-  }
-  return AmoraImageData.profileAnanya;
-}
-
-class PremiumEventButton extends StatelessWidget {
-  const PremiumEventButton({
+class EventsAppBar extends StatelessWidget {
+  const EventsAppBar({
     super.key,
-    required this.label,
-    required this.onPressed,
-    this.icon,
-    this.compact = false,
-    this.outlined = false,
+    required this.onCalendar,
+    required this.onFilter,
   });
 
-  final String label;
+  final VoidCallback onCalendar;
+  final VoidCallback onFilter;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      header: true,
+      child: Row(
+        children: [
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Events',
+                  style: TextStyle(
+                    color: AppColors.primary,
+                    fontSize: 28,
+                    height: 1.05,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  'Curated for Amora members',
+                  style: TextStyle(
+                    color: AppColors.text,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          _ToolbarButton(
+            tooltip: 'My Events',
+            icon: Icons.calendar_month_rounded,
+            onPressed: onCalendar,
+          ),
+          const SizedBox(width: 6),
+          _ToolbarButton(
+            tooltip: 'Filter events',
+            icon: Icons.tune_rounded,
+            onPressed: onFilter,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ToolbarButton extends StatelessWidget {
+  const _ToolbarButton({
+    required this.tooltip,
+    required this.icon,
+    required this.onPressed,
+  });
+
+  final String tooltip;
+  final IconData icon;
   final VoidCallback onPressed;
-  final IconData? icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      constraints: const BoxConstraints.tightFor(width: 48, height: 48),
+      tooltip: tooltip,
+      onPressed: onPressed,
+      style: IconButton.styleFrom(
+        backgroundColor: AppColors.surface,
+        foregroundColor: AppColors.primary,
+        side: BorderSide(color: AppColors.tertiary.withValues(alpha: .55)),
+      ),
+      icon: Icon(icon),
+    );
+  }
+}
+
+class EventsMemberBadge extends StatelessWidget {
+  const EventsMemberBadge({super.key, this.compact = false});
+
   final bool compact;
-  final bool outlined;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: 'Amora member exclusive',
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: compact ? 9 : 11,
+          vertical: compact ? 5 : 7,
+        ),
+        decoration: BoxDecoration(
+          color: AppColors.surface.withValues(alpha: .92),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: AppColors.tertiary.withValues(alpha: .75)),
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.auto_awesome_rounded,
+              size: 15,
+              color: AppColors.primary,
+            ),
+            SizedBox(width: 5),
+            Flexible(
+              child: Text(
+                'Member Exclusive',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: AppColors.primary,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class EventsSummary extends StatelessWidget {
+  const EventsSummary({
+    super.key,
+    required this.eventCount,
+    required this.city,
+    required this.joinedCount,
+  });
+
+  final int eventCount;
+  final String city;
+  final int joinedCount;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: AppColors.tertiary.withValues(alpha: .55)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 46,
+            height: 46,
+            decoration: const BoxDecoration(
+              color: AppColors.background,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.place_rounded, color: AppColors.secondary),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              '$eventCount curated ${eventCount == 1 ? 'event' : 'events'} in '
+              '$city',
+              style: const TextStyle(
+                color: AppColors.text,
+                fontSize: 15,
+                height: 1.3,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                '$joinedCount',
+                style: const TextStyle(
+                  color: AppColors.primary,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const Text(
+                'joined',
+                style: TextStyle(
+                  color: AppColors.text,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class EventCategoryBar extends StatelessWidget {
+  const EventCategoryBar({
+    super.key,
+    required this.categories,
+    required this.selected,
+    required this.onSelected,
+  });
+
+  final List<String> categories;
+  final String selected;
+  final ValueChanged<String> onSelected;
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: compact
-          ? AmoraSpacing.compactControlHeight
-          : AmoraSpacing.controlHeight,
-      child: AppPrimaryButton(
-        label: label,
-        icon: icon,
-        fullWidth: false,
-        size: compact ? AmoraButtonSize.compact : AmoraButtonSize.standard,
-        variant: outlined
-            ? AppPrimaryButtonVariant.outlined
-            : AppPrimaryButtonVariant.primary,
-        onPressed: onPressed,
+      height: 44,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: categories.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final category = categories[index];
+          final active = category == selected;
+          return Semantics(
+            button: true,
+            selected: active,
+            label: 'Show $category events',
+            child: ChoiceChip(
+              selected: active,
+              showCheckmark: false,
+              avatar: Icon(
+                _categoryIcon(category),
+                size: 17,
+                color: active ? AppColors.surface : AppColors.secondary,
+              ),
+              label: Text(category),
+              onSelected: (_) => onSelected(category),
+              selectedColor: AppColors.primary,
+              backgroundColor: AppColors.surface,
+              side: BorderSide(
+                color: active ? AppColors.primary : AppColors.secondary,
+              ),
+              labelStyle: TextStyle(
+                color: active ? AppColors.surface : AppColors.text,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          );
+        },
       ),
     );
   }
+}
+
+IconData _categoryIcon(String category) {
+  final value = category.toLowerCase();
+  if (value.contains('coffee')) return Icons.coffee_rounded;
+  if (value.contains('music') || value.contains('garba')) {
+    return Icons.music_note_rounded;
+  }
+  if (value.contains('travel') || value.contains('outdoor')) {
+    return Icons.landscape_rounded;
+  }
+  if (value.contains('speed')) return Icons.favorite_rounded;
+  if (value.contains('week')) return Icons.date_range_rounded;
+  if (value.contains('member') || value.contains('premium')) {
+    return Icons.auto_awesome_rounded;
+  }
+  return Icons.explore_rounded;
 }
 
 class EventImagePanel extends StatelessWidget {
   const EventImagePanel({
     super.key,
     required this.event,
-    this.height,
+    required this.height,
     this.hero = false,
     this.child,
+    this.radius = 26,
   });
 
   final EventModel event;
-  final double? height;
+  final double height;
   final bool hero;
   final Widget? child;
+  final double radius;
 
   @override
   Widget build(BuildContext context) {
-    final panel = SizedBox(
-      height: height ?? (hero ? null : 178),
+    Widget panel = SizedBox(
+      height: height,
       width: double.infinity,
       child: ClipRRect(
-        borderRadius: AmoraRadius.card,
+        borderRadius: BorderRadius.circular(radius),
         child: Stack(
           fit: StackFit.expand,
           children: [
-            PremiumAssetImage(
+            PremiumImage(
               imageUrl: event.image.imageUrl,
+              assetPath: event.image.assetPath,
               fallbackAsset: event.image.assetPath,
-              initials: event.image.label.substring(0, 1),
-              borderRadius: AmoraRadius.card,
+              initials: event.image.label.characters.first,
+              fit: BoxFit.cover,
+              borderRadius: BorderRadius.circular(radius),
             ),
             DecoratedBox(
               decoration: BoxDecoration(
@@ -139,8 +356,8 @@ class EventImagePanel extends StatelessWidget {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    AppColors.transparent,
-                    AppColors.text.withValues(alpha: .66),
+                    AppColors.primary.withValues(alpha: .04),
+                    AppColors.primary.withValues(alpha: .82),
                   ],
                 ),
               ),
@@ -150,158 +367,140 @@ class EventImagePanel extends StatelessWidget {
         ),
       ),
     );
-
-    if (!hero) return panel;
-    return Hero(tag: 'event-hero-${event.id}', child: panel);
+    if (hero) {
+      panel = Hero(tag: 'event-hero-${event.id}', child: panel);
+    }
+    return panel;
   }
 }
 
-class CityChip extends StatelessWidget {
-  const CityChip({
+class FeaturedEventCard extends StatelessWidget {
+  const FeaturedEventCard({
     super.key,
-    required this.city,
-    required this.selected,
-    required this.onTap,
+    required this.event,
+    required this.status,
+    required this.onOpen,
+    required this.onJoin,
   });
-
-  final String city;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(right: AmoraSpacing.space8),
-      child: AmoraFilterChip(
-        label: city,
-        selected: selected,
-        icon: AmoraIcons.location,
-        onSelected: (_) => onTap(),
-      ),
-    );
-  }
-}
-
-class CategoryChip extends StatelessWidget {
-  const CategoryChip({
-    super.key,
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(
-        right: AmoraSpacing.space8,
-        bottom: AmoraSpacing.space8,
-      ),
-      child: AmoraFilterChip(
-        label: label,
-        selected: selected,
-        onSelected: (_) => onTap(),
-        icon: selected ? AmoraIcons.heartFill : null,
-      ),
-    );
-  }
-}
-
-class EventBanner extends StatelessWidget {
-  const EventBanner({super.key, required this.event, required this.onBook});
 
   final EventModel event;
-  final VoidCallback onBook;
+  final TicketStatus? status;
+  final VoidCallback onOpen;
+  final VoidCallback onJoin;
 
   @override
   Widget build(BuildContext context) {
-    return EventImagePanel(
-      event: event,
-      hero: true,
-      child: Padding(
-        padding: const EdgeInsets.all(AmoraSpacing.space20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+    return FadeUp(
+      child: Semantics(
+        container: true,
+        label:
+            'Featured member event, ${event.title}, ${event.date} at ${event.time}',
+        child: Material(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(30),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: onOpen,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Flexible(
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: _SolidEventBadge(
-                      icon: AmoraIcons.calendar,
-                      text: event.date,
+                EventImagePanel(
+                  event: event,
+                  height: 252,
+                  radius: 30,
+                  child: Padding(
+                    padding: const EdgeInsets.all(18),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const EventsMemberBadge(),
+                        const Spacer(),
+                        Text(
+                          event.category,
+                          style: const TextStyle(
+                            color: AppColors.surface,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          event.title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: AppColors.surface,
+                            fontSize: 26,
+                            height: 1.08,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
-                const SizedBox(width: AmoraSpacing.space8),
-                Flexible(
-                  child: Align(
-                    alignment: Alignment.centerRight,
-                    child: _SolidEventBadge(
-                      text: '${event.seatsLeft} seats left',
-                    ),
+                Padding(
+                  padding: const EdgeInsets.all(18),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      EventMetadataRow(
+                        icon: Icons.calendar_month_rounded,
+                        text: '${event.date} · ${event.time}',
+                      ),
+                      const SizedBox(height: 8),
+                      EventMetadataRow(
+                        icon: Icons.place_rounded,
+                        text: '${event.venue}, ${event.city}',
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        '${event.intent}. ${event.interests.join(', ')}.',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: AppColors.text,
+                          fontSize: 14,
+                          height: 1.4,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: EventJoinButton(
+                              eventTitle: event.title,
+                              status: status,
+                              onPressed: onJoin,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          SizedBox(
+                            width: 52,
+                            height: 52,
+                            child: OutlinedButton(
+                              onPressed: onOpen,
+                              style: OutlinedButton.styleFrom(
+                                padding: EdgeInsets.zero,
+                                side: const BorderSide(
+                                  color: AppColors.tertiary,
+                                ),
+                              ),
+                              child: const Icon(
+                                Icons.arrow_forward_rounded,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
-            const Spacer(),
-            Text(
-              event.title,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: AppColors.surface,
-                fontSize: 24,
-                height: 1.05,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-            const SizedBox(height: 8),
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final compact =
-                    constraints.maxWidth < 280 ||
-                    MediaQuery.textScalerOf(context).scale(16) / 16 > 1.2;
-                final details = Text(
-                  '${event.city} - ${event.time}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.surface,
-                    fontWeight: FontWeight.w700,
-                  ),
-                );
-                final button = PremiumEventButton(
-                  label: 'Book Now',
-                  icon: Icons.confirmation_number_rounded,
-                  compact: true,
-                  onPressed: onBook,
-                );
-                if (compact) {
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      details,
-                      const SizedBox(height: 6),
-                      Align(alignment: Alignment.centerRight, child: button),
-                    ],
-                  );
-                }
-                return Row(
-                  children: [
-                    Expanded(child: details),
-                    const SizedBox(width: 12),
-                    button,
-                  ],
-                );
-              },
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -312,122 +511,243 @@ class EventCard extends StatelessWidget {
   const EventCard({
     super.key,
     required this.event,
+    required this.status,
     required this.onOpen,
-    required this.onBook,
-    this.compact = false,
-    this.fillHeight = false,
+    required this.onJoin,
+    this.horizontal = false,
   });
 
   final EventModel event;
+  final TicketStatus? status;
   final VoidCallback onOpen;
-  final VoidCallback onBook;
-  final bool compact;
-  final bool fillHeight;
+  final VoidCallback onJoin;
+  final bool horizontal;
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(30),
-      onTap: onOpen,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 220),
-        width: fillHeight ? double.infinity : (compact ? 188 : 268),
-        height: fillHeight ? double.infinity : null,
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(30),
-          border: Border.all(color: AppColors.borderGray),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.deepWine.withValues(alpha: .08),
-              blurRadius: 24,
-              offset: const Offset(0, 12),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: fillHeight ? MainAxisSize.max : MainAxisSize.min,
-          children: [
-            EventImagePanel(
-              event: event,
-              height: compact ? 108 : 132,
-              child: Padding(
-                padding: const EdgeInsets.all(AmoraSpacing.space8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Flexible(child: _SolidEventBadge(text: event.category)),
-                        const SizedBox(width: 4),
-                        const Spacer(),
-                        const Icon(
-                          AmoraIcons.verified,
-                          color: AppColors.surface,
-                          size: AmoraIconSizes.medium,
-                        ),
-                      ],
-                    ),
-                    const Spacer(),
-                    _SolidEventBadge(
-                      icon: AmoraIcons.heartFill,
-                      text: '${event.compatibility}%',
-                    ),
-                  ],
+    final content = horizontal
+        ? _HorizontalEventCard(
+            event: event,
+            status: status,
+            onOpen: onOpen,
+            onJoin: onJoin,
+          )
+        : _VerticalEventCard(
+            event: event,
+            status: status,
+            onOpen: onOpen,
+            onJoin: onJoin,
+          );
+    return KeyedSubtree(
+      key: ValueKey('event-card-${event.id}'),
+      child: content,
+    );
+  }
+}
+
+class _HorizontalEventCard extends StatelessWidget {
+  const _HorizontalEventCard({
+    required this.event,
+    required this.status,
+    required this.onOpen,
+    required this.onJoin,
+  });
+
+  final EventModel event;
+  final TicketStatus? status;
+  final VoidCallback onOpen;
+  final VoidCallback onJoin;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(24),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onOpen,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: 112,
+                child: EventImagePanel(event: event, height: 126, radius: 18),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: _EventCardDetails(event: event, status: status),
+              ),
+              const SizedBox(width: 6),
+              IconButton(
+                tooltip: status == null ? 'Join ${event.title}' : 'View event',
+                onPressed: status == null ? onJoin : onOpen,
+                icon: Icon(
+                  status == null
+                      ? Icons.add_circle_rounded
+                      : Icons.arrow_forward_rounded,
+                  color: AppColors.primary,
                 ),
               ),
-            ),
-            const SizedBox(height: AmoraSpacing.space12),
-            Flexible(
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _VerticalEventCard extends StatelessWidget {
+  const _VerticalEventCard({
+    required this.event,
+    required this.status,
+    required this.onOpen,
+    required this.onJoin,
+  });
+
+  final EventModel event;
+  final TicketStatus? status;
+  final VoidCallback onOpen;
+  final VoidCallback onJoin;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(26),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onOpen,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              EventImagePanel(
+                event: event,
+                height: 176,
+                radius: 19,
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Align(
+                    alignment: Alignment.topLeft,
+                    child: EventStatusBadge(status: status),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              _EventCardDetails(event: event, status: status),
+              const SizedBox(height: 14),
+              EventJoinButton(
+                eventTitle: event.title,
+                status: status,
+                onPressed: onJoin,
+                compact: true,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EventCardDetails extends StatelessWidget {
+  const _EventCardDetails({required this.event, required this.status});
+
+  final EventModel event;
+  final TicketStatus? status;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            EventDateBadge(date: event.date),
+            const SizedBox(width: 10),
+            Expanded(
               child: Text(
                 event.title,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: AmoraTextStyles.titleMedium.copyWith(
-                  color: AppColors.deepWine,
-                  fontSize: compact ? 15 : 16,
+                style: const TextStyle(
+                  color: AppColors.primary,
+                  fontSize: 17,
+                  height: 1.15,
                   fontWeight: FontWeight.w700,
                 ),
               ),
             ),
-            const SizedBox(height: AmoraSpacing.space8),
-            _MetaLine(icon: AmoraIcons.location, text: event.city),
-            _MetaLine(
-              icon: Icons.schedule_rounded,
-              text: '${event.date}, ${event.time}',
+          ],
+        ),
+        const SizedBox(height: 10),
+        EventMetadataRow(
+          icon: Icons.schedule_rounded,
+          text: event.time,
+          compact: true,
+        ),
+        const SizedBox(height: 6),
+        EventMetadataRow(
+          icon: Icons.place_rounded,
+          text: event.venue,
+          compact: true,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          event.category,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            color: AppColors.secondary,
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class EventDateBadge extends StatelessWidget {
+  const EventDateBadge({super.key, required this.date});
+
+  final String date;
+
+  @override
+  Widget build(BuildContext context) {
+    final parts = date.replaceAll(',', '').split(RegExp(r'\s+'));
+    final day = parts.length > 1 ? parts[1] : date;
+    final month = parts.length > 2 ? parts[2] : '';
+    return Semantics(
+      label: date,
+      child: Container(
+        width: 46,
+        padding: const EdgeInsets.symmetric(vertical: 7),
+        decoration: BoxDecoration(
+          color: AppColors.background,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Column(
+          children: [
+            Text(
+              month.toUpperCase(),
+              style: const TextStyle(
+                color: AppColors.secondary,
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+              ),
             ),
-            if (fillHeight) const Spacer(),
-            const SizedBox(height: AmoraSpacing.space8),
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    formatRupees(event.price),
-                    style: AmoraTextStyles.titleMedium.copyWith(
-                      color: AppColors.deepWine,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-                Text(
-                  '${event.seatsLeft} left',
-                  style: AmoraTextStyles.labelMedium.copyWith(
-                    color: AppColors.primaryRose,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: AmoraSpacing.space8),
-            SizedBox(
-              width: double.infinity,
-              child: PremiumEventButton(
-                label: 'Book',
-                compact: true,
-                icon: AmoraIcons.forward,
-                onPressed: onBook,
+            Text(
+              day,
+              style: const TextStyle(
+                color: AppColors.primary,
+                fontSize: 18,
+                height: 1.05,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ],
@@ -437,486 +757,231 @@ class EventCard extends StatelessWidget {
   }
 }
 
-class HostCard extends StatelessWidget {
-  const HostCard({super.key, required this.host});
+class EventMetadataRow extends StatelessWidget {
+  const EventMetadataRow({
+    super.key,
+    required this.icon,
+    required this.text,
+    this.compact = false,
+  });
+
+  final IconData icon;
+  final String text;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: compact ? 16 : 18, color: AppColors.secondary),
+        const SizedBox(width: 7),
+        Expanded(
+          child: Text(
+            text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: AppColors.text,
+              fontSize: compact ? 13 : 14,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class EventJoinButton extends StatelessWidget {
+  const EventJoinButton({
+    super.key,
+    required this.eventTitle,
+    required this.status,
+    required this.onPressed,
+    this.compact = false,
+  });
+
+  final String eventTitle;
+  final TicketStatus? status;
+  final VoidCallback? onPressed;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final (label, icon) = switch (status) {
+      TicketStatus.upcoming => ('Joined', Icons.check_circle_rounded),
+      TicketStatus.attended => ('View memories', Icons.favorite_rounded),
+      TicketStatus.waitlisted => ('View waitlist', Icons.hourglass_top_rounded),
+      TicketStatus.cancelled => ('Cancelled', Icons.event_busy_rounded),
+      null => ('Join Event', Icons.add_rounded),
+    };
+    return AnimatedSwitcher(
+      duration: AmoraMotion.selection,
+      child: AppPrimaryButton(
+        key: ValueKey(label),
+        label: label,
+        icon: icon,
+        size: compact ? AmoraButtonSize.compact : AmoraButtonSize.standard,
+        variant: status == null
+            ? AppPrimaryButtonVariant.primary
+            : AppPrimaryButtonVariant.outlined,
+        onPressed: status == TicketStatus.cancelled ? null : onPressed,
+      ),
+    );
+  }
+}
+
+class EventStatusBadge extends StatelessWidget {
+  const EventStatusBadge({super.key, required this.status});
+
+  final TicketStatus? status;
+
+  @override
+  Widget build(BuildContext context) {
+    final label = switch (status) {
+      TicketStatus.upcoming => 'Joined',
+      TicketStatus.attended => 'Attended',
+      TicketStatus.waitlisted => 'Waitlist',
+      TicketStatus.cancelled => 'Cancelled',
+      null => 'Member Exclusive',
+    };
+    return Semantics(
+      label: 'Event status: $label',
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: status == null
+              ? AppColors.primary
+              : AppColors.surface.withValues(alpha: .94),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: AppColors.tertiary),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: status == null ? AppColors.surface : AppColors.primary,
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class EventHostSection extends StatelessWidget {
+  const EventHostSection({super.key, required this.host});
 
   final EventHost host;
 
   @override
   Widget build(BuildContext context) {
-    return _SoftCard(
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: AppColors.tertiary.withValues(alpha: .55)),
+      ),
       child: Row(
         children: [
           PremiumAvatar(
-            imageUrl: _profileUrlForName(host.name),
+            imageUrl: host.photoAsset,
             fallbackAsset: host.photoAsset,
-            initials: AmoraImageData.initialsForName(host.name),
-            radius: 28,
+            initials: host.name.characters.first,
+            radius: 27,
           ),
-          const SizedBox(width: AmoraSpacing.space12),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        host.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AmoraTextStyles.titleMedium.copyWith(
-                          color: AppColors.deepWine,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: AmoraSpacing.space4),
-                    const Icon(
-                      AmoraIcons.verified,
-                      color: AppColors.primaryPurple,
-                      size: AmoraIconSizes.medium,
-                    ),
-                  ],
+                const Text(
+                  'Hosted by',
+                  style: TextStyle(
+                    color: AppColors.text,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
-                const SizedBox(height: AmoraSpacing.space4),
+                const SizedBox(height: 2),
                 Text(
-                  '${host.rating} rating - ${host.followers} followers',
-                  style: AmoraTextStyles.bodySmall.copyWith(
-                    color: AppColors.textGray,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          IconButton(
-            tooltip: 'Follow host',
-            onPressed: () => showEventSnack(context, 'Host followed'),
-            icon: const Icon(Icons.favorite_border_rounded),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class AttendeeAvatar extends StatelessWidget {
-  const AttendeeAvatar({super.key, required this.attendee});
-
-  final EventAttendee attendee;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 84,
-      child: Column(
-        children: [
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              PremiumAvatar(
-                imageUrl: _profileUrlForName(attendee.name),
-                fallbackAsset: attendee.photoAsset,
-                initials: AmoraImageData.initialsForName(attendee.name),
-                radius: 30,
-              ),
-              if (attendee.verified)
-                const Positioned(
-                  right: -1,
-                  bottom: -1,
-                  child: Icon(
-                    Icons.verified_rounded,
-                    color: AppColors.primaryPurple,
-                    size: 20,
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            attendee.name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: AppColors.deepWine,
-              fontSize: 13,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          Text(
-            attendee.intent,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: AppColors.textGray,
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class AgendaTimeline extends StatelessWidget {
-  const AgendaTimeline({super.key, required this.items});
-
-  final List<(String, String)> items;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        for (var i = 0; i < items.length; i++)
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(
-                width: 72,
-                child: Text(
-                  items[i].$1,
-                  style: const TextStyle(
-                    color: AppColors.primaryPurple,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-              Column(
-                children: [
-                  Container(
-                    width: 13,
-                    height: 13,
-                    decoration: const BoxDecoration(
-                      color: AppColors.primaryRose,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  if (i != items.length - 1)
-                    Container(
-                      width: 2,
-                      height: 34,
-                      color: AppColors.lavenderBackground,
-                    ),
-                ],
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: 24),
-                  child: Text(
-                    items[i].$2,
-                    style: const TextStyle(
-                      color: AppColors.deepWine,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-      ],
-    );
-  }
-}
-
-class TicketSummaryCard extends StatelessWidget {
-  const TicketSummaryCard({
-    super.key,
-    required this.ticket,
-    required this.tax,
-    required this.fee,
-    required this.discount,
-  });
-
-  final int ticket;
-  final int tax;
-  final int fee;
-  final int discount;
-
-  int get grandTotal => math.max(0, ticket + tax + fee - discount);
-
-  @override
-  Widget build(BuildContext context) {
-    return _SoftCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Price Summary',
-            style: TextStyle(
-              color: AppColors.deepWine,
-              fontWeight: FontWeight.w900,
-              fontSize: 18,
-            ),
-          ),
-          const SizedBox(height: 14),
-          PriceCard(label: 'Ticket', amount: ticket),
-          PriceCard(label: 'Tax', amount: tax),
-          PriceCard(label: 'Convenience Fee', amount: fee),
-          PriceCard(label: 'Discount', amount: -discount),
-          const Divider(height: 24),
-          PriceCard(label: 'Grand Total', amount: grandTotal, strong: true),
-        ],
-      ),
-    );
-  }
-}
-
-class PriceCard extends StatelessWidget {
-  const PriceCard({
-    super.key,
-    required this.label,
-    required this.amount,
-    this.strong = false,
-  });
-
-  final String label;
-  final int amount;
-  final bool strong;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              label,
-              style: TextStyle(
-                color: strong ? AppColors.deepWine : AppColors.textGray,
-                fontWeight: strong ? FontWeight.w900 : FontWeight.w700,
-              ),
-            ),
-          ),
-          Text(
-            '${amount < 0 ? '-' : ''}${formatRupees(amount.abs())}',
-            style: TextStyle(
-              color: amount < 0 ? AppColors.successGreen : AppColors.deepWine,
-              fontWeight: FontWeight.w900,
-              fontSize: strong ? 18 : 14,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class BookingStepper extends StatelessWidget {
-  const BookingStepper({
-    super.key,
-    required this.currentStep,
-    required this.labels,
-  });
-
-  final int currentStep;
-  final List<String> labels;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        for (var i = 0; i < labels.length; i++) ...[
-          Expanded(
-            child: Column(
-              children: [
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 220),
-                  width: 34,
-                  height: 34,
-                  decoration: BoxDecoration(
-                    color: i <= currentStep
-                        ? AppColors.primaryPurple
-                        : AppColors.surface,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.primaryPurple),
-                  ),
-                  child: Center(
-                    child: Text(
-                      '${i + 1}',
-                      style: TextStyle(
-                        color: i <= currentStep
-                            ? AppColors.surface
-                            : AppColors.primaryPurple,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 7),
-                Text(
-                  labels[i],
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.textGray,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (i != labels.length - 1)
-            Expanded(
-              child: Container(
-                height: 2,
-                margin: const EdgeInsets.only(bottom: 28),
-                color: i < currentStep
-                    ? AppColors.primaryPurple
-                    : AppColors.borderGray,
-              ),
-            ),
-        ],
-      ],
-    );
-  }
-}
-
-class QRPassCard extends StatelessWidget {
-  const QRPassCard({super.key, required this.ticket});
-
-  final MyEventTicket ticket;
-
-  @override
-  Widget build(BuildContext context) {
-    return _SoftCard(
-      color: AppColors.deepWine,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(
-                Icons.workspace_premium_rounded,
-                color: AppColors.premiumGold,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  ticket.event.title,
+                  host.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    color: AppColors.surface,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: _PassInfo(label: 'Ticket', value: ticket.ticketNumber),
-              ),
-              Expanded(
-                child: _PassInfo(label: 'Seat', value: ticket.seat),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Text(
-            '${ticket.event.date} - ${ticket.event.venue}',
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: AppColors.surface,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 18),
-          Center(
-            child: Container(
-              width: 146,
-              height: 146,
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(22),
-              ),
-              child: CustomPaint(painter: _QrPassPatternPainter()),
-            ),
-          ),
-          const SizedBox(height: 18),
-          Row(
-            children: [
-              Expanded(
-                child: PremiumEventButton(
-                  label: 'Download Pass',
-                  icon: Icons.download_rounded,
-                  compact: true,
-                  onPressed: () =>
-                      showEventSnack(context, 'Pass download queued'),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: PremiumEventButton(
-                  label: 'Share Pass',
-                  icon: Icons.ios_share_rounded,
-                  compact: true,
-                  outlined: true,
-                  onPressed: () => showEventSnack(context, 'Share pass ready'),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class SectionTitle extends StatelessWidget {
-  const SectionTitle({
-    super.key,
-    required this.title,
-    this.subtitle,
-    this.trailing,
-  });
-
-  final String title;
-  final String? subtitle;
-  final Widget? trailing;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  color: AppColors.deepWine,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              if (subtitle != null) ...[
-                const SizedBox(height: 4),
-                Text(
-                  subtitle!,
-                  style: const TextStyle(
-                    color: AppColors.textGray,
+                    color: AppColors.primary,
+                    fontSize: 16,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
               ],
-            ],
+            ),
           ),
-        ),
-        ?trailing,
-      ],
+          Text(
+            host.rating.toStringAsFixed(1),
+            style: const TextStyle(
+              color: AppColors.primary,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(width: 4),
+          const Icon(Icons.star_rounded, size: 18, color: AppColors.secondary),
+        ],
+      ),
+    );
+  }
+}
+
+class EventAttendeePreview extends StatelessWidget {
+  const EventAttendeePreview({
+    super.key,
+    required this.attendees,
+    this.maxVisible = 4,
+  });
+
+  final List<EventAttendee> attendees;
+  final int maxVisible;
+
+  @override
+  Widget build(BuildContext context) {
+    final visible = attendees.take(maxVisible).toList();
+    return Semantics(
+      label: '${attendees.length} attendees visible',
+      child: Row(
+        children: [
+          SizedBox(
+            width: 34 + (visible.length - 1).clamp(0, maxVisible) * 23,
+            height: 38,
+            child: Stack(
+              children: [
+                for (var index = 0; index < visible.length; index++)
+                  Positioned(
+                    left: index * 23,
+                    child: PremiumAvatar(
+                      imageUrl: visible[index].photoAsset,
+                      fallbackAsset: visible[index].photoAsset,
+                      initials: visible[index].name.characters.first,
+                      radius: 19,
+                      verified: visible[index].verified,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              '${attendees.length} members attending',
+              style: const TextStyle(
+                color: AppColors.text,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -935,177 +1000,42 @@ class EventInfoTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _SoftCard(
-      padding: const EdgeInsets.all(AmoraSpacing.space16),
-      child: Row(
-        children: [
-          Container(
-            width: AmoraSpacing.minimumTouchTarget,
-            height: AmoraSpacing.minimumTouchTarget,
-            decoration: BoxDecoration(
-              color: AppColors.lavenderBackground,
-              borderRadius: AmoraRadius.button,
-            ),
-            child: Icon(icon, color: AppColors.primaryPurple),
-          ),
-          const SizedBox(width: AmoraSpacing.space12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: AmoraTextStyles.labelMedium.copyWith(
-                    color: AppColors.textGray,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                Text(
-                  value,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: AmoraTextStyles.titleSmall.copyWith(
-                    color: AppColors.deepWine,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SoftCard extends StatelessWidget {
-  const _SoftCard({
-    required this.child,
-    this.padding = AmoraSpacing.card,
-    this.color = AppColors.surface,
-  });
-
-  final Widget child;
-  final EdgeInsetsGeometry padding;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: padding,
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: AmoraRadius.card,
-        border: Border.all(
-          color: color == AppColors.surface ? AppColors.borderGray : color,
-        ),
-        boxShadow: AmoraShadows.level1,
-      ),
-      child: child,
-    );
-  }
-}
-
-class _SolidEventBadge extends StatelessWidget {
-  const _SolidEventBadge({required this.text, this.icon});
-
-  final String text;
-  final IconData? icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AmoraSpacing.space12,
-        vertical: AmoraSpacing.space8,
-      ),
-      decoration: BoxDecoration(
-        color: AppColors.deepWine,
-        borderRadius: AmoraRadius.pillBorder,
-        border: Border.all(color: AppColors.deepWine),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (icon != null) ...[
-            Icon(icon, color: AppColors.surface, size: AmoraIconSizes.small),
-            const SizedBox(width: AmoraSpacing.space4),
-          ],
-          Flexible(
-            child: Text(
-              text,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AmoraTextStyles.labelMedium.copyWith(
-                color: AppColors.surface,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MetaLine extends StatelessWidget {
-  const _MetaLine({required this.icon, required this.text});
-
-  final IconData icon;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AmoraSpacing.space4),
-      child: Row(
-        children: [
-          Icon(icon, size: AmoraIconSizes.small, color: AppColors.textGray),
-          const SizedBox(width: AmoraSpacing.space4),
-          Expanded(
-            child: Text(
-              text,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AmoraTextStyles.bodySmall.copyWith(
-                color: AppColors.textGray,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PassInfo extends StatelessWidget {
-  const _PassInfo({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
+    return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: TextStyle(
-            color: AppColors.surface,
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
+        Container(
+          width: 42,
+          height: 42,
+          decoration: const BoxDecoration(
+            color: AppColors.background,
+            shape: BoxShape.circle,
           ),
+          child: Icon(icon, size: 20, color: AppColors.secondary),
         ),
-        Text(
-          value,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            color: AppColors.surface,
-            fontWeight: FontWeight.w900,
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(
+                  color: AppColors.text,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                value,
+                style: const TextStyle(
+                  color: AppColors.primary,
+                  fontSize: 15,
+                  height: 1.3,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
           ),
         ),
       ],
@@ -1113,30 +1043,219 @@ class _PassInfo extends StatelessWidget {
   }
 }
 
-class _QrPassPatternPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = AppColors.deepWine;
-    const cells = 9;
-    final cell = size.width / cells;
-    for (var y = 0; y < cells; y++) {
-      for (var x = 0; x < cells; x++) {
-        final isFinder =
-            (x < 3 && y < 3) || (x > 5 && y < 3) || (x < 3 && y > 5);
-        final fill = isFinder || ((x * 7 + y * 3) % 5 == 0);
-        if (fill) {
-          canvas.drawRRect(
-            RRect.fromRectAndRadius(
-              Rect.fromLTWH(x * cell + 5, y * cell + 5, cell - 7, cell - 7),
-              const Radius.circular(3),
-            ),
-            paint,
-          );
-        }
-      }
-    }
-  }
+class EventSafetySection extends StatelessWidget {
+  const EventSafetySection({
+    super.key,
+    required this.onGuidelines,
+    required this.onReport,
+  });
+
+  final VoidCallback onGuidelines;
+  final VoidCallback onReport;
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.tertiary),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.shield_rounded, color: AppColors.primary),
+              SizedBox(width: 9),
+              Text(
+                'Safety & community',
+                style: TextStyle(
+                  color: AppColors.primary,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 9),
+          const Text(
+            'Meet thoughtfully, respect boundaries, and use Amora’s existing '
+            'safety tools whenever you need support.',
+            style: TextStyle(
+              color: AppColors.text,
+              fontSize: 14,
+              height: 1.4,
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              TextButton.icon(
+                onPressed: onGuidelines,
+                icon: const Icon(Icons.menu_book_rounded),
+                label: const Text('Guidelines'),
+              ),
+              TextButton.icon(
+                onPressed: onReport,
+                icon: const Icon(Icons.flag_outlined),
+                label: const Text('Report event'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class EventsSkeleton extends StatelessWidget {
+  const EventsSkeleton({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _SkeletonBlock(height: 44, width: 310),
+        const SizedBox(height: 18),
+        const _SkeletonBlock(height: 320),
+        const SizedBox(height: 24),
+        const _SkeletonBlock(height: 24, width: 180),
+        const SizedBox(height: 14),
+        for (var index = 0; index < 3; index++) ...[
+          const _SkeletonBlock(height: 180),
+          const SizedBox(height: 12),
+        ],
+      ],
+    );
+  }
+}
+
+class _SkeletonBlock extends StatelessWidget {
+  const _SkeletonBlock({required this.height, this.width});
+
+  final double height;
+  final double? width;
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: .35, end: .8),
+      duration: AmoraMotion.skeleton,
+      builder: (_, opacity, _) => Container(
+        width: width ?? double.infinity,
+        height: height,
+        decoration: BoxDecoration(
+          color: AppColors.tertiary.withValues(alpha: opacity),
+          borderRadius: BorderRadius.circular(22),
+        ),
+      ),
+    );
+  }
+}
+
+class EventsEmptyState extends StatelessWidget {
+  const EventsEmptyState({
+    super.key,
+    required this.onShowAll,
+    this.title = 'No events match your preferences yet',
+    this.description =
+        'Try another category or check back for new member gatherings.',
+  });
+
+  final VoidCallback onShowAll;
+  final String title;
+  final String description;
+
+  @override
+  Widget build(BuildContext context) {
+    return _EventsStateCard(
+      icon: Icons.search_off_rounded,
+      title: title,
+      description: description,
+      actionLabel: 'Show All Events',
+      onAction: onShowAll,
+    );
+  }
+}
+
+class EventsErrorState extends StatelessWidget {
+  const EventsErrorState({super.key, required this.onRetry});
+
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return _EventsStateCard(
+      icon: Icons.cloud_off_rounded,
+      title: 'Couldn’t load events',
+      description: 'Your member gatherings are temporarily unavailable.',
+      actionLabel: 'Try Again',
+      onAction: onRetry,
+    );
+  }
+}
+
+class _EventsStateCard extends StatelessWidget {
+  const _EventsStateCard({
+    required this.icon,
+    required this.title,
+    required this.description,
+    required this.actionLabel,
+    required this.onAction,
+  });
+
+  final IconData icon;
+  final String title;
+  final String description;
+  final String actionLabel;
+  final VoidCallback onAction;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(26),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: AppColors.secondary, size: 38),
+          const SizedBox(height: 14),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: AppColors.primary,
+              fontSize: 19,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 7),
+          Text(
+            description,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: AppColors.text,
+              fontSize: 14,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 18),
+          AppPrimaryButton(
+            label: actionLabel,
+            onPressed: onAction,
+            fullWidth: false,
+          ),
+        ],
+      ),
+    );
+  }
 }

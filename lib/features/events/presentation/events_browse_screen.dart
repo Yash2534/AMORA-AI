@@ -1,358 +1,548 @@
 import 'dart:async';
 
-import 'package:amora_ai/core/constants/app_images.dart';
+import 'package:amora_ai/core/access/amora_access.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
-import 'package:amora_ai/core/theme/amora_icon_sizes.dart';
-import 'package:amora_ai/core/theme/amora_icons.dart';
-import 'package:amora_ai/core/theme/amora_spacing.dart';
-import 'package:amora_ai/core/theme/amora_text_styles.dart';
-import 'package:amora_ai/core/widgets/amora_card.dart';
-import 'package:amora_ai/core/widgets/amora_empty_state.dart';
-import 'package:amora_ai/core/widgets/amora_loading.dart';
-import 'package:amora_ai/core/widgets/amora_search_bar.dart';
+import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/floating_bottom_nav.dart';
-import 'package:amora_ai/core/widgets/premium_editorial_panel.dart';
+import 'package:amora_ai/core/widgets/premium_motion.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/events/data/events_dummy_data.dart';
 import 'package:amora_ai/features/events/domain/event_models.dart';
+import 'package:amora_ai/features/events/presentation/event_detail_screen.dart';
+import 'package:amora_ai/features/events/presentation/my_events_screen.dart';
 import 'package:amora_ai/features/events/presentation/widgets/events_widgets.dart';
+import 'package:amora_ai/features/subscription/presentation/subscription_screen.dart';
 import 'package:flutter/material.dart';
 
-class EventsBrowseScreen extends StatefulWidget {
+class EventsBrowseScreen extends StatelessWidget {
   const EventsBrowseScreen({super.key, this.showNavigation = true});
 
   static const routeName = '/events';
+
   final bool showNavigation;
 
   @override
-  State<EventsBrowseScreen> createState() => _EventsBrowseScreenState();
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      bottomNavigationBar: showNavigation
+          ? const FloatingBottomNav(activeTab: AmoraNavTab.events)
+          : null,
+      body: SafeArea(
+        bottom: !showNavigation,
+        child: ResponsiveMobileFrame(
+          maxWidth: 1120,
+          child: hasPremiumEventsAccess
+              ? const EventsMemberExperience()
+              : EventsLockedState(
+                  onUpgrade: () => Navigator.of(
+                    context,
+                  ).pushNamed(SubscriptionScreen.routeName),
+                  onManageMembership: () => Navigator.of(
+                    context,
+                  ).pushNamed(SubscriptionScreen.routeName),
+                ),
+        ),
+      ),
+    );
+  }
 }
 
-class _EventsBrowseScreenState extends State<EventsBrowseScreen> {
-  final _searchController = TextEditingController();
-  final _pageController = PageController(viewportFraction: .92);
-  var _selectedCity = 'Ahmedabad';
-  var _selectedCategory = 'Premium';
-  var _search = '';
+class EventsLockedState extends StatelessWidget {
+  const EventsLockedState({
+    super.key,
+    required this.onUpgrade,
+    required this.onManageMembership,
+  });
+
+  final VoidCallback onUpgrade;
+  final VoidCallback onManageMembership;
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 620),
+          child: FadeUp(
+            duration: AmoraMotion.page,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Events',
+                        style: TextStyle(
+                          color: AppColors.primary,
+                          fontSize: 28,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    EventsMemberBadge(),
+                  ],
+                ),
+                const SizedBox(height: 28),
+                Container(
+                  padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(32),
+                    border: Border.all(
+                      color: AppColors.tertiary.withValues(alpha: .7),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primary.withValues(alpha: .08),
+                        blurRadius: 30,
+                        offset: const Offset(0, 16),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 88,
+                        height: 88,
+                        decoration: BoxDecoration(
+                          color: AppColors.background,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: AppColors.tertiary),
+                        ),
+                        child: const Icon(
+                          Icons.groups_2_rounded,
+                          size: 42,
+                          color: AppColors.primary,
+                          semanticLabel: 'Members-only gatherings',
+                        ),
+                      ),
+                      const SizedBox(height: 22),
+                      const Text(
+                        'Events are for Amora members',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: AppColors.primary,
+                          fontSize: 26,
+                          height: 1.12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      const Text(
+                        'Join curated gatherings designed for meaningful, '
+                        'real-world connections.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: AppColors.text,
+                          fontSize: 16,
+                          height: 1.45,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      const _MemberBenefit(
+                        icon: Icons.auto_awesome_rounded,
+                        label: 'Curated singles experiences',
+                      ),
+                      const _MemberBenefit(
+                        icon: Icons.people_alt_rounded,
+                        label: 'Smaller, intentional gatherings',
+                      ),
+                      const _MemberBenefit(
+                        icon: Icons.interests_rounded,
+                        label: 'Events shaped around shared interests',
+                      ),
+                      const SizedBox(height: 24),
+                      AppPrimaryButton(
+                        label: 'Explore Membership',
+                        icon: Icons.workspace_premium_rounded,
+                        onPressed: onUpgrade,
+                      ),
+                      const SizedBox(height: 8),
+                      TextButton(
+                        onPressed: onManageMembership,
+                        child: const Text('Restore or manage membership'),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MemberBenefit extends StatelessWidget {
+  const _MemberBenefit({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: const BoxDecoration(
+              color: AppColors.background,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: AppColors.secondary, size: 21),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: AppColors.text,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The paid-member presentation is kept public for focused widget testing.
+/// Route access remains controlled exclusively by [EventsBrowseScreen].
+class EventsMemberExperience extends StatefulWidget {
+  const EventsMemberExperience({super.key});
+
+  @override
+  State<EventsMemberExperience> createState() => _EventsMemberExperienceState();
+}
+
+class _EventsMemberExperienceState extends State<EventsMemberExperience> {
+  static const _allCategory = 'For You';
+
+  Timer? _loadingTimer;
   var _loading = true;
-  Timer? _timer;
+  var _selectedCategory = _allCategory;
+  late final Map<String, TicketStatus> _participation = {
+    for (final entry in myEventTickets) entry.event.id: entry.status,
+  };
+
+  List<String> get _categories => [
+    _allCategory,
+    ...{for (final event in events) event.category},
+  ];
+
+  List<EventModel> get _filteredEvents {
+    if (_selectedCategory == _allCategory) {
+      return events;
+    }
+    return events
+        .where((event) => event.category == _selectedCategory)
+        .toList(growable: false);
+  }
+
+  List<MyEventTicket> get _joinedEntries => myEventTickets
+      .where(
+        (entry) =>
+            _participation[entry.event.id] == TicketStatus.upcoming ||
+            _participation[entry.event.id] == TicketStatus.waitlisted,
+      )
+      .toList(growable: false);
 
   @override
   void initState() {
     super.initState();
-    _timer = Timer(const Duration(milliseconds: 650), () {
+    _loadingTimer = Timer(const Duration(milliseconds: 480), () {
       if (mounted) setState(() => _loading = false);
     });
   }
 
   @override
   void dispose() {
-    _timer?.cancel();
-    _searchController.dispose();
-    _pageController.dispose();
+    _loadingTimer?.cancel();
     super.dispose();
   }
 
-  List<EventModel> get _filteredEvents {
-    return events.where((event) {
-      final matchesCity = event.city == _selectedCity;
-      final matchesCategory =
-          _selectedCategory == 'Premium' || event.category == _selectedCategory;
-      final query = _search.trim().toLowerCase();
-      final matchesSearch =
-          query.isEmpty ||
-          event.title.toLowerCase().contains(query) ||
-          event.city.toLowerCase().contains(query) ||
-          event.category.toLowerCase().contains(query);
-      return matchesCity && matchesCategory && matchesSearch;
-    }).toList();
-  }
-
   @override
   Widget build(BuildContext context) {
+    if (_loading) {
+      return const SingleChildScrollView(
+        padding: EdgeInsets.fromLTRB(20, 22, 20, 32),
+        child: EventsSkeleton(),
+      );
+    }
+
     final filtered = _filteredEvents;
-    return Scaffold(
-      bottomNavigationBar: widget.showNavigation
-          ? const FloatingBottomNav(activeTab: AmoraNavTab.events)
-          : null,
-      body: SafeArea(
-        bottom: !widget.showNavigation,
-        child: ResponsiveMobileFrame(
-          child: CustomScrollView(
-            slivers: [
-              SliverPadding(
-                padding: EdgeInsets.fromLTRB(
-                  18,
-                  22,
-                  18,
-                  widget.showNavigation ? 24 : 18,
-                ),
-                sliver: SliverList(
-                  delegate: SliverChildListDelegate.fixed([
-                    _PremiumAppBar(
-                      onNotifications: () =>
-                          showEventSnack(context, 'Notifications synced'),
-                      onSearch: () => FocusScope.of(context).nextFocus(),
-                    ),
-                    const SizedBox(height: AmoraSpacing.x4),
-                    PremiumEditorialPanel(
-                      title: 'Premium socials for serious connections',
-                      subtitle:
-                          'Coffee meets, rooftop evenings, Garba nights and curated mixers with verified hosts.',
-                      badge: 'AMORA Experiences',
-                      cta: 'Browse',
-                      assetPath: AppImages.eventRooftop,
-                      icon: AmoraIcons.events,
-                      aspectRatio: 1.82,
-                      onTap: () => showEventSnack(
-                        context,
-                        'Showing curated events near $_selectedCity',
-                      ),
-                    ),
-                    const SizedBox(height: AmoraSpacing.x4),
-                    _SearchField(
-                      controller: _searchController,
-                      onChanged: (value) => setState(() => _search = value),
-                    ),
-                    const SizedBox(height: AmoraSpacing.x4),
-                    SizedBox(
-                      height: 42,
-                      child: ListView(
-                        scrollDirection: Axis.horizontal,
-                        children: [
-                          for (final city in eventCities)
-                            CityChip(
-                              city: city,
-                              selected: city == _selectedCity,
-                              onTap: () => setState(() => _selectedCity = city),
-                            ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: AmoraSpacing.x4),
-                    Wrap(
-                      children: [
-                        for (final category in eventCategories)
-                          CategoryChip(
-                            label: category,
-                            selected: category == _selectedCategory,
-                            onTap: () =>
-                                setState(() => _selectedCategory = category),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: AmoraSpacing.x3),
-                    SizedBox(
-                      height:
-                          MediaQuery.textScalerOf(context).scale(16) / 16 > 1.2
-                          ? 256
-                          : 220,
-                      child: PageView.builder(
-                        controller: _pageController,
-                        itemCount: heroEvents.length,
-                        itemBuilder: (context, index) {
-                          final event = heroEvents[index];
-                          return Padding(
-                            padding: const EdgeInsets.only(right: 10),
-                            child: EventBanner(
-                              event: event,
-                              onBook: () => _openBooking(event),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: AmoraSpacing.x6),
-                    const SectionTitle(
-                      title: 'Featured Events',
-                      subtitle: 'Curated dating moments near you',
-                    ),
-                    const SizedBox(height: 14),
-                    if (_loading)
-                      const Row(
-                        children: [
-                          Expanded(child: AmoraCardSkeleton(height: 260)),
-                          SizedBox(width: AmoraSpacing.space12),
-                          Expanded(child: AmoraCardSkeleton(height: 260)),
-                        ],
-                      )
-                    else if (filtered.isEmpty)
-                      AmoraEmptyState(
-                        icon: AmoraIcons.events,
-                        title: 'No events match these filters',
-                        message:
-                            'Try another city, category, or search phrase.',
-                        actionLabel: 'Reset filters',
-                        onAction: _resetFilters,
-                      )
-                    else
-                      LayoutBuilder(
-                        builder: (context, constraints) {
-                          final textScale =
-                              MediaQuery.textScalerOf(context).scale(16) / 16;
-                          final railHeight = textScale > 1.2
-                              ? 390.0
-                              : constraints.maxWidth < 340
-                              ? 370.0
-                              : 352.0;
-                          return SizedBox(
-                            height: railHeight,
-                            child: ListView.separated(
-                              scrollDirection: Axis.horizontal,
-                              padding: const EdgeInsets.only(bottom: 2),
-                              itemCount: filtered.length,
-                              separatorBuilder: (_, _) =>
-                                  const SizedBox(width: 14),
-                              itemBuilder: (context, index) {
-                                final event = filtered[index];
-                                return EventCard(
-                                  event: event,
-                                  onOpen: () => _openDetail(event),
-                                  onBook: () => _openBooking(event),
-                                );
-                              },
-                            ),
-                          );
-                        },
-                      ),
-                    const SizedBox(height: 26),
-                    _MapPreview(city: _selectedCity),
-                    const SizedBox(height: 26),
-                    const SectionTitle(
-                      title: 'Popular This Week',
-                      subtitle: 'Fast-filling premium socials',
-                    ),
-                    const SizedBox(height: 14),
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        final width = constraints.maxWidth;
-                        final columns = width >= 760
-                            ? 4
-                            : width >= 560
-                            ? 3
-                            : 2;
-                        final tileWidth =
-                            (width - ((columns - 1) * 12)) / columns;
-                        final tileHeight = tileWidth < 180 ? 332.0 : 344.0;
-                        return GridView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          gridDelegate:
-                              SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: columns,
-                                crossAxisSpacing: 12,
-                                mainAxisSpacing: 12,
-                                childAspectRatio: tileWidth / tileHeight,
-                              ),
-                          itemCount: popularEvents.length,
-                          itemBuilder: (context, index) {
-                            final event = popularEvents[index];
-                            return EventCard(
-                              event: event,
-                              compact: true,
-                              fillHeight: true,
-                              onOpen: () => _openDetail(event),
-                              onBook: () => _openBooking(event),
-                            );
-                          },
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 26),
-                    const SectionTitle(
-                      title: 'Recommended For You',
-                      subtitle: 'AI picks based on intentions and interests',
-                    ),
-                    const SizedBox(height: 14),
-                    for (final event in recommendedEvents)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 14),
-                        child: _RecommendationCard(
-                          event: event,
-                          onOpen: () => _openDetail(event),
-                          onBook: () => _openBooking(event),
-                        ),
-                      ),
-                  ]),
-                ),
+    final featured = filtered.isEmpty ? null : filtered.first;
+    final upcoming = featured == null
+        ? const <EventModel>[]
+        : filtered.skip(1).take(8).toList(growable: false);
+    final nearby = filtered
+        .where((event) => event.city == 'Ahmedabad')
+        .take(6)
+        .toList(growable: false);
+    final interestBased = filtered
+        .where(
+          (event) => event.interests.any(
+            (interest) =>
+                interest == 'Coffee' ||
+                interest == 'Music' ||
+                interest == 'Culture',
+          ),
+        )
+        .take(6)
+        .toList(growable: false);
+
+    return CustomScrollView(
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+      slivers: [
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
+          sliver: SliverList.list(
+            children: [
+              EventsAppBar(
+                onCalendar: () =>
+                    Navigator.of(context).pushNamed(MyEventsScreen.routeName),
+                onFilter: _showFilters,
               ),
+              const SizedBox(height: 18),
+              EventsSummary(
+                eventCount: events
+                    .where((event) => event.city == 'Ahmedabad')
+                    .length,
+                city: 'Ahmedabad',
+                joinedCount: _joinedEntries.length,
+              ),
+              const SizedBox(height: 16),
+              EventCategoryBar(
+                categories: _categories,
+                selected: _selectedCategory,
+                onSelected: (category) =>
+                    setState(() => _selectedCategory = category),
+              ),
+              const SizedBox(height: 24),
+              if (featured != null) ...[
+                const _SectionHeading(
+                  title: 'Featured for you',
+                  subtitle: 'A standout gathering from this week’s curation',
+                ),
+                const SizedBox(height: 12),
+                FeaturedEventCard(
+                  event: featured,
+                  status: _participation[featured.id],
+                  onOpen: () => _openDetail(featured),
+                  onJoin: () => _handleParticipation(featured),
+                ),
+                const SizedBox(height: 28),
+              ],
+              if (filtered.isEmpty)
+                EventsEmptyState(onShowAll: _showAll)
+              else ...[
+                const _SectionHeading(
+                  title: 'Upcoming events',
+                  subtitle: 'Make space for a meaningful plan',
+                ),
+                const SizedBox(height: 12),
+              ],
             ],
           ),
         ),
-      ),
+        if (upcoming.isNotEmpty)
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            sliver: SliverLayoutBuilder(
+              builder: (context, constraints) {
+                if (constraints.crossAxisExtent >= 760) {
+                  return SliverGrid.builder(
+                    itemCount: upcoming.length,
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          mainAxisSpacing: 14,
+                          crossAxisSpacing: 14,
+                          mainAxisExtent: 356,
+                        ),
+                    itemBuilder: (_, index) {
+                      final event = upcoming[index];
+                      return FadeUp(
+                        delay: Duration(milliseconds: 35 * index),
+                        child: EventCard(
+                          event: event,
+                          status: _participation[event.id],
+                          onOpen: () => _openDetail(event),
+                          onJoin: () => _handleParticipation(event),
+                        ),
+                      );
+                    },
+                  );
+                }
+                return SliverList.separated(
+                  itemCount: upcoming.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 12),
+                  itemBuilder: (_, index) {
+                    final event = upcoming[index];
+                    return FadeUp(
+                      delay: Duration(milliseconds: 30 * index),
+                      child: EventCard(
+                        event: event,
+                        horizontal: true,
+                        status: _participation[event.id],
+                        onOpen: () => _openDetail(event),
+                        onJoin: () => _handleParticipation(event),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        if (nearby.isNotEmpty)
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(20, 28, 20, 0),
+            sliver: SliverList.list(
+              children: [
+                const _SectionHeading(
+                  title: 'Near you',
+                  subtitle: 'Curated around Ahmedabad',
+                ),
+                const SizedBox(height: 12),
+                _EventRail(
+                  events: nearby,
+                  participation: _participation,
+                  onOpen: _openDetail,
+                  onJoin: _handleParticipation,
+                ),
+              ],
+            ),
+          ),
+        if (interestBased.isNotEmpty)
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(20, 28, 20, 0),
+            sliver: SliverList.list(
+              children: [
+                const _SectionHeading(
+                  title: 'Shared interests',
+                  subtitle: 'Coffee, culture, music, and easy conversation',
+                ),
+                const SizedBox(height: 12),
+                _EventRail(
+                  events: interestBased,
+                  participation: _participation,
+                  onOpen: _openDetail,
+                  onJoin: _handleParticipation,
+                ),
+              ],
+            ),
+          ),
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(20, 28, 20, 38),
+          sliver: SliverList.list(
+            children: [
+              _SectionHeading(
+                title: 'My Events',
+                subtitle: _joinedEntries.isEmpty
+                    ? 'Your joined gatherings will appear here'
+                    : '${_joinedEntries.length} gathering'
+                          '${_joinedEntries.length == 1 ? '' : 's'} ahead',
+                actionLabel: 'View all',
+                onAction: () =>
+                    Navigator.of(context).pushNamed(MyEventsScreen.routeName),
+              ),
+              const SizedBox(height: 12),
+              if (_joinedEntries.isEmpty)
+                EventsEmptyState(
+                  title: 'You haven’t joined an event yet',
+                  description:
+                      'Explore curated gatherings and find one that feels right.',
+                  onShowAll: _showAll,
+                )
+              else
+                for (final entry in _joinedEntries) ...[
+                  EventCard(
+                    event: entry.event,
+                    horizontal: true,
+                    status: _participation[entry.event.id],
+                    onOpen: () => _openDetail(entry.event),
+                    onJoin: () => _handleParticipation(entry.event),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+            ],
+          ),
+        ),
+      ],
     );
   }
 
-  void _resetFilters() {
-    setState(() {
-      _selectedCity = 'Ahmedabad';
-      _selectedCategory = 'Premium';
-      _search = '';
-      _searchController.clear();
-    });
-  }
+  void _showAll() => setState(() => _selectedCategory = _allCategory);
 
   void _openDetail(EventModel event) {
-    Navigator.of(context).pushNamed('/event-detail', arguments: event);
+    Navigator.of(
+      context,
+    ).pushNamed(EventDetailScreen.routeName, arguments: event);
   }
 
-  void _openBooking(EventModel event) {
-    Navigator.of(context).pushNamed('/ticket-booking', arguments: event);
+  void _handleParticipation(EventModel event) {
+    final status = _participation[event.id];
+    if (status == TicketStatus.waitlisted) {
+      _openDetail(event);
+      return;
+    }
+    if (status != null) {
+      _openDetail(event);
+      return;
+    }
+    AmoraSession.requireAuth(
+      context: context,
+      onAuthenticated: () {
+        if (!mounted) return;
+        setState(() => _participation[event.id] = TicketStatus.upcoming);
+        showEventSnack(context, 'You joined ${event.title}');
+      },
+    );
   }
-}
 
-class _MapPreview extends StatelessWidget {
-  const _MapPreview({required this.city});
-
-  final String city;
-
-  @override
-  Widget build(BuildContext context) {
-    return AmoraCard(
-      variant: AmoraCardVariant.event,
-      padding: AmoraSpacing.compactCard,
-      semanticLabel: '$city event map',
-      child: SizedBox(
-        height: 158,
-        child: Row(
+  void _showFilters() {
+    showModalBottomSheet<void>(
+      context: context,
+      useSafeArea: true,
+      backgroundColor: AppColors.surface,
+      showDragHandle: true,
+      builder: (sheetContext) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Container(
-              width: 92,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [AppColors.primaryPurple, AppColors.primaryRose],
-                ),
-                borderRadius: AmoraRadius.card,
-              ),
-              child: const Icon(
-                AmoraIcons.location,
-                color: AppColors.surface,
-                size: AmoraIconSizes.large,
+            const Text(
+              'Discover events',
+              style: TextStyle(
+                color: AppColors.primary,
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
               ),
             ),
-            const SizedBox(width: AmoraSpacing.space16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    '$city event map',
-                    style: AmoraTextStyles.titleLarge.copyWith(
-                      color: AppColors.deepWine,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: AmoraSpacing.space8),
-                  Text(
-                    'Venue pins and distance filters are ready for maps integration.',
-                    style: AmoraTextStyles.bodyMedium.copyWith(
-                      color: AppColors.textGray,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
+            const SizedBox(height: 6),
+            const Text(
+              'Choose a category from the discovery row.',
+              style: TextStyle(color: AppColors.text, fontSize: 14),
+            ),
+            const SizedBox(height: 18),
+            EventCategoryBar(
+              categories: _categories,
+              selected: _selectedCategory,
+              onSelected: (category) {
+                setState(() => _selectedCategory = category);
+                Navigator.pop(sheetContext);
+              },
             ),
           ],
         ),
@@ -361,189 +551,92 @@ class _MapPreview extends StatelessWidget {
   }
 }
 
-class _PremiumAppBar extends StatelessWidget {
-  const _PremiumAppBar({required this.onNotifications, required this.onSearch});
+class _EventRail extends StatelessWidget {
+  const _EventRail({
+    required this.events,
+    required this.participation,
+    required this.onOpen,
+    required this.onJoin,
+  });
 
-  final VoidCallback onNotifications;
-  final VoidCallback onSearch;
+  final List<EventModel> events;
+  final Map<String, TicketStatus> participation;
+  final ValueChanged<EventModel> onOpen;
+  final ValueChanged<EventModel> onJoin;
+
+  @override
+  Widget build(BuildContext context) {
+    final width = MediaQuery.sizeOf(context).width;
+    final itemWidth = width >= 700 ? 330.0 : (width - 64).clamp(260.0, 328.0);
+    return SizedBox(
+      height: 354,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: events.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 12),
+        itemBuilder: (_, index) {
+          final event = events[index];
+          return SizedBox(
+            width: itemWidth,
+            child: EventCard(
+              event: event,
+              status: participation[event.id],
+              onOpen: () => onOpen(event),
+              onJoin: () => onJoin(event),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _SectionHeading extends StatelessWidget {
+  const _SectionHeading({
+    required this.title,
+    required this.subtitle,
+    this.actionLabel,
+    this.onAction,
+  });
+
+  final String title;
+  final String subtitle;
+  final String? actionLabel;
+  final VoidCallback? onAction;
 
   @override
   Widget build(BuildContext context) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Events',
-                style: AmoraTextStyles.headlineLarge.copyWith(
-                  color: AppColors.deepWine,
+                title,
+                style: const TextStyle(
+                  color: AppColors.primary,
+                  fontSize: 20,
+                  height: 1.15,
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              SizedBox(height: AmoraSpacing.space8),
+              const SizedBox(height: 4),
               Text(
-                'Meet people beyond swiping',
-                style: AmoraTextStyles.bodyMedium.copyWith(
-                  color: AppColors.textGray,
-                  fontWeight: FontWeight.w600,
+                subtitle,
+                style: const TextStyle(
+                  color: AppColors.text,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w400,
                 ),
               ),
             ],
           ),
         ),
-        _CircleIconButton(
-          tooltip: 'Notifications',
-          icon: AmoraIcons.notifications,
-          onPressed: onNotifications,
-        ),
-        const SizedBox(width: AmoraSpacing.space8),
-        _CircleIconButton(
-          tooltip: 'Search',
-          icon: AmoraIcons.search,
-          onPressed: onSearch,
-        ),
+        if (actionLabel != null)
+          TextButton(onPressed: onAction, child: Text(actionLabel!)),
       ],
-    );
-  }
-}
-
-class _CircleIconButton extends StatelessWidget {
-  const _CircleIconButton({
-    required this.tooltip,
-    required this.icon,
-    required this.onPressed,
-  });
-
-  final String tooltip;
-  final IconData icon;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return Tooltip(
-      message: tooltip,
-      child: IconButton.filledTonal(
-        style: IconButton.styleFrom(
-          backgroundColor: AppColors.surface,
-          foregroundColor: AppColors.deepWine,
-        ),
-        onPressed: onPressed,
-        icon: Icon(icon),
-      ),
-    );
-  }
-}
-
-class _SearchField extends StatelessWidget {
-  const _SearchField({required this.controller, required this.onChanged});
-
-  final TextEditingController controller;
-  final ValueChanged<String> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return AmoraSearchBar(
-      controller: controller,
-      onChanged: onChanged,
-      hintText: 'Search events...',
-      onClear: controller.text.isEmpty
-          ? null
-          : () {
-              controller.clear();
-              onChanged('');
-            },
-    );
-  }
-}
-
-class _RecommendationCard extends StatelessWidget {
-  const _RecommendationCard({
-    required this.event,
-    required this.onOpen,
-    required this.onBook,
-  });
-
-  final EventModel event;
-  final VoidCallback onOpen;
-  final VoidCallback onBook;
-
-  @override
-  Widget build(BuildContext context) {
-    return AmoraCard(
-      variant: AmoraCardVariant.event,
-      padding: AmoraSpacing.compactCard,
-      onTap: onOpen,
-      semanticLabel: event.title,
-      child: Row(
-        children: [
-          Container(
-            width: 70,
-            height: 70,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(colors: event.palette),
-              borderRadius: AmoraRadius.card,
-            ),
-            child: Icon(
-              event.image.icon,
-              color: AppColors.surface,
-              size: AmoraIconSizes.large,
-            ),
-          ),
-          const SizedBox(width: AmoraSpacing.space16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  event.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AmoraTextStyles.titleMedium.copyWith(
-                    color: AppColors.deepWine,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: AmoraSpacing.space4),
-                Text(
-                  '${event.intent} • ${event.compatibility}% match',
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: AmoraTextStyles.bodySmall.copyWith(
-                    color: AppColors.textGray,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: AmoraSpacing.space8),
-                Text(
-                  event.interests.join('  •  '),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AmoraTextStyles.labelMedium.copyWith(
-                    color: AppColors.primaryPurple,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: AmoraSpacing.space8),
-          Semantics(
-            button: true,
-            label: 'Book ${event.title}',
-            child: IconButton.filled(
-              tooltip: 'Book event',
-              style: IconButton.styleFrom(
-                backgroundColor: AppColors.deepWine,
-                foregroundColor: AppColors.surface,
-              ),
-              onPressed: onBook,
-              icon: const Icon(AmoraIcons.ticket),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

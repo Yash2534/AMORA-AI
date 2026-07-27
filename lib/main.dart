@@ -23,7 +23,6 @@ import 'package:amora_ai/features/events/presentation/event_group_chat_screen.da
 import 'package:amora_ai/features/events/presentation/event_waitlist_screen.dart';
 import 'package:amora_ai/features/events/presentation/my_events_screen.dart';
 import 'package:amora_ai/features/events/presentation/post_event_feedback_screen.dart';
-import 'package:amora_ai/features/events/presentation/ticket_booking_screen.dart';
 import 'package:amora_ai/features/insights/presentation/dating_recap_screen.dart';
 import 'package:amora_ai/features/landing/presentation/amora_landing_screen.dart';
 import 'package:amora_ai/features/matches/presentation/matches_screen.dart';
@@ -131,7 +130,6 @@ class _MyAppState extends State<MyApp> {
         EventsScreen.routeName: (_) =>
             const MainShell(initialTab: AmoraNavTab.events),
         EventDetailScreen.routeName: (_) => const EventDetailScreen(),
-        TicketBookingScreen.routeName: (_) => const TicketBookingScreen(),
         MyEventsScreen.routeName: (_) => const MyEventsScreen(),
         AiIcebreakersScreen.routeName: (_) => const AiIcebreakersScreen(),
         SubscriptionScreen.routeName: (_) => const SubscriptionScreen(),

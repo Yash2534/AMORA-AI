@@ -97,7 +97,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Featured Event Book CTA survives large text on narrow screen', (
+  testWidgets('Events locked state survives large text on narrow screen', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(320, 700));
@@ -111,13 +111,9 @@ void main() {
         ),
       ),
     );
-    await tester.pump(const Duration(milliseconds: 700));
-    await tester.scrollUntilVisible(
-      find.text('Featured Events'),
-      500,
-      scrollable: find.byType(Scrollable).first,
-    );
-    expect(find.text('Book'), findsWidgets);
+    await tester.pumpAndSettle();
+    expect(find.text('Events are for Amora members'), findsOneWidget);
+    expect(find.text('Explore Membership'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
