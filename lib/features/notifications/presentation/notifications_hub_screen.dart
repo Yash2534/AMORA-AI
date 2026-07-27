@@ -28,6 +28,17 @@ class _NotificationsHubScreenState extends State<NotificationsHubScreen> {
   String _filter = 'All';
 
   bool get _selectionMode => _selectedIds.isNotEmpty;
+  int get _unreadCount => _notifications.where((item) => item.unread).length;
+
+  List<String> get _availableFilters => <String>[
+    'All',
+    'Unread',
+    for (final filter in _notificationFilters)
+      if (filter != 'All' &&
+          filter != 'Unread' &&
+          _notifications.any((item) => item.category == filter))
+        filter,
+  ];
 
   List<_NotificationItem> get _filteredNotifications {
     if (_filter == 'All') return _notifications;
@@ -59,6 +70,7 @@ class _NotificationsHubScreenState extends State<NotificationsHubScreen> {
   @override
   Widget build(BuildContext context) {
     final entries = _feedEntries;
+    final unreadCount = _unreadCount;
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -68,12 +80,28 @@ class _NotificationsHubScreenState extends State<NotificationsHubScreen> {
             children: [
               _NotificationsAppBar(
                 onBack: _goBack,
+                unreadCount: unreadCount,
+                onMarkAllRead: unreadCount == 0 ? null : _markAllRead,
                 onSettings: () => Navigator.of(
                   context,
                 ).pushNamed(NotificationPreferencesScreen.routeName),
               ),
-              const SizedBox(height: AmoraSpacing.space8),
+              if (unreadCount > 0)
+                _NotificationsSummaryStrip(
+                  unreadCount: unreadCount,
+                  unreadMatches: _notifications
+                      .where(
+                        (item) => item.unread && item.category == 'Matches',
+                      )
+                      .length,
+                  unreadMessages: _notifications
+                      .where(
+                        (item) => item.unread && item.category == 'Messages',
+                      )
+                      .length,
+                ),
               _NotificationFilterRail(
+                filters: _availableFilters,
                 selected: _filter,
                 onSelected: (filter) {
                   setState(() {
@@ -101,7 +129,16 @@ class _NotificationsHubScreenState extends State<NotificationsHubScreen> {
               ),
               Expanded(
                 child: entries.isEmpty
-                    ? _NotificationEmptyState(onDiscover: _openDiscover)
+                    ? _notifications.isEmpty
+                          ? _NotificationEmptyState(onDiscover: _openDiscover)
+                          : _NotificationFilteredEmptyState(
+                              onShowAll: () {
+                                setState(() {
+                                  _filter = 'All';
+                                  _selectedIds.clear();
+                                });
+                              },
+                            )
                     : ListView.builder(
                         key: const ValueKey('notification-feed'),
                         padding: const EdgeInsets.fromLTRB(
@@ -122,19 +159,14 @@ class _NotificationsHubScreenState extends State<NotificationsHubScreen> {
                           final item = entry as _NotificationItem;
                           return _AnimatedNotificationEntry(
                             key: ValueKey('notification-entry-${item.id}'),
-                            child: Padding(
-                              padding: const EdgeInsets.only(
-                                bottom: AmoraSpacing.space12,
-                              ),
-                              child: _NotificationTile(
-                                item: item,
-                                selected: _selectedIds.contains(item.id),
-                                selectionMode: _selectionMode,
-                                onTap: () => _handleTap(item),
-                                onLongPress: () => _toggleSelection(item),
-                                onMarkRead: () => _markRead(item),
-                                onDelete: () => _delete(item),
-                              ),
+                            child: _NotificationTile(
+                              item: item,
+                              selected: _selectedIds.contains(item.id),
+                              selectionMode: _selectionMode,
+                              onTap: () => _handleTap(item),
+                              onLongPress: () => _toggleSelection(item),
+                              onMarkRead: () => _markRead(item),
+                              onDelete: () => _delete(item),
                             ),
                           );
                         },
@@ -196,6 +228,17 @@ class _NotificationsHubScreenState extends State<NotificationsHubScreen> {
     _showMessage('Selected notifications marked as read');
   }
 
+  void _markAllRead() {
+    if (_unreadCount == 0) return;
+    setState(() {
+      for (final item in _notifications) {
+        item.unread = false;
+      }
+      _selectedIds.clear();
+    });
+    _showMessage('All notifications marked as read');
+  }
+
   void _deleteSelected() {
     setState(() {
       _notifications.removeWhere((item) => _selectedIds.contains(item.id));
@@ -224,81 +267,221 @@ class _NotificationsHubScreenState extends State<NotificationsHubScreen> {
 }
 
 class _NotificationsAppBar extends StatelessWidget {
-  const _NotificationsAppBar({required this.onBack, required this.onSettings});
+  const _NotificationsAppBar({
+    required this.onBack,
+    required this.unreadCount,
+    required this.onMarkAllRead,
+    required this.onSettings,
+  });
 
   final VoidCallback onBack;
+  final int unreadCount;
+  final VoidCallback? onMarkAllRead;
   final VoidCallback onSettings;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AmoraSpacing.space16,
-        AmoraSpacing.space8,
-        AmoraSpacing.space16,
-        0,
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border(
+          bottom: BorderSide(color: AppColors.tertiary.withValues(alpha: .46)),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: .045),
+            blurRadius: 14,
+            offset: const Offset(0, 5),
+          ),
+        ],
       ),
       child: SizedBox(
-        height: 56,
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.primary.withValues(alpha: .10),
-                blurRadius: 24,
-                spreadRadius: -10,
-                offset: const Offset(0, 10),
-              ),
-            ],
-          ),
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              Align(
-                alignment: Alignment.centerLeft,
-                child: TextButton.icon(
-                  key: const ValueKey('notifications-back-button'),
-                  onPressed: onBack,
-                  style: TextButton.styleFrom(
-                    foregroundColor: AppColors.primary,
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
+        height: 64,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final showMarkAllLabel = constraints.maxWidth >= 520;
+            final compact = constraints.maxWidth < 380;
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Row(
+                children: [
+                  _AppBarButton(
+                    key: const ValueKey('notifications-back-button'),
+                    tooltip: 'Back',
+                    semanticLabel: 'Back from notifications',
+                    icon: Icons.arrow_back_rounded,
+                    onTap: onBack,
                   ),
-                  icon: const Icon(Icons.arrow_back_rounded, size: 20),
-                  label: Text(
-                    'Back',
-                    style: AmoraTextStyles.labelMedium.copyWith(
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            'Notifications',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AmoraTextStyles.titleLarge.copyWith(
+                              color: AppColors.primary,
+                              fontSize: compact ? 21 : 24,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                        if (unreadCount > 0 && !compact) ...[
+                          const SizedBox(width: 8),
+                          Semantics(
+                            label: '$unreadCount unread notifications',
+                            child: Container(
+                              constraints: const BoxConstraints(
+                                minWidth: 24,
+                                minHeight: 24,
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 7,
+                              ),
+                              decoration: const BoxDecoration(
+                                color: AppColors.secondary,
+                                borderRadius: BorderRadius.all(
+                                  Radius.circular(99),
+                                ),
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                '$unreadCount',
+                                style: AmoraTextStyles.labelSmall.copyWith(
+                                  color: AppColors.surface,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  if (showMarkAllLabel)
+                    Tooltip(
+                      message: 'Mark all as read',
+                      child: Semantics(
+                        button: true,
+                        enabled: onMarkAllRead != null,
+                        label: 'Mark all notifications as read',
+                        child: TextButton.icon(
+                          key: const ValueKey(
+                            'notifications-mark-all-read-button',
+                          ),
+                          onPressed: onMarkAllRead,
+                          style: TextButton.styleFrom(
+                            foregroundColor: AppColors.primary,
+                            minimumSize: const Size(48, 48),
+                            padding: const EdgeInsets.symmetric(horizontal: 10),
+                          ),
+                          icon: const Icon(
+                            Icons.mark_email_read_rounded,
+                            size: 20,
+                          ),
+                          label: const Text('Mark all'),
+                        ),
+                      ),
+                    )
+                  else
+                    _AppBarButton(
+                      key: const ValueKey('notifications-mark-all-read-button'),
+                      tooltip: 'Mark all as read',
+                      semanticLabel: 'Mark all notifications as read',
+                      icon: Icons.mark_email_read_rounded,
+                      onTap: onMarkAllRead,
+                    ),
+                  _AppBarButton(
+                    key: const ValueKey('notifications-settings-button'),
+                    tooltip: 'Notification preferences',
+                    semanticLabel: 'Open notification preferences',
+                    icon: Icons.settings_rounded,
+                    onTap: onSettings,
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _NotificationsSummaryStrip extends StatelessWidget {
+  const _NotificationsSummaryStrip({
+    required this.unreadCount,
+    required this.unreadMatches,
+    required this.unreadMessages,
+  });
+
+  final int unreadCount;
+  final int unreadMatches;
+  final int unreadMessages;
+
+  @override
+  Widget build(BuildContext context) {
+    final details = <String>[
+      if (unreadMatches > 0)
+        '$unreadMatches new ${unreadMatches == 1 ? 'match' : 'matches'}',
+      if (unreadMessages > 0)
+        '$unreadMessages ${unreadMessages == 1 ? 'message' : 'messages'} waiting',
+    ];
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: AppColors.secondary.withValues(alpha: .22)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: AppColors.tertiary.withValues(alpha: .28),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.notifications_active_rounded,
+                color: AppColors.primary,
+                size: 21,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '$unreadCount unread ${unreadCount == 1 ? 'notification' : 'notifications'}',
+                    style: AmoraTextStyles.titleSmall.copyWith(
                       color: AppColors.primary,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                ),
+                  if (details.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      details.join(' • '),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AmoraTextStyles.bodySmall.copyWith(
+                        color: AppColors.text.withValues(alpha: .66),
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ],
               ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 76),
-                child: Text(
-                  'Notifications',
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AmoraTextStyles.titleLarge.copyWith(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-              Align(
-                alignment: Alignment.centerRight,
-                child: _AppBarButton(
-                  key: const ValueKey('notifications-settings-button'),
-                  tooltip: 'Notification preferences',
-                  icon: Icons.settings_rounded,
-                  onTap: onSettings,
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -309,23 +492,36 @@ class _AppBarButton extends StatelessWidget {
   const _AppBarButton({
     super.key,
     required this.tooltip,
+    required this.semanticLabel,
     required this.icon,
     required this.onTap,
   });
 
   final String tooltip;
+  final String semanticLabel;
   final IconData icon;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 52,
-      height: 52,
-      child: IconButton(
-        tooltip: tooltip,
-        onPressed: onTap,
-        icon: Icon(icon, color: AppColors.primary, size: 23),
+    return Semantics(
+      button: true,
+      enabled: onTap != null,
+      label: semanticLabel,
+      child: SizedBox.square(
+        dimension: 48,
+        child: IconButton(
+          tooltip: tooltip,
+          onPressed: onTap,
+          style: IconButton.styleFrom(
+            foregroundColor: AppColors.primary,
+            disabledForegroundColor: AppColors.tertiary,
+            hoverColor: AppColors.background,
+            focusColor: AppColors.tertiary.withValues(alpha: .24),
+            highlightColor: AppColors.tertiary.withValues(alpha: .2),
+          ),
+          icon: Icon(icon, size: 22),
+        ),
       ),
     );
   }
@@ -333,10 +529,12 @@ class _AppBarButton extends StatelessWidget {
 
 class _NotificationFilterRail extends StatelessWidget {
   const _NotificationFilterRail({
+    required this.filters,
     required this.selected,
     required this.onSelected,
   });
 
+  final List<String> filters;
   final String selected;
   final ValueChanged<String> onSelected;
 
@@ -344,18 +542,18 @@ class _NotificationFilterRail extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       key: const ValueKey('notification-filter-rail'),
-      height: 46,
+      height: 52,
       child: ListView.separated(
-        padding: const EdgeInsets.symmetric(horizontal: AmoraSpacing.space16),
+        padding: const EdgeInsets.fromLTRB(16, 6, 16, 4),
         scrollDirection: Axis.horizontal,
         physics: const BouncingScrollPhysics(
           parent: AlwaysScrollableScrollPhysics(),
         ),
-        itemCount: _notificationFilters.length,
+        itemCount: filters.length,
         separatorBuilder: (context, index) =>
             const SizedBox(width: AmoraSpacing.space8),
         itemBuilder: (context, index) {
-          final filter = _notificationFilters[index];
+          final filter = filters[index];
           return _NotificationFilterChip(
             key: ValueKey('notification-filter-$filter'),
             label: filter,
@@ -452,16 +650,29 @@ class _NotificationFilterChipState extends State<_NotificationFilterChip>
                   horizontal: AmoraSpacing.space16,
                 ),
                 child: Center(
-                  child: Text(
-                    widget.label,
-                    style: AmoraTextStyles.labelMedium.copyWith(
-                      color: widget.selected
-                          ? AppColors.surface
-                          : AppColors.textNeutral,
-                      fontWeight: widget.selected
-                          ? FontWeight.w700
-                          : FontWeight.w500,
-                    ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        _notificationFilterIcon(widget.label),
+                        size: 17,
+                        color: widget.selected
+                            ? AppColors.surface
+                            : AppColors.secondary,
+                      ),
+                      const SizedBox(width: 7),
+                      Text(
+                        widget.label,
+                        style: AmoraTextStyles.labelMedium.copyWith(
+                          color: widget.selected
+                              ? AppColors.surface
+                              : AppColors.text,
+                          fontWeight: widget.selected
+                              ? FontWeight.w700
+                              : FontWeight.w600,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -471,6 +682,23 @@ class _NotificationFilterChipState extends State<_NotificationFilterChip>
       ),
     );
   }
+}
+
+IconData _notificationFilterIcon(String label) {
+  return switch (label) {
+    'Unread' => Icons.mark_email_unread_rounded,
+    'Matches' => Icons.auto_awesome_rounded,
+    'Messages' => Icons.chat_bubble_rounded,
+    'Likes' => Icons.favorite_rounded,
+    'Super Likes' => Icons.star_rounded,
+    'Events' => Icons.event_rounded,
+    'Profile Views' => Icons.visibility_rounded,
+    'Verification' => Icons.verified_user_rounded,
+    'Security' => Icons.shield_rounded,
+    'Payments' => Icons.credit_card_rounded,
+    'Offers' => Icons.local_offer_rounded,
+    _ => Icons.notifications_rounded,
+  };
 }
 
 class _SelectionToolbar extends StatelessWidget {
@@ -604,7 +832,7 @@ class _AnimatedNotificationEntryState extends State<_AnimatedNotificationEntry>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 420),
+      duration: const Duration(milliseconds: 260),
     );
     final curve = CurvedAnimation(
       parent: _controller,
@@ -628,6 +856,7 @@ class _AnimatedNotificationEntryState extends State<_AnimatedNotificationEntry>
 
   @override
   Widget build(BuildContext context) {
+    if (MediaQuery.disableAnimationsOf(context)) return widget.child;
     return FadeTransition(
       opacity: _opacity,
       child: SlideTransition(position: _slide, child: widget.child),
@@ -663,137 +892,176 @@ class _NotificationTileState extends State<_NotificationTile> {
 
   @override
   Widget build(BuildContext context) {
-    return Dismissible(
-      key: ValueKey('notification-tile-${widget.item.id}'),
-      direction: widget.selectionMode
-          ? DismissDirection.none
-          : DismissDirection.horizontal,
-      background: const _SwipeBackground(
-        alignment: Alignment.centerLeft,
-        color: AppColors.primary,
-        icon: Icons.mark_email_read_rounded,
-        label: 'Mark as read',
-      ),
-      secondaryBackground: const _SwipeBackground(
-        alignment: Alignment.centerRight,
-        color: AppColors.secondary,
-        icon: Icons.delete_outline_rounded,
-        label: 'Delete',
-      ),
-      confirmDismiss: (direction) async {
-        if (direction == DismissDirection.startToEnd) {
-          widget.onMarkRead();
-          return false;
-        }
-        return true;
-      },
-      onDismissed: (direction) => widget.onDelete(),
-      child: Listener(
-        onPointerDown: (_) => setState(() => _pressed = true),
-        onPointerUp: (_) => setState(() => _pressed = false),
-        onPointerCancel: (_) => setState(() => _pressed = false),
-        child: AnimatedScale(
-          scale: _pressed ? .985 : 1,
-          duration: const Duration(milliseconds: 160),
-          curve: Curves.easeOutBack,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 220),
-            curve: Curves.easeOutCubic,
-            decoration: BoxDecoration(
-              color: widget.selected
-                  ? AppColors.tertiary.withValues(alpha: .38)
-                  : AppColors.surface,
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(
+    final item = widget.item;
+    final semanticState = item.unread ? 'Unread' : 'Read';
+    return Semantics(
+      button: true,
+      selected: widget.selected,
+      label:
+          '${item.title}. ${item.description}. ${item.relativeTime}. $semanticState.',
+      child: Dismissible(
+        key: ValueKey('notification-tile-${item.id}'),
+        direction: widget.selectionMode
+            ? DismissDirection.none
+            : item.unread
+            ? DismissDirection.horizontal
+            : DismissDirection.endToStart,
+        background: const _SwipeBackground(
+          alignment: Alignment.centerLeft,
+          color: AppColors.primary,
+          icon: Icons.mark_email_read_rounded,
+          label: 'Mark as read',
+        ),
+        secondaryBackground: const _SwipeBackground(
+          alignment: Alignment.centerRight,
+          color: AppColors.secondary,
+          icon: Icons.delete_outline_rounded,
+          label: 'Delete',
+        ),
+        confirmDismiss: (direction) async {
+          if (direction == DismissDirection.startToEnd) {
+            widget.onMarkRead();
+            return false;
+          }
+          return true;
+        },
+        onDismissed: (direction) => widget.onDelete(),
+        child: Listener(
+          onPointerDown: (_) => setState(() => _pressed = true),
+          onPointerUp: (_) => setState(() => _pressed = false),
+          onPointerCancel: (_) => setState(() => _pressed = false),
+          child: AnimatedScale(
+            scale: _pressed ? .99 : 1,
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOutBack,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOutCubic,
+              constraints: const BoxConstraints(minHeight: 88),
+              decoration: BoxDecoration(
                 color: widget.selected
-                    ? AppColors.secondary
-                    : AppColors.tertiary.withValues(alpha: .52),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.primary.withValues(alpha: .08),
-                  blurRadius: 22,
-                  spreadRadius: -10,
-                  offset: const Offset(0, 10),
-                ),
-              ],
-            ),
-            child: Material(
-              color: widget.selected
-                  ? AppColors.tertiary.withValues(alpha: .38)
-                  : AppColors.surface,
-              borderRadius: BorderRadius.circular(24),
-              clipBehavior: Clip.antiAlias,
-              child: InkWell(
-                onTap: widget.onTap,
-                onLongPress: widget.onLongPress,
-                child: Padding(
-                  padding: const EdgeInsets.all(AmoraSpacing.space16),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _NotificationAvatar(item: widget.item),
-                      const SizedBox(width: AmoraSpacing.space12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    widget.item.title,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: AmoraTextStyles.titleSmall.copyWith(
-                                      color: AppColors.textNeutral,
-                                      fontWeight: FontWeight.w800,
-                                      height: 1.2,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: AmoraSpacing.space8),
-                                if (widget.selected)
-                                  const Icon(
-                                    Icons.check_circle_rounded,
-                                    color: AppColors.secondary,
-                                    size: 20,
-                                  )
-                                else if (widget.item.unread)
-                                  _NotificationBadge(
-                                    key: ValueKey(
-                                      'notification-unread-${widget.item.id}',
-                                    ),
-                                  ),
-                              ],
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              widget.item.description,
-                              maxLines: 3,
-                              overflow: TextOverflow.ellipsis,
-                              style: AmoraTextStyles.bodyMedium.copyWith(
-                                color: AppColors.textNeutral.withValues(
-                                  alpha: .72,
-                                ),
-                                height: 1.35,
-                              ),
-                            ),
-                            const SizedBox(height: 10),
-                            Text(
-                              widget.item.relativeTime,
-                              style: AmoraTextStyles.labelSmall.copyWith(
-                                color: AppColors.textNeutral.withValues(
-                                  alpha: .52,
-                                ),
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
+                    ? AppColors.tertiary.withValues(alpha: .34)
+                    : item.unread
+                    ? AppColors.background.withValues(alpha: .84)
+                    : AppColors.surface,
+                borderRadius: widget.selected
+                    ? BorderRadius.circular(18)
+                    : BorderRadius.zero,
+                border: widget.selected
+                    ? Border.all(color: AppColors.secondary, width: 1.4)
+                    : Border(
+                        left: BorderSide(
+                          color: item.unread
+                              ? AppColors.secondary
+                              : AppColors.transparent,
+                          width: item.unread ? 3 : 0,
+                        ),
+                        bottom: BorderSide(
+                          color: AppColors.tertiary.withValues(alpha: .38),
                         ),
                       ),
-                    ],
+              ),
+              child: Material(
+                color: AppColors.transparent,
+                borderRadius: widget.selected
+                    ? BorderRadius.circular(18)
+                    : BorderRadius.zero,
+                clipBehavior: Clip.antiAlias,
+                child: InkWell(
+                  onTap: widget.onTap,
+                  onLongPress: widget.onLongPress,
+                  focusColor: AppColors.tertiary.withValues(alpha: .22),
+                  hoverColor: AppColors.background.withValues(alpha: .62),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(13, 12, 12, 12),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _NotificationAvatar(item: item),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      item.title,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: AmoraTextStyles.titleSmall
+                                          .copyWith(
+                                            color: AppColors.text,
+                                            fontSize: 15,
+                                            fontWeight: item.unread
+                                                ? FontWeight.w700
+                                                : FontWeight.w600,
+                                            height: 1.24,
+                                          ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  ConstrainedBox(
+                                    constraints: const BoxConstraints(
+                                      maxWidth: 92,
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.end,
+                                      children: [
+                                        Text(
+                                          item.relativeTime,
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                          textAlign: TextAlign.right,
+                                          style: AmoraTextStyles.labelSmall
+                                              .copyWith(
+                                                color: AppColors.text
+                                                    .withValues(alpha: .54),
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w500,
+                                                height: 1.2,
+                                              ),
+                                        ),
+                                        const SizedBox(height: 6),
+                                        if (widget.selected)
+                                          const Icon(
+                                            Icons.check_circle_rounded,
+                                            color: AppColors.primary,
+                                            size: 19,
+                                          )
+                                        else if (item.unread)
+                                          _NotificationBadge(
+                                            key: ValueKey(
+                                              'notification-unread-${item.id}',
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 5),
+                              Text(
+                                item.description,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: AmoraTextStyles.bodyMedium.copyWith(
+                                  color: AppColors.text.withValues(alpha: .7),
+                                  fontSize: 14,
+                                  height: 1.35,
+                                  fontWeight: item.unread
+                                      ? FontWeight.w500
+                                      : FontWeight.w400,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -812,20 +1080,38 @@ class _NotificationAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final contextualIcon =
+        item.category == 'Verification' ||
+        item.category == 'Security' ||
+        item.category == 'Payments';
     return SizedBox(
-      width: 58,
-      height: 58,
+      width: 56,
+      height: 56,
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          PremiumAssetImage(
-            imageUrl: item.imageUrl,
-            fallbackAsset: item.fallbackAsset,
-            initials: item.initials,
-            width: 54,
-            height: 54,
-            borderRadius: BorderRadius.circular(20),
-          ),
+          if (contextualIcon)
+            Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                color: AppColors.tertiary.withValues(alpha: .3),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: AppColors.secondary.withValues(alpha: .2),
+                ),
+              ),
+              child: Icon(item.icon, color: AppColors.primary, size: 24),
+            )
+          else
+            PremiumAssetImage(
+              imageUrl: item.imageUrl,
+              fallbackAsset: item.fallbackAsset,
+              initials: item.initials,
+              width: 52,
+              height: 52,
+              borderRadius: BorderRadius.circular(26),
+            ),
           Positioned(
             right: 0,
             bottom: 0,
@@ -836,9 +1122,9 @@ class _NotificationAvatar extends StatelessWidget {
                 border: Border.all(color: AppColors.surface, width: 2),
               ),
               child: SizedBox(
-                width: 24,
-                height: 24,
-                child: Icon(item.icon, color: AppColors.surface, size: 13),
+                width: 22,
+                height: 22,
+                child: Icon(item.icon, color: AppColors.surface, size: 12),
               ),
             ),
           ),
@@ -924,61 +1210,94 @@ class NotificationSkeletonLoader extends StatelessWidget {
       padding: const EdgeInsets.all(AmoraSpacing.space16),
       itemCount: itemCount,
       itemBuilder: (context, index) {
-        return Padding(
-          padding: const EdgeInsets.only(bottom: AmoraSpacing.space12),
-          child: Container(
-            height: 112,
-            padding: const EdgeInsets.all(AmoraSpacing.space16),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(
-                color: AppColors.tertiary.withValues(alpha: .48),
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (index == 0) ...[
+              Container(
+                width: 56,
+                height: 10,
+                decoration: BoxDecoration(
+                  color: AppColors.tertiary.withValues(alpha: .42),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
+            Container(
+              height: 92,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                border: Border(
+                  bottom: BorderSide(
+                    color: AppColors.tertiary.withValues(alpha: .38),
+                  ),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      color: AppColors.tertiary.withValues(alpha: .3),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: FractionallySizedBox(
+                                alignment: Alignment.centerLeft,
+                                widthFactor: .7,
+                                child: Container(
+                                  height: 11,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.tertiary.withValues(
+                                      alpha: .44,
+                                    ),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            Container(
+                              width: 42,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                color: AppColors.tertiary.withValues(
+                                  alpha: .26,
+                                ),
+                                borderRadius: BorderRadius.circular(5),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 11),
+                        FractionallySizedBox(
+                          widthFactor: .88,
+                          child: Container(
+                            height: 9,
+                            decoration: BoxDecoration(
+                              color: AppColors.tertiary.withValues(alpha: .26),
+                              borderRadius: BorderRadius.circular(5),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
-            child: Row(
-              children: [
-                Container(
-                  width: 54,
-                  height: 54,
-                  decoration: BoxDecoration(
-                    color: AppColors.tertiary.withValues(alpha: .34),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                ),
-                const SizedBox(width: AmoraSpacing.space12),
-                Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      FractionallySizedBox(
-                        widthFactor: .62,
-                        child: Container(
-                          height: 12,
-                          decoration: BoxDecoration(
-                            color: AppColors.tertiary.withValues(alpha: .46),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: AmoraSpacing.space12),
-                      FractionallySizedBox(
-                        widthFactor: .88,
-                        child: Container(
-                          height: 10,
-                          decoration: BoxDecoration(
-                            color: AppColors.tertiary.withValues(alpha: .28),
-                            borderRadius: BorderRadius.circular(5),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
+          ],
         );
       },
     );
@@ -1000,16 +1319,41 @@ class _NotificationEmptyState extends StatelessWidget {
           children: [
             DecoratedBox(
               decoration: BoxDecoration(
-                color: AppColors.tertiary.withValues(alpha: .36),
+                color: AppColors.surface,
                 shape: BoxShape.circle,
+                border: Border.all(
+                  color: AppColors.secondary.withValues(alpha: .22),
+                ),
               ),
-              child: const SizedBox(
-                width: 104,
-                height: 104,
-                child: Icon(
-                  Icons.notifications_none_rounded,
-                  color: AppColors.primary,
-                  size: 48,
+              child: SizedBox(
+                width: 84,
+                height: 84,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Container(
+                      width: 54,
+                      height: 54,
+                      decoration: BoxDecoration(
+                        color: AppColors.tertiary.withValues(alpha: .26),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const Icon(
+                      Icons.notifications_none_rounded,
+                      color: AppColors.primary,
+                      size: 32,
+                    ),
+                    const Positioned(
+                      right: 13,
+                      top: 14,
+                      child: Icon(
+                        Icons.favorite_rounded,
+                        color: AppColors.secondary,
+                        size: 17,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -1024,7 +1368,7 @@ class _NotificationEmptyState extends StatelessWidget {
             ),
             const SizedBox(height: AmoraSpacing.space8),
             Text(
-              "We'll notify you when something important happens.",
+              'Matches, messages, events, and important updates will appear here.',
               textAlign: TextAlign.center,
               style: AmoraTextStyles.bodyMedium.copyWith(
                 color: AppColors.textNeutral.withValues(alpha: .66),
@@ -1042,6 +1386,69 @@ class _NotificationEmptyState extends StatelessWidget {
                 foregroundColor: AppColors.surface,
                 minimumSize: const Size(200, 52),
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NotificationFilteredEmptyState extends StatelessWidget {
+  const _NotificationFilteredEmptyState({required this.onShowAll});
+
+  final VoidCallback onShowAll;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                color: AppColors.tertiary.withValues(alpha: .24),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.filter_alt_off_rounded,
+                color: AppColors.primary,
+                size: 28,
+              ),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              'No notifications here',
+              textAlign: TextAlign.center,
+              style: AmoraTextStyles.titleLarge.copyWith(
+                color: AppColors.primary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 7),
+            Text(
+              'Try another category.',
+              textAlign: TextAlign.center,
+              style: AmoraTextStyles.bodyMedium.copyWith(
+                color: AppColors.text.withValues(alpha: .66),
+              ),
+            ),
+            const SizedBox(height: 18),
+            OutlinedButton.icon(
+              onPressed: onShowAll,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                side: BorderSide(
+                  color: AppColors.secondary.withValues(alpha: .42),
+                ),
+                minimumSize: const Size(160, 48),
+              ),
+              icon: const Icon(Icons.notifications_rounded, size: 19),
+              label: const Text('Show All'),
             ),
           ],
         ),

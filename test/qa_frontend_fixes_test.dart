@@ -8,6 +8,7 @@ import 'package:amora_ai/features/events/presentation/events_screen.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
 import 'package:amora_ai/features/profile/presentation/profile_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_completion_screen.dart';
+import 'package:amora_ai/features/profile/presentation/profile_edit_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_preview_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_setup_screen.dart';
 import 'package:amora_ai/features/subscription/presentation/subscription_screen.dart';
@@ -26,7 +27,7 @@ void main() {
         theme: AmoraTheme.light(),
         routes: {
           ProfileScreen.routeName: (_) => const ProfileScreen(),
-          ProfileSetupScreen.routeName: (_) => const ProfileSetupScreen(),
+          ProfileEditScreen.routeName: (_) => const ProfileEditScreen(),
           SubscriptionScreen.routeName: (_) => const SubscriptionScreen(),
         },
         initialRoute: ProfileScreen.routeName,
@@ -34,9 +35,14 @@ void main() {
     );
     await tester.pump();
 
-    await tester.tap(find.text('Edit Profile').first);
+    await Scrollable.ensureVisible(
+      tester.element(find.text('Edit profile').first),
+      alignment: .3,
+    );
     await tester.pumpAndSettle();
-    expect(find.text('Craft your match profile'), findsOneWidget);
+    await tester.tap(find.text('Edit profile').first);
+    await tester.pumpAndSettle();
+    expect(find.text('Edit profile'), findsOneWidget);
     expect(find.byType(TextFormField), findsWidgets);
   });
 
@@ -59,6 +65,16 @@ void main() {
     );
     await tester.pump();
 
+    for (
+      var attempt = 0;
+      attempt < 6 && find.text('Complete profile').evaluate().isEmpty;
+      attempt++
+    ) {
+      await tester.drag(find.byType(Scrollable).first, const Offset(0, -260));
+      await tester.pumpAndSettle();
+    }
+    await tester.ensureVisible(find.text('Complete profile'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Complete profile'));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('profile-completion-hub')), findsOneWidget);

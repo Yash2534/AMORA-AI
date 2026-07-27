@@ -1,0 +1,56 @@
+AMORA QA EVIDENCE — AUTOMATED TEST RUN
+Date: 2026-07-27
+Command: flutter test
+
+Final suite result
+- Total test invocations: 143
+- Passed: 115
+- Failed: 23
+- Skipped: 5
+- Overall suite status: FAIL
+
+Passed coverage included focused suites for:
+- Authentication responsiveness and OTP input behavior
+- Advanced filters
+- Current Discover implementation and action controller
+- Chats and chat layout
+- AI Matches
+- Events direct access, local assets, filters, detail and responsiveness
+- FAQ search, accordion and email-only support
+- Profile detail and profile identity
+- Notifications
+- Onboarding and age validation
+- Startup routing
+- QA evidence capture (7 cases)
+
+Failure families
+1. Brand system (2)
+   - Secondary action resolves to primary instead of secondary.
+   - White on secondary pink measures 3.10:1 against a >4.5:1 assertion.
+
+2. Obsolete Discover contract (15)
+   - four_tab_discover_test.dart still expects four tabs and legacy widget
+     keys/text. The current navigation intentionally contains five tabs and
+     newer Discover tests pass.
+
+3. Obsolete Events locked-state regression (1)
+   - Test expects removed purchase-gate copy.
+   - The same run also exposes a genuine 35 px Events overflow at 320x700 with
+     1.3x text scaling.
+
+4. Legacy onboarding/widget locators (3)
+   - Text finders match multiple elements after the current redesign.
+
+5. Event waitlist runtime assertion (2)
+   - /event-waitlist uses a decorated Container around SwitchListTile without
+     the required Material painting relationship.
+
+Skipped cases
+- Five AMORA_MEMBERSHIP_TEST cases were skipped because the compile-time test
+  flag was not enabled. No real payment or entitlement claim is made.
+
+Evidence integrity
+- No failing case was marked as passed.
+- Product defects, test-maintenance defects and environment limitations are
+  separated in the report.
+

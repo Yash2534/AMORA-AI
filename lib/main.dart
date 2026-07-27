@@ -39,6 +39,7 @@ import 'package:amora_ai/features/profile/presentation/profile_basic_details_scr
 import 'package:amora_ai/features/profile/presentation/kyc_verification_screen.dart';
 import 'package:amora_ai/features/profile/presentation/bio_builder_screen.dart';
 import 'package:amora_ai/features/profile/presentation/photo_manager_screen.dart';
+import 'package:amora_ai/features/profile/presentation/profile_edit_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_setup_screen.dart';
 import 'package:amora_ai/features/referral/presentation/referral_leaderboard_screen.dart';
@@ -140,6 +141,7 @@ class _MyAppState extends State<MyApp> {
         SettingsScreen.routeName: (_) => const SettingsScreen(),
         ReportFlowScreen.routeName: (_) => const ReportFlowScreen(),
         PhotoManagerScreen.routeName: (_) => const PhotoManagerScreen(),
+        ProfileEditScreen.routeName: (_) => const ProfileEditScreen(),
         StoriesScreen.routeName: (_) => const StoriesScreen(),
         TwentyQuestionsScreen.routeName: (_) => const TwentyQuestionsScreen(),
         PostEventFeedbackScreen.routeName: (_) =>

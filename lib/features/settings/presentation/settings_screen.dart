@@ -189,9 +189,9 @@ const _settingsGroups = [
     ),
     _SettingsItem(
       'FAQ & Support',
-      'Help center and support tickets',
+      'Help center and email support',
       FaqSupportScreen.routeName,
-      Icons.support_agent_rounded,
+      Icons.help_outline_rounded,
     ),
   ]),
 ];

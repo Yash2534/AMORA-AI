@@ -1,0 +1,56 @@
+AMORA QA EVIDENCE — PROJECT INVENTORY
+Date: 2026-07-27
+
+Scale
+- lib Dart files: 137
+- lib lines: 49,921
+- feature directories: 36
+- screen files: 66
+- route-name constants/aliases discovered: 93
+- test files after QA evidence addition: 23
+- declared widget test sources: 123
+- declared unit/source test sources: 18
+- asset files: 163
+- asset bytes: 24,408,115
+
+Architecture observed
+- MaterialApp named-route table in lib/main.dart
+- Feature-oriented presentation folders
+- Shared theme/widgets/navigation under lib/core
+- Local ChangeNotifier repositories for onboarding/profile
+- Static/dummy repositories for profiles, matches, chats and events
+- AMORA_MEMBERSHIP_TEST compile-time isolated subscription/payment journey
+
+Direct dependencies
+- flutter
+- cupertino_icons
+- url_launcher
+- flutter_test (development)
+- flutter_lints (development)
+
+Not declared
+- Firebase / Cloud Firestore
+- HTTP or Dio client
+- Socket/WebSocket messaging SDK
+- Persistent database/storage package
+- Production payment SDK
+- Push-notification SDK
+
+Important configuration findings
+- Android application ID: com.example.amora_ai
+- Android release build uses debug signing
+- Event model/data retains legacy price/ticket field names although current
+  Events UI focuses on join/RSVP presentation
+- Local event assets are declared in pubspec and mapped through
+  EventAssetCatalog
+- FAQ Support source uses support@amora.ai and url_launcher mailto behavior
+- No support-ticket route implementation was found
+- WhatsApp appears only in referral sharing, not in direct Support UI
+
+Local event assets
+- coffee_meetup.png
+- garba_night.png
+- live_music.png
+- old_city_food_walk.png
+- startup_networking_mixer.png
+

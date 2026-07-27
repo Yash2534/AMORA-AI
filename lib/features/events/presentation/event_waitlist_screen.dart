@@ -2,7 +2,6 @@ import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/events/presentation/widgets/events_widgets.dart';
-import 'package:amora_ai/features/subscription/presentation/subscription_screen.dart';
 import 'package:flutter/material.dart';
 
 class EventWaitlistScreen extends StatefulWidget {
@@ -21,26 +20,6 @@ class _EventWaitlistScreenState extends State<EventWaitlistScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (!hasPremiumEventsAccess) {
-      return Scaffold(
-        backgroundColor: AppColors.background,
-        body: SafeArea(
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: AppPrimaryButton(
-                label: 'Explore Membership',
-                icon: Icons.workspace_premium_rounded,
-                onPressed: () => Navigator.of(
-                  context,
-                ).pushNamed(SubscriptionScreen.routeName),
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(

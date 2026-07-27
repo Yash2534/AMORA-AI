@@ -43,6 +43,11 @@ class _ProfileSectionEditorScreenState
     'Pets': ['Dog person', 'Cat person', 'Love all pets'],
     'Sleep habits': ['Early bird', 'Night owl', 'Flexible'],
   };
+  static const _curatedPromptTitles = <String>[
+    'My ideal Sunday is...',
+    'A green flag I value is...',
+    'Together we could...',
+  ];
 
   late Set<String> _interests;
   late Map<String, String> _lifestyle;
@@ -54,8 +59,14 @@ class _ProfileSectionEditorScreenState
     final profile = LocalProfileRepository.instance.profile;
     _interests = Set<String>.of(profile.interests);
     _lifestyle = Map<String, String>.of(profile.lifestyle);
+    final promptTitles = <String>[
+      ...profile.prompts.keys.take(3),
+      for (final title in _curatedPromptTitles)
+        if (!profile.prompts.containsKey(title)) title,
+      ..._promptTitles,
+    ].take(3);
     _promptControllers = {
-      for (final title in _promptTitles)
+      for (final title in promptTitles)
         title: TextEditingController(text: profile.prompts[title] ?? ''),
     };
   }

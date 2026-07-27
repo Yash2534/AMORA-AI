@@ -1,0 +1,76 @@
+AMORA QA EVIDENCE — BUILD AND ENVIRONMENT
+Captured: 2026-07-27 (Asia/Calcutta)
+
+Environment
+- OS: Windows 11 Home Single Language 64-bit, 25H2
+- Flutter: 3.44.6 stable
+- Dart: 3.12.2
+- DevTools: 2.57.0
+- Android SDK: 36.1.0; platform android-36; build-tools 36.1.0
+- Android emulator tooling: 36.6.11.0
+- Java used by Flutter/Android Studio: OpenJDK 21.0.8
+- Shell Java on PATH: Java 22.0.1
+- Chrome: 150.0.7871.182
+- Connected targets: Windows desktop, Chrome web, Edge web
+- Connected Android device/emulator: none
+- Flutter doctor: Android/Web healthy; Windows desktop C++ workload incomplete
+
+Requested commands
+1. flutter clean
+   Result: PASS
+   Evidence: build and .dart_tool outputs removed.
+
+2. flutter pub get
+   Result: PASS
+   Warning: matcher, meta, test_api and vector_math have newer versions that
+   are incompatible with the current constraints.
+
+3. dart format lib
+   Result: PASS
+   Evidence: 137 files formatted; 0 changed; 3.23 seconds.
+
+4. flutter analyze
+   Result: PASS
+   Evidence: No issues found; 3.0 seconds.
+
+5. flutter test --reporter expanded
+   Result: FAIL
+   Final observed suite after QA evidence tests:
+   - Total invocations: 143
+   - Passed: 115
+   - Failed: 23
+   - Skipped: 5 (AMORA_MEMBERSHIP_TEST disabled)
+   See EV-TEST-001_test_run_summary.txt and the report defect log.
+
+6. flutter build web
+   Result: PASS
+   Duration: 81.7 seconds
+   Output: D:\Projects\amora_ai\build\web
+   Output size: 68,034,713 bytes across 202 files
+   Warning: WebAssembly dry run succeeded; Flutter suggested explicit --wasm
+   testing as a separate optional activity.
+
+7. flutter run -d chrome --web-port 7357
+   Result: STARTED
+   Evidence: Debug service connected and Flutter run commands became available
+   after 50.3 seconds. The report-control browser could not attach to the
+   launched Chrome debug tab, so no interactive Chrome pass is claimed.
+
+8. flutter build apk --debug
+   Result: PASS
+   Duration: 54.5 seconds
+   Output: D:\Projects\amora_ai\build\app\outputs\flutter-apk\app-debug.apk
+   Size: 172,299,833 bytes (164.3 MiB)
+   SHA-256:
+   A006530443D7EC2BFFCE01DA0DACBDBA5DE2ACD10E3212FB662EF5F1133A1988
+   Manifest application ID: com.example.amora_ai
+   Version: 1.0.0 (1)
+   minSdk: 24
+   targetSdk: 36
+
+Release APK
+- NOT ATTEMPTED.
+- android/app/build.gradle.kts maps release to debug signing and retains a
+  template application ID. Changing signing solely to force a release build
+  was prohibited and would not be submission-safe.
+

@@ -76,27 +76,29 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
                     },
                   ),
                   const SizedBox(height: AmoraSpacing.space16),
-                  PremiumCard(
+                  const PremiumCard(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'AI photo guidance',
-                          style: AmoraTextStyles.titleLarge.copyWith(
-                            color: AppColors.deepWine,
+                          'Photo guidance',
+                          style: TextStyle(
+                            color: AppColors.primary,
+                            fontSize: 20,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
                         SizedBox(height: AmoraSpacing.space12),
-                        _Tip(
-                          'Best photo suggestion: your primary image has the strongest face clarity.',
-                        ),
-                        _Tip('Quality indicator: 92% profile-photo readiness.'),
-                        _Tip(
-                          'Face detection placeholder is ready for production ML integration.',
-                        ),
                         _Tip('Use one clear face photo as primary.'),
-                        _Tip('Add lifestyle photos: events, travel, hobbies.'),
+                        _Tip(
+                          'Add a warm smile, a portrait, and an outdoor moment.',
+                        ),
+                        _Tip(
+                          'Use travel or hobby photos to make your story specific.',
+                        ),
+                        _Tip(
+                          'Avoid screenshots, heavy filters, or repeated photos.',
+                        ),
                       ],
                     ),
                   ),

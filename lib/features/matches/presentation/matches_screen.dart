@@ -6,6 +6,7 @@ import 'package:amora_ai/core/widgets/amora_profile_image.dart';
 import 'package:amora_ai/core/widgets/floating_bottom_nav.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/chat/presentation/chat_detail_screen.dart';
+import 'package:amora_ai/features/discover/presentation/discover_action_controller.dart';
 import 'package:amora_ai/features/profile/presentation/profile_detail_screen.dart';
 import 'package:flutter/material.dart';
 
@@ -21,6 +22,14 @@ class MatchesScreen extends StatefulWidget {
 
 class _MatchesScreenState extends State<MatchesScreen> {
   AiMatchFilter _filter = AiMatchFilter.all;
+  final Set<String> _selectedProfileIds = <String>{};
+  final Set<String> _likedProfileIds = <String>{};
+  final Set<String> _processingProfileIds = <String>{};
+  bool _selectionMode = false;
+  bool _bulkSubmitting = false;
+  int _bulkCompleted = 0;
+  int _bulkTotal = 0;
+  int? _successCount;
 
   List<DummyProfile> get _recommendations => _uniqueRecommendations;
 
@@ -39,6 +48,17 @@ class _MatchesScreenState extends State<MatchesScreen> {
         })
         .toList(growable: false);
   }
+
+  List<DummyProfile> get _selectedProfiles => _recommendations
+      .where((profile) => _selectedProfileIds.contains(profile.id))
+      .toList(growable: false);
+
+  List<DummyProfile> get _eligibleVisibleRecommendations =>
+      _visibleRecommendations.where(_canLike).toList(growable: false);
+
+  bool _canLike(DummyProfile profile) =>
+      !_likedProfileIds.contains(profile.id) &&
+      !_processingProfileIds.contains(profile.id);
 
   @override
   Widget build(BuildContext context) {
@@ -70,7 +90,35 @@ class _MatchesScreenState extends State<MatchesScreen> {
                           desktop ? AmoraSpacing.space24 : AmoraSpacing.space16,
                           AmoraSpacing.space8,
                         ),
-                        child: AiMatchesAppBar(onInfo: _showRecommendationInfo),
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 220),
+                          switchInCurve: Curves.easeOutCubic,
+                          switchOutCurve: Curves.easeInCubic,
+                          child: _selectionMode
+                              ? AiMatchesSelectionToolbar(
+                                  key: const ValueKey(
+                                    'ai-matches-selection-toolbar',
+                                  ),
+                                  selectedCount: _selectedProfileIds.length,
+                                  canSelectAll:
+                                      !_bulkSubmitting &&
+                                      _eligibleVisibleRecommendations.any(
+                                        (profile) => !_selectedProfileIds
+                                            .contains(profile.id),
+                                      ),
+                                  editingLocked: _bulkSubmitting,
+                                  onClose: _exitSelectionMode,
+                                  onSelectAll: _selectAllVisible,
+                                  onClearAll: _clearSelection,
+                                )
+                              : AiMatchesAppBar(
+                                  key: const ValueKey(
+                                    'ai-matches-default-app-bar',
+                                  ),
+                                  onInfo: _showRecommendationInfo,
+                                  onSelect: _enterSelectionMode,
+                                ),
+                        ),
                       ),
                       Expanded(
                         child: CustomScrollView(
@@ -145,18 +193,33 @@ class _MatchesScreenState extends State<MatchesScreen> {
                                       const SizedBox(
                                         height: AmoraSpacing.space12,
                                       ),
-                                      FeaturedAiMatchCard(
-                                        key: ValueKey(
-                                          'featured-match-${featured.id}',
-                                        ),
+                                      SelectableAiMatchCard(
                                         profile: featured,
-                                        horizontal: desktop,
-                                        onOpenProfile: () =>
-                                            _openProfile(featured),
-                                        onMessage: () =>
-                                            _openConversation(featured),
-                                        onWhyMatch: () =>
-                                            _showWhyThisMatch(featured),
+                                        selectionMode: _selectionMode,
+                                        selected: _selectedProfileIds.contains(
+                                          featured.id,
+                                        ),
+                                        enabled: _canLike(featured),
+                                        processing: _processingProfileIds
+                                            .contains(featured.id),
+                                        radius: 30,
+                                        onToggle: () =>
+                                            _toggleProfileSelection(featured),
+                                        onLongPress: () =>
+                                            _enterSelectionMode(featured),
+                                        child: FeaturedAiMatchCard(
+                                          key: ValueKey(
+                                            'featured-match-${featured.id}',
+                                          ),
+                                          profile: featured,
+                                          horizontal: desktop,
+                                          onOpenProfile: () =>
+                                              _openProfile(featured),
+                                          onMessage: () =>
+                                              _openConversation(featured),
+                                          onWhyMatch: () =>
+                                              _showWhyThisMatch(featured),
+                                        ),
                                       ),
                                       if (feed.isNotEmpty) ...[
                                         const SizedBox(
@@ -212,7 +275,12 @@ class _MatchesScreenState extends State<MatchesScreen> {
                                   ),
                               SliverToBoxAdapter(
                                 child: SizedBox(
-                                  height: widget.showNavigation
+                                  height:
+                                      _selectionMode &&
+                                          (_selectedProfileIds.isNotEmpty ||
+                                              _bulkSubmitting)
+                                      ? (widget.showNavigation ? 224 : 132)
+                                      : widget.showNavigation
                                       ? FloatingBottomNav.contentBottomPadding
                                       : AmoraSpacing.space16,
                                 ),
@@ -228,6 +296,61 @@ class _MatchesScreenState extends State<MatchesScreen> {
                       alignment: Alignment.bottomCenter,
                       child: FloatingBottomNav(activeTab: AmoraNavTab.matches),
                     ),
+                  Positioned(
+                    left: desktop ? AmoraSpacing.space24 : AmoraSpacing.space12,
+                    right: desktop
+                        ? AmoraSpacing.space24
+                        : AmoraSpacing.space12,
+                    bottom: widget.showNavigation
+                        ? FloatingBottomNav.contentBottomPadding
+                        : AmoraSpacing.space8,
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 240),
+                      switchInCurve: Curves.easeOutBack,
+                      switchOutCurve: Curves.easeInCubic,
+                      transitionBuilder: (child, animation) => FadeTransition(
+                        opacity: animation,
+                        child: SlideTransition(
+                          position: Tween<Offset>(
+                            begin: const Offset(0, .18),
+                            end: Offset.zero,
+                          ).animate(animation),
+                          child: child,
+                        ),
+                      ),
+                      child:
+                          _selectionMode &&
+                              (_selectedProfileIds.isNotEmpty ||
+                                  _bulkSubmitting)
+                          ? BulkLikeActionBar(
+                              key: const ValueKey('bulk-like-action-bar'),
+                              profiles: _selectedProfiles,
+                              submitting: _bulkSubmitting,
+                              completed: _bulkCompleted,
+                              total: _bulkTotal,
+                              onLikeSelected: _reviewBulkLike,
+                            )
+                          : const SizedBox.shrink(
+                              key: ValueKey('bulk-like-action-bar-hidden'),
+                            ),
+                    ),
+                  ),
+                  Align(
+                    alignment: const Alignment(0, -.08),
+                    child: IgnorePointer(
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 240),
+                        child: _successCount != null
+                            ? _BulkLikeSuccessToast(
+                                key: ValueKey(
+                                  'bulk-like-success-$_successCount',
+                                ),
+                                count: _successCount!,
+                              )
+                            : const SizedBox.shrink(),
+                      ),
+                    ),
+                  ),
                 ],
               );
             },
@@ -240,14 +363,183 @@ class _MatchesScreenState extends State<MatchesScreen> {
   Widget _buildFeedCard(DummyProfile profile, int index) {
     return _MatchReveal(
       delay: Duration(milliseconds: (index % 4) * 45),
-      child: AiMatchCard(
-        key: ValueKey('ai-match-${profile.id}'),
+      child: SelectableAiMatchCard(
         profile: profile,
-        onOpenProfile: () => _openProfile(profile),
-        onMessage: () => _openConversation(profile),
-        onWhyMatch: () => _showWhyThisMatch(profile),
+        selectionMode: _selectionMode,
+        selected: _selectedProfileIds.contains(profile.id),
+        enabled: _canLike(profile),
+        processing: _processingProfileIds.contains(profile.id),
+        radius: 26,
+        onToggle: () => _toggleProfileSelection(profile),
+        onLongPress: () => _enterSelectionMode(profile),
+        child: AiMatchCard(
+          key: ValueKey('ai-match-${profile.id}'),
+          profile: profile,
+          onOpenProfile: () => _openProfile(profile),
+          onMessage: () => _openConversation(profile),
+          onWhyMatch: () => _showWhyThisMatch(profile),
+        ),
       ),
     );
+  }
+
+  void _enterSelectionMode([DummyProfile? profile]) {
+    if (_bulkSubmitting) return;
+    setState(() {
+      _selectionMode = true;
+      if (profile != null && _canLike(profile)) {
+        _selectedProfileIds.add(profile.id);
+      }
+    });
+  }
+
+  void _exitSelectionMode() {
+    if (_bulkSubmitting) return;
+    setState(() {
+      _selectionMode = false;
+      _selectedProfileIds.clear();
+    });
+  }
+
+  void _toggleProfileSelection(DummyProfile profile) {
+    if (_bulkSubmitting || !_canLike(profile)) return;
+    setState(() {
+      _selectionMode = true;
+      if (!_selectedProfileIds.add(profile.id)) {
+        _selectedProfileIds.remove(profile.id);
+      }
+    });
+  }
+
+  void _selectAllVisible() {
+    if (_bulkSubmitting) return;
+    setState(() {
+      _selectedProfileIds.addAll(
+        _eligibleVisibleRecommendations.map((profile) => profile.id),
+      );
+    });
+  }
+
+  void _clearSelection() {
+    if (_bulkSubmitting) return;
+    setState(_selectedProfileIds.clear);
+  }
+
+  Future<void> _reviewBulkLike() async {
+    if (_bulkSubmitting) return;
+    final profiles = _selectedProfiles.where(_canLike).toList(growable: false);
+    if (profiles.isEmpty) return;
+
+    if (profiles.length > 1) {
+      final confirmed = await showModalBottomSheet<bool>(
+        context: context,
+        useSafeArea: true,
+        isScrollControlled: true,
+        backgroundColor: AppColors.surface,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+        ),
+        builder: (_) => BulkLikeConfirmationSheet(profiles: profiles),
+      );
+      if (confirmed != true || !mounted) return;
+    }
+
+    await _sendSelectedLikes(profiles);
+  }
+
+  Future<bool> _sendExistingLike(DummyProfile profile) async {
+    final actions = DiscoverActionController(profileIds: [profile.id]);
+    try {
+      await actions.likeProfile();
+      return actions.likedProfileIds.contains(profile.id);
+    } finally {
+      actions.dispose();
+    }
+  }
+
+  Future<void> _sendSelectedLikes(List<DummyProfile> profiles) async {
+    if (_bulkSubmitting || profiles.isEmpty) return;
+    final successes = <DummyProfile>[];
+    final failures = <DummyProfile>[];
+
+    setState(() {
+      _bulkSubmitting = true;
+      _bulkCompleted = 0;
+      _bulkTotal = profiles.length;
+    });
+
+    for (final profile in profiles) {
+      if (!mounted) return;
+      if (_likedProfileIds.contains(profile.id)) {
+        setState(() {
+          _selectedProfileIds.remove(profile.id);
+          _bulkCompleted++;
+        });
+        continue;
+      }
+
+      setState(() => _processingProfileIds.add(profile.id));
+      var sent = false;
+      try {
+        sent = await _sendExistingLike(profile);
+      } catch (_) {
+        sent = false;
+      }
+      if (!mounted) return;
+
+      setState(() {
+        _processingProfileIds.remove(profile.id);
+        _bulkCompleted++;
+        if (sent) {
+          _likedProfileIds.add(profile.id);
+          _selectedProfileIds.remove(profile.id);
+          successes.add(profile);
+        } else {
+          failures.add(profile);
+        }
+      });
+    }
+
+    if (!mounted) return;
+    setState(() => _bulkSubmitting = false);
+
+    if (failures.isEmpty) {
+      final successCount = successes.length;
+      setState(() {
+        _selectionMode = false;
+        _selectedProfileIds.clear();
+        _successCount = successCount;
+      });
+      Future<void>.delayed(const Duration(milliseconds: 1400), () {
+        if (mounted && _successCount == successCount) {
+          setState(() => _successCount = null);
+        }
+      });
+      return;
+    }
+
+    final action = await showModalBottomSheet<_BulkLikeResultAction>(
+      context: context,
+      useSafeArea: true,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+      ),
+      builder: (_) => BulkLikeResultSheet(
+        successCount: successes.length,
+        failedProfiles: failures,
+      ),
+    );
+    if (!mounted) return;
+
+    if (successes.isEmpty && action == _BulkLikeResultAction.retry) {
+      await _sendSelectedLikes(failures);
+      return;
+    }
+    if (action == _BulkLikeResultAction.done) {
+      _exitSelectionMode();
+    }
   }
 
   void _openProfile(DummyProfile profile) {
@@ -324,9 +616,14 @@ class _MatchesScreenState extends State<MatchesScreen> {
 enum AiMatchFilter { all, bestMatch, activeNow, verified }
 
 class AiMatchesAppBar extends StatelessWidget {
-  const AiMatchesAppBar({super.key, required this.onInfo});
+  const AiMatchesAppBar({
+    super.key,
+    required this.onInfo,
+    required this.onSelect,
+  });
 
   final VoidCallback onInfo;
+  final VoidCallback onSelect;
 
   @override
   Widget build(BuildContext context) {
@@ -358,6 +655,19 @@ class AiMatchesAppBar extends StatelessWidget {
               ],
             ),
           ),
+          TextButton.icon(
+            key: const ValueKey('ai-matches-select'),
+            onPressed: onSelect,
+            icon: const Icon(Icons.checklist_rounded, size: 19),
+            label: const Text('Select'),
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.primary,
+              minimumSize: const Size(48, 48),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AmoraSpacing.space8,
+              ),
+            ),
+          ),
           Tooltip(
             message: 'About AI recommendations',
             child: IconButton(
@@ -370,6 +680,119 @@ class AiMatchesAppBar extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class AiMatchesSelectionToolbar extends StatelessWidget {
+  const AiMatchesSelectionToolbar({
+    super.key,
+    required this.selectedCount,
+    required this.canSelectAll,
+    required this.editingLocked,
+    required this.onClose,
+    required this.onSelectAll,
+    required this.onClearAll,
+  });
+
+  final int selectedCount;
+  final bool canSelectAll;
+  final bool editingLocked;
+  final VoidCallback onClose;
+  final VoidCallback onSelectAll;
+  final VoidCallback onClearAll;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      liveRegion: true,
+      label: '$selectedCount profiles selected',
+      child: SizedBox(
+        height: 56,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final compact = constraints.maxWidth < 430;
+            return Row(
+              children: [
+                IconButton(
+                  key: const ValueKey('ai-matches-selection-close'),
+                  tooltip: 'Cancel selection',
+                  onPressed: editingLocked ? null : onClose,
+                  icon: const Icon(Icons.close_rounded),
+                  color: AppColors.primary,
+                  constraints: const BoxConstraints(
+                    minWidth: 48,
+                    minHeight: 48,
+                  ),
+                ),
+                Expanded(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      '$selectedCount selected',
+                      maxLines: 1,
+                      style: AmoraTextStyles.titleMedium.copyWith(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ),
+                if (canSelectAll)
+                  if (compact)
+                    IconButton(
+                      key: const ValueKey('ai-matches-select-all'),
+                      tooltip: 'Select all eligible profiles',
+                      onPressed: onSelectAll,
+                      icon: const Icon(Icons.done_all_rounded),
+                      color: AppColors.primary,
+                      constraints: const BoxConstraints(
+                        minWidth: 48,
+                        minHeight: 48,
+                      ),
+                    )
+                  else
+                    TextButton(
+                      key: const ValueKey('ai-matches-select-all'),
+                      onPressed: onSelectAll,
+                      style: TextButton.styleFrom(
+                        foregroundColor: AppColors.primary,
+                        minimumSize: const Size(48, 48),
+                      ),
+                      child: const Text('Select All'),
+                    ),
+                if (compact)
+                  IconButton(
+                    key: const ValueKey('ai-matches-clear-all'),
+                    tooltip: 'Clear all selected profiles',
+                    onPressed: editingLocked || selectedCount == 0
+                        ? null
+                        : onClearAll,
+                    icon: const Icon(Icons.remove_done_rounded),
+                    color: AppColors.secondary,
+                    constraints: const BoxConstraints(
+                      minWidth: 48,
+                      minHeight: 48,
+                    ),
+                  )
+                else
+                  TextButton(
+                    key: const ValueKey('ai-matches-clear-all'),
+                    onPressed: editingLocked || selectedCount == 0
+                        ? null
+                        : onClearAll,
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.secondary,
+                      minimumSize: const Size(48, 48),
+                    ),
+                    child: const Text('Clear All'),
+                  ),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
@@ -533,6 +956,192 @@ class _AiMatchFilterChip extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class SelectableAiMatchCard extends StatelessWidget {
+  const SelectableAiMatchCard({
+    super.key,
+    required this.profile,
+    required this.selectionMode,
+    required this.selected,
+    required this.enabled,
+    required this.processing,
+    required this.radius,
+    required this.onToggle,
+    required this.onLongPress,
+    required this.child,
+  });
+
+  final DummyProfile profile;
+  final bool selectionMode;
+  final bool selected;
+  final bool enabled;
+  final bool processing;
+  final double radius;
+  final VoidCallback onToggle;
+  final VoidCallback onLongPress;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final semanticLabel = processing
+        ? 'Sending Like to ${profile.name}'
+        : !enabled
+        ? '${profile.name} cannot be selected'
+        : selected
+        ? '${profile.name} selected'
+        : 'Select ${profile.name}';
+    return Semantics(
+      container: true,
+      selected: selectionMode ? selected : null,
+      label: selectionMode ? semanticLabel : null,
+      child: AnimatedScale(
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutBack,
+        scale: selected ? .992 : 1,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+          padding: EdgeInsets.all(selectionMode ? 2 : 0),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(radius + 3),
+            border: Border.all(
+              color: selected
+                  ? AppColors.secondary
+                  : AppColors.secondary.withValues(alpha: 0),
+              width: 2,
+            ),
+            boxShadow: selected
+                ? [
+                    BoxShadow(
+                      color: AppColors.secondary.withValues(alpha: .16),
+                      blurRadius: 20,
+                      spreadRadius: -8,
+                      offset: const Offset(0, 8),
+                    ),
+                  ]
+                : const [],
+          ),
+          child: Material(
+            color: AppColors.transparent,
+            borderRadius: BorderRadius.circular(radius),
+            child: InkWell(
+              onTap: selectionMode && enabled && !processing ? onToggle : null,
+              onLongPress: enabled && !processing ? onLongPress : null,
+              borderRadius: BorderRadius.circular(radius),
+              focusColor: AppColors.tertiary.withValues(alpha: .24),
+              child: Stack(
+                children: [
+                  AbsorbPointer(absorbing: selectionMode, child: child),
+                  if (selectionMode)
+                    Positioned(
+                      top: AmoraSpacing.space12,
+                      right: AmoraSpacing.space12,
+                      child: ProfileSelectionIndicator(
+                        profileName: profile.name,
+                        selected: selected,
+                        enabled: enabled,
+                        processing: processing,
+                        onTap: onToggle,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class ProfileSelectionIndicator extends StatelessWidget {
+  const ProfileSelectionIndicator({
+    super.key,
+    required this.profileName,
+    required this.selected,
+    required this.enabled,
+    required this.processing,
+    required this.onTap,
+  });
+
+  final String profileName;
+  final bool selected;
+  final bool enabled;
+  final bool processing;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final label = processing
+        ? 'Sending Like to $profileName'
+        : !enabled
+        ? '$profileName is already liked'
+        : selected
+        ? 'Remove $profileName from selection'
+        : 'Select $profileName';
+    return Tooltip(
+      message: label,
+      child: Semantics(
+        button: enabled && !processing,
+        selected: selected,
+        label: label,
+        child: SizedBox.square(
+          dimension: 48,
+          child: Center(
+            child: Material(
+              color: selected
+                  ? AppColors.primary
+                  : AppColors.surface.withValues(alpha: .94),
+              shape: CircleBorder(
+                side: BorderSide(
+                  color: selected
+                      ? AppColors.primary
+                      : AppColors.secondary.withValues(
+                          alpha: enabled ? .72 : .28,
+                        ),
+                ),
+              ),
+              elevation: selected ? 2 : 0,
+              shadowColor: AppColors.primary.withValues(alpha: .18),
+              child: InkWell(
+                onTap: enabled && !processing ? onTap : null,
+                customBorder: const CircleBorder(),
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 200),
+                  child: SizedBox.square(
+                    key: ValueKey('$selected-$processing-$enabled'),
+                    dimension: 30,
+                    child: processing
+                        ? const Padding(
+                            padding: EdgeInsets.all(7),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppColors.secondary,
+                            ),
+                          )
+                        : Icon(
+                            selected
+                                ? Icons.check_rounded
+                                : enabled
+                                ? Icons.circle_outlined
+                                : Icons.favorite_rounded,
+                            color: selected
+                                ? AppColors.surface
+                                : enabled
+                                ? AppColors.secondary
+                                : AppColors.primary.withValues(alpha: .38),
+                            size: selected ? 20 : 18,
+                          ),
+                  ),
+                ),
+              ),
             ),
           ),
         ),
@@ -1029,6 +1638,484 @@ class AiMatchActionBar extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class SelectedProfilesAvatarStack extends StatelessWidget {
+  const SelectedProfilesAvatarStack({
+    super.key,
+    required this.profiles,
+    this.avatarSize = 34,
+  });
+
+  final List<DummyProfile> profiles;
+  final double avatarSize;
+
+  @override
+  Widget build(BuildContext context) {
+    final visible = profiles.take(3).toList(growable: false);
+    final extra = profiles.length - visible.length;
+    final itemCount = visible.length + (extra > 0 ? 1 : 0);
+    if (itemCount == 0) {
+      return SizedBox.square(
+        dimension: avatarSize,
+        child: const Icon(Icons.favorite_rounded, color: AppColors.secondary),
+      );
+    }
+    final overlap = avatarSize * .62;
+    return Semantics(
+      label: '${profiles.length} selected profile avatars',
+      child: SizedBox(
+        width: avatarSize + ((itemCount - 1) * overlap),
+        height: avatarSize,
+        child: Stack(
+          children: [
+            for (var index = 0; index < visible.length; index++)
+              Positioned(
+                left: index * overlap,
+                child: Container(
+                  width: avatarSize,
+                  height: avatarSize,
+                  padding: const EdgeInsets.all(1.5),
+                  decoration: const BoxDecoration(
+                    color: AppColors.surface,
+                    shape: BoxShape.circle,
+                  ),
+                  child: ClipOval(
+                    child: AmoraProfileImage(
+                      imageUrl: visible[index].imageUrl,
+                      assetPath: visible[index].fallbackAsset,
+                      initials: visible[index].initials,
+                      width: avatarSize - 3,
+                      height: avatarSize - 3,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
+              ),
+            if (extra > 0)
+              Positioned(
+                left: visible.length * overlap,
+                child: Container(
+                  width: avatarSize,
+                  height: avatarSize,
+                  alignment: Alignment.center,
+                  decoration: const BoxDecoration(
+                    color: AppColors.primary,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Text(
+                    '+$extra',
+                    style: AmoraTextStyles.labelSmall.copyWith(
+                      color: AppColors.surface,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class BulkLikeActionBar extends StatelessWidget {
+  const BulkLikeActionBar({
+    super.key,
+    required this.profiles,
+    required this.submitting,
+    required this.completed,
+    required this.total,
+    required this.onLikeSelected,
+  });
+
+  final List<DummyProfile> profiles;
+  final bool submitting;
+  final int completed;
+  final int total;
+  final VoidCallback onLikeSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final count = profiles.length;
+    final status = submitting
+        ? 'Sending Likes… $completed of $total'
+        : 'Send Likes to $count ${count == 1 ? 'profile' : 'profiles'}';
+    final summary = Row(
+      children: [
+        SelectedProfilesAvatarStack(profiles: profiles),
+        const SizedBox(width: AmoraSpacing.space12),
+        Expanded(
+          child: Text(
+            status,
+            maxLines: 2,
+            style: AmoraTextStyles.labelMedium.copyWith(
+              color: AppColors.primary,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ],
+    );
+    final action = FilledButton.icon(
+      key: const ValueKey('like-selected-button'),
+      onPressed: submitting ? null : onLikeSelected,
+      icon: submitting
+          ? const SizedBox.square(
+              dimension: 18,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: AppColors.surface,
+              ),
+            )
+          : const Icon(Icons.favorite_rounded, size: 19),
+      label: Text(submitting ? 'Sending Likes' : 'Like Selected'),
+      style: FilledButton.styleFrom(
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.surface,
+        disabledBackgroundColor: AppColors.primary.withValues(alpha: .62),
+        disabledForegroundColor: AppColors.surface,
+        minimumSize: const Size(142, 52),
+        padding: const EdgeInsets.symmetric(horizontal: AmoraSpacing.space16),
+      ),
+    );
+
+    return Semantics(
+      liveRegion: submitting,
+      label: submitting ? status : 'Send Likes to $count selected profiles',
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(26),
+          border: Border.all(color: AppColors.secondary.withValues(alpha: .38)),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primary.withValues(alpha: .13),
+              blurRadius: 28,
+              spreadRadius: -10,
+              offset: const Offset(0, 12),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(AmoraSpacing.space12),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final compact = constraints.maxWidth < 520;
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (compact) ...[
+                    summary,
+                    const SizedBox(height: AmoraSpacing.space8),
+                    SizedBox(width: double.infinity, child: action),
+                  ] else
+                    Row(
+                      children: [
+                        Expanded(child: summary),
+                        const SizedBox(width: AmoraSpacing.space12),
+                        action,
+                      ],
+                    ),
+                  if (submitting) ...[
+                    const SizedBox(height: AmoraSpacing.space8),
+                    ClipRRect(
+                      borderRadius: AmoraRadius.pillBorder,
+                      child: LinearProgressIndicator(
+                        value: total == 0 ? 0 : completed / total,
+                        minHeight: 4,
+                        backgroundColor: AppColors.tertiary.withValues(
+                          alpha: .42,
+                        ),
+                        color: AppColors.secondary,
+                      ),
+                    ),
+                  ],
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class BulkLikeConfirmationSheet extends StatelessWidget {
+  const BulkLikeConfirmationSheet({super.key, required this.profiles});
+
+  final List<DummyProfile> profiles;
+
+  @override
+  Widget build(BuildContext context) {
+    final count = profiles.length;
+    return SafeArea(
+      top: false,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(
+          AmoraSpacing.space20,
+          AmoraSpacing.space12,
+          AmoraSpacing.space20,
+          AmoraSpacing.space24,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const _SheetHandle(),
+            const SizedBox(height: AmoraSpacing.space20),
+            Center(
+              child: SelectedProfilesAvatarStack(
+                profiles: profiles,
+                avatarSize: 44,
+              ),
+            ),
+            const SizedBox(height: AmoraSpacing.space16),
+            Text(
+              'Like selected profiles?',
+              textAlign: TextAlign.center,
+              style: AmoraTextStyles.titleLarge.copyWith(
+                color: AppColors.primary,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: AmoraSpacing.space8),
+            Text(
+              'You’re about to send Likes to $count people.',
+              textAlign: TextAlign.center,
+              style: AmoraTextStyles.bodyMedium.copyWith(
+                color: AppColors.textNeutral.withValues(alpha: .72),
+              ),
+            ),
+            const SizedBox(height: AmoraSpacing.space20),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.primary,
+                      minimumSize: const Size(0, 52),
+                      side: const BorderSide(color: AppColors.tertiary),
+                    ),
+                    child: const Text('Cancel'),
+                  ),
+                ),
+                const SizedBox(width: AmoraSpacing.space12),
+                Expanded(
+                  child: FilledButton.icon(
+                    key: const ValueKey('confirm-send-likes'),
+                    onPressed: () => Navigator.pop(context, true),
+                    icon: const Icon(Icons.favorite_rounded, size: 19),
+                    label: const Text('Send Likes'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: AppColors.surface,
+                      minimumSize: const Size(0, 52),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+enum _BulkLikeResultAction { reviewFailed, done, retry }
+
+class BulkLikeResultSheet extends StatelessWidget {
+  const BulkLikeResultSheet({
+    super.key,
+    required this.successCount,
+    required this.failedProfiles,
+  });
+
+  final int successCount;
+  final List<DummyProfile> failedProfiles;
+
+  @override
+  Widget build(BuildContext context) {
+    final fullFailure = successCount == 0;
+    final failedCount = failedProfiles.length;
+    return SafeArea(
+      top: false,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(
+          AmoraSpacing.space20,
+          AmoraSpacing.space12,
+          AmoraSpacing.space20,
+          AmoraSpacing.space24,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const _SheetHandle(),
+            const SizedBox(height: AmoraSpacing.space20),
+            Icon(
+              fullFailure
+                  ? Icons.favorite_border_rounded
+                  : Icons.favorite_rounded,
+              color: AppColors.secondary,
+              size: 42,
+            ),
+            const SizedBox(height: AmoraSpacing.space12),
+            Text(
+              fullFailure
+                  ? 'Likes couldn’t be sent'
+                  : '$successCount Likes sent, $failedCount couldn’t be sent.',
+              textAlign: TextAlign.center,
+              style: AmoraTextStyles.titleLarge.copyWith(
+                color: AppColors.primary,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: AmoraSpacing.space8),
+            Text(
+              fullFailure
+                  ? 'Please try again. Your selected profiles are still available.'
+                  : 'The failed profiles remain selected so you can review them.',
+              textAlign: TextAlign.center,
+              style: AmoraTextStyles.bodyMedium.copyWith(
+                color: AppColors.textNeutral.withValues(alpha: .72),
+              ),
+            ),
+            const SizedBox(height: AmoraSpacing.space16),
+            Center(
+              child: SelectedProfilesAvatarStack(
+                profiles: failedProfiles,
+                avatarSize: 40,
+              ),
+            ),
+            const SizedBox(height: AmoraSpacing.space20),
+            if (fullFailure)
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () =>
+                          Navigator.pop(context, _BulkLikeResultAction.done),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.primary,
+                        minimumSize: const Size(0, 52),
+                        side: const BorderSide(color: AppColors.tertiary),
+                      ),
+                      child: const Text('Cancel'),
+                    ),
+                  ),
+                  const SizedBox(width: AmoraSpacing.space12),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: () =>
+                          Navigator.pop(context, _BulkLikeResultAction.retry),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: AppColors.surface,
+                        minimumSize: const Size(0, 52),
+                      ),
+                      child: const Text('Try Again'),
+                    ),
+                  ),
+                ],
+              )
+            else
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () =>
+                          Navigator.pop(context, _BulkLikeResultAction.done),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.primary,
+                        minimumSize: const Size(0, 52),
+                        side: const BorderSide(color: AppColors.tertiary),
+                      ),
+                      child: const Text('Done'),
+                    ),
+                  ),
+                  const SizedBox(width: AmoraSpacing.space12),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: () => Navigator.pop(
+                        context,
+                        _BulkLikeResultAction.reviewFailed,
+                      ),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: AppColors.surface,
+                        minimumSize: const Size(0, 52),
+                      ),
+                      child: const Text('Review Failed'),
+                    ),
+                  ),
+                ],
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _BulkLikeSuccessToast extends StatelessWidget {
+  const _BulkLikeSuccessToast({super.key, required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: .82, end: 1),
+      duration: const Duration(milliseconds: 260),
+      curve: Curves.easeOutBack,
+      builder: (context, value, child) =>
+          Transform.scale(scale: value, child: child),
+      child: Semantics(
+        liveRegion: true,
+        label: 'Likes sent to $count profiles',
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: AmoraRadius.pillBorder,
+            border: Border.all(
+              color: AppColors.secondary.withValues(alpha: .42),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withValues(alpha: .14),
+                blurRadius: 28,
+                spreadRadius: -8,
+                offset: const Offset(0, 12),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AmoraSpacing.space20,
+              vertical: AmoraSpacing.space12,
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.favorite_rounded, color: AppColors.secondary),
+                const SizedBox(width: AmoraSpacing.space8),
+                Text(
+                  'Likes sent to $count ${count == 1 ? 'profile' : 'profiles'}',
+                  style: AmoraTextStyles.labelLarge.copyWith(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

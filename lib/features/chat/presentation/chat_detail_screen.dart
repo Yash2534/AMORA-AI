@@ -1,3 +1,4 @@
+import 'package:amora_ai/core/data/amora_dummy_data.dart';
 import 'package:amora_ai/core/data/image_repository.dart';
 import 'package:amora_ai/core/theme/amora_icon_sizes.dart';
 import 'package:amora_ai/core/theme/amora_icons.dart';
@@ -8,6 +9,7 @@ import 'package:amora_ai/core/widgets/premium_avatar.dart';
 import 'package:amora_ai/core/widgets/premium_motion.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/chat/presentation/chat_list_screen.dart';
+import 'package:amora_ai/features/chat/presentation/widgets/chat_presence_avatar.dart';
 import 'package:amora_ai/features/profile/presentation/profile_detail_screen.dart';
 import 'package:amora_ai/features/safety/presentation/blocked_user_success_sheet.dart';
 import 'package:amora_ai/features/safety/presentation/report_flow_screen.dart';
@@ -37,6 +39,12 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   bool _blocked = false;
 
   DummyProfile get _profile => _chatProfile;
+  bool get _online {
+    for (final chat in AmoraDummyData.chats) {
+      if (chat.user.id == _profile.id) return chat.online;
+    }
+    return false;
+  }
 
   final List<ChatMessage> _messages = [
     const ChatMessage(
@@ -91,6 +99,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             children: [
               ChatHeader(
                 profile: _profile,
+                online: _online,
                 onBack: _goBack,
                 onMore: _showMoreSheet,
                 onProfileTap: () => Navigator.of(
@@ -117,7 +126,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     );
   }
 
-  void _goBack() {
+  Future<void> _goBack() async {
+    if (await Navigator.of(context).maybePop()) return;
+    if (!mounted) return;
     Navigator.of(context).pushReplacementNamed(ChatListScreen.routeName);
   }
 
@@ -243,12 +254,14 @@ class ChatHeader extends StatelessWidget {
   const ChatHeader({
     super.key,
     required this.profile,
+    required this.online,
     required this.onBack,
     required this.onMore,
     required this.onProfileTap,
   });
 
   final DummyProfile profile;
+  final bool online;
   final VoidCallback onBack;
   final VoidCallback onMore;
   final VoidCallback onProfileTap;
@@ -257,10 +270,10 @@ class ChatHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: AppColors.surface,
-      shadowColor: AppColors.primary.withValues(alpha: .12),
-      elevation: 2,
+      shadowColor: AppColors.primary.withValues(alpha: .08),
+      elevation: 1,
       child: SizedBox(
-        height: 68,
+        height: 72,
         child: Row(
           children: [
             _HeaderIconButton(
@@ -280,14 +293,10 @@ class ChatHeader extends StatelessWidget {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        PremiumAvatar(
-                          imageUrl: profile.imageUrl,
-                          fallbackAsset: profile.fallbackAsset,
-                          initials: profile.initials,
+                        ChatPresenceAvatar(
+                          profile: profile,
                           radius: 21,
-                          online: true,
-                          verified: profile.verified,
-                          semanticLabel: '${profile.name} profile photo',
+                          online: online,
                         ),
                         const SizedBox(width: 10),
                         Flexible(
@@ -306,33 +315,22 @@ class ChatHeader extends StatelessWidget {
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
-                              const SizedBox(height: 3),
-                              const Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  DecoratedBox(
-                                    decoration: BoxDecoration(
-                                      color: AppColors.secondary,
-                                      shape: BoxShape.circle,
+                              if (online) ...[
+                                const SizedBox(height: 3),
+                                Text(
+                                  'Online',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: AppColors.text.withValues(
+                                      alpha: .66,
                                     ),
-                                    child: SizedBox.square(dimension: 7),
+                                    fontSize: 12,
+                                    height: 1.2,
+                                    fontWeight: FontWeight.w500,
                                   ),
-                                  SizedBox(width: 6),
-                                  Flexible(
-                                    child: Text(
-                                      'Online now',
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        color: AppColors.text,
-                                        fontSize: 12,
-                                        height: 1.2,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ],
                           ),
                         ),
@@ -368,12 +366,19 @@ class _HeaderIconButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox.square(
-      dimension: 52,
+      dimension: 48,
       child: IconButton(
         tooltip: tooltip,
         onPressed: onPressed,
-        color: AppColors.primary,
-        icon: Icon(icon, size: 23),
+        style: IconButton.styleFrom(
+          foregroundColor: AppColors.primary,
+          backgroundColor: AppColors.background,
+          hoverColor: AppColors.tertiary.withValues(alpha: .24),
+          focusColor: AppColors.tertiary.withValues(alpha: .28),
+          highlightColor: AppColors.tertiary.withValues(alpha: .2),
+          side: BorderSide(color: AppColors.secondary.withValues(alpha: .16)),
+        ),
+        icon: Icon(icon, size: 21),
       ),
     );
   }
@@ -394,7 +399,10 @@ class _ChatTimeline extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final itemCount = messages.length + 2;
+    if (messages.isEmpty) {
+      return const _EmptyConversationState();
+    }
+    final itemCount = messages.length + 1;
     return ListView.builder(
       key: const PageStorageKey<String>('chat-message-timeline'),
       controller: scrollController,
@@ -411,13 +419,6 @@ class _ChatTimeline extends StatelessWidget {
             child: ChatDateDivider(label: 'Today'),
           );
         }
-        if (index == itemCount - 1) {
-          return Padding(
-            padding: const EdgeInsets.only(top: 2),
-            child: TypingIndicator(profile: profile),
-          );
-        }
-
         final messageIndex = index - 1;
         final message = messages[messageIndex];
         final groupedWithPrevious =
@@ -653,6 +654,16 @@ class _TypingIndicatorState extends State<TypingIndicator>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _animation.stop();
+    } else if (!_animation.isAnimating) {
+      _animation.repeat();
+    }
+  }
+
+  @override
   void dispose() {
     _animation.dispose();
     super.dispose();
@@ -660,6 +671,7 @@ class _TypingIndicatorState extends State<TypingIndicator>
 
   @override
   Widget build(BuildContext context) {
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
     return Semantics(
       liveRegion: true,
       label: '${widget.profile.name} is typing',
@@ -689,34 +701,105 @@ class _TypingIndicatorState extends State<TypingIndicator>
                 ),
               ],
             ),
-            child: AnimatedBuilder(
-              animation: _animation,
-              builder: (context, _) {
-                return Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    for (var index = 0; index < 3; index++) ...[
-                      AnimatedOpacity(
-                        duration: const Duration(milliseconds: 180),
-                        opacity: ((_animation.value + index * .2) % 1) < .55
-                            ? 1
-                            : .3,
-                        child: const DecoratedBox(
-                          decoration: BoxDecoration(
-                            color: AppColors.secondary,
-                            shape: BoxShape.circle,
-                          ),
-                          child: SizedBox.square(dimension: 7),
-                        ),
-                      ),
-                      if (index != 2) const SizedBox(width: 5),
-                    ],
-                  ],
-                );
-              },
-            ),
+            child: reduceMotion
+                ? const _TypingDots(opacities: <double>[1, .65, .35])
+                : AnimatedBuilder(
+                    animation: _animation,
+                    builder: (context, _) {
+                      return _TypingDots(
+                        opacities: <double>[
+                          for (var index = 0; index < 3; index++)
+                            ((_animation.value + index * .2) % 1) < .55
+                                ? 1
+                                : .3,
+                        ],
+                      );
+                    },
+                  ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _TypingDots extends StatelessWidget {
+  const _TypingDots({required this.opacities});
+
+  final List<double> opacities;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (var index = 0; index < opacities.length; index++) ...[
+          Opacity(
+            opacity: opacities[index],
+            child: const DecoratedBox(
+              decoration: BoxDecoration(
+                color: AppColors.secondary,
+                shape: BoxShape.circle,
+              ),
+              child: SizedBox.square(dimension: 7),
+            ),
+          ),
+          if (index != opacities.length - 1) const SizedBox(width: 5),
+        ],
+      ],
+    );
+  }
+}
+
+class _EmptyConversationState extends StatelessWidget {
+  const _EmptyConversationState();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: AppColors.secondary.withValues(alpha: .22),
+                ),
+              ),
+              child: const Icon(
+                Icons.waving_hand_rounded,
+                color: AppColors.secondary,
+                size: 32,
+              ),
+            ),
+            const SizedBox(height: 18),
+            const Text(
+              'Start the conversation',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppColors.primary,
+                fontSize: 21,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Say hello 👋',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppColors.text.withValues(alpha: .66),
+                fontSize: 14,
+                height: 1.4,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -773,8 +856,14 @@ class _ChatInputBarState extends State<ChatInputBar> {
   Widget build(BuildContext context) {
     final focused = _focusNode.hasFocus;
     final hasText = widget.controller.text.trim().isNotEmpty;
-    return Padding(
+    return Container(
       padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border(
+          top: BorderSide(color: AppColors.tertiary.withValues(alpha: .38)),
+        ),
+      ),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 220),
         curve: Curves.easeOutCubic,
@@ -819,7 +908,7 @@ class _ChatInputBarState extends State<ChatInputBar> {
                   fontWeight: FontWeight.w400,
                 ),
                 decoration: const InputDecoration(
-                  hintText: 'Message',
+                  hintText: 'Write a message...',
                   hintStyle: TextStyle(
                     color: AppColors.text,
                     fontSize: 16,

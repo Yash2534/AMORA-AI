@@ -1,3 +1,6 @@
+import 'dart:math' as math;
+
+import 'package:amora_ai/core/access/amora_access.dart';
 import 'package:amora_ai/core/constants/app_images.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
@@ -5,21 +8,36 @@ import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/floating_bottom_nav.dart';
 import 'package:amora_ai/core/widgets/premium_asset_image.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
+import 'package:amora_ai/core/widgets/premium_motion.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
-import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
-import 'package:amora_ai/features/profile/presentation/profile_completion_screen.dart';
-import 'package:amora_ai/features/profile/presentation/profile_preview_screen.dart';
-import 'package:amora_ai/features/profile/presentation/profile_setup_screen.dart';
 import 'package:amora_ai/features/notifications/presentation/notifications_hub_screen.dart';
-import 'package:amora_ai/features/safety/presentation/report_flow_screen.dart';
-import 'package:amora_ai/features/settings/presentation/settings_screen.dart';
+import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
+import 'package:amora_ai/features/profile/presentation/kyc_verification_screen.dart';
+import 'package:amora_ai/features/profile/presentation/photo_manager_screen.dart';
+import 'package:amora_ai/features/profile/presentation/profile_completion_screen.dart';
+import 'package:amora_ai/features/profile/presentation/profile_edit_screen.dart';
+import 'package:amora_ai/features/profile/presentation/profile_preview_screen.dart';
+import 'package:amora_ai/features/profile/presentation/profile_section_editor_screen.dart';
+import 'package:amora_ai/features/settings/presentation/notification_preferences_screen.dart';
+import 'package:amora_ai/features/settings/presentation/profile_settings_screen.dart';
+import 'package:amora_ai/features/settings/presentation/safety_privacy_screen.dart';
 import 'package:amora_ai/features/subscription/presentation/subscription_screen.dart';
+import 'package:amora_ai/features/support/data/support_faq_data.dart';
+import 'package:amora_ai/features/support/presentation/faq_support_screen.dart';
 import 'package:flutter/material.dart';
 
+typedef ProfileAccountDeletionCallback =
+    Future<bool> Function(String reason, String? details);
+
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key, this.showNavigation = true});
+  const ProfileScreen({
+    super.key,
+    this.showNavigation = true,
+    this.onDeleteAccount,
+  });
 
   final bool showNavigation;
+  final ProfileAccountDeletionCallback? onDeleteAccount;
   static const routeName = '/profile';
 
   @override
@@ -41,11 +59,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
     super.dispose();
   }
 
-  void _refresh() => setState(() {});
+  void _refresh() {
+    if (mounted) setState(() {});
+  }
 
   @override
   Widget build(BuildContext context) {
     final profile = _repository.profile;
+    final bottomInset = widget.showNavigation ? 116.0 : 36.0;
     return Scaffold(
       backgroundColor: AppColors.background,
       bottomNavigationBar: widget.showNavigation
@@ -54,99 +75,226 @@ class _ProfileScreenState extends State<ProfileScreen> {
       body: SafeArea(
         bottom: !widget.showNavigation,
         child: ResponsiveMobileFrame(
-          maxWidth: 720,
+          maxWidth: 1040,
           child: CustomScrollView(
             key: const PageStorageKey('main-profile-scroll'),
             slivers: [
+              SliverPersistentHeader(
+                pinned: true,
+                delegate: _ProfileHeaderDelegate(
+                  onNotifications: () =>
+                      _open(NotificationsHubScreen.routeName),
+                  onSettings: () => _open(ProfileSettingsScreen.routeName),
+                ),
+              ),
               SliverPadding(
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 40),
+                padding: EdgeInsets.fromLTRB(20, 16, 20, bottomInset),
                 sliver: SliverList.list(
                   children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            'Profile',
-                            style: AmoraTextStyles.screenTitle,
-                          ),
+                    FadeUp(
+                      child: ProfileHero(
+                        profile: profile,
+                        zodiac: _zodiacFor(profile.birthdate),
+                        onEdit: () => _open(ProfileEditScreen.routeName),
+                        onPreview: () => _open(ProfilePreviewScreen.routeName),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    FadeUp(
+                      delay: const Duration(milliseconds: 35),
+                      child: ProfileCompletionCard(
+                        profile: profile,
+                        onComplete: () =>
+                            _open(ProfileCompletionScreen.routeName),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    ProfilePreviewCard(
+                      onPreview: () => _open(ProfilePreviewScreen.routeName),
+                    ),
+                    const SizedBox(height: 30),
+                    ProfileSectionHeading(
+                      icon: Icons.photo_camera_rounded,
+                      title: 'Photo gallery',
+                      subtitle: 'The moments that make your story feel real.',
+                      actionLabel: 'Manage',
+                      onAction: () => _open(PhotoManagerScreen.routeName),
+                    ),
+                    const SizedBox(height: 12),
+                    ProfilePhotoGallery(
+                      profile: profile,
+                      onManage: () => _open(PhotoManagerScreen.routeName),
+                    ),
+                    const SizedBox(height: 30),
+                    ProfileSectionHeading(
+                      icon: Icons.forum_rounded,
+                      title: 'Profile prompts',
+                      subtitle:
+                          'Three glimpses into how you think, laugh, and connect.',
+                      actionLabel: 'Edit',
+                      onAction: () => _openSection(ProfileSection.prompts),
+                    ),
+                    const SizedBox(height: 12),
+                    ProfilePromptsCard(profile: profile),
+                    const SizedBox(height: 30),
+                    ProfileSectionHeading(
+                      icon: Icons.person_rounded,
+                      title: 'About me',
+                      subtitle: 'The details that shape everyday life.',
+                      actionLabel: 'Edit',
+                      onAction: () => _open(ProfileEditScreen.routeName),
+                    ),
+                    const SizedBox(height: 12),
+                    ProfileAboutCard(
+                      profile: profile,
+                      zodiac: _zodiacFor(profile.birthdate),
+                    ),
+                    const SizedBox(height: 30),
+                    ProfileSectionHeading(
+                      icon: Icons.favorite_rounded,
+                      title: 'Dating intentions',
+                      subtitle: 'Clear about the connection you want to build.',
+                      actionLabel: 'Edit',
+                      onAction: () => _open(ProfileEditScreen.routeName),
+                    ),
+                    const SizedBox(height: 12),
+                    DatingIntentionsCard(profile: profile),
+                    const SizedBox(height: 30),
+                    ProfileSectionHeading(
+                      icon: Icons.interests_rounded,
+                      title: 'Interests',
+                      subtitle: 'Easy places for a conversation to begin.',
+                      actionLabel: 'Edit',
+                      onAction: () => _openSection(ProfileSection.interests),
+                    ),
+                    const SizedBox(height: 12),
+                    ProfileInterestsCard(interests: profile.interests),
+                    const SizedBox(height: 30),
+                    ProfileSectionHeading(
+                      icon: Icons.psychology_alt_rounded,
+                      title: 'Personality',
+                      subtitle: 'The lifestyle details you chose to share.',
+                      actionLabel: 'Edit',
+                      onAction: () => _openSection(ProfileSection.lifestyle),
+                    ),
+                    const SizedBox(height: 12),
+                    ProfilePersonalityCard(lifestyle: profile.lifestyle),
+                    const SizedBox(height: 30),
+                    const ProfileSectionHeading(
+                      icon: Icons.verified_user_rounded,
+                      title: 'Verification & trust',
+                      subtitle: 'Safety signals are shown only when verified.',
+                    ),
+                    const SizedBox(height: 12),
+                    VerificationTrustCard(
+                      onVerify: () => _open(KycVerificationScreen.routeName),
+                      onSafety: () => _open(SafetyPrivacyScreen.routeName),
+                    ),
+                    const SizedBox(height: 30),
+                    const ProfileSectionHeading(
+                      icon: Icons.workspace_premium_rounded,
+                      title: 'Premium membership',
+                      subtitle: 'A quieter invitation to get more from Amora.',
+                    ),
+                    const SizedBox(height: 12),
+                    MembershipCard(
+                      onView: () => _open(SubscriptionScreen.routeName),
+                      onManage: () => _open(SubscriptionScreen.routeName),
+                    ),
+                    const SizedBox(height: 30),
+                    const ProfileSectionHeading(
+                      icon: Icons.tune_rounded,
+                      title: 'Settings',
+                      subtitle: 'Account controls, kept out of your story.',
+                    ),
+                    const SizedBox(height: 12),
+                    ProfileLinkGroup(
+                      items: [
+                        ProfileLinkItem(
+                          icon: Icons.manage_accounts_rounded,
+                          title: 'Account',
+                          subtitle: 'Personal information and account details',
+                          onTap: () => _open(ProfileSettingsScreen.routeName),
                         ),
-                        IconButton(
-                          key: const ValueKey('profile-notifications-button'),
-                          tooltip: 'Notifications',
-                          constraints: const BoxConstraints.tightFor(
-                            width: 48,
-                            height: 48,
-                          ),
-                          onPressed: () => Navigator.of(
-                            context,
-                          ).pushNamed(NotificationsHubScreen.routeName),
-                          icon: const Icon(Icons.notifications_none_rounded),
+                        ProfileLinkItem(
+                          icon: Icons.privacy_tip_rounded,
+                          title: 'Privacy',
+                          subtitle: 'Visibility, consent and safety controls',
+                          onTap: () => _open(SafetyPrivacyScreen.routeName),
                         ),
-                        IconButton(
-                          tooltip: 'Settings',
-                          constraints: const BoxConstraints.tightFor(
-                            width: 48,
-                            height: 48,
-                          ),
-                          onPressed: () => Navigator.of(
-                            context,
-                          ).pushNamed(SettingsScreen.routeName),
-                          icon: const Icon(Icons.settings_rounded),
+                        ProfileLinkItem(
+                          icon: Icons.notifications_rounded,
+                          title: 'Notifications',
+                          subtitle: 'Choose the updates that matter',
+                          onTap: () =>
+                              _open(NotificationPreferencesScreen.routeName),
+                        ),
+                        ProfileLinkItem(
+                          icon: Icons.block_rounded,
+                          title: 'Blocked users',
+                          subtitle: 'Review existing privacy controls',
+                          onTap: () => _open(SafetyPrivacyScreen.routeName),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 16),
-                    _IdentityCard(profile: profile),
-                    const SizedBox(height: 16),
-                    _CompletionCard(
-                      percent: profile.completionPercent,
-                      onComplete: () =>
-                          _open(ProfileCompletionScreen.routeName),
+                    const SizedBox(height: 30),
+                    const ProfileSectionHeading(
+                      icon: Icons.mail_rounded,
+                      title: 'Support',
+                      subtitle: 'Private, straightforward help by email.',
                     ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: AppPrimaryButton(
-                            label: 'Edit Profile',
-                            icon: Icons.edit_rounded,
-                            onPressed: () =>
-                                _open(ProfileSetupScreen.routeName),
-                          ),
+                    const SizedBox(height: 12),
+                    EmailSupportProfileCard(
+                      email: SupportContact.email,
+                      onContact: () => _open(FaqSupportScreen.routeName),
+                    ),
+                    const SizedBox(height: 30),
+                    const ProfileSectionHeading(
+                      icon: Icons.gavel_rounded,
+                      title: 'Legal',
+                      subtitle: 'The standards that protect the community.',
+                    ),
+                    const SizedBox(height: 12),
+                    ProfileLinkGroup(
+                      items: [
+                        ProfileLinkItem(
+                          icon: Icons.description_rounded,
+                          title: 'Terms',
+                          subtitle: 'Review Amora’s account terms',
+                          onTap: () => _showLegalNotice('Terms'),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: AppPrimaryButton(
-                            label: 'Preview',
-                            icon: Icons.visibility_rounded,
-                            variant: AppPrimaryButtonVariant.outlined,
-                            onPressed: () =>
-                                _open(ProfilePreviewScreen.routeName),
-                          ),
+                        ProfileLinkItem(
+                          icon: Icons.policy_rounded,
+                          title: 'Privacy policy',
+                          subtitle: 'How personal information is handled',
+                          onTap: () => _showLegalNotice('Privacy policy'),
+                        ),
+                        ProfileLinkItem(
+                          icon: Icons.people_alt_rounded,
+                          title: 'Community guidelines',
+                          subtitle: 'Respectful behavior across Amora',
+                          onTap: () => _open(SafetyPrivacyScreen.routeName),
+                        ),
+                        ProfileLinkItem(
+                          icon: Icons.shield_rounded,
+                          title: 'Safety center',
+                          subtitle: 'Tools for safer dating',
+                          onTap: () => _open(SafetyPrivacyScreen.routeName),
                         ),
                       ],
                     ),
                     const SizedBox(height: 24),
-                    Text('Your profile', style: AmoraTextStyles.titleLarge),
-                    const SizedBox(height: 12),
-                    _InsightsCard(profile: profile),
-                    const SizedBox(height: 16),
-                    _ShortcutCard(
-                      icon: Icons.shield_rounded,
-                      title: 'Safety & support',
-                      subtitle: 'Privacy, reporting and trusted guidance',
-                      onTap: () => _open(ReportFlowScreen.routeName),
+                    SessionActionButton(
+                      icon: Icons.logout_rounded,
+                      label: 'Log out',
+                      onPressed: _confirmLogout,
                     ),
                     const SizedBox(height: 12),
-                    _MembershipCard(
-                      onTap: () => _open(SubscriptionScreen.routeName),
-                    ),
-                    const SizedBox(height: 12),
-                    _ShortcutCard(
-                      icon: Icons.tune_rounded,
-                      title: 'Settings',
-                      subtitle: 'Preferences, account and accessibility',
-                      onTap: () => _open(SettingsScreen.routeName),
+                    SessionActionButton(
+                      icon: Icons.delete_outline_rounded,
+                      label: 'Delete account',
+                      destructive: true,
+                      onPressed: _confirmDeleteAccount,
                     ),
                   ],
                 ),
@@ -162,64 +310,1291 @@ class _ProfileScreenState extends State<ProfileScreen> {
     await Navigator.of(context).pushNamed(route);
     if (mounted) setState(() {});
   }
+
+  Future<void> _openSection(ProfileSection section) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ProfileSectionEditorScreen(section: section),
+      ),
+    );
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _confirmLogout() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        icon: const Icon(Icons.logout_rounded, color: AppColors.primary),
+        title: const Text('Log out of Amora?'),
+        content: const Text(
+          'Your profile stays saved. You can sign back in with your registered account.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Stay signed in'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Log out'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    AmoraSession.logOut();
+    Navigator.of(context).pushNamedAndRemoveUntil('/browse', (route) => false);
+  }
+
+  Future<void> _confirmDeleteAccount() async {
+    final deleted = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      isDismissible: false,
+      enableDrag: false,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      barrierColor: AppColors.primary.withValues(alpha: .24),
+      builder: (sheetContext) =>
+          _AccountDeletionFlowSheet(onDeleteAccount: widget.onDeleteAccount),
+    );
+    if (deleted != true || !mounted) return;
+    AmoraSession.logOut();
+    Navigator.of(context).pushNamedAndRemoveUntil('/browse', (route) => false);
+  }
+
+  void _showLegalNotice(String title) {
+    showModalBottomSheet<void>(
+      context: context,
+      useSafeArea: true,
+      showDragHandle: true,
+      builder: (sheetContext) => Padding(
+        padding: const EdgeInsets.fromLTRB(24, 4, 24, 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(title, style: AmoraTextStyles.headlineSmall),
+            const SizedBox(height: 10),
+            const Text(
+              'This build does not register a separate document route. The existing legal agreement remains unchanged.',
+            ),
+            const SizedBox(height: 18),
+            AppPrimaryButton(
+              label: 'Close',
+              onPressed: () => Navigator.of(sheetContext).pop(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
-class _IdentityCard extends StatelessWidget {
-  const _IdentityCard({required this.profile});
-  final LocalProfileDraft profile;
+class _ProfileHeaderDelegate extends SliverPersistentHeaderDelegate {
+  const _ProfileHeaderDelegate({
+    required this.onNotifications,
+    required this.onSettings,
+  });
+
+  final VoidCallback onNotifications;
+  final VoidCallback onSettings;
+
+  @override
+  double get minExtent => 64;
+
+  @override
+  double get maxExtent => 64;
+
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    return Material(
+      color: AppColors.surface,
+      elevation: overlapsContent ? 2 : 0,
+      shadowColor: AppColors.primary.withValues(alpha: .08),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'My dating identity',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AmoraTextStyles.titleLarge.copyWith(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  Text(
+                    'Your story, your way',
+                    style: AmoraTextStyles.bodySmall.copyWith(
+                      color: AppColors.text.withValues(alpha: .62),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            _ProfileHeaderActionButton(
+              key: const ValueKey('profile-notifications-button'),
+              tooltip: 'Notifications',
+              semanticLabel: 'Open notifications',
+              onPressed: onNotifications,
+              icon: Icons.notifications_none_rounded,
+            ),
+            const SizedBox(width: 8),
+            _ProfileHeaderActionButton(
+              key: const ValueKey('profile-settings-button'),
+              tooltip: 'Profile settings',
+              semanticLabel: 'Open profile settings',
+              onPressed: onSettings,
+              icon: Icons.settings_rounded,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  bool shouldRebuild(covariant _ProfileHeaderDelegate oldDelegate) {
+    return oldDelegate.onNotifications != onNotifications ||
+        oldDelegate.onSettings != onSettings;
+  }
+}
+
+class _ProfileHeaderActionButton extends StatelessWidget {
+  const _ProfileHeaderActionButton({
+    super.key,
+    required this.icon,
+    required this.tooltip,
+    required this.semanticLabel,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final String semanticLabel;
+  final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
-    return PremiumCard(
-      padding: const EdgeInsets.all(20),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final compact = constraints.maxWidth < 360;
-          final image = PremiumAssetImage(
-            imageUrl: profile.primaryPhoto,
-            fallbackAsset: profile.primaryPhoto,
-            initials: AppImages.initialsForName(profile.name),
-            width: compact ? 88 : 108,
-            height: compact ? 112 : 136,
-            fit: BoxFit.cover,
-            borderRadius: BorderRadius.circular(24),
-          );
-          final details = Column(
+    return Semantics(
+      button: true,
+      label: semanticLabel,
+      child: Tooltip(
+        message: tooltip,
+        child: SizedBox.square(
+          dimension: 48,
+          child: Center(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: AppColors.secondary.withValues(alpha: .28),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: .08),
+                    blurRadius: 14,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
+              ),
+              child: Material(
+                color: Colors.transparent,
+                shape: const CircleBorder(),
+                clipBehavior: Clip.antiAlias,
+                child: InkWell(
+                  onTap: onPressed,
+                  overlayColor: WidgetStatePropertyAll(
+                    AppColors.tertiary.withValues(alpha: .22),
+                  ),
+                  child: SizedBox.square(
+                    dimension: 44,
+                    child: Icon(icon, color: AppColors.primary, size: 22),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+enum _AccountDeletionStep { reason, confirmation }
+
+class _AccountDeletionReason {
+  const _AccountDeletionReason(this.label, this.icon);
+
+  final String label;
+  final IconData icon;
+}
+
+const _accountDeletionReasons = <_AccountDeletionReason>[
+  _AccountDeletionReason('I found someone', Icons.favorite_rounded),
+  _AccountDeletionReason('I need a break', Icons.pause_circle_rounded),
+  _AccountDeletionReason(
+    'I’m not finding the right matches',
+    Icons.person_search_rounded,
+  ),
+  _AccountDeletionReason('I have privacy concerns', Icons.shield_rounded),
+  _AccountDeletionReason(
+    'I receive too many notifications',
+    Icons.notifications_off_rounded,
+  ),
+  _AccountDeletionReason(
+    'The app is difficult to use',
+    Icons.touch_app_rounded,
+  ),
+  _AccountDeletionReason(
+    'I created another account',
+    Icons.switch_account_rounded,
+  ),
+  _AccountDeletionReason('Other', Icons.more_horiz_rounded),
+];
+
+class _AccountDeletionFlowSheet extends StatefulWidget {
+  const _AccountDeletionFlowSheet({required this.onDeleteAccount});
+
+  final ProfileAccountDeletionCallback? onDeleteAccount;
+
+  @override
+  State<_AccountDeletionFlowSheet> createState() =>
+      _AccountDeletionFlowSheetState();
+}
+
+class _AccountDeletionFlowSheetState extends State<_AccountDeletionFlowSheet> {
+  final _detailsController = TextEditingController();
+  _AccountDeletionStep _step = _AccountDeletionStep.reason;
+  _AccountDeletionReason? _selectedReason;
+  bool _isDeleting = false;
+  String? _errorMessage;
+
+  @override
+  void dispose() {
+    _detailsController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final mediaQuery = MediaQuery.of(context);
+    final availableHeight =
+        mediaQuery.size.height - mediaQuery.viewInsets.bottom;
+    final maximumHeight = math.min(760.0, availableHeight * .92);
+
+    return AnimatedPadding(
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeOutCubic,
+      padding: EdgeInsets.only(bottom: mediaQuery.viewInsets.bottom),
+      child: Align(
+        alignment: Alignment.bottomCenter,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 600),
+          child: Material(
+            color: AppColors.surface,
+            shape: RoundedRectangleBorder(
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(30),
+              ),
+              side: BorderSide(
+                color: AppColors.secondary.withValues(alpha: .2),
+              ),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: PopScope(
+              canPop: !_isDeleting,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxHeight: maximumHeight),
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 240),
+                  switchInCurve: Curves.easeOutCubic,
+                  switchOutCurve: Curves.easeInCubic,
+                  transitionBuilder: (child, animation) => FadeTransition(
+                    opacity: animation,
+                    child: SlideTransition(
+                      position: Tween<Offset>(
+                        begin: const Offset(.04, 0),
+                        end: Offset.zero,
+                      ).animate(animation),
+                      child: child,
+                    ),
+                  ),
+                  child: _step == _AccountDeletionStep.reason
+                      ? _buildReasonStep(mediaQuery)
+                      : _buildConfirmationStep(mediaQuery),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildReasonStep(MediaQueryData mediaQuery) {
+    return Column(
+      key: const ValueKey('account-deletion-reason-step'),
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const _DeletionSheetHandle(),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                profile.age == null
-                    ? profile.name
-                    : '${profile.name}, ${profile.age}',
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: AmoraTextStyles.headlineMedium,
+                'Why are you leaving Amora?',
+                style: AmoraTextStyles.headlineSmall.copyWith(
+                  fontSize: 23,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
-              const SizedBox(height: 8),
-              _Meta(icon: Icons.location_on_rounded, text: profile.location),
-              _Meta(
-                icon: Icons.favorite_rounded,
-                text: profile.datingIntention,
+              const SizedBox(height: 7),
+              Text(
+                'Your feedback helps us improve the experience.',
+                style: AmoraTextStyles.bodyMedium.copyWith(
+                  fontSize: 15,
+                  height: 1.45,
+                  color: AppColors.text.withValues(alpha: .68),
+                ),
               ),
-              _Meta(icon: Icons.work_rounded, text: profile.profession),
+            ],
+          ),
+        ),
+        Flexible(
+          fit: FlexFit.loose,
+          child: SingleChildScrollView(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+            child: Column(
+              children: [
+                for (final reason in _accountDeletionReasons) ...[
+                  _DeletionReasonOption(
+                    reason: reason,
+                    selected: identical(reason, _selectedReason),
+                    onTap: () {
+                      setState(() {
+                        _selectedReason = reason;
+                        _errorMessage = null;
+                      });
+                    },
+                  ),
+                  if (!identical(reason, _accountDeletionReasons.last))
+                    const SizedBox(height: 8),
+                ],
+                AnimatedSize(
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOutCubic,
+                  child: _selectedReason == _accountDeletionReasons.last
+                      ? Padding(
+                          padding: const EdgeInsets.only(top: 12),
+                          child: TextField(
+                            controller: _detailsController,
+                            textInputAction: TextInputAction.done,
+                            minLines: 2,
+                            maxLines: 4,
+                            decoration: InputDecoration(
+                              labelText: 'Tell us more',
+                              alignLabelWithHint: true,
+                              filled: true,
+                              fillColor: AppColors.background,
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(18),
+                                borderSide: BorderSide(
+                                  color: AppColors.secondary.withValues(
+                                    alpha: .24,
+                                  ),
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(18),
+                                borderSide: const BorderSide(
+                                  color: AppColors.secondary,
+                                  width: 1.5,
+                                ),
+                              ),
+                            ),
+                          ),
+                        )
+                      : const SizedBox.shrink(),
+                ),
+              ],
+            ),
+          ),
+        ),
+        _DeletionSheetActions(
+          bottomPadding: math.max(20, mediaQuery.viewPadding.bottom + 12),
+          secondaryLabel: 'Cancel',
+          onSecondary: () => Navigator.of(context).pop(false),
+          primaryLabel: 'Continue',
+          onPrimary: _selectedReason == null
+              ? null
+              : () {
+                  FocusScope.of(context).unfocus();
+                  setState(() {
+                    _step = _AccountDeletionStep.confirmation;
+                    _errorMessage = null;
+                  });
+                },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildConfirmationStep(MediaQueryData mediaQuery) {
+    final selectedReason = _selectedReason;
+    return Column(
+      key: const ValueKey('account-deletion-confirmation-step'),
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const _DeletionSheetHandle(),
+        Flexible(
+          fit: FlexFit.loose,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(24, 8, 24, 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 64,
+                    height: 64,
+                    decoration: BoxDecoration(
+                      color: AppColors.tertiary.withValues(alpha: .24),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: AppColors.secondary.withValues(alpha: .28),
+                      ),
+                    ),
+                    child: const Icon(
+                      Icons.person_remove_rounded,
+                      color: AppColors.primary,
+                      size: 30,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Center(
+                  child: Text(
+                    'Delete your account permanently?',
+                    textAlign: TextAlign.center,
+                    style: AmoraTextStyles.headlineSmall.copyWith(
+                      fontSize: 23,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'This will permanently remove your Amora account according to the current account-deletion policy.',
+                  textAlign: TextAlign.center,
+                  style: AmoraTextStyles.bodyMedium.copyWith(
+                    fontSize: 15,
+                    height: 1.5,
+                    color: AppColors.text.withValues(alpha: .7),
+                  ),
+                ),
+                if (selectedReason != null) ...[
+                  const SizedBox(height: 20),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppColors.background,
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(
+                        color: AppColors.secondary.withValues(alpha: .24),
+                      ),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          selectedReason.icon,
+                          color: AppColors.primary,
+                          size: 22,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Selected reason',
+                                style: AmoraTextStyles.labelMedium.copyWith(
+                                  color: AppColors.text.withValues(alpha: .62),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                selectedReason.label,
+                                style: AmoraTextStyles.bodyMedium.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              if (selectedReason ==
+                                      _accountDeletionReasons.last &&
+                                  _detailsController.text
+                                      .trim()
+                                      .isNotEmpty) ...[
+                                const SizedBox(height: 5),
+                                Text(
+                                  _detailsController.text.trim(),
+                                  style: AmoraTextStyles.bodySmall.copyWith(
+                                    height: 1.4,
+                                    color: AppColors.text.withValues(
+                                      alpha: .68,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                if (_errorMessage != null) ...[
+                  const SizedBox(height: 14),
+                  Semantics(
+                    liveRegion: true,
+                    label: _errorMessage,
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: AppColors.tertiary.withValues(alpha: .2),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: AppColors.secondary.withValues(alpha: .34),
+                        ),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(
+                            Icons.info_outline_rounded,
+                            color: AppColors.primary,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              _errorMessage!,
+                              style: AmoraTextStyles.bodySmall.copyWith(
+                                height: 1.4,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+                if (_isDeleting)
+                  Semantics(
+                    liveRegion: true,
+                    label: 'Deleting account',
+                    child: const SizedBox.shrink(),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        _DeletionSheetActions(
+          bottomPadding: math.max(20, mediaQuery.viewPadding.bottom + 12),
+          secondaryLabel: 'Cancel',
+          onSecondary: _isDeleting
+              ? null
+              : () => Navigator.of(context).pop(false),
+          primaryLabel: _isDeleting ? 'Deleting account…' : 'Delete My Account',
+          primaryIcon: _isDeleting
+              ? const SizedBox.square(
+                  dimension: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: AppColors.surface,
+                  ),
+                )
+              : const Icon(Icons.person_remove_rounded, size: 20),
+          destructive: true,
+          onPrimary: _isDeleting ? null : _deleteAccount,
+        ),
+      ],
+    );
+  }
+
+  Future<void> _deleteAccount() async {
+    final selectedReason = _selectedReason;
+    if (_isDeleting || selectedReason == null) return;
+
+    final deletionCallback = widget.onDeleteAccount;
+    if (deletionCallback == null) {
+      setState(() {
+        _errorMessage = 'We couldn’t delete your account. Please try again.';
+      });
+      return;
+    }
+
+    setState(() {
+      _isDeleting = true;
+      _errorMessage = null;
+    });
+
+    var deleted = false;
+    try {
+      final details = selectedReason == _accountDeletionReasons.last
+          ? _detailsController.text.trim()
+          : '';
+      deleted = await deletionCallback(
+        selectedReason.label,
+        details.isEmpty ? null : details,
+      );
+    } catch (_) {
+      deleted = false;
+    }
+
+    if (!mounted) return;
+    if (deleted) {
+      Navigator.of(context).pop(true);
+      return;
+    }
+
+    setState(() {
+      _isDeleting = false;
+      _errorMessage = 'We couldn’t delete your account. Please try again.';
+    });
+  }
+}
+
+class _DeletionSheetHandle extends StatelessWidget {
+  const _DeletionSheetHandle();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.only(top: 10, bottom: 6),
+        child: Container(
+          width: 42,
+          height: 4,
+          decoration: BoxDecoration(
+            color: AppColors.secondary.withValues(alpha: .24),
+            borderRadius: BorderRadius.circular(99),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DeletionReasonOption extends StatelessWidget {
+  const _DeletionReasonOption({
+    required this.reason,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final _AccountDeletionReason reason;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      checked: selected,
+      label: reason.label,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOutCubic,
+        constraints: const BoxConstraints(minHeight: 56),
+        decoration: BoxDecoration(
+          color: selected
+              ? AppColors.tertiary.withValues(alpha: .2)
+              : AppColors.surface,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: selected
+                ? AppColors.primary
+                : AppColors.secondary.withValues(alpha: .2),
+            width: selected ? 1.5 : 1,
+          ),
+        ),
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(18),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: onTap,
+            focusColor: AppColors.tertiary.withValues(alpha: .24),
+            overlayColor: WidgetStatePropertyAll(
+              AppColors.tertiary.withValues(alpha: .18),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+              child: Row(
+                children: [
+                  Icon(reason.icon, color: AppColors.primary, size: 22),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      reason.label,
+                      style: AmoraTextStyles.bodyMedium.copyWith(
+                        fontSize: 15,
+                        fontWeight: selected
+                            ? FontWeight.w600
+                            : FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      color: selected ? AppColors.primary : AppColors.surface,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: selected
+                            ? AppColors.primary
+                            : AppColors.secondary.withValues(alpha: .4),
+                        width: 1.5,
+                      ),
+                    ),
+                    child: selected
+                        ? const Icon(
+                            Icons.check_rounded,
+                            color: AppColors.surface,
+                            size: 16,
+                          )
+                        : null,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DeletionSheetActions extends StatelessWidget {
+  const _DeletionSheetActions({
+    required this.bottomPadding,
+    required this.secondaryLabel,
+    required this.onSecondary,
+    required this.primaryLabel,
+    required this.onPrimary,
+    this.primaryIcon,
+    this.destructive = false,
+  });
+
+  final double bottomPadding;
+  final String secondaryLabel;
+  final VoidCallback? onSecondary;
+  final String primaryLabel;
+  final VoidCallback? onPrimary;
+  final Widget? primaryIcon;
+  final bool destructive;
+
+  @override
+  Widget build(BuildContext context) {
+    final primaryColor = destructive ? AppColors.secondary : AppColors.primary;
+    return Container(
+      padding: EdgeInsets.fromLTRB(20, 14, 20, bottomPadding),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border(
+          top: BorderSide(color: AppColors.secondary.withValues(alpha: .14)),
+        ),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: SizedBox(
+              height: 52,
+              child: OutlinedButton(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.primary,
+                  side: BorderSide(
+                    color: AppColors.secondary.withValues(alpha: .34),
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                ),
+                onPressed: onSecondary,
+                child: Text(secondaryLabel),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            flex: 2,
+            child: SizedBox(
+              height: 52,
+              child: FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: primaryColor,
+                  foregroundColor: AppColors.surface,
+                  disabledBackgroundColor: primaryColor.withValues(alpha: .3),
+                  disabledForegroundColor: AppColors.surface.withValues(
+                    alpha: .86,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                ),
+                onPressed: onPrimary,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (primaryIcon != null) ...[
+                      primaryIcon!,
+                      const SizedBox(width: 8),
+                    ],
+                    Flexible(
+                      child: Text(
+                        primaryLabel,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class ProfileHero extends StatelessWidget {
+  const ProfileHero({
+    super.key,
+    required this.profile,
+    required this.zodiac,
+    required this.onEdit,
+    required this.onPreview,
+  });
+
+  final LocalProfileDraft profile;
+  final String? zodiac;
+  final VoidCallback onEdit;
+  final VoidCallback onPreview;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final wide = constraints.maxWidth >= 760;
+        final media = Semantics(
+          image: true,
+          label: 'Primary profile photo for ${profile.name}',
+          child: SizedBox(
+            height: wide ? 430 : math.min(470, constraints.maxWidth * 1.18),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                PremiumAssetImage(
+                  imageUrl: profile.primaryPhoto,
+                  fallbackAsset: profile.primaryPhoto,
+                  initials: AppImages.initialsForName(profile.name),
+                  fit: BoxFit.cover,
+                  borderRadius: BorderRadius.circular(30),
+                ),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(30),
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        AppColors.primary.withValues(alpha: 0),
+                        AppColors.primary.withValues(alpha: .78),
+                      ],
+                      stops: const [.42, 1],
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: 20,
+                  right: 20,
+                  bottom: 20,
+                  child: _HeroIdentity(
+                    profile: profile,
+                    zodiac: zodiac,
+                    light: true,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+
+        if (!wide) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              media,
+              const SizedBox(height: 14),
+              _HeroActions(onEdit: onEdit, onPreview: onPreview),
+              const SizedBox(height: 12),
+              _QuickInfo(profile: profile, zodiac: zodiac),
+            ],
+          );
+        }
+
+        return SizedBox(
+          height: 510,
+          child: PremiumCard(
+            radius: 30,
+            padding: const EdgeInsets.all(18),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(flex: 11, child: media),
+                const SizedBox(width: 24),
+                Expanded(
+                  flex: 10,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _HeroIdentity(
+                        profile: profile,
+                        zodiac: zodiac,
+                        light: false,
+                      ),
+                      const SizedBox(height: 20),
+                      _QuickInfo(profile: profile, zodiac: zodiac),
+                      const SizedBox(height: 24),
+                      _HeroActions(onEdit: onEdit, onPreview: onPreview),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _HeroIdentity extends StatelessWidget {
+  const _HeroIdentity({
+    required this.profile,
+    required this.zodiac,
+    required this.light,
+  });
+
+  final LocalProfileDraft profile;
+  final String? zodiac;
+  final bool light;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = light ? AppColors.surface : AppColors.primary;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          profile.age == null
+              ? profile.name
+              : '${profile.name}, ${profile.age}',
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: AmoraTextStyles.headlineLarge.copyWith(
+            color: color,
+            fontSize: 30,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            if (zodiac != null)
+              _HeroPill(
+                icon: Icons.brightness_2_rounded,
+                text: zodiac!,
+                light: light,
+              ),
+            _HeroPill(
+              icon: Icons.location_on_rounded,
+              text: profile.location,
+              light: light,
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Text(
+          profile.profession,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: AmoraTextStyles.bodyLarge.copyWith(
+            color: color.withValues(alpha: light ? .88 : .72),
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          '${profile.completionPercent}% complete',
+          style: AmoraTextStyles.labelLarge.copyWith(
+            color: light ? AppColors.tertiary : AppColors.secondary,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _HeroPill extends StatelessWidget {
+  const _HeroPill({
+    required this.icon,
+    required this.text,
+    required this.light,
+  });
+
+  final IconData icon;
+  final String text;
+  final bool light;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: light
+            ? AppColors.surface.withValues(alpha: .16)
+            : AppColors.background,
+        borderRadius: BorderRadius.circular(99),
+        border: Border.all(
+          color: light
+              ? AppColors.surface.withValues(alpha: .28)
+              : AppColors.tertiary,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 16,
+            color: light ? AppColors.surface : AppColors.primary,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            text,
+            style: AmoraTextStyles.labelMedium.copyWith(
+              color: light ? AppColors.surface : AppColors.primary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeroActions extends StatelessWidget {
+  const _HeroActions({required this.onEdit, required this.onPreview});
+
+  final VoidCallback onEdit;
+  final VoidCallback onPreview;
+
+  @override
+  Widget build(BuildContext context) {
+    final edit = AppPrimaryButton(
+      label: 'Edit profile',
+      icon: Icons.edit_rounded,
+      onPressed: onEdit,
+    );
+    final preview = AppPrimaryButton(
+      label: 'Preview',
+      icon: Icons.visibility_rounded,
+      variant: AppPrimaryButtonVariant.outlined,
+      onPressed: onPreview,
+    );
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 330) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [edit, const SizedBox(height: 10), preview],
+          );
+        }
+        return Row(
+          children: [
+            Expanded(child: edit),
+            const SizedBox(width: 10),
+            Expanded(child: preview),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _QuickInfo extends StatelessWidget {
+  const _QuickInfo({required this.profile, required this.zodiac});
+
+  final LocalProfileDraft profile;
+  final String? zodiac;
+
+  @override
+  Widget build(BuildContext context) {
+    final items = <(IconData, String)>[
+      (Icons.location_on_rounded, profile.location),
+      (Icons.work_rounded, profile.profession),
+      if (zodiac != null) (Icons.brightness_2_rounded, zodiac!),
+      (Icons.favorite_rounded, profile.datingIntention),
+    ];
+    return LayoutBuilder(
+      builder: (context, constraints) => Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          for (final item in items)
+            Container(
+              constraints: BoxConstraints(
+                minHeight: 40,
+                maxWidth: constraints.maxWidth,
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(99),
+                border: Border.all(
+                  color: AppColors.secondary.withValues(alpha: .26),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(item.$1, size: 17, color: AppColors.secondary),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      item.$2,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AmoraTextStyles.labelMedium,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class ProfileCompletionCard extends StatelessWidget {
+  const ProfileCompletionCard({
+    super.key,
+    required this.profile,
+    required this.onComplete,
+  });
+
+  final LocalProfileDraft profile;
+  final VoidCallback onComplete;
+
+  @override
+  Widget build(BuildContext context) {
+    final missing = <String>[
+      if (profile.photos.length < 2) 'Add another photo',
+      if (profile.bio.trim().length < 40) 'Write a fuller introduction',
+      if (profile.interests.length < 5) 'Add more interests',
+      if (profile.completedPromptCount < 3) 'Complete three prompts',
+      if (profile.lifestyle.isEmpty) 'Share a lifestyle detail',
+      if (profile.voicePrompt == null) 'Add a voice introduction',
+    ];
+    final quality = profile.completionPercent >= 90
+        ? 'Excellent profile'
+        : profile.completionPercent >= 70
+        ? 'Strong foundation'
+        : 'Building your story';
+
+    return PremiumCard(
+      key: const ValueKey('profile-completion-card'),
+      radius: 26,
+      padding: const EdgeInsets.all(20),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final compact = constraints.maxWidth < 390;
+          final progress = _AnimatedProfileProgress(
+            percent: profile.completionPercent,
+          );
+          final copy = Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                quality,
+                style: AmoraTextStyles.titleLarge.copyWith(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 5),
+              Text(
+                missing.isEmpty
+                    ? 'Your profile story is ready to meet the community.'
+                    : 'Still improve: ${missing.take(2).join(' · ')}',
+                style: AmoraTextStyles.bodyMedium.copyWith(
+                  color: AppColors.text.withValues(alpha: .68),
+                ),
+              ),
+              const SizedBox(height: 14),
+              AppPrimaryButton(
+                label: missing.isEmpty ? 'Review profile' : 'Complete profile',
+                icon: Icons.auto_awesome_rounded,
+                size: AmoraButtonSize.compact,
+                onPressed: onComplete,
+              ),
             ],
           );
           if (compact) {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Center(child: image),
+                Align(alignment: Alignment.centerLeft, child: progress),
                 const SizedBox(height: 16),
-                details,
+                copy,
               ],
             );
           }
           return Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              image,
-              const SizedBox(width: 18),
-              Expanded(child: details),
+              progress,
+              const SizedBox(width: 20),
+              Expanded(child: copy),
             ],
           );
         },
@@ -228,21 +1603,127 @@ class _IdentityCard extends StatelessWidget {
   }
 }
 
-class _Meta extends StatelessWidget {
-  const _Meta({required this.icon, required this.text});
-  final IconData icon;
-  final String text;
+class _AnimatedProfileProgress extends StatelessWidget {
+  const _AnimatedProfileProgress({required this.percent});
+
+  final int percent;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 7),
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: percent / 100),
+      duration: reduceMotion
+          ? Duration.zero
+          : const Duration(milliseconds: 650),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, _) {
+        return Semantics(
+          label: 'Profile completion ${(value * 100).round()} percent',
+          child: CustomPaint(
+            painter: _ProgressRingPainter(value),
+            child: SizedBox.square(
+              dimension: 88,
+              child: Center(
+                child: Text(
+                  '${(value * 100).round()}%',
+                  style: AmoraTextStyles.titleLarge.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _ProgressRingPainter extends CustomPainter {
+  const _ProgressRingPainter(this.value);
+
+  final double value;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = size.center(Offset.zero);
+    final radius = (size.shortestSide - 8) / 2;
+    final track = Paint()
+      ..color = AppColors.tertiary.withValues(alpha: .55)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 8;
+    final progress = Paint()
+      ..color = AppColors.secondary
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = 8;
+    canvas.drawCircle(center, radius, track);
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      -math.pi / 2,
+      math.pi * 2 * value,
+      false,
+      progress,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _ProgressRingPainter oldDelegate) {
+    return oldDelegate.value != value;
+  }
+}
+
+class ProfilePreviewCard extends StatelessWidget {
+  const ProfilePreviewCard({super.key, required this.onPreview});
+
+  final VoidCallback onPreview;
+
+  @override
+  Widget build(BuildContext context) {
+    return PremiumCard(
+      radius: 24,
+      padding: const EdgeInsets.all(18),
       child: Row(
         children: [
-          Icon(icon, size: 18, color: AppColors.primary),
-          const SizedBox(width: 8),
+          Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              color: AppColors.tertiary.withValues(alpha: .55),
+              borderRadius: BorderRadius.circular(17),
+            ),
+            child: const Icon(
+              Icons.visibility_rounded,
+              color: AppColors.primary,
+            ),
+          ),
+          const SizedBox(width: 14),
           Expanded(
-            child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Preview your profile',
+                  style: AmoraTextStyles.titleMedium.copyWith(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'See your profile exactly how other members see it.',
+                  style: AmoraTextStyles.bodyMedium.copyWith(
+                    color: AppColors.text.withValues(alpha: .65),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            tooltip: 'Preview profile',
+            onPressed: onPreview,
+            icon: const Icon(Icons.arrow_forward_rounded),
           ),
         ],
       ),
@@ -250,44 +1731,206 @@ class _Meta extends StatelessWidget {
   }
 }
 
-class _CompletionCard extends StatelessWidget {
-  const _CompletionCard({required this.percent, required this.onComplete});
-  final int percent;
-  final VoidCallback onComplete;
+class ProfileSectionHeading extends StatelessWidget {
+  const ProfileSectionHeading({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    this.actionLabel,
+    this.onAction,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final String? actionLabel;
+  final VoidCallback? onAction;
 
   @override
   Widget build(BuildContext context) {
-    return PremiumCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, color: AppColors.secondary),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Text(
-                  'Profile completion',
-                  style: AmoraTextStyles.titleLarge,
+              Text(
+                title,
+                style: AmoraTextStyles.titleLarge.copyWith(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
+              const SizedBox(height: 3),
               Text(
-                '$percent%',
-                style: AmoraTextStyles.titleLarge.copyWith(
-                  color: AppColors.secondary,
+                subtitle,
+                style: AmoraTextStyles.bodyMedium.copyWith(
+                  color: AppColors.text.withValues(alpha: .62),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          LinearProgressIndicator(
-            value: percent / 100,
-            minHeight: 8,
-            borderRadius: BorderRadius.circular(99),
-          ),
-          const SizedBox(height: 12),
-          AppPrimaryButton(
-            label: percent >= 100 ? 'Review profile' : 'Complete profile',
-            variant: AppPrimaryButtonVariant.text,
-            onPressed: onComplete,
+        ),
+        if (actionLabel != null)
+          TextButton(onPressed: onAction, child: Text(actionLabel!)),
+      ],
+    );
+  }
+}
+
+class ProfilePhotoGallery extends StatelessWidget {
+  const ProfilePhotoGallery({
+    super.key,
+    required this.profile,
+    required this.onManage,
+  });
+
+  final LocalProfileDraft profile;
+  final VoidCallback onManage;
+
+  @override
+  Widget build(BuildContext context) {
+    if (profile.photos.isEmpty) {
+      return _ProfileEmptyCard(
+        icon: Icons.add_a_photo_rounded,
+        title: 'Add your first photos',
+        description: 'Use the existing photo manager to build your gallery.',
+        actionLabel: 'Add photos',
+        onAction: onManage,
+      );
+    }
+    final secondary = <String>[
+      for (var index = 0; index < profile.photos.length; index++)
+        if (index != profile.primaryPhotoIndex) profile.photos[index],
+    ].take(5).toList(growable: false);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final wide = constraints.maxWidth >= 720;
+        final hero = Stack(
+          children: [
+            Positioned.fill(
+              child: PremiumAssetImage(
+                imageUrl: profile.primaryPhoto,
+                fallbackAsset: profile.primaryPhoto,
+                initials: 'AM',
+                fit: BoxFit.cover,
+                borderRadius: BorderRadius.circular(26),
+              ),
+            ),
+            Positioned(
+              left: 12,
+              top: 12,
+              child: _GalleryLabel(
+                icon: Icons.star_rounded,
+                label: 'Primary photo',
+              ),
+            ),
+          ],
+        );
+        final grid = _SecondaryPhotoGrid(photos: secondary);
+        if (wide) {
+          return SizedBox(
+            height: 430,
+            child: Row(
+              children: [
+                Expanded(flex: 7, child: hero),
+                const SizedBox(width: 12),
+                Expanded(flex: 6, child: grid),
+              ],
+            ),
+          );
+        }
+        return Column(
+          children: [
+            SizedBox(
+              height: math.min(430, constraints.maxWidth * 1.05),
+              child: hero,
+            ),
+            if (secondary.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              SizedBox(height: 232, child: grid),
+            ],
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _SecondaryPhotoGrid extends StatelessWidget {
+  const _SecondaryPhotoGrid({required this.photos});
+
+  final List<String> photos;
+
+  @override
+  Widget build(BuildContext context) {
+    if (photos.isEmpty) {
+      return Container(
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: AppColors.tertiary),
+        ),
+        child: const Center(
+          child: Icon(Icons.add_a_photo_rounded, color: AppColors.secondary),
+        ),
+      );
+    }
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final itemWidth = (constraints.maxWidth - 10) / 2;
+        final itemHeight = (constraints.maxHeight - 10) / 2;
+        return Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            for (var index = 0; index < math.min(4, photos.length); index++)
+              SizedBox(
+                width: itemWidth,
+                height: itemHeight,
+                child: PremiumAssetImage(
+                  imageUrl: photos[index],
+                  fallbackAsset: photos[index],
+                  initials: 'AM',
+                  fit: BoxFit.cover,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _GalleryLabel extends StatelessWidget {
+  const _GalleryLabel({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withValues(alpha: .86),
+        borderRadius: BorderRadius.circular(99),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 15, color: AppColors.surface),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: AmoraTextStyles.labelMedium.copyWith(
+              color: AppColors.surface,
+            ),
           ),
         ],
       ),
@@ -295,46 +1938,175 @@ class _CompletionCard extends StatelessWidget {
   }
 }
 
-class _InsightsCard extends StatelessWidget {
-  const _InsightsCard({required this.profile});
+class ProfilePromptsCard extends StatelessWidget {
+  const ProfilePromptsCard({super.key, required this.profile});
+
   final LocalProfileDraft profile;
 
   @override
   Widget build(BuildContext context) {
-    final items = [
-      (Icons.photo_library_rounded, 'Photos', '${profile.photos.length}/6'),
-      (
-        Icons.chat_bubble_rounded,
-        'Prompts',
-        '${profile.completedPromptCount}/3',
-      ),
-      (Icons.interests_rounded, 'Interests', '${profile.interests.length}/10'),
+    final prompts = profile.prompts.entries
+        .where((entry) => entry.value.trim().isNotEmpty)
+        .take(3)
+        .toList(growable: false);
+    if (prompts.isEmpty) {
+      return const _ProfileEmptyCard(
+        icon: Icons.add_comment_rounded,
+        title: 'No prompts yet',
+        description: 'Add three answers that make it easy to start talking.',
+      );
+    }
+    return Column(
+      children: [
+        for (var index = 0; index < prompts.length; index++) ...[
+          PremiumCard(
+            key: ValueKey('profile-prompt-$index'),
+            radius: 24,
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        prompts[index].key,
+                        style: AmoraTextStyles.labelLarge.copyWith(
+                          color: AppColors.secondary,
+                        ),
+                      ),
+                    ),
+                    const Icon(
+                      Icons.drag_handle_rounded,
+                      color: AppColors.tertiary,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  prompts[index].value,
+                  style: AmoraTextStyles.titleMedium.copyWith(
+                    fontSize: 17,
+                    height: 1.45,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  '${prompts[index].value.characters.length}/180',
+                  textAlign: TextAlign.end,
+                  style: AmoraTextStyles.bodySmall.copyWith(
+                    color: AppColors.text.withValues(alpha: .55),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (index != prompts.length - 1) const SizedBox(height: 10),
+        ],
+      ],
+    );
+  }
+}
+
+class ProfileAboutCard extends StatelessWidget {
+  const ProfileAboutCard({
+    super.key,
+    required this.profile,
+    required this.zodiac,
+  });
+
+  final LocalProfileDraft profile;
+  final String? zodiac;
+
+  @override
+  Widget build(BuildContext context) {
+    final values = <(IconData, String, String)>[
+      (Icons.work_rounded, 'Occupation', profile.profession),
+      if (profile.company.trim().isNotEmpty)
+        (Icons.business_rounded, 'Company', profile.company),
+      (Icons.school_rounded, 'Education', profile.education),
+      (Icons.location_on_rounded, 'City', profile.location),
+      (Icons.person_rounded, 'Gender', profile.gender),
+      if (zodiac != null) (Icons.brightness_2_rounded, 'Zodiac', zodiac!),
     ];
+    return ProfileInfoCard(items: values);
+  }
+}
+
+class DatingIntentionsCard extends StatelessWidget {
+  const DatingIntentionsCard({super.key, required this.profile});
+
+  final LocalProfileDraft profile;
+
+  @override
+  Widget build(BuildContext context) {
+    return ProfileInfoCard(
+      items: [
+        (
+          Icons.favorite_outline_rounded,
+          'Looking for',
+          profile.datingIntention,
+        ),
+      ],
+    );
+  }
+}
+
+class ProfileInfoCard extends StatelessWidget {
+  const ProfileInfoCard({super.key, required this.items});
+
+  final List<(IconData, String, String)> items;
+
+  @override
+  Widget build(BuildContext context) {
     return PremiumCard(
+      radius: 24,
       padding: EdgeInsets.zero,
       child: Column(
         children: [
           for (var index = 0; index < items.length; index++) ...[
-            ListTile(
-              minTileHeight: 64,
-              leading: Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: AppColors.activeContainer,
-                  borderRadius: BorderRadius.circular(15),
-                ),
-                child: Icon(items[index].$1, color: AppColors.primary),
-              ),
-              title: Text(items[index].$2),
-              trailing: Text(
-                items[index].$3,
-                style: AmoraTextStyles.labelLarge.copyWith(
-                  color: AppColors.secondary,
-                ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+              child: Row(
+                children: [
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: AppColors.background,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Icon(items[index].$1, color: AppColors.secondary),
+                  ),
+                  const SizedBox(width: 13),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          items[index].$2,
+                          style: AmoraTextStyles.bodySmall.copyWith(
+                            color: AppColors.text.withValues(alpha: .56),
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          items[index].$3,
+                          style: AmoraTextStyles.titleMedium,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
-            if (index != items.length - 1) const Divider(height: 1),
+            if (index != items.length - 1)
+              Divider(
+                height: 1,
+                indent: 72,
+                color: AppColors.primary.withValues(alpha: .07),
+              ),
           ],
         ],
       ),
@@ -342,54 +2114,560 @@ class _InsightsCard extends StatelessWidget {
   }
 }
 
-class _ShortcutCard extends StatelessWidget {
-  const _ShortcutCard({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
-  });
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final VoidCallback onTap;
+class ProfileInterestsCard extends StatelessWidget {
+  const ProfileInterestsCard({super.key, required this.interests});
+
+  final List<String> interests;
 
   @override
   Widget build(BuildContext context) {
+    if (interests.isEmpty) {
+      return const _ProfileEmptyCard(
+        icon: Icons.interests_rounded,
+        title: 'No interests yet',
+        description: 'Choose interests that make it easier to connect.',
+      );
+    }
     return PremiumCard(
-      padding: EdgeInsets.zero,
-      child: ListTile(
-        minTileHeight: 76,
-        leading: Icon(icon, color: AppColors.primary),
-        title: Text(title, style: AmoraTextStyles.titleMedium),
-        subtitle: Text(subtitle, maxLines: 2, overflow: TextOverflow.ellipsis),
-        trailing: const Icon(Icons.chevron_right_rounded),
-        onTap: onTap,
+      radius: 24,
+      padding: const EdgeInsets.all(18),
+      child: LayoutBuilder(
+        builder: (context, constraints) => Wrap(
+          spacing: 9,
+          runSpacing: 9,
+          children: [
+            for (final interest in interests)
+              Container(
+                constraints: BoxConstraints(
+                  minHeight: 42,
+                  maxWidth: constraints.maxWidth,
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 13,
+                  vertical: 9,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  borderRadius: BorderRadius.circular(99),
+                  border: Border.all(
+                    color: AppColors.secondary.withValues(alpha: .28),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.favorite_border_rounded,
+                      size: 17,
+                      color: AppColors.secondary,
+                    ),
+                    const SizedBox(width: 7),
+                    Flexible(
+                      child: Text(
+                        interest,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AmoraTextStyles.labelLarge,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
 }
 
-class _MembershipCard extends StatelessWidget {
-  const _MembershipCard({required this.onTap});
-  final VoidCallback onTap;
+class ProfilePersonalityCard extends StatelessWidget {
+  const ProfilePersonalityCard({super.key, required this.lifestyle});
+
+  final Map<String, String> lifestyle;
+
+  @override
+  Widget build(BuildContext context) {
+    if (lifestyle.isEmpty) {
+      return const _ProfileEmptyCard(
+        icon: Icons.psychology_alt_rounded,
+        title: 'Keep this private or add a little more',
+        description: 'Only the personality details you choose are shown here.',
+      );
+    }
+    final icons = <String, IconData>{
+      'Exercise': Icons.fitness_center_rounded,
+      'Pets': Icons.pets_rounded,
+      'Drinking': Icons.local_bar_rounded,
+      'Smoking': Icons.smoke_free_rounded,
+      'Sleep habits': Icons.bedtime_rounded,
+      'Food preference': Icons.restaurant_rounded,
+    };
+    return ProfileInfoCard(
+      items: [
+        for (final entry in lifestyle.entries)
+          (
+            icons[entry.key] ?? Icons.psychology_alt_rounded,
+            entry.key,
+            entry.value,
+          ),
+      ],
+    );
+  }
+}
+
+class VerificationTrustCard extends StatelessWidget {
+  const VerificationTrustCard({
+    super.key,
+    required this.onVerify,
+    required this.onSafety,
+  });
+
+  final VoidCallback onVerify;
+  final VoidCallback onSafety;
 
   @override
   Widget build(BuildContext context) {
     return PremiumCard(
-      color: AppColors.premiumContainer,
-      padding: EdgeInsets.zero,
-      child: ListTile(
-        minTileHeight: 84,
-        leading: const Icon(
-          Icons.workspace_premium_rounded,
-          color: AppColors.onPremiumContainer,
-        ),
-        title: const Text('AMORA Membership'),
-        subtitle: const Text('Review premium features and membership options.'),
-        trailing: const Icon(Icons.chevron_right_rounded),
-        onTap: onTap,
+      radius: 24,
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const _TrustStatusRow(
+            icon: Icons.photo_camera_rounded,
+            title: 'Photo verification',
+            status: 'Review available',
+          ),
+          const SizedBox(height: 12),
+          const _TrustStatusRow(
+            icon: Icons.shield_rounded,
+            title: 'Safety guidelines',
+            status: 'Always available',
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              Expanded(
+                child: AppPrimaryButton(
+                  label: 'Verify profile',
+                  icon: Icons.verified_rounded,
+                  onPressed: onVerify,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: AppPrimaryButton(
+                  label: 'Safety',
+                  icon: Icons.shield_outlined,
+                  variant: AppPrimaryButtonVariant.outlined,
+                  onPressed: onSafety,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
+}
+
+class _TrustStatusRow extends StatelessWidget {
+  const _TrustStatusRow({
+    required this.icon,
+    required this.title,
+    required this.status,
+  });
+
+  final IconData icon;
+  final String title;
+  final String status;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, color: AppColors.secondary),
+        const SizedBox(width: 11),
+        Expanded(child: Text(title, style: AmoraTextStyles.titleMedium)),
+        Text(
+          status,
+          style: AmoraTextStyles.labelMedium.copyWith(color: AppColors.primary),
+        ),
+      ],
+    );
+  }
+}
+
+class MembershipCard extends StatelessWidget {
+  const MembershipCard({
+    super.key,
+    required this.onView,
+    required this.onManage,
+  });
+
+  final VoidCallback onView;
+  final VoidCallback onManage;
+
+  @override
+  Widget build(BuildContext context) {
+    return PremiumCard(
+      radius: 26,
+      color: AppColors.primary,
+      padding: const EdgeInsets.all(22),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: AppColors.surface.withValues(alpha: .12),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Icon(
+                  Icons.workspace_premium_rounded,
+                  color: AppColors.tertiary,
+                ),
+              ),
+              const SizedBox(width: 13),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Amora Premium',
+                      style: AmoraTextStyles.titleLarge.copyWith(
+                        color: AppColors.surface,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    Text(
+                      'Explore the membership options already available.',
+                      style: AmoraTextStyles.bodyMedium.copyWith(
+                        color: AppColors.surface.withValues(alpha: .76),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final itemWidth = constraints.maxWidth < 360
+                  ? constraints.maxWidth
+                  : (constraints.maxWidth - 8) / 2;
+              return Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final label in const [
+                    'See likes',
+                    'Advanced filters',
+                    'Priority visibility',
+                    'Exclusive features',
+                  ])
+                    SizedBox(
+                      width: itemWidth,
+                      child: _PremiumBenefit(label: label),
+                    ),
+                ],
+              );
+            },
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.surface,
+                    foregroundColor: AppColors.primary,
+                    minimumSize: const Size.fromHeight(50),
+                  ),
+                  onPressed: onView,
+                  child: const Text('View premium'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.surface,
+                    side: BorderSide(
+                      color: AppColors.surface.withValues(alpha: .55),
+                    ),
+                    minimumSize: const Size.fromHeight(50),
+                  ),
+                  onPressed: onManage,
+                  child: const Text('Manage'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PremiumBenefit extends StatelessWidget {
+  const _PremiumBenefit({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: AppColors.surface.withValues(alpha: .1),
+        borderRadius: BorderRadius.circular(99),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.check_rounded, size: 15, color: AppColors.tertiary),
+          const SizedBox(width: 5),
+          Expanded(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AmoraTextStyles.labelMedium.copyWith(
+                color: AppColors.surface,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class ProfileLinkItem {
+  const ProfileLinkItem({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+}
+
+class ProfileLinkGroup extends StatelessWidget {
+  const ProfileLinkGroup({super.key, required this.items});
+
+  final List<ProfileLinkItem> items;
+
+  @override
+  Widget build(BuildContext context) {
+    return PremiumCard(
+      radius: 24,
+      padding: EdgeInsets.zero,
+      child: Column(
+        children: [
+          for (var index = 0; index < items.length; index++) ...[
+            ListTile(
+              minTileHeight: 72,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 18),
+              leading: Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(items[index].icon, color: AppColors.secondary),
+              ),
+              title: Text(
+                items[index].title,
+                style: AmoraTextStyles.titleMedium,
+              ),
+              subtitle: Text(
+                items[index].subtitle,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: items[index].onTap,
+            ),
+            if (index != items.length - 1)
+              Divider(
+                height: 1,
+                indent: 76,
+                color: AppColors.primary.withValues(alpha: .07),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class EmailSupportProfileCard extends StatelessWidget {
+  const EmailSupportProfileCard({
+    super.key,
+    required this.email,
+    required this.onContact,
+  });
+
+  final String email;
+  final VoidCallback onContact;
+
+  @override
+  Widget build(BuildContext context) {
+    return PremiumCard(
+      radius: 24,
+      padding: const EdgeInsets.all(20),
+      child: Row(
+        children: [
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              color: AppColors.tertiary.withValues(alpha: .55),
+              borderRadius: BorderRadius.circular(17),
+            ),
+            child: const Icon(Icons.mail_rounded, color: AppColors.primary),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Email support',
+                  style: AmoraTextStyles.titleMedium.copyWith(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  email,
+                  style: AmoraTextStyles.bodyMedium.copyWith(
+                    color: AppColors.text.withValues(alpha: .68),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          TextButton(onPressed: onContact, child: const Text('Contact')),
+        ],
+      ),
+    );
+  }
+}
+
+class SessionActionButton extends StatelessWidget {
+  const SessionActionButton({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.onPressed,
+    this.destructive = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onPressed;
+  final bool destructive;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = destructive ? AppColors.secondary : AppColors.primary;
+    return SizedBox(
+      width: double.infinity,
+      height: 54,
+      child: OutlinedButton.icon(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: color,
+          side: BorderSide(color: color.withValues(alpha: .7)),
+        ),
+        onPressed: onPressed,
+        icon: Icon(icon),
+        label: Text(label),
+      ),
+    );
+  }
+}
+
+class _ProfileEmptyCard extends StatelessWidget {
+  const _ProfileEmptyCard({
+    required this.icon,
+    required this.title,
+    required this.description,
+    this.actionLabel,
+    this.onAction,
+  });
+
+  final IconData icon;
+  final String title;
+  final String description;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+
+  @override
+  Widget build(BuildContext context) {
+    return PremiumCard(
+      radius: 24,
+      padding: const EdgeInsets.all(20),
+      child: Row(
+        children: [
+          Icon(icon, color: AppColors.secondary, size: 30),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: AmoraTextStyles.titleMedium),
+                const SizedBox(height: 4),
+                Text(
+                  description,
+                  style: AmoraTextStyles.bodyMedium.copyWith(
+                    color: AppColors.text.withValues(alpha: .65),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (actionLabel != null)
+            TextButton(onPressed: onAction, child: Text(actionLabel!)),
+        ],
+      ),
+    );
+  }
+}
+
+String? _zodiacFor(String birthdate) {
+  final parts = birthdate
+      .split('/')
+      .map((part) => int.tryParse(part.trim()))
+      .toList(growable: false);
+  if (parts.length != 3 || parts[0] == null || parts[1] == null) return null;
+  final day = parts[0]!;
+  final month = parts[1]!;
+  return switch (month) {
+    1 => day >= 20 ? 'Aquarius' : 'Capricorn',
+    2 => day >= 19 ? 'Pisces' : 'Aquarius',
+    3 => day >= 21 ? 'Aries' : 'Pisces',
+    4 => day >= 20 ? 'Taurus' : 'Aries',
+    5 => day >= 21 ? 'Gemini' : 'Taurus',
+    6 => day >= 21 ? 'Cancer' : 'Gemini',
+    7 => day >= 23 ? 'Leo' : 'Cancer',
+    8 => day >= 23 ? 'Virgo' : 'Leo',
+    9 => day >= 23 ? 'Libra' : 'Virgo',
+    10 => day >= 23 ? 'Scorpio' : 'Libra',
+    11 => day >= 22 ? 'Sagittarius' : 'Scorpio',
+    12 => day >= 22 ? 'Capricorn' : 'Sagittarius',
+    _ => null,
+  };
 }

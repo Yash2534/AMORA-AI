@@ -6,7 +6,7 @@ import 'package:amora_ai/core/widgets/premium_asset_image.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
-import 'package:amora_ai/features/profile/presentation/profile_completion_screen.dart';
+import 'package:amora_ai/features/profile/presentation/profile_edit_screen.dart';
 import 'package:flutter/material.dart';
 
 class ProfilePreviewScreen extends StatelessWidget {
@@ -137,7 +137,7 @@ class ProfilePreviewScreen extends StatelessWidget {
                   variant: AppPrimaryButtonVariant.outlined,
                   onPressed: () => Navigator.of(
                     context,
-                  ).pushReplacementNamed(ProfileCompletionScreen.routeName),
+                  ).pushReplacementNamed(ProfileEditScreen.routeName),
                 ),
               ),
               const SizedBox(width: 12),

@@ -37,8 +37,7 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
   final Set<String> _movies = {};
   String _smoking = 'Any';
   String _drinking = 'Any';
-  String _pets = 'Any';
-  String _children = 'Any';
+  String _weed = 'Any';
   bool _verifiedOnly = true;
   bool _onlineNow = false;
   bool _hasPrompts = true;
@@ -63,7 +62,6 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
     for (final category in _FilterCategory.values) category: GlobalKey(),
   };
   final GlobalKey _careerKey = GlobalKey();
-  final GlobalKey _mediaKey = GlobalKey();
 
   int get _selectedCount =>
       _cities.length +
@@ -164,8 +162,6 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
                                 _buildCareerSection(),
                                 const SizedBox(height: 14),
                                 _buildIdentitySection(),
-                                const SizedBox(height: 14),
-                                _buildMediaSection(),
                                 const SizedBox(height: 14),
                                 _buildHabitsSection(),
                                 const SizedBox(height: 14),
@@ -508,135 +504,40 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
     );
   }
 
-  Widget _buildMediaSection() {
-    return _ExpandableFilterSection(
-      key: _mediaKey,
-      id: _GroupIds.media,
-      icon: Icons.explore_outlined,
-      title: 'Media, wellness and travel',
-      subtitle: 'Everyday interests and shared experiences',
-      summary: _joinedSummaries([
-        _selectionSummary(_travel),
-        _selectionSummary(_fitness),
-        _selectionSummary(_coffee),
-        _selectionSummary(_movies),
-      ]),
-      selectedCount:
-          _travel.length + _fitness.length + _coffee.length + _movies.length,
-      expanded: _expandedGroups.contains(_GroupIds.media),
-      highlighted: _highlightedGroup == _GroupIds.media,
-      onToggle: _toggleGroup,
-      child: Column(
-        children: [
-          _ResponsivePair(
-            children: [
-              _ControlBlock(
-                icon: Icons.flight_takeoff_rounded,
-                title: 'Travel',
-                child: _OptionWrap(
-                  options: _travelList,
-                  selected: _travel,
-                  emojiFor: (option) => _travelEmoji[option],
-                  icon: Icons.flight_takeoff_rounded,
-                  onToggle: _toggle,
-                ),
-              ),
-              _ControlBlock(
-                icon: Icons.fitness_center_rounded,
-                title: 'Fitness',
-                child: _OptionWrap(
-                  options: _fitnessList,
-                  selected: _fitness,
-                  emojiFor: (option) => _fitnessEmoji[option],
-                  icon: Icons.fitness_center_rounded,
-                  onToggle: _toggle,
-                ),
-              ),
-            ],
-          ),
-          const _FilterDivider(),
-          _ResponsivePair(
-            children: [
-              _ControlBlock(
-                icon: Icons.local_cafe_outlined,
-                title: 'Coffee',
-                child: _OptionWrap(
-                  options: _coffeeList,
-                  selected: _coffee,
-                  emojiFor: (option) => _coffeeEmoji[option],
-                  icon: Icons.local_cafe_outlined,
-                  onToggle: _toggle,
-                ),
-              ),
-              _ControlBlock(
-                icon: Icons.movie_outlined,
-                title: 'Movies',
-                child: _OptionWrap(
-                  options: _movieList,
-                  selected: _movies,
-                  emojiFor: (option) => _movieEmoji[option],
-                  icon: Icons.movie_outlined,
-                  onToggle: _toggle,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildHabitsSection() {
     return _ExpandableFilterSection(
       key: _categoryKeys[_FilterCategory.habits],
       id: _GroupIds.habits,
       icon: Icons.self_improvement_rounded,
-      title: 'Habits and family',
-      subtitle: 'Daily choices and future preferences',
+      title: 'Habits',
+      subtitle: 'Daily choices',
       summary: _habitsSummary,
       selectedCount: 0,
       expanded: _expandedGroups.contains(_GroupIds.habits),
       highlighted: _highlightedGroup == _GroupIds.habits,
       onToggle: _toggleGroup,
-      child: Column(
+      child: _ResponsiveTriple(
         children: [
-          _ResponsivePair(
-            children: [
-              _SegmentControl(
-                icon: Icons.smoke_free_rounded,
-                title: 'Smoking',
-                value: _smoking,
-                options: const ['Any', 'Never', 'Occasionally'],
-                onChanged: (value) => setState(() => _smoking = value),
-              ),
-              _SegmentControl(
-                icon: Icons.local_bar_outlined,
-                title: 'Drinking',
-                value: _drinking,
-                options: const ['Any', 'Never', 'Socially'],
-                onChanged: (value) => setState(() => _drinking = value),
-              ),
-            ],
+          _SegmentControl(
+            icon: Icons.smoke_free_rounded,
+            title: 'Smoking',
+            value: _smoking,
+            options: const ['Any', 'Never', 'Occasionally'],
+            onChanged: (value) => setState(() => _smoking = value),
           ),
-          const _FilterDivider(),
-          _ResponsivePair(
-            children: [
-              _SegmentControl(
-                icon: Icons.pets_outlined,
-                title: 'Pets',
-                value: _pets,
-                options: const ['Any', 'Pet friendly', 'No pets'],
-                emojiFor: (option) => option == 'Pet friendly' ? '🐾' : null,
-                onChanged: (value) => setState(() => _pets = value),
-              ),
-              _SegmentControl(
-                icon: Icons.family_restroom_rounded,
-                title: 'Children',
-                value: _children,
-                options: const ['Any', 'Wants', 'Open', 'No'],
-                onChanged: (value) => setState(() => _children = value),
-              ),
-            ],
+          _SegmentControl(
+            icon: Icons.local_bar_outlined,
+            title: 'Drinking',
+            value: _drinking,
+            options: const ['Any', 'Never', 'Socially'],
+            onChanged: (value) => setState(() => _drinking = value),
+          ),
+          _SegmentControl(
+            icon: Icons.grass_rounded,
+            title: 'Weed',
+            value: _weed,
+            options: const ['Any', 'Never', 'Occasionally'],
+            onChanged: (value) => setState(() => _weed = value),
           ),
         ],
       ),
@@ -747,12 +648,9 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
     final parts = <String>[
       if (_smoking != 'Any') 'Smoking: $_smoking',
       if (_drinking != 'Any') 'Drinking: $_drinking',
-      if (_pets != 'Any') 'Pets: $_pets',
-      if (_children != 'Any') 'Children: $_children',
+      if (_weed != 'Any') 'Weed: $_weed',
     ];
-    return parts.isEmpty
-        ? 'Any habits and family preferences'
-        : parts.join(' • ');
+    return parts.isEmpty ? 'Any lifestyle habits' : parts.join(' • ');
   }
 
   String get _trustSummary {
@@ -888,22 +786,10 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
       );
     }
     if (_containsKeyword(query, const [
-      'travel',
-      'fitness',
-      'coffee',
-      'movie',
-      'media',
-      'wellness',
-    ])) {
-      return _SearchTarget(id: _GroupIds.media, key: _mediaKey);
-    }
-    if (_containsKeyword(query, const [
       'smoking',
       'drinking',
-      'pets',
-      'children',
+      'weed',
       'habit',
-      'family',
     ])) {
       return _SearchTarget(
         id: _GroupIds.habits,
@@ -987,8 +873,7 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
       _movies.clear();
       _smoking = 'Any';
       _drinking = 'Any';
-      _pets = 'Any';
-      _children = 'Any';
+      _weed = 'Any';
       _verifiedOnly = false;
       _onlineNow = false;
       _hasPrompts = false;
@@ -1521,6 +1406,40 @@ class _ResponsivePair extends StatelessWidget {
   }
 }
 
+class _ResponsiveTriple extends StatelessWidget {
+  const _ResponsiveTriple({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth >= 700) {
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (var index = 0; index < children.length; index++) ...[
+                if (index > 0) const SizedBox(width: 18),
+                Expanded(child: children[index]),
+              ],
+            ],
+          );
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (var index = 0; index < children.length; index++) ...[
+              if (index > 0) const SizedBox(height: 18),
+              children[index],
+            ],
+          ],
+        );
+      },
+    );
+  }
+}
+
 class _ControlBlock extends StatelessWidget {
   const _ControlBlock({
     required this.icon,
@@ -1884,12 +1803,6 @@ class _IntentChoiceTile extends StatelessWidget {
               children: [
                 Text(emoji, style: const TextStyle(fontSize: 20)),
                 const SizedBox(width: 9),
-                const Icon(
-                  Icons.favorite_outline_rounded,
-                  color: AppColors.secondary,
-                  size: 18,
-                ),
-                const SizedBox(width: 7),
                 Expanded(
                   child: Text(
                     label,
@@ -1900,12 +1813,6 @@ class _IntentChoiceTile extends StatelessWidget {
                     ),
                   ),
                 ),
-                if (selected)
-                  const Icon(
-                    Icons.check_circle_rounded,
-                    color: AppColors.primary,
-                    size: 19,
-                  ),
               ],
             ),
           ),
@@ -1922,7 +1829,6 @@ class _SegmentControl extends StatelessWidget {
     required this.value,
     required this.options,
     required this.onChanged,
-    this.emojiFor,
   });
 
   final IconData icon;
@@ -1930,7 +1836,6 @@ class _SegmentControl extends StatelessWidget {
   final String value;
   final List<String> options;
   final ValueChanged<String> onChanged;
-  final String? Function(String option)? emojiFor;
 
   @override
   Widget build(BuildContext context) {
@@ -1945,7 +1850,6 @@ class _SegmentControl extends StatelessWidget {
             _PremiumFilterChip(
               label: option,
               selected: value == option,
-              emoji: emojiFor?.call(option),
               onTap: () => onChanged(option),
             ),
         ],
@@ -2261,7 +2165,6 @@ abstract final class _GroupIds {
   static const lifestyle = 'lifestyle';
   static const career = 'career';
   static const identity = 'identity';
-  static const media = 'media';
   static const habits = 'habits';
   static const trust = 'trust';
 }
@@ -2293,7 +2196,7 @@ const _intentEmoji = <String, String>{
   'Meaningful Dating': '☕',
   'Exploring Possibilities': '✨',
   'Friendship First': '🤝',
-  'Casual Connection': '🌿',
+  'Casual Connection': '🥂',
 };
 
 const _lifestyleInterests = [
@@ -2383,60 +2286,3 @@ const _languageList = [
 ];
 
 const _heightList = ['5\'0"+', '5\'4"+', '5\'8"+', '6\'0"+'];
-
-const _travelList = [
-  'Heritage trips',
-  'Luxury stays',
-  'Treks',
-  'Beach breaks',
-  'Food trails',
-];
-
-const _travelEmoji = <String, String>{
-  'Heritage trips': '🏛️',
-  'Luxury stays': '✨',
-  'Treks': '🥾',
-  'Beach breaks': '🏖️',
-  'Food trails': '🍽️',
-};
-
-const _fitnessList = [
-  'Active',
-  'Yoga',
-  'Gym regular',
-  'Weekend sports',
-  'Balanced',
-];
-
-const _fitnessEmoji = <String, String>{
-  'Active': '⚡',
-  'Yoga': '🧘',
-  'Gym regular': '🏋️',
-  'Weekend sports': '⚽',
-  'Balanced': '⚖️',
-};
-
-const _coffeeList = ['Filter coffee', 'Iced latte', 'Masala chai', 'Cold brew'];
-
-const _coffeeEmoji = <String, String>{
-  'Filter coffee': '☕',
-  'Iced latte': '🧊',
-  'Masala chai': '🫖',
-  'Cold brew': '🥤',
-};
-
-const _movieList = [
-  'Rom-coms',
-  'Thrillers',
-  'Indie cinema',
-  'Bollywood',
-  'Comedy',
-];
-
-const _movieEmoji = <String, String>{
-  'Rom-coms': '💕',
-  'Thrillers': '🔍',
-  'Indie cinema': '🎞️',
-  'Bollywood': '🎬',
-  'Comedy': '😂',
-};

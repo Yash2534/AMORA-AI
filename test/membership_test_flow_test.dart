@@ -42,7 +42,7 @@ void main() {
   }, skip: skipTestFlow);
 
   testWidgets(
-    'simulated success unlocks events and joined event appears in My Events',
+    'simulated success remains isolated and joined event appears in My Events',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(390, 844));
       addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -63,7 +63,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text(events.first.title), findsOneWidget);
       expect(find.byType(Hero), findsOneWidget);
-      expect(find.text('Why this may suit you'), findsOneWidget);
+      expect(find.text('Why this event may suit you'), findsOneWidget);
       expect(find.text('Safety & community'), findsOneWidget);
       await tester.tap(find.text('Join Event').first);
       await tester.pumpAndSettle();
@@ -94,17 +94,21 @@ void main() {
     (TestPaymentOutcome.cancelled, 'Payment cancelled'),
     (TestPaymentOutcome.pending, 'Confirmation is pending'),
   ]) {
-    testWidgets('${scenario.$1.name} does not unlock Events', (tester) async {
-      await tester.binding.setSurfaceSize(const Size(390, 844));
-      addTearDown(() => tester.binding.setSurfaceSize(null));
+    testWidgets(
+      '${scenario.$1.name} preserves inactive membership state',
+      (tester) async {
+        await tester.binding.setSurfaceSize(const Size(390, 844));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
 
-      await _pumpPayment(tester);
-      await _completePayment(tester, scenario.$1);
+        await _pumpPayment(tester);
+        await _completePayment(tester, scenario.$1);
 
-      expect(find.text(scenario.$2), findsOneWidget);
-      expect(MembershipTestFlowController.instance.membershipActive, isFalse);
-      expect(tester.takeException(), isNull);
-    }, skip: skipTestFlow);
+        expect(find.text(scenario.$2), findsOneWidget);
+        expect(MembershipTestFlowController.instance.membershipActive, isFalse);
+        expect(tester.takeException(), isNull);
+      },
+      skip: skipTestFlow,
+    );
   }
 }
 

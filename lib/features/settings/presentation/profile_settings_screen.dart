@@ -93,7 +93,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                       const SizedBox(width: 10),
                       Expanded(
                         child: _MiniNavButton(
-                          icon: Icons.support_agent_rounded,
+                          icon: Icons.help_outline_rounded,
                           label: 'Support',
                           onTap: () => Navigator.of(
                             context,

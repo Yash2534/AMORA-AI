@@ -1,0 +1,12 @@
+{"kind":"formula","sheet":"Dashboard","address":"A5","formula":"=COUNTA('Test Cases'!A2:A181)"}
+{"kind":"formula","sheet":"Dashboard","address":"C5","formula":"=COUNTIF('Test Cases'!J2:J181,\"Pass\")"}
+{"kind":"formula","sheet":"Dashboard","address":"E5","formula":"=COUNTIF('Test Cases'!J2:J181,\"Fail\")"}
+{"kind":"formula","sheet":"Dashboard","address":"G5","formula":"=COUNTIF('Test Cases'!J2:J181,\"Blocked\")"}
+{"kind":"formula","sheet":"Dashboard","address":"I5","formula":"=COUNTIF('Test Cases'!J2:J181,\"Not Run\")"}
+{"kind":"formula","sheet":"Dashboard","address":"K5","formula":"=COUNTIF('Test Cases'!J2:J181,\"Not Applicable\")"}
+{"kind":"formula","sheet":"Dashboard","address":"M5","formula":"=IFERROR(C5/(C5+E5),0)"}
+{"kind":"formula","sheet":"Dashboard","address":"B14","formula":"=C5"}
+{"kind":"formula","sheet":"Dashboard","address":"B15","formula":"=E5"}
+{"kind":"formula","sheet":"Dashboard","address":"B16","formula":"=G5"}
+{"kind":"formula","sheet":"Dashboard","address":"B17","formula":"=I5"}
+{"kind":"formula","sheet":"Dashboard","address":"B18","formula":"=K5"}

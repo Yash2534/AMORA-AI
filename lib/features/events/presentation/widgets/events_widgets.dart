@@ -5,42 +5,7 @@ import 'package:amora_ai/core/widgets/premium_avatar.dart';
 import 'package:amora_ai/core/widgets/premium_image.dart';
 import 'package:amora_ai/core/widgets/premium_motion.dart';
 import 'package:amora_ai/features/events/domain/event_models.dart';
-import 'package:amora_ai/features/monetization/data/monetization_data.dart';
-import 'package:amora_ai/features/subscription/presentation/testing/membership_test_flow.dart';
 import 'package:flutter/material.dart';
-
-bool get hasProductionPremiumEventsAccess => subscriptionPlans.any(
-  (plan) => plan.current && plan.features.contains('Premium events'),
-);
-
-bool get hasPremiumEventsAccess =>
-    (membershipTestMode &&
-        MembershipTestFlowController.instance.membershipActive) ||
-    hasProductionPremiumEventsAccess;
-
-class EventsAccessGate extends StatelessWidget {
-  const EventsAccessGate({
-    super.key,
-    required this.member,
-    required this.locked,
-  });
-
-  final Widget member;
-  final Widget locked;
-
-  @override
-  Widget build(BuildContext context) {
-    if (!membershipTestMode) {
-      return hasProductionPremiumEventsAccess ? member : locked;
-    }
-    return ListenableBuilder(
-      listenable: MembershipTestFlowController.instance,
-      builder: (_, _) => MembershipTestFlowController.instance.membershipActive
-          ? member
-          : locked,
-    );
-  }
-}
 
 void showEventSnack(BuildContext context, String message) {
   showAmoraSnackBar(context, message: message);
@@ -51,7 +16,8 @@ Route<T> premiumEventRoute<T>(Widget screen) {
     pageBuilder: (_, _, _) => screen,
     transitionDuration: AmoraMotion.page,
     reverseTransitionDuration: AmoraMotion.selection,
-    transitionsBuilder: (_, animation, _, child) {
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      if (MediaQuery.disableAnimationsOf(context)) return child;
       final curved = CurvedAnimation(
         parent: animation,
         curve: AmoraMotion.curve,
@@ -68,6 +34,25 @@ Route<T> premiumEventRoute<T>(Widget screen) {
       );
     },
   );
+}
+
+class EventReveal extends StatelessWidget {
+  const EventReveal({
+    super.key,
+    required this.child,
+    this.delay = Duration.zero,
+    this.offset = 12,
+  });
+
+  final Widget child;
+  final Duration delay;
+  final double offset;
+
+  @override
+  Widget build(BuildContext context) {
+    if (MediaQuery.disableAnimationsOf(context)) return child;
+    return FadeUp(delay: delay, offset: offset, child: child);
+  }
 }
 
 class EventsAppBar extends StatelessWidget {
@@ -186,7 +171,7 @@ class EventsMemberBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      label: 'Amora member exclusive',
+      label: 'Curated by Amora',
       child: Container(
         padding: EdgeInsets.symmetric(
           horizontal: compact ? 9 : 11,
@@ -208,7 +193,7 @@ class EventsMemberBadge extends StatelessWidget {
             SizedBox(width: 5),
             Flexible(
               child: Text(
-                'Member Exclusive',
+                'Curated by Amora',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
@@ -400,24 +385,31 @@ class EventCategoryBar extends StatelessWidget {
             button: true,
             selected: active,
             label: 'Show $category events',
-            child: ChoiceChip(
-              selected: active,
-              showCheckmark: false,
-              avatar: Icon(
-                _categoryIcon(category),
-                size: 17,
-                color: active ? AppColors.surface : AppColors.secondary,
-              ),
-              label: Text(category),
-              onSelected: (_) => onSelected(category),
-              selectedColor: AppColors.primary,
-              backgroundColor: AppColors.surface,
-              side: BorderSide(
-                color: active ? AppColors.primary : AppColors.secondary,
-              ),
-              labelStyle: TextStyle(
-                color: active ? AppColors.surface : AppColors.text,
-                fontWeight: FontWeight.w600,
+            child: AnimatedScale(
+              scale: active ? 1 : .97,
+              duration: MediaQuery.disableAnimationsOf(context)
+                  ? Duration.zero
+                  : AmoraMotion.selection,
+              curve: AmoraMotion.curve,
+              child: ChoiceChip(
+                selected: active,
+                showCheckmark: false,
+                avatar: Icon(
+                  _categoryIcon(category),
+                  size: 17,
+                  color: active ? AppColors.surface : AppColors.secondary,
+                ),
+                label: Text(category),
+                onSelected: (_) => onSelected(category),
+                selectedColor: AppColors.primary,
+                backgroundColor: AppColors.surface,
+                side: BorderSide(
+                  color: active ? AppColors.primary : AppColors.secondary,
+                ),
+                labelStyle: TextStyle(
+                  color: active ? AppColors.surface : AppColors.text,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           );
@@ -457,6 +449,7 @@ class EventImagePanel extends StatelessWidget {
     this.hero = false,
     this.child,
     this.radius = 26,
+    this.borderRadius,
   });
 
   final EventModel event;
@@ -464,9 +457,11 @@ class EventImagePanel extends StatelessWidget {
   final bool hero;
   final Widget? child;
   final double radius;
+  final BorderRadius? borderRadius;
 
   @override
   Widget build(BuildContext context) {
+    final effectiveRadius = borderRadius ?? BorderRadius.circular(radius);
     Widget panel = Semantics(
       image: true,
       label: '${event.title} event image',
@@ -474,7 +469,7 @@ class EventImagePanel extends StatelessWidget {
         height: height,
         width: double.infinity,
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(radius),
+          borderRadius: effectiveRadius,
           child: Stack(
             fit: StackFit.expand,
             children: [
@@ -484,7 +479,7 @@ class EventImagePanel extends StatelessWidget {
                 fallbackAsset: event.image.assetPath,
                 initials: event.image.label.characters.first,
                 fit: BoxFit.cover,
-                borderRadius: BorderRadius.circular(radius),
+                borderRadius: effectiveRadius,
               ),
               DecoratedBox(
                 decoration: BoxDecoration(
@@ -511,6 +506,260 @@ class EventImagePanel extends StatelessWidget {
   }
 }
 
+class EventImage extends EventImagePanel {
+  const EventImage({
+    super.key,
+    required super.event,
+    required super.height,
+    super.hero,
+    super.child,
+    super.radius,
+    super.borderRadius,
+  });
+}
+
+class EventDetailHero extends StatelessWidget {
+  const EventDetailHero({
+    super.key,
+    required this.event,
+    required this.status,
+    required this.saved,
+    required this.height,
+    required this.onBack,
+    required this.onSave,
+    required this.onShare,
+  });
+
+  final EventModel event;
+  final TicketStatus? status;
+  final bool saved;
+  final double height;
+  final VoidCallback onBack;
+  final VoidCallback onSave;
+  final VoidCallback onShare;
+
+  @override
+  Widget build(BuildContext context) {
+    return EventImage(
+      event: event,
+      height: height,
+      hero: true,
+      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(34)),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 22),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                _EventHeroButton(
+                  tooltip: 'Back',
+                  icon: Icons.arrow_back_rounded,
+                  onPressed: onBack,
+                ),
+                const Spacer(),
+                _EventHeroButton(
+                  tooltip: saved ? 'Remove saved event' : 'Save event',
+                  icon: saved
+                      ? Icons.favorite_rounded
+                      : Icons.favorite_border_rounded,
+                  onPressed: onSave,
+                ),
+                const SizedBox(width: 8),
+                _EventHeroButton(
+                  tooltip: 'Share event',
+                  icon: Icons.ios_share_rounded,
+                  onPressed: onShare,
+                ),
+              ],
+            ),
+            const Spacer(),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                EventStatusBadge(status: status),
+                const EventsMemberBadge(compact: true),
+              ],
+            ),
+            const SizedBox(height: 11),
+            Text(
+              event.title,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: AppColors.surface,
+                fontSize: 29,
+                height: 1.08,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Icon(event.image.icon, color: AppColors.surface, size: 18),
+                const SizedBox(width: 7),
+                Expanded(
+                  child: Text(
+                    event.category,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppColors.surface,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _EventHeroButton extends StatelessWidget {
+  const _EventHeroButton({
+    required this.tooltip,
+    required this.icon,
+    required this.onPressed,
+  });
+
+  final String tooltip;
+  final IconData icon;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      tooltip: tooltip,
+      constraints: const BoxConstraints.tightFor(width: 48, height: 48),
+      onPressed: onPressed,
+      style: IconButton.styleFrom(
+        backgroundColor: AppColors.surface.withValues(alpha: .94),
+        foregroundColor: AppColors.primary,
+        side: BorderSide(color: AppColors.tertiary.withValues(alpha: .68)),
+      ),
+      icon: AnimatedSwitcher(
+        duration: MediaQuery.disableAnimationsOf(context)
+            ? Duration.zero
+            : AmoraMotion.selection,
+        transitionBuilder: (child, animation) =>
+            ScaleTransition(scale: animation, child: child),
+        child: Icon(icon, key: ValueKey(icon)),
+      ),
+    );
+  }
+}
+
+class EventDetailSection extends StatelessWidget {
+  const EventDetailSection({
+    super.key,
+    required this.title,
+    required this.child,
+    this.subtitle,
+    this.delay = Duration.zero,
+  });
+
+  final String title;
+  final String? subtitle;
+  final Widget child;
+  final Duration delay;
+
+  @override
+  Widget build(BuildContext context) {
+    return EventReveal(
+      delay: delay,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Semantics(
+            header: true,
+            child: Text(
+              title,
+              style: const TextStyle(
+                color: AppColors.primary,
+                fontSize: 20,
+                height: 1.2,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          if (subtitle != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              subtitle!,
+              style: const TextStyle(
+                color: AppColors.text,
+                fontSize: 13,
+                height: 1.4,
+                fontWeight: FontWeight.w400,
+              ),
+            ),
+          ],
+          const SizedBox(height: 12),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+class ExpandableEventDescription extends StatefulWidget {
+  const ExpandableEventDescription({super.key, required this.description});
+
+  final String description;
+
+  @override
+  State<ExpandableEventDescription> createState() =>
+      _ExpandableEventDescriptionState();
+}
+
+class _ExpandableEventDescriptionState
+    extends State<ExpandableEventDescription> {
+  var _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final duration = MediaQuery.disableAnimationsOf(context)
+        ? Duration.zero
+        : AmoraMotion.page;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        AnimatedSize(
+          duration: duration,
+          curve: AmoraMotion.curve,
+          alignment: Alignment.topCenter,
+          child: Text(
+            widget.description,
+            maxLines: _expanded ? null : 4,
+            overflow: _expanded ? TextOverflow.visible : TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: AppColors.text,
+              fontSize: 16,
+              height: 1.55,
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+        ),
+        const SizedBox(height: 4),
+        TextButton.icon(
+          onPressed: () => setState(() => _expanded = !_expanded),
+          icon: Icon(
+            _expanded
+                ? Icons.keyboard_arrow_up_rounded
+                : Icons.keyboard_arrow_down_rounded,
+          ),
+          label: Text(_expanded ? 'Show less' : 'Read more'),
+        ),
+      ],
+    );
+  }
+}
+
 class FeaturedEventCard extends StatelessWidget {
   const FeaturedEventCard({
     super.key,
@@ -529,7 +778,7 @@ class FeaturedEventCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return FadeUp(
+    return EventReveal(
       child: Semantics(
         container: true,
         label:
@@ -558,10 +807,12 @@ class FeaturedEventCard extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            alignment: WrapAlignment.spaceBetween,
                             children: [
-                              const EventsMemberBadge(),
-                              const Spacer(),
+                              const EventsMemberBadge(compact: true),
                               EventDateBadge(date: event.date),
                             ],
                           ),
@@ -696,6 +947,7 @@ class EventCard extends StatelessWidget {
     required this.onOpen,
     required this.onJoin,
     this.horizontal = false,
+    this.showDistance = false,
   });
 
   final EventModel event;
@@ -703,6 +955,7 @@ class EventCard extends StatelessWidget {
   final VoidCallback onOpen;
   final VoidCallback onJoin;
   final bool horizontal;
+  final bool showDistance;
 
   @override
   Widget build(BuildContext context) {
@@ -712,6 +965,7 @@ class EventCard extends StatelessWidget {
             status: status,
             onOpen: onOpen,
             onJoin: onJoin,
+            showDistance: showDistance,
           )
         : _VerticalEventCard(
             event: event,
@@ -724,6 +978,27 @@ class EventCard extends StatelessWidget {
       child: content,
     );
   }
+}
+
+class StandardEventCard extends EventCard {
+  const StandardEventCard({
+    super.key,
+    required super.event,
+    required super.status,
+    required super.onOpen,
+    required super.onJoin,
+  }) : super(horizontal: false);
+}
+
+class CompactEventCard extends EventCard {
+  const CompactEventCard({
+    super.key,
+    required super.event,
+    required super.status,
+    required super.onOpen,
+    required super.onJoin,
+    super.showDistance,
+  }) : super(horizontal: true);
 }
 
 class AmoraCircleCard extends StatelessWidget {
@@ -979,18 +1254,30 @@ class MyEventsPreview extends StatelessWidget {
   }
 }
 
+class JoinedEventCard extends MyEventsPreview {
+  const JoinedEventCard({
+    super.key,
+    required super.event,
+    required super.status,
+    required super.onOpen,
+    required super.onViewAll,
+  });
+}
+
 class _HorizontalEventCard extends StatelessWidget {
   const _HorizontalEventCard({
     required this.event,
     required this.status,
     required this.onOpen,
     required this.onJoin,
+    required this.showDistance,
   });
 
   final EventModel event;
   final TicketStatus? status;
   final VoidCallback onOpen;
   final VoidCallback onJoin;
+  final bool showDistance;
 
   @override
   Widget build(BuildContext context) {
@@ -1016,7 +1303,11 @@ class _HorizontalEventCard extends StatelessWidget {
               ),
               const SizedBox(width: 14),
               Expanded(
-                child: _EventCardDetails(event: event, status: status),
+                child: _EventCardDetails(
+                  event: event,
+                  status: status,
+                  showDistance: showDistance,
+                ),
               ),
               const SizedBox(width: 6),
               IconButton(
@@ -1098,10 +1389,15 @@ class _VerticalEventCard extends StatelessWidget {
 }
 
 class _EventCardDetails extends StatelessWidget {
-  const _EventCardDetails({required this.event, required this.status});
+  const _EventCardDetails({
+    required this.event,
+    required this.status,
+    this.showDistance = false,
+  });
 
   final EventModel event;
   final TicketStatus? status;
+  final bool showDistance;
 
   @override
   Widget build(BuildContext context) {
@@ -1140,6 +1436,14 @@ class _EventCardDetails extends StatelessWidget {
           text: event.venue,
           compact: true,
         ),
+        if (showDistance) ...[
+          const SizedBox(height: 6),
+          EventMetadataRow(
+            icon: Icons.near_me_rounded,
+            text: event.distance,
+            compact: true,
+          ),
+        ],
         const SizedBox(height: 8),
         Text(
           event.category,
@@ -1287,7 +1591,7 @@ class EventStatusBadge extends StatelessWidget {
       TicketStatus.attended => 'Attended',
       TicketStatus.waitlisted => 'Waitlist',
       TicketStatus.cancelled => 'Cancelled',
-      null => 'Member Exclusive',
+      null => 'Open to join',
     };
     return Semantics(
       label: 'Event status: $label',
@@ -1404,12 +1708,16 @@ class EventAttendeePreview extends StatelessWidget {
                 for (var index = 0; index < visible.length; index++)
                   Positioned(
                     left: index * 23,
-                    child: PremiumAvatar(
-                      imageUrl: visible[index].photoAsset,
-                      fallbackAsset: visible[index].photoAsset,
-                      initials: visible[index].name.characters.first,
-                      radius: 19,
-                      verified: visible[index].verified,
+                    child: EventReveal(
+                      delay: Duration(milliseconds: 25 * index),
+                      offset: 4,
+                      child: PremiumAvatar(
+                        imageUrl: visible[index].photoAsset,
+                        fallbackAsset: visible[index].photoAsset,
+                        initials: visible[index].name.characters.first,
+                        radius: 19,
+                        verified: visible[index].verified,
+                      ),
                     ),
                   ),
               ],
@@ -1577,13 +1885,12 @@ class EventsSkeleton extends StatelessWidget {
         const SizedBox(height: 14),
         SizedBox(
           height: 42,
-          child: Row(
-            children: [
-              for (var index = 0; index < 4; index++) ...[
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: 4,
+            separatorBuilder: (_, _) => const SizedBox(width: 8),
+            itemBuilder: (_, index) =>
                 _SkeletonBlock(height: 38, width: index == 0 ? 92 : 74),
-                const SizedBox(width: 8),
-              ],
-            ],
           ),
         ),
         const SizedBox(height: 22),
@@ -1596,6 +1903,49 @@ class EventsSkeleton extends StatelessWidget {
           const SizedBox(height: 12),
         ],
       ],
+    );
+  }
+}
+
+class EventDetailSkeleton extends StatelessWidget {
+  const EventDetailSkeleton({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final viewportHeight = MediaQuery.sizeOf(context).height;
+    final heroHeight = (viewportHeight * .42).clamp(300.0, 450.0);
+    return SingleChildScrollView(
+      key: const ValueKey('event-detail-skeleton'),
+      physics: const NeverScrollableScrollPhysics(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _SkeletonBlock(height: heroHeight),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 22, 20, 32),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const _SkeletonBlock(height: 96),
+                const SizedBox(height: 18),
+                const _SkeletonBlock(height: 74),
+                const SizedBox(height: 28),
+                const _SkeletonBlock(height: 24, width: 190),
+                const SizedBox(height: 12),
+                const _SkeletonBlock(height: 18),
+                const SizedBox(height: 9),
+                const _SkeletonBlock(height: 18),
+                const SizedBox(height: 9),
+                const _SkeletonBlock(height: 18, width: 250),
+                const SizedBox(height: 28),
+                const _SkeletonBlock(height: 130),
+                const SizedBox(height: 28),
+                const _SkeletonBlock(height: 180),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

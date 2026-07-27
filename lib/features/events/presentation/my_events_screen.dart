@@ -7,7 +7,6 @@ import 'package:amora_ai/features/events/presentation/event_detail_screen.dart';
 import 'package:amora_ai/features/events/presentation/event_waitlist_screen.dart';
 import 'package:amora_ai/features/events/presentation/post_event_feedback_screen.dart';
 import 'package:amora_ai/features/events/presentation/widgets/events_widgets.dart';
-import 'package:amora_ai/features/subscription/presentation/subscription_screen.dart';
 import 'package:amora_ai/features/subscription/presentation/testing/membership_test_flow.dart';
 import 'package:flutter/material.dart';
 
@@ -66,9 +65,6 @@ class _MyEventsScreenState extends State<MyEventsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (!hasPremiumEventsAccess) {
-      return const _MembershipRequired();
-    }
     return DefaultTabController(
       length: 4,
       child: Scaffold(
@@ -526,52 +522,6 @@ class _ActionButton extends StatelessWidget {
         onPressed: onPressed,
         icon: Icon(icon, size: 17),
         label: Text(label),
-      ),
-    );
-  }
-}
-
-class _MembershipRequired extends StatelessWidget {
-  const _MembershipRequired();
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: ResponsiveMobileFrame(
-          maxWidth: 560,
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(
-                  Icons.lock_rounded,
-                  color: AppColors.secondary,
-                  size: 46,
-                ),
-                const SizedBox(height: 14),
-                const Text(
-                  'My Events is a member benefit',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: AppColors.primary,
-                    fontSize: 24,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 20),
-                AppPrimaryButton(
-                  label: 'Explore Membership',
-                  onPressed: () => Navigator.of(
-                    context,
-                  ).pushNamed(SubscriptionScreen.routeName),
-                ),
-              ],
-            ),
-          ),
-        ),
       ),
     );
   }

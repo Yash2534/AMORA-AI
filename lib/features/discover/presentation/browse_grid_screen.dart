@@ -6,6 +6,7 @@ import 'package:amora_ai/core/constants/app_images.dart';
 import 'package:amora_ai/core/data/image_repository.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
+import 'package:amora_ai/core/widgets/amora_super_like_animation.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/floating_bottom_nav.dart';
 import 'package:amora_ai/core/widgets/premium_image.dart';
@@ -48,7 +49,8 @@ class BrowseGridScreen extends StatefulWidget {
   State<BrowseGridScreen> createState() => _BrowseGridScreenState();
 }
 
-class _BrowseGridScreenState extends State<BrowseGridScreen> {
+class _BrowseGridScreenState extends State<BrowseGridScreen>
+    with SingleTickerProviderStateMixin {
   static const _velocityThreshold = 650.0;
   static const _quickFilters = <_QuickFilter>[
     _QuickFilter('Verified', Icons.verified_rounded),
@@ -63,6 +65,7 @@ class _BrowseGridScreenState extends State<BrowseGridScreen> {
   ];
 
   late final FocusNode _keyboardFocus;
+  late final AnimationController _superLikeAnimation;
   late List<DummyProfile> _profiles;
   DiscoverActionController? _controller;
   Timer? _loadingTimer;
@@ -73,6 +76,7 @@ class _BrowseGridScreenState extends State<BrowseGridScreen> {
   final ValueNotifier<double> _dragOffsetX = ValueNotifier<double>(0);
   final Set<String> _selectedQuickFilters = <String>{};
   final Map<String, int> _photoIndices = <String, int>{};
+  String _superLikeProfileName = '';
 
   DiscoverActionController get _actions => _controller!;
 
@@ -80,6 +84,10 @@ class _BrowseGridScreenState extends State<BrowseGridScreen> {
   void initState() {
     super.initState();
     _keyboardFocus = FocusNode(debugLabel: 'Discover keyboard shortcuts');
+    _superLikeAnimation = AnimationController(
+      vsync: this,
+      duration: AmoraSuperLikeAnimation.duration,
+    );
     _loadProfiles();
   }
 
@@ -87,6 +95,7 @@ class _BrowseGridScreenState extends State<BrowseGridScreen> {
   void dispose() {
     _loadingTimer?.cancel();
     _keyboardFocus.dispose();
+    _superLikeAnimation.dispose();
     _dragOffsetX.dispose();
     if (widget.controller == null) _controller?.dispose();
     super.dispose();
@@ -208,26 +217,39 @@ class _BrowseGridScreenState extends State<BrowseGridScreen> {
         bottom: !widget.showNavigation,
         child: ResponsiveMobileFrame(
           maxWidth: 560,
-          child: Focus(
-            focusNode: _keyboardFocus,
-            autofocus: true,
-            onKeyEvent: _handleKeyEvent,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _DiscoverFilterRail(
-                    filters: _quickFilters,
-                    selected: _selectedQuickFilters,
-                    onFilters: _openFilters,
-                    onToggle: _toggleQuickFilter,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Focus(
+                focusNode: _keyboardFocus,
+                autofocus: true,
+                onKeyEvent: _handleKeyEvent,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _DiscoverFilterRail(
+                        filters: _quickFilters,
+                        selected: _selectedQuickFilters,
+                        onFilters: _openFilters,
+                        onToggle: _toggleQuickFilter,
+                      ),
+                      const SizedBox(height: 12),
+                      Expanded(child: _buildExperience()),
+                    ],
                   ),
-                  const SizedBox(height: 12),
-                  Expanded(child: _buildExperience()),
-                ],
+                ),
               ),
-            ),
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: AmoraSuperLikeAnimation(
+                    animation: _superLikeAnimation,
+                    profileName: _superLikeProfileName,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -449,15 +471,20 @@ class _BrowseGridScreenState extends State<BrowseGridScreen> {
       onAuthenticated: () async {
         if (_actions.isTransitioning) return;
         HapticFeedback.mediumImpact();
+        _superLikeProfileName = profile.name;
         await _actions.superLikeProfile();
         if (!mounted) return;
         setState(() => _photoIndices.remove(profile.id));
+        if (!MediaQuery.disableAnimationsOf(context)) {
+          await _superLikeAnimation.forward(from: 0);
+          if (!mounted) return;
+        }
         ScaffoldMessenger.of(context)
           ..hideCurrentSnackBar()
           ..showSnackBar(
             SnackBar(
               duration: const Duration(milliseconds: 1200),
-              content: Text('Super Like sent to ${profile.name}'),
+              content: const Text('Super Like sent'),
             ),
           );
       },
@@ -805,7 +832,7 @@ class _DiscoverProfileCard extends StatelessWidget {
                     right: 20,
                     top: 24,
                     child: _SwipeFeedback(
-                      label: 'PASS',
+                      label: 'Not Now',
                       icon: Icons.close_rounded,
                       color: AppColors.primary,
                       opacity: (-dragProgress).clamp(0.0, 1.0),
@@ -1167,7 +1194,7 @@ class _DiscoverActionBar extends StatelessWidget {
           children: [
             _DiscoverActionButton(
               key: const ValueKey('discover-pass-button'),
-              label: 'Pass profile',
+              label: 'Not Now',
               icon: Icons.close_rounded,
               foreground: AppColors.secondary,
               onPressed: enabled ? onPass : null,

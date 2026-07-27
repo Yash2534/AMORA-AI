@@ -2,9 +2,7 @@ import 'dart:async';
 
 import 'package:amora_ai/core/access/amora_access.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
-import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/floating_bottom_nav.dart';
-import 'package:amora_ai/core/widgets/premium_motion.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/events/data/events_dummy_data.dart';
 import 'package:amora_ai/features/events/data/event_asset_catalog.dart';
@@ -12,7 +10,6 @@ import 'package:amora_ai/features/events/domain/event_models.dart';
 import 'package:amora_ai/features/events/presentation/event_detail_screen.dart';
 import 'package:amora_ai/features/events/presentation/my_events_screen.dart';
 import 'package:amora_ai/features/events/presentation/widgets/events_widgets.dart';
-import 'package:amora_ai/features/subscription/presentation/subscription_screen.dart';
 import 'package:amora_ai/features/subscription/presentation/testing/membership_test_flow.dart';
 import 'package:flutter/material.dart';
 
@@ -34,275 +31,14 @@ class EventsBrowseScreen extends StatelessWidget {
         bottom: !showNavigation,
         child: ResponsiveMobileFrame(
           maxWidth: 1120,
-          child: EventsAccessGate(
-            member: const EventsMemberExperience(),
-            locked: EventsLockedState(
-              onUpgrade: () =>
-                  Navigator.of(context).pushNamed(SubscriptionScreen.routeName),
-              onManageMembership: () =>
-                  Navigator.of(context).pushNamed(SubscriptionScreen.routeName),
-            ),
-          ),
+          child: const EventsMemberExperience(),
         ),
       ),
     );
   }
 }
 
-class EventsLockedState extends StatelessWidget {
-  const EventsLockedState({
-    super.key,
-    required this.onUpgrade,
-    required this.onManageMembership,
-  });
-
-  final VoidCallback onUpgrade;
-  final VoidCallback onManageMembership;
-
-  @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 620),
-          child: FadeUp(
-            duration: AmoraMotion.page,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'Events',
-                        style: TextStyle(
-                          color: AppColors.primary,
-                          fontSize: 28,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                    EventsMemberBadge(),
-                  ],
-                ),
-                const SizedBox(height: 28),
-                Container(
-                  padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(32),
-                    border: Border.all(
-                      color: AppColors.tertiary.withValues(alpha: .7),
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.primary.withValues(alpha: .08),
-                        blurRadius: 30,
-                        offset: const Offset(0, 16),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    children: [
-                      const Text(
-                        'Meet beyond the screen',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: AppColors.primary,
-                          fontSize: 26,
-                          height: 1.12,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      const Text(
-                        'Curated member experiences designed for meaningful '
-                        'real-world connections.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: AppColors.text,
-                          fontSize: 16,
-                          height: 1.45,
-                          fontWeight: FontWeight.w400,
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      const _LockedPreviewRail(),
-                      const SizedBox(height: 22),
-                      const _MemberBenefit(
-                        icon: Icons.auto_awesome_rounded,
-                        label: 'Small curated groups',
-                      ),
-                      const _MemberBenefit(
-                        icon: Icons.people_alt_rounded,
-                        label: 'Interest-based events',
-                      ),
-                      const _MemberBenefit(
-                        icon: Icons.interests_rounded,
-                        label: 'Member community and natural conversation',
-                      ),
-                      const SizedBox(height: 24),
-                      AppPrimaryButton(
-                        label: 'Unlock Events',
-                        icon: Icons.workspace_premium_rounded,
-                        onPressed: onUpgrade,
-                      ),
-                      const SizedBox(height: 8),
-                      TextButton(
-                        onPressed: onManageMembership,
-                        child: const Text('View Membership'),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _LockedPreviewRail extends StatelessWidget {
-  const _LockedPreviewRail();
-
-  @override
-  Widget build(BuildContext context) {
-    const previews = [
-      (
-        EventAssetCatalog.coffee,
-        Icons.coffee_rounded,
-        'Coffee & Conversations',
-      ),
-      (
-        EventAssetCatalog.liveMusic,
-        Icons.music_note_rounded,
-        'Live Music Socials',
-      ),
-      (
-        EventAssetCatalog.heritageFoodWalk,
-        Icons.directions_walk_rounded,
-        'Heritage Walks',
-      ),
-    ];
-    return SizedBox(
-      height: 132,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: previews.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 10),
-        itemBuilder: (_, index) => SizedBox(
-          width: 164,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                Image.asset(
-                  previews[index].$1,
-                  fit: BoxFit.cover,
-                  semanticLabel: '${previews[index].$3} event preview',
-                  errorBuilder: (_, _, _) =>
-                      const ColoredBox(color: AppColors.tertiary),
-                ),
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        AppColors.primary.withValues(alpha: .08),
-                        AppColors.primary.withValues(alpha: .86),
-                      ],
-                    ),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            previews[index].$2,
-                            color: AppColors.surface,
-                            size: 22,
-                          ),
-                          const Spacer(),
-                          const Icon(
-                            Icons.lock_rounded,
-                            color: AppColors.surface,
-                            size: 17,
-                          ),
-                        ],
-                      ),
-                      const Spacer(),
-                      Text(
-                        previews[index].$3,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: AppColors.surface,
-                          fontSize: 14,
-                          height: 1.2,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _MemberBenefit extends StatelessWidget {
-  const _MemberBenefit({required this.icon, required this.label});
-
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
-      child: Row(
-        children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: const BoxDecoration(
-              color: AppColors.background,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: AppColors.secondary, size: 21),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(
-                color: AppColors.text,
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// The paid-member presentation is kept public for focused widget testing.
-/// Route access remains controlled exclusively by [EventsBrowseScreen].
+/// Public for focused widget tests and rendered directly by the Events route.
 class EventsMemberExperience extends StatefulWidget {
   const EventsMemberExperience({super.key});
 
@@ -433,6 +169,7 @@ class _EventsMemberExperienceState extends State<EventsMemberExperience> {
             const ['coffee', 'book', 'founder', 'heritage', 'mindful', 'music'],
           ),
         )
+        .where((event) => event.id != featured?.id)
         .take(5)
         .toList(growable: false);
 
@@ -530,9 +267,9 @@ class _EventsMemberExperienceState extends State<EventsMemberExperience> {
                     itemBuilder: (_, index) {
                       final event = thisWeek[index];
                       return RepaintBoundary(
-                        child: FadeUp(
+                        child: EventReveal(
                           delay: Duration(milliseconds: 35 * index),
-                          child: EventCard(
+                          child: StandardEventCard(
                             event: event,
                             status: _participation[event.id],
                             onOpen: () => _openDetail(event),
@@ -549,11 +286,10 @@ class _EventsMemberExperienceState extends State<EventsMemberExperience> {
                   itemBuilder: (_, index) {
                     final event = thisWeek[index];
                     return RepaintBoundary(
-                      child: FadeUp(
+                      child: EventReveal(
                         delay: Duration(milliseconds: 30 * index),
-                        child: EventCard(
+                        child: CompactEventCard(
                           event: event,
-                          horizontal: true,
                           status: _participation[event.id],
                           onOpen: () => _openDetail(event),
                           onJoin: () => _handleParticipation(event),
@@ -580,6 +316,7 @@ class _EventsMemberExperienceState extends State<EventsMemberExperience> {
                   participation: _participation,
                   onOpen: _openDetail,
                   onJoin: _handleParticipation,
+                  showDistance: true,
                 ),
               ],
             ),
@@ -627,7 +364,7 @@ class _EventsMemberExperienceState extends State<EventsMemberExperience> {
                   onShowAll: _showAll,
                 )
               else
-                MyEventsPreview(
+                JoinedEventCard(
                   event: _joinedEvents.first,
                   status: _participation[_joinedEvents.first.id],
                   onOpen: () => _openDetail(_joinedEvents.first),
@@ -916,19 +653,21 @@ class _EventRail extends StatelessWidget {
     required this.participation,
     required this.onOpen,
     required this.onJoin,
+    this.showDistance = false,
   });
 
   final List<EventModel> events;
   final Map<String, TicketStatus> participation;
   final ValueChanged<EventModel> onOpen;
   final ValueChanged<EventModel> onJoin;
+  final bool showDistance;
 
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
     final itemWidth = width >= 700 ? 330.0 : (width - 64).clamp(260.0, 328.0);
     return SizedBox(
-      height: 418,
+      height: showDistance ? 174 : 418,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: events.length,
@@ -937,12 +676,20 @@ class _EventRail extends StatelessWidget {
           final event = events[index];
           return SizedBox(
             width: itemWidth,
-            child: EventCard(
-              event: event,
-              status: participation[event.id],
-              onOpen: () => onOpen(event),
-              onJoin: () => onJoin(event),
-            ),
+            child: showDistance
+                ? CompactEventCard(
+                    event: event,
+                    status: participation[event.id],
+                    onOpen: () => onOpen(event),
+                    onJoin: () => onJoin(event),
+                    showDistance: true,
+                  )
+                : StandardEventCard(
+                    event: event,
+                    status: participation[event.id],
+                    onOpen: () => onOpen(event),
+                    onJoin: () => onJoin(event),
+                  ),
           );
         },
       ),
