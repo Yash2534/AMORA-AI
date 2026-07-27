@@ -20,6 +20,12 @@ void main() {
     expect(find.byTooltip('Video call'), findsNothing);
     expect(find.byTooltip('Attachments'), findsNothing);
     expect(find.text('Shared Media'), findsNothing);
+    expect(find.textContaining('Date invite'), findsNothing);
+    expect(find.text('Draft'), findsNothing);
+    expect(find.text('AI Icebreaker'), findsNothing);
+    expect(find.byType(ChatDateDivider), findsOneWidget);
+    expect(find.byType(MessageBubble), findsWidgets);
+    expect(find.byType(TypingIndicator), findsOneWidget);
 
     const message = 'Text chat still works';
     await tester.enterText(find.byType(TextFormField), message);

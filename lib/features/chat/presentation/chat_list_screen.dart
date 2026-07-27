@@ -3,6 +3,7 @@ import 'package:amora_ai/core/data/image_repository.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
+import 'package:amora_ai/core/widgets/amora_bottom_sheet.dart';
 import 'package:amora_ai/core/widgets/floating_bottom_nav.dart';
 import 'package:amora_ai/core/widgets/premium_avatar.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
@@ -24,6 +25,7 @@ class ChatListScreen extends StatefulWidget {
 
 class _ChatListScreenState extends State<ChatListScreen> {
   final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
   String _query = '';
   ChatInboxFilter _filter = ChatInboxFilter.all;
 
@@ -59,6 +61,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
   @override
   void dispose() {
     _searchController.dispose();
+    _searchFocusNode.dispose();
     super.dispose();
   }
 
@@ -71,6 +74,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
       resizeToAvoidBottomInset: true,
       backgroundColor: AppColors.background,
       body: SafeArea(
+        bottom: !widget.showNavigation,
         child: ResponsiveMobileFrame(
           maxWidth: 680,
           child: Column(
@@ -84,92 +88,20 @@ class _ChatListScreenState extends State<ChatListScreen> {
                 ),
                 child: Column(
                   children: [
-<<<<<<< HEAD
-                    ListView(
-                      padding: EdgeInsets.fromLTRB(
-                        padding,
-                        AmoraSpacing.space24,
-                        padding,
-                        (widget.showNavigation
-                                ? AmoraSpacing.navigationContentInset
-                                : AmoraSpacing.space32) +
-                            bottomInset,
-                      ),
-                      children: [
-                        const _Header(),
-                        const SizedBox(height: AmoraSpacing.space20),
-                        _SearchBar(
-                          onChanged: (value) {
-                            setState(() => _query = value);
-                          },
-                        ),
-                        const SizedBox(height: AmoraSpacing.space24),
-                        _ChatTabs(
-                          selected: _tab,
-                          onSelected: (value) => setState(() => _tab = value),
-                        ),
-                        const SizedBox(height: AmoraSpacing.space20),
-                        const _SectionLabel(
-                          title: 'New Matches',
-                          subtitle: 'High compatibility profiles active now.',
-                        ),
-                        const SizedBox(height: AmoraSpacing.space12),
-                        SizedBox(
-                          height: 122,
-                          child: ListView.separated(
-                            scrollDirection: Axis.horizontal,
-                            itemCount: _newMatches.length,
-                            separatorBuilder: (_, _) =>
-                                const SizedBox(width: AmoraSpacing.space12),
-                            itemBuilder: (context, index) {
-                              final match = _newMatches[index];
-                              return _NewMatchAvatar(match: match);
-                            },
-                          ),
-                        ),
-                        const SizedBox(height: AmoraSpacing.space24),
-                        const _SectionLabel(
-                          title: 'Conversations',
-                          subtitle: 'Thoughtful replies and AI nudges.',
-                        ),
-                        const SizedBox(height: AmoraSpacing.space12),
-                        if (chats.isEmpty)
-                          const _EmptyChatState()
-                        else
-                          for (final chat in chats)
-                            Padding(
-                              padding: const EdgeInsets.only(
-                                bottom: AmoraSpacing.space12,
-                              ),
-                              child: ChatListTileCard(chat: chat),
-                            ),
-                      ],
+                    ChatsAppBar(
+                      unreadCount: _unreadTotal,
+                      onSearch: _focusSearch,
+                      onCompose: _showComposeSheet,
+                      onMore: _showInboxMenu,
                     ),
-                    if (widget.showNavigation)
-                      Align(
-                        alignment: Alignment.bottomCenter,
-                        child: Padding(
-                          padding: EdgeInsets.fromLTRB(
-                            AmoraSpacing.space16,
-                            AmoraSpacing.space0,
-                            AmoraSpacing.space16,
-                            AmoraSpacing.space12 + bottomInset,
-                          ),
-                          child: const FloatingBottomNav(
-                            activeTab: AmoraNavTab.messages,
-                          ),
-                        ),
-                      ),
-=======
-                    ChatsAppBar(unreadCount: _unreadTotal),
                     const SizedBox(height: AmoraSpacing.space12),
                     ChatSearchField(
                       controller: _searchController,
+                      focusNode: _searchFocusNode,
                       hasQuery: _query.isNotEmpty,
                       onChanged: (value) => setState(() => _query = value),
                       onClear: _clearSearch,
                     ),
->>>>>>> main
                   ],
                 ),
               ),
@@ -223,7 +155,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
                           )
                         else ...[
                           const SliverToBoxAdapter(
-                            child: ConversationSectionHeader(title: 'Messages'),
+                            child: ConversationSectionHeader(
+                              title: 'Conversations',
+                            ),
                           ),
                           SliverList.builder(
                             itemCount: visibleChats.length,
@@ -234,6 +168,8 @@ class _ChatListScreenState extends State<ChatListScreen> {
                                 chat: chat,
                                 onOpen: () => _openConversation(chat),
                                 onOpenProfile: _openProfile,
+                                onLongPress: () =>
+                                    _showConversationActions(chat),
                               );
                             },
                           ),
@@ -241,23 +177,18 @@ class _ChatListScreenState extends State<ChatListScreen> {
                             child: SizedBox(
                               height: keyboardIsOpen
                                   ? AmoraSpacing.space16
-                                  : FloatingBottomNav.contentBottomPadding,
+                                  : widget.showNavigation
+                                  ? FloatingBottomNav.contentBottomPadding
+                                  : AmoraSpacing.space16,
                             ),
                           ),
                         ],
                       ],
                     ),
-                    if (!keyboardIsOpen)
+                    if (widget.showNavigation && !keyboardIsOpen)
                       const Align(
                         alignment: Alignment.bottomCenter,
-                        child: Padding(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: AmoraSpacing.space16,
-                          ),
-                          child: FloatingBottomNav(
-                            activeTab: AmoraNavTab.chats,
-                          ),
-                        ),
+                        child: FloatingBottomNav(activeTab: AmoraNavTab.chats),
                       ),
                   ],
                 ),
@@ -272,6 +203,10 @@ class _ChatListScreenState extends State<ChatListScreen> {
   void _clearSearch() {
     _searchController.clear();
     setState(() => _query = '');
+  }
+
+  void _focusSearch() {
+    _searchFocusNode.requestFocus();
   }
 
   void _clearSearchAndFilter() {
@@ -289,14 +224,136 @@ class _ChatListScreenState extends State<ChatListScreen> {
   void _openProfile() {
     Navigator.of(context).pushNamed(ProfileDetailScreen.routeName);
   }
+
+  void _showComposeSheet() {
+    showAmoraBottomSheet<void>(
+      context: context,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const _InboxSheetHeader(
+            title: 'New message',
+            supporting: 'Continue a conversation with one of your matches.',
+          ),
+          const SizedBox(height: AmoraSpacing.space8),
+          for (final chat in _allChats.take(5))
+            _ConversationSheetAction(
+              chat: chat,
+              onTap: () {
+                Navigator.pop(context);
+                _openConversation(chat);
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
+  void _showInboxMenu() {
+    showAmoraBottomSheet<void>(
+      context: context,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const _InboxSheetHeader(
+            title: 'Inbox view',
+            supporting: 'Choose which supported conversations to show.',
+          ),
+          const SizedBox(height: AmoraSpacing.space8),
+          for (final filter in ChatInboxFilter.values)
+            ListTile(
+              minTileHeight: 54,
+              leading: Icon(
+                filter == _filter
+                    ? Icons.check_circle_rounded
+                    : Icons.circle_outlined,
+                color: filter == _filter
+                    ? AppColors.secondary
+                    : AppColors.primary,
+              ),
+              title: Text(
+                _filterLabel(filter),
+                style: const TextStyle(
+                  color: AppColors.text,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                setState(() => _filter = filter);
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
+  void _showConversationActions(DummyConversation chat) {
+    showAmoraBottomSheet<void>(
+      context: context,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _InboxSheetHeader(
+            title: chat.user.name,
+            supporting: chat.lastMessage,
+          ),
+          const SizedBox(height: AmoraSpacing.space8),
+          ListTile(
+            minTileHeight: 54,
+            leading: const Icon(
+              Icons.chat_bubble_outline_rounded,
+              color: AppColors.primary,
+            ),
+            title: const Text('Open conversation'),
+            onTap: () {
+              Navigator.pop(context);
+              _openConversation(chat);
+            },
+          ),
+          ListTile(
+            minTileHeight: 54,
+            leading: const Icon(
+              Icons.person_outline_rounded,
+              color: AppColors.primary,
+            ),
+            title: const Text('View profile'),
+            onTap: () {
+              Navigator.pop(context);
+              _openProfile();
+            },
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 enum ChatInboxFilter { all, unread, online }
 
+String _filterLabel(ChatInboxFilter filter) => switch (filter) {
+  ChatInboxFilter.all => 'All',
+  ChatInboxFilter.unread => 'Unread',
+  ChatInboxFilter.online => 'Online',
+};
+
 class ChatsAppBar extends StatelessWidget {
-  const ChatsAppBar({super.key, required this.unreadCount});
+  const ChatsAppBar({
+    super.key,
+    required this.unreadCount,
+    required this.onSearch,
+    required this.onCompose,
+    required this.onMore,
+  });
 
   final int unreadCount;
+  final VoidCallback onSearch;
+  final VoidCallback onCompose;
+  final VoidCallback onMore;
 
   @override
   Widget build(BuildContext context) {
@@ -308,9 +365,10 @@ class ChatsAppBar extends StatelessWidget {
             child: Text(
               'Chats',
               maxLines: 1,
-              style: AmoraTextStyles.headlineSmall.copyWith(
+              style: AmoraTextStyles.titleLarge.copyWith(
                 color: AppColors.primary,
-                fontWeight: FontWeight.w800,
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
                 letterSpacing: -.4,
               ),
             ),
@@ -338,7 +396,134 @@ class ChatsAppBar extends StatelessWidget {
                 ),
               ),
             ),
+          const SizedBox(width: 4),
+          _InboxIconButton(
+            tooltip: 'Search chats',
+            icon: Icons.search_rounded,
+            onPressed: onSearch,
+          ),
+          _InboxIconButton(
+            tooltip: 'Compose message',
+            icon: Icons.edit_square,
+            onPressed: onCompose,
+          ),
+          _InboxIconButton(
+            tooltip: 'More',
+            icon: Icons.more_horiz_rounded,
+            onPressed: onMore,
+          ),
         ],
+      ),
+    );
+  }
+}
+
+class _InboxIconButton extends StatelessWidget {
+  const _InboxIconButton({
+    required this.tooltip,
+    required this.icon,
+    required this.onPressed,
+  });
+
+  final String tooltip;
+  final IconData icon;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox.square(
+      dimension: 42,
+      child: IconButton(
+        tooltip: tooltip,
+        onPressed: onPressed,
+        color: AppColors.primary,
+        icon: Icon(icon, size: 21),
+      ),
+    );
+  }
+}
+
+class _InboxSheetHeader extends StatelessWidget {
+  const _InboxSheetHeader({required this.title, required this.supporting});
+
+  final String title;
+  final String supporting;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 4, 4, 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: AppColors.primary,
+              fontSize: 20,
+              height: 1.2,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            supporting,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: AppColors.text.withValues(alpha: .68),
+              fontSize: 14,
+              height: 1.35,
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ConversationSheetAction extends StatelessWidget {
+  const _ConversationSheetAction({required this.chat, required this.onTap});
+
+  final DummyConversation chat;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      minTileHeight: 62,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+      onTap: onTap,
+      leading: ConversationAvatar(
+        profile: chat.user,
+        online: chat.online,
+        radius: 23,
+      ),
+      title: Text(
+        chat.user.name,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(
+          color: AppColors.text,
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      subtitle: Text(
+        chat.lastMessage,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          color: AppColors.text.withValues(alpha: .64),
+          fontSize: 13,
+        ),
+      ),
+      trailing: const Icon(
+        Icons.chevron_right_rounded,
+        color: AppColors.primary,
       ),
     );
   }
@@ -348,12 +533,14 @@ class ChatSearchField extends StatefulWidget {
   const ChatSearchField({
     super.key,
     required this.controller,
+    required this.focusNode,
     required this.hasQuery,
     required this.onChanged,
     required this.onClear,
   });
 
   final TextEditingController controller;
+  final FocusNode focusNode;
   final bool hasQuery;
   final ValueChanged<String> onChanged;
   final VoidCallback onClear;
@@ -363,27 +550,33 @@ class ChatSearchField extends StatefulWidget {
 }
 
 class _ChatSearchFieldState extends State<ChatSearchField> {
-  late final FocusNode _focusNode;
-
   @override
   void initState() {
     super.initState();
-    _focusNode = FocusNode()..addListener(_onFocusChanged);
+    widget.focusNode.addListener(_onFocusChanged);
+  }
+
+  @override
+  void didUpdateWidget(covariant ChatSearchField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.focusNode == widget.focusNode) return;
+    oldWidget.focusNode.removeListener(_onFocusChanged);
+    widget.focusNode.addListener(_onFocusChanged);
   }
 
   @override
   void dispose() {
-    _focusNode
-      ..removeListener(_onFocusChanged)
-      ..dispose();
+    widget.focusNode.removeListener(_onFocusChanged);
     super.dispose();
   }
 
-  void _onFocusChanged() => setState(() {});
+  void _onFocusChanged() {
+    if (mounted) setState(() {});
+  }
 
   @override
   Widget build(BuildContext context) {
-    final focused = _focusNode.hasFocus;
+    final focused = widget.focusNode.hasFocus;
     return AnimatedContainer(
       key: const ValueKey('chats-search-container'),
       duration: const Duration(milliseconds: 220),
@@ -396,30 +589,30 @@ class _ChatSearchFieldState extends State<ChatSearchField> {
           color: focused ? AppColors.secondary : AppColors.tertiary,
           width: focused ? 2 : 1,
         ),
-        boxShadow: focused
-            ? [
-                BoxShadow(
-                  color: AppColors.secondary.withValues(alpha: .14),
-                  blurRadius: 18,
-                  spreadRadius: -5,
-                  offset: const Offset(0, 8),
-                ),
-              ]
-            : null,
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: focused ? .12 : .06),
+            blurRadius: focused ? 18 : 12,
+            spreadRadius: -5,
+            offset: const Offset(0, 7),
+          ),
+        ],
       ),
       child: TextField(
         key: const ValueKey('chats-search-field'),
         controller: widget.controller,
-        focusNode: _focusNode,
+        focusNode: widget.focusNode,
         onChanged: widget.onChanged,
         textInputAction: TextInputAction.search,
-        style: AmoraTextStyles.bodyMedium.copyWith(
-          color: AppColors.textNeutral,
+        style: AmoraTextStyles.bodyLarge.copyWith(
+          color: AppColors.text,
+          fontSize: 16,
         ),
         decoration: InputDecoration(
-          hintText: 'Search chats or matches',
-          hintStyle: AmoraTextStyles.bodyMedium.copyWith(
-            color: AppColors.textNeutral.withValues(alpha: .58),
+          hintText: 'Search chats...',
+          hintStyle: AmoraTextStyles.bodyLarge.copyWith(
+            color: AppColors.text.withValues(alpha: .58),
+            fontSize: 16,
           ),
           prefixIcon: const Icon(
             Icons.search_rounded,
@@ -585,11 +778,7 @@ class _ChatFilterChip extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
-  String get _label => switch (filter) {
-    ChatInboxFilter.all => 'All',
-    ChatInboxFilter.unread => 'Unread',
-    ChatInboxFilter.online => 'Online',
-  };
+  String get _label => _filterLabel(filter);
 
   @override
   Widget build(BuildContext context) {
@@ -662,11 +851,13 @@ class ConversationTile extends StatefulWidget {
     required this.chat,
     required this.onOpen,
     required this.onOpenProfile,
+    required this.onLongPress,
   });
 
   final DummyConversation chat;
   final VoidCallback onOpen;
   final VoidCallback onOpenProfile;
+  final VoidCallback onLongPress;
 
   @override
   State<ConversationTile> createState() => _ConversationTileState();
@@ -698,95 +889,98 @@ class _ConversationTileState extends State<ConversationTile> {
                 : AppColors.background,
             child: InkWell(
               onTap: widget.onOpen,
+              onLongPress: widget.onLongPress,
               focusColor: AppColors.tertiary.withValues(alpha: .28),
               hoverColor: AppColors.tertiary.withValues(alpha: .24),
               child: Container(
-                constraints: const BoxConstraints(minHeight: 82),
+                height: 78,
                 padding: const EdgeInsets.symmetric(
                   horizontal: AmoraSpacing.space16,
-                  vertical: AmoraSpacing.space12,
+                  vertical: 9,
                 ),
-                decoration: BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(
-                      color: AppColors.tertiary.withValues(alpha: .46),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(
+                        color: AppColors.tertiary.withValues(alpha: .46),
+                      ),
+                      left: highlighted
+                          ? const BorderSide(
+                              color: AppColors.secondary,
+                              width: 3,
+                            )
+                          : BorderSide.none,
                     ),
-                    left: highlighted
-                        ? const BorderSide(color: AppColors.secondary, width: 3)
-                        : BorderSide.none,
                   ),
-                ),
-                child: Row(
-                  children: [
-                    Semantics(
-                      button: true,
-                      label: 'Open ${chat.user.name} profile',
-                      child: GestureDetector(
-                        onTap: widget.onOpenProfile,
-                        child: ConversationAvatar(
-                          profile: chat.user,
-                          online: chat.online,
-                          radius: 28,
+                  child: Row(
+                    children: [
+                      Semantics(
+                        button: true,
+                        label: 'Open ${chat.user.name} profile',
+                        child: GestureDetector(
+                          onTap: widget.onOpenProfile,
+                          child: ConversationAvatar(
+                            profile: chat.user,
+                            online: chat.online,
+                            radius: 26,
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: AmoraSpacing.space12),
-                    Expanded(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  chat.user.name,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: AmoraTextStyles.titleMedium.copyWith(
-                                    color: AppColors.textNeutral,
-                                    fontWeight: unread
-                                        ? FontWeight.w800
-                                        : FontWeight.w600,
+                      const SizedBox(width: AmoraSpacing.space12),
+                      Expanded(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    chat.user.name,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: AmoraTextStyles.titleMedium.copyWith(
+                                      color: AppColors.text,
+                                      fontWeight: unread
+                                          ? FontWeight.w800
+                                          : FontWeight.w600,
+                                    ),
                                   ),
                                 ),
-                              ),
-                              const SizedBox(width: AmoraSpacing.space8),
-                              Text(
-                                chat.time,
-                                maxLines: 1,
-                                style: AmoraTextStyles.labelSmall.copyWith(
-                                  color: unread
-                                      ? AppColors.secondary
-                                      : AppColors.textNeutral.withValues(
-                                          alpha: .56,
-                                        ),
-                                  fontWeight: unread
-                                      ? FontWeight.w800
-                                      : FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: AmoraSpacing.space4),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: MessagePreview(
-                                  message: chat.lastMessage,
-                                  unread: unread,
-                                ),
-                              ),
-                              if (unread) ...[
                                 const SizedBox(width: AmoraSpacing.space8),
-                                UnreadCountBadge(count: chat.unread),
+                                Text(
+                                  chat.time,
+                                  maxLines: 1,
+                                  style: AmoraTextStyles.labelSmall.copyWith(
+                                    color: unread
+                                        ? AppColors.secondary
+                                        : AppColors.text.withValues(alpha: .56),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
                               ],
-                            ],
-                          ),
-                        ],
+                            ),
+                            const SizedBox(height: AmoraSpacing.space4),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: MessagePreview(
+                                    message: chat.lastMessage,
+                                    unread: unread,
+                                  ),
+                                ),
+                                if (unread) ...[
+                                  const SizedBox(width: AmoraSpacing.space8),
+                                  UnreadCountBadge(count: chat.unread),
+                                ],
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),

@@ -34,18 +34,14 @@ import 'package:amora_ai/features/onboarding/presentation/profile_onboarding_flo
 import 'package:amora_ai/features/payment/presentation/payment_screen.dart';
 import 'package:amora_ai/features/preferences/presentation/dealbreakers_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_detail_screen.dart';
+import 'package:amora_ai/features/profile/presentation/profile_completion_screen.dart';
+import 'package:amora_ai/features/profile/presentation/profile_preview_screen.dart';
+import 'package:amora_ai/features/profile/presentation/profile_basic_details_screen.dart';
 import 'package:amora_ai/features/profile/presentation/kyc_verification_screen.dart';
 import 'package:amora_ai/features/profile/presentation/bio_builder_screen.dart';
 import 'package:amora_ai/features/profile/presentation/photo_manager_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_setup_screen.dart';
-<<<<<<< HEAD
-import 'package:amora_ai/features/profile/presentation/profile_completion_screen.dart';
-import 'package:amora_ai/features/profile/presentation/profile_preview_screen.dart';
-import 'package:amora_ai/features/profile/presentation/profile_basic_details_screen.dart';
-import 'package:amora_ai/features/referral/presentation/refer_earn_screen.dart';
-=======
->>>>>>> main
 import 'package:amora_ai/features/referral/presentation/referral_leaderboard_screen.dart';
 import 'package:amora_ai/features/roadmap/presentation/phase23_premium_screens.dart';
 import 'package:amora_ai/features/roadmap/presentation/roadmap_feature_screens.dart';
@@ -93,11 +89,7 @@ class _MyAppState extends State<MyApp> {
       title: 'AMORA AI',
       debugShowCheckedModeBanner: false,
       theme: AmoraTheme.light(),
-<<<<<<< HEAD
-      initialRoute: AmoraAuthScreen.routeName,
-=======
       initialRoute: SplashScreen.routeName,
->>>>>>> main
       routes: {
         // First-launch workflow.
         SplashScreen.routeName: (_) => const SplashScreen(),
@@ -121,28 +113,23 @@ class _MyAppState extends State<MyApp> {
         KycVerificationScreen.routeName: (_) => const KycVerificationScreen(),
 
         // Primary app tabs and product flows.
-<<<<<<< HEAD
-        AmoraHomeScreen.routeName: (_) => const AmoraHomeScreen(),
-        BrowseGridScreen.routeName: (_) => const MainShell(),
-        MainShell.routeName: (_) => const MainShell(),
-=======
         BrowseGridScreen.routeName: (_) => const BrowseGridScreen(),
->>>>>>> main
         AdvancedFiltersScreen.routeName: (_) => const AdvancedFiltersScreen(),
         DiscoverScreen.routeName: (_) => const MainShell(),
         ProfileScreen.routeName: (_) =>
             const MainShell(initialTab: AmoraNavTab.profile),
         ProfileDetailScreen.routeName: (_) => const ProfileDetailScreen(),
         MatchesScreen.routeName: (_) =>
-            const MainShell(initialTab: AmoraNavTab.likes),
+            const MainShell(initialTab: AmoraNavTab.matches),
         MatchScreen.routeName: (_) => const MatchScreen(),
         SuperLikeScreen.routeName: (_) => const SuperLikeScreen(),
         SendGiftScreen.routeName: (_) => const SendGiftScreen(),
         ChatListScreen.routeName: (_) =>
-            const MainShell(initialTab: AmoraNavTab.messages),
+            const MainShell(initialTab: AmoraNavTab.chats),
         ChatDetailScreen.routeName: (_) => const ChatDetailScreen(),
         NotificationsHubScreen.routeName: (_) => const NotificationsHubScreen(),
-        EventsScreen.routeName: (_) => const EventsScreen(),
+        EventsScreen.routeName: (_) =>
+            const MainShell(initialTab: AmoraNavTab.events),
         EventDetailScreen.routeName: (_) => const EventDetailScreen(),
         TicketBookingScreen.routeName: (_) => const TicketBookingScreen(),
         MyEventsScreen.routeName: (_) => const MyEventsScreen(),
@@ -214,11 +201,7 @@ class _MyAppState extends State<MyApp> {
       },
       onUnknownRoute: (_) {
         return MaterialPageRoute<void>(
-<<<<<<< HEAD
-          builder: (_) => const MainShell(),
-=======
           builder: (_) => const BrowseGridScreen(),
->>>>>>> main
           settings: const RouteSettings(name: BrowseGridScreen.routeName),
         );
       },

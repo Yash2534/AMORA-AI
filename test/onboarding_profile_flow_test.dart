@@ -7,6 +7,7 @@ import 'package:amora_ai/features/onboarding/presentation/profile_onboarding_flo
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
 import 'package:amora_ai/features/profile/presentation/profile_completion_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -96,7 +97,7 @@ void main() {
     expect(find.text('Explore AMORA AI'), findsNothing);
   });
 
-  testWidgets('quick onboarding has four questions and opens Discover', (
+  testWidgets('quick onboarding includes birth date and opens Discover', (
     tester,
   ) async {
     profiles.startNewProfile('New Member');
@@ -111,27 +112,40 @@ void main() {
       ),
     );
 
-    expect(find.text('Step 1 of 4'), findsOneWidget);
+    expect(find.text('Step 1 of 5'), findsOneWidget);
+    expect(find.text("When's your birthday?"), findsOneWidget);
+    expect(find.byKey(const Key('birthdate-day-wheel')), findsOneWidget);
+    await tester.drag(
+      find.byKey(const Key('birthdate-day-wheel')),
+      const Offset(0, -60),
+    );
+    await tester.pumpAndSettle();
+    expect(onboarding.state.birthDate, isNotNull);
+    expect(find.textContaining('Age:'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('onboarding-continue')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Step 2 of 5'), findsOneWidget);
     expect(find.text('How do you identify?'), findsOneWidget);
     await tester.tap(find.text('Non-binary'));
     await tester.pump();
     await tester.tap(find.byKey(const Key('onboarding-continue')));
     await tester.pumpAndSettle();
 
-    expect(find.text('Step 2 of 4'), findsOneWidget);
+    expect(find.text('Step 3 of 5'), findsOneWidget);
     await tester.ensureVisible(find.text('Everyone'));
     await tester.tap(find.text('Everyone'));
     await tester.pump();
     await tester.tap(find.byKey(const Key('onboarding-continue')));
     await tester.pumpAndSettle();
 
-    expect(find.text('Step 3 of 4'), findsOneWidget);
+    expect(find.text('Step 4 of 5'), findsOneWidget);
     await tester.tap(find.text('Long-term relationship'));
     await tester.pump();
     await tester.tap(find.byKey(const Key('onboarding-continue')));
     await tester.pumpAndSettle();
 
-    expect(find.text('Step 4 of 4'), findsOneWidget);
+    expect(find.text('Step 5 of 5'), findsOneWidget);
     await tester.ensureVisible(find.byKey(const Key('onboarding-city')));
     await tester.enterText(
       find.byKey(const Key('onboarding-city')),
@@ -145,6 +159,52 @@ void main() {
     expect(onboarding.state.onboardingCompleted, isTrue);
     expect(profiles.profile.gender, 'Non-binary');
     expect(profiles.profile.location, 'Ahmedabad');
+  });
+
+  testWidgets('birth date question shows inline minimum-age validation', (
+    tester,
+  ) async {
+    final today = DateTime.now();
+    onboarding.resetForTesting(
+      LocalOnboardingState(
+        stage: OnboardingStage.age,
+        birthDate: DateTime(today.year - 17, today.month, today.day),
+      ),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AmoraTheme.light(),
+        home: const ProfileOnboardingFlow(),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Age: 17 years'), findsOneWidget);
+    expect(find.text('You must be at least 18 years old.'), findsOneWidget);
+    final continueButton = tester.widget<FilledButton>(
+      find.descendant(
+        of: find.byKey(const Key('onboarding-continue')),
+        matching: find.byType(FilledButton),
+      ),
+    );
+    expect(continueButton.onPressed, isNull);
+  });
+
+  testWidgets('birth date wheels support keyboard selection', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AmoraTheme.light(),
+        home: const ProfileOnboardingFlow(),
+      ),
+    );
+
+    await tester.tap(find.byKey(const Key('birthdate-year-wheel')));
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pumpAndSettle();
+
+    expect(onboarding.state.birthDate, isNotNull);
+    expect(onboarding.state.birthDate!.year, DateTime.now().year - 25);
   });
 
   testWidgets('saved onboarding step and answers resume', (tester) async {
@@ -162,7 +222,7 @@ void main() {
       ),
     );
 
-    expect(find.text('Step 3 of 4'), findsOneWidget);
+    expect(find.text('Step 4 of 5'), findsOneWidget);
     expect(find.text('What are you looking for?'), findsOneWidget);
     expect(onboarding.state.gender, 'Woman');
     expect(onboarding.state.interestedIn, contains('Everyone'));

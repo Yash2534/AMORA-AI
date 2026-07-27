@@ -1,9 +1,4 @@
-<<<<<<< HEAD
-import 'package:amora_ai/core/constants/app_images.dart';
-import 'package:amora_ai/core/theme/app_colors.dart';
-=======
 import 'package:amora_ai/core/access/amora_access.dart';
->>>>>>> main
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
@@ -12,12 +7,10 @@ import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/premium_motion.dart';
 import 'package:amora_ai/features/auth/presentation/login_screen.dart';
 import 'package:amora_ai/features/auth/presentation/signup_screen.dart';
-<<<<<<< HEAD
-=======
 import 'package:amora_ai/features/auth/presentation/widgets/auth_presentation.dart';
+import 'package:amora_ai/features/auth/presentation/phone_otp_screen.dart';
 import 'package:amora_ai/features/discover/presentation/browse_grid_screen.dart';
 import 'package:flutter/foundation.dart';
->>>>>>> main
 import 'package:flutter/material.dart';
 
 class AmoraAuthScreen extends StatefulWidget {
@@ -48,75 +41,6 @@ class _AmoraAuthScreenState extends State<AmoraAuthScreen>
 
   @override
   Widget build(BuildContext context) {
-<<<<<<< HEAD
-    return Scaffold(
-      body: DecoratedBox(
-        decoration: const BoxDecoration(color: AppColors.background),
-        child: SafeArea(
-          child: ResponsiveMobileFrame(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final padding = constraints.maxWidth < 390
-                    ? AmoraSpacing.space16
-                    : AmoraSpacing.space24;
-                return SingleChildScrollView(
-                  padding: EdgeInsets.fromLTRB(
-                    padding,
-                    AmoraSpacing.space20,
-                    padding,
-                    AmoraSpacing.space24 +
-                        MediaQuery.viewPaddingOf(context).bottom +
-                        MediaQuery.viewInsetsOf(context).bottom,
-                  ),
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      minHeight: constraints.maxHeight - AmoraSpacing.space40,
-                    ),
-                    child: FadeTransition(
-                      opacity: _intro,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          const AuthHeader(),
-                          const SizedBox(height: AmoraSpacing.space32),
-                          const _AuthHero(),
-                          const SizedBox(height: AmoraSpacing.space24),
-                          PremiumCard(
-                            radius: AmoraRadius.extraLarge,
-                            padding: AmoraSpacing.card,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                AppPrimaryButton(
-                                  key: const Key('auth-sign-in'),
-                                  label: 'Sign in',
-                                  icon: Icons.login_rounded,
-                                  onPressed: () => Navigator.of(
-                                    context,
-                                  ).pushNamed(LoginScreen.routeName),
-                                ),
-                                const SizedBox(height: AmoraSpacing.space12),
-                                AppPrimaryButton(
-                                  key: const Key('auth-create-account'),
-                                  label: 'Create account',
-                                  icon: Icons.person_add_alt_1_rounded,
-                                  variant: AppPrimaryButtonVariant.outlined,
-                                  onPressed: () => Navigator.of(
-                                    context,
-                                  ).pushNamed(SignupScreen.routeName),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: AmoraSpacing.space20),
-                          const _FooterLinks(),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              },
-=======
     return AmoraAuthShell(
       title: 'Welcome to AMORA AI',
       subtitle: 'Choose the quickest way to begin your private Amora journey.',
@@ -133,7 +57,6 @@ class _AmoraAuthScreenState extends State<AmoraAuthScreen>
               style: AmoraTextStyles.titleMedium.copyWith(
                 color: AppColors.primary,
               ),
->>>>>>> main
             ),
             const SizedBox(height: AmoraSpacing.space12),
             AuthPrimaryButton(
@@ -186,29 +109,6 @@ class _AmoraAuthScreenState extends State<AmoraAuthScreen>
       ),
     );
   }
-<<<<<<< HEAD
-}
-
-class AuthHeader extends StatelessWidget {
-  const AuthHeader({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        const SizedBox(width: AmoraSpacing.minimumTouchTarget),
-        const Spacer(),
-        const _BrandMark(),
-        const Spacer(),
-        const SizedBox(width: AmoraSpacing.minimumTouchTarget),
-      ],
-    );
-  }
-}
-
-class _AuthHero extends StatelessWidget {
-  const _AuthHero();
-=======
 
   void _goBack() {
     final navigator = Navigator.of(context);
@@ -224,7 +124,6 @@ class _AuthHero extends StatelessWidget {
 
 class _AuthFooter extends StatelessWidget {
   const _AuthFooter();
->>>>>>> main
 
   @override
   Widget build(BuildContext context) {
@@ -252,21 +151,6 @@ class _AuthFooter extends StatelessWidget {
             color: AppColors.textNeutral.withValues(alpha: .68),
           ),
         ),
-<<<<<<< HEAD
-        const SizedBox(height: AmoraSpacing.space24),
-        Text(
-          'Meaningful connections begin with being yourself.',
-          textAlign: TextAlign.center,
-          style: AmoraTextStyles.headlineMedium,
-        ),
-        const SizedBox(height: AmoraSpacing.space12),
-        Text(
-          'A calm, intentional space for meeting people who value the same things you do.',
-          textAlign: TextAlign.center,
-          style: AmoraTextStyles.bodyMedium.copyWith(
-            color: AppColors.textSecondary,
-          ),
-=======
         const SizedBox(height: AmoraSpacing.space4),
         Wrap(
           alignment: WrapAlignment.center,
@@ -290,49 +174,8 @@ class _AuthFooter extends StatelessWidget {
           fullWidth: false,
           onPressed: () =>
               Navigator.of(context).pushNamed(SignupScreen.routeName),
->>>>>>> main
         ),
       ],
     );
   }
 }
-<<<<<<< HEAD
-
-class _BrandMark extends StatelessWidget {
-  const _BrandMark();
-
-  @override
-  Widget build(BuildContext context) {
-    return Text('AMORA AI', style: AmoraTextStyles.titleMedium);
-  }
-}
-
-class _FooterLinks extends StatelessWidget {
-  const _FooterLinks();
-
-  @override
-  Widget build(BuildContext context) {
-    return Wrap(
-      alignment: WrapAlignment.center,
-      spacing: AmoraSpacing.space8,
-      runSpacing: AmoraSpacing.space4,
-      children: [
-        _footerLink(context, 'Privacy'),
-        _footerLink(context, 'Terms'),
-        _footerLink(context, 'Help'),
-      ],
-    );
-  }
-
-  Widget _footerLink(BuildContext context, String label) {
-    return AppPrimaryButton(
-      label: label,
-      variant: AppPrimaryButtonVariant.text,
-      size: AmoraButtonSize.compact,
-      fullWidth: false,
-      onPressed: () => showAmoraSnackBar(context, message: '$label selected'),
-    );
-  }
-}
-=======
->>>>>>> main

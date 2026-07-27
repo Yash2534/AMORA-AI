@@ -8,13 +8,9 @@ import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/settings/presentation/safety_privacy_screen.dart';
 import 'package:amora_ai/features/settings/presentation/widgets/settings_support_widgets.dart';
 import 'package:amora_ai/features/settings/presentation/notification_preferences_screen.dart';
+import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
 import 'package:amora_ai/features/subscription/presentation/subscription_screen.dart';
 import 'package:amora_ai/features/support/presentation/faq_support_screen.dart';
-<<<<<<< HEAD
-import 'package:amora_ai/features/wallet/presentation/amora_wallet_screen.dart';
-import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
-=======
->>>>>>> main
 import 'package:flutter/material.dart';
 
 class ProfileSettingsScreen extends StatefulWidget {

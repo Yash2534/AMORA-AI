@@ -1,14 +1,10 @@
-import 'package:amora_ai/core/theme/app_colors.dart';
-import 'package:amora_ai/core/theme/amora_spacing.dart';
+import 'dart:async';
+
 import 'package:amora_ai/core/theme/amora_shadows.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
-import 'package:amora_ai/core/widgets/app_primary_button.dart';
-import 'package:amora_ai/core/widgets/amora_text_action.dart';
-import 'package:amora_ai/core/widgets/amora_filter_chip.dart';
+import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/amora_snackbar.dart';
-import 'package:amora_ai/core/widgets/intent_chip.dart';
-import 'package:amora_ai/core/widgets/lifestyle_chip.dart';
-import 'package:amora_ai/core/widgets/premium_card.dart';
+import 'package:amora_ai/core/widgets/premium_motion.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/discover/presentation/browse_grid_screen.dart';
 import 'package:flutter/material.dart';
@@ -48,6 +44,27 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
   bool _hasPrompts = true;
   bool _eventInterest = false;
 
+  late final TextEditingController _filterSearchController;
+  Timer? _searchDebounce;
+  Timer? _highlightTimer;
+  String _cityQuery = '';
+  String _languageQuery = '';
+  String? _highlightedGroup;
+  _FilterCategory _activeCategory = _FilterCategory.basics;
+  bool _showAllLifestyle = false;
+  final Set<String> _expandedGroups = {
+    _GroupIds.basics,
+    _GroupIds.intentions,
+    _GroupIds.lifestyle,
+    _GroupIds.trust,
+  };
+
+  final Map<_FilterCategory, GlobalKey> _categoryKeys = {
+    for (final category in _FilterCategory.values) category: GlobalKey(),
+  };
+  final GlobalKey _careerKey = GlobalKey();
+  final GlobalKey _mediaKey = GlobalKey();
+
   int get _selectedCount =>
       _cities.length +
       _intents.length +
@@ -70,255 +87,693 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
       ].where((value) => value).length;
 
   @override
+  void initState() {
+    super.initState();
+    _filterSearchController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _searchDebounce?.cancel();
+    _highlightTimer?.cancel();
+    _filterSearchController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: ResponsiveMobileFrame(
+          maxWidth: 860,
           child: LayoutBuilder(
             builder: (context, constraints) {
-              final padding = constraints.maxWidth < 380
-                  ? AmoraSpacing.space16
-                  : AmoraSpacing.space24;
-              return Stack(
-                children: [
-                  SingleChildScrollView(
-                    padding: EdgeInsets.fromLTRB(
-                      padding,
-                      AmoraSpacing.space16,
-                      padding,
-                      AmoraSpacing.navigationContentInset,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
+              final horizontalPadding = constraints.maxWidth < 380
+                  ? 14.0
+                  : 20.0;
+              return GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+                child: Stack(
+                  children: [
+                    Column(
                       children: [
-                        _FilterHeader(
+                        _FiltersHeader(
                           onBack: () => Navigator.of(context).maybePop(),
                           onReset: _reset,
                         ),
-                        const SizedBox(height: AmoraSpacing.space20),
-                        PremiumCard(
-                          color: AppColors.activeContainer,
-                          child: Text(
-                            '$_selectedCount filters selected. AI will prioritize profiles matching your preferences.',
-                            style: AmoraTextStyles.bodyMedium.copyWith(
-                              color: AppColors.deepWine,
+                        Expanded(
+                          child: SingleChildScrollView(
+                            keyboardDismissBehavior:
+                                ScrollViewKeyboardDismissBehavior.onDrag,
+                            padding: EdgeInsets.fromLTRB(
+                              horizontalPadding,
+                              16,
+                              horizontalPadding,
+                              112,
                             ),
-                          ),
-                        ),
-                        const SizedBox(height: AmoraSpacing.space20),
-                        _RangeSection(
-                          title: 'Age range',
-                          value: '${_age.start.round()}-${_age.end.round()}',
-                          child: RangeSlider(
-                            values: _age,
-                            min: 18,
-                            max: 45,
-                            activeColor: AppColors.primaryPurple,
-                            onChanged: (value) => setState(() => _age = value),
-                          ),
-                        ),
-                        _SliderSection(
-                          title: 'Distance',
-                          value: '${_distance.round()} km',
-                          min: 0,
-                          max: 300,
-                          current: _distance,
-                          onChanged: (value) =>
-                              setState(() => _distance = value),
-                        ),
-                        _ChipSection(
-                          title: 'City',
-                          options: _citiesList,
-                          selected: _cities,
-                          onToggle: _toggle,
-                        ),
-                        _ChipSection(
-                          title: 'Relationship Intentions',
-                          options: relationshipIntentions,
-                          selected: _intents,
-                          onToggle: _toggle,
-                          intent: true,
-                        ),
-                        _ChipSection(
-                          title: 'Lifestyle Interests',
-                          options: lifestyleInterests,
-                          selected: _lifestyles,
-                          onToggle: _toggle,
-                          lifestyle: true,
-                        ),
-                        _ChipSection(
-                          title: 'Education',
-                          options: _educationList,
-                          selected: _education,
-                          onToggle: _toggle,
-                        ),
-                        _ChipSection(
-                          title: 'Profession',
-                          options: _professionList,
-                          selected: _profession,
-                          onToggle: _toggle,
-                        ),
-                        _ChipSection(
-                          title: 'Community Preference',
-                          options: _communityList,
-                          selected: _community,
-                          onToggle: _toggle,
-                        ),
-                        _ChipSection(
-                          title: 'Religion',
-                          options: _religionList,
-                          selected: _religion,
-                          onToggle: _toggle,
-                        ),
-                        _ChipSection(
-                          title: 'Languages',
-                          options: _languageList,
-                          selected: _languages,
-                          onToggle: _toggle,
-                        ),
-                        _ChipSection(
-                          title: 'Height',
-                          options: _heightList,
-                          selected: _height,
-                          onToggle: _toggle,
-                        ),
-                        _ChipSection(
-                          title: 'Travel',
-                          options: _travelList,
-                          selected: _travel,
-                          onToggle: _toggle,
-                        ),
-                        _ChipSection(
-                          title: 'Fitness',
-                          options: _fitnessList,
-                          selected: _fitness,
-                          onToggle: _toggle,
-                        ),
-                        _ChipSection(
-                          title: 'Coffee',
-                          options: _coffeeList,
-                          selected: _coffee,
-                          onToggle: _toggle,
-                        ),
-                        _ChipSection(
-                          title: 'Movies',
-                          options: _movieList,
-                          selected: _movies,
-                          onToggle: _toggle,
-                        ),
-                        _SegmentSection(
-                          title: 'Smoking',
-                          value: _smoking,
-                          options: const ['Any', 'Never', 'Occasionally'],
-                          onChanged: (value) =>
-                              setState(() => _smoking = value),
-                        ),
-                        _SegmentSection(
-                          title: 'Drinking',
-                          value: _drinking,
-                          options: const ['Any', 'Never', 'Socially'],
-                          onChanged: (value) =>
-                              setState(() => _drinking = value),
-                        ),
-                        _SegmentSection(
-                          title: 'Pets',
-                          value: _pets,
-                          options: const ['Any', 'Pet friendly', 'No pets'],
-                          onChanged: (value) => setState(() => _pets = value),
-                        ),
-                        _SegmentSection(
-                          title: 'Children',
-                          value: _children,
-                          options: const ['Any', 'Wants', 'Open', 'No'],
-                          onChanged: (value) =>
-                              setState(() => _children = value),
-                        ),
-                        _SliderSection(
-                          title: 'Minimum AI score',
-                          value: '${_score.round()}%',
-                          min: 50,
-                          max: 100,
-                          current: _score,
-                          onChanged: (value) => setState(() => _score = value),
-                        ),
-                        PremiumCard(
-                          child: Column(
-                            children: [
-                              _SwitchRow(
-                                title: 'Verified profiles only',
-                                value: _verifiedOnly,
-                                onChanged: (value) =>
-                                    setState(() => _verifiedOnly = value),
-                              ),
-                              _SwitchRow(
-                                title: 'Online now',
-                                value: _onlineNow,
-                                onChanged: (value) =>
-                                    setState(() => _onlineNow = value),
-                              ),
-                              _SwitchRow(
-                                title: 'Has profile prompts',
-                                value: _hasPrompts,
-                                onChanged: (value) =>
-                                    setState(() => _hasPrompts = value),
-                              ),
-                              _SwitchRow(
-                                title: 'Has event interest',
-                                value: _eventInterest,
-                                onChanged: (value) =>
-                                    setState(() => _eventInterest = value),
-                              ),
-                            ],
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                _SelectedFiltersSummary(
+                                  count: _selectedCount,
+                                  previews: _summaryPreviews,
+                                ),
+                                const SizedBox(height: 14),
+                                _FilterSearchField(
+                                  controller: _filterSearchController,
+                                  hasQuery:
+                                      _filterSearchController.text.isNotEmpty,
+                                  noMatch: _highlightedGroup == _noSearchMatch,
+                                  onChanged: _onFilterSearchChanged,
+                                  onClear: _clearFilterSearch,
+                                ),
+                                const SizedBox(height: 12),
+                                _FilterCategoryNav(
+                                  active: _activeCategory,
+                                  onSelected: _openCategory,
+                                ),
+                                const SizedBox(height: 18),
+                                _buildBasicsSection(),
+                                const SizedBox(height: 14),
+                                _buildIntentionsSection(),
+                                const SizedBox(height: 14),
+                                _buildLifestyleSection(),
+                                const SizedBox(height: 14),
+                                _buildCareerSection(),
+                                const SizedBox(height: 14),
+                                _buildIdentitySection(),
+                                const SizedBox(height: 14),
+                                _buildMediaSection(),
+                                const SizedBox(height: 14),
+                                _buildHabitsSection(),
+                                const SizedBox(height: 14),
+                                _buildTrustSection(),
+                              ],
+                            ),
                           ),
                         ),
                       ],
                     ),
-                  ),
-                  Align(
-                    alignment: Alignment.bottomCenter,
-                    child: Container(
-                      padding: EdgeInsets.fromLTRB(
-                        padding,
-                        12,
-                        padding,
-                        16 + MediaQuery.viewPaddingOf(context).bottom,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.lightPinkBackground.withValues(
-                          alpha: .94,
-                        ),
-                        boxShadow: AmoraShadows.bottomSheet,
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: AppPrimaryButton(
-                              label: 'Reset',
-                              variant: AppPrimaryButtonVariant.outlined,
-                              onPressed: _reset,
-                              icon: Icons.refresh_rounded,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            flex: 2,
-                            child: AppPrimaryButton(
-                              label: 'Apply Filters',
-                              icon: Icons.search_rounded,
-                              onPressed: _apply,
-                            ),
-                          ),
-                        ],
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      child: _StickyFiltersActionBar(
+                        horizontalPadding: horizontalPadding,
+                        onReset: _reset,
+                        onApply: _apply,
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               );
             },
           ),
         ),
       ),
     );
+  }
+
+  Widget _buildBasicsSection() {
+    final visibleCities = _citiesList
+        .where(
+          (city) =>
+              city.toLowerCase().contains(_cityQuery.trim().toLowerCase()),
+        )
+        .toList(growable: false);
+    return _ExpandableFilterSection(
+      key: _categoryKeys[_FilterCategory.basics],
+      id: _GroupIds.basics,
+      icon: Icons.tune_rounded,
+      title: 'Core preferences',
+      subtitle: 'Age, distance, city and height',
+      summary: _basicsSummary,
+      selectedCount: _cities.length + _height.length,
+      expanded: _expandedGroups.contains(_GroupIds.basics),
+      highlighted: _highlightedGroup == _GroupIds.basics,
+      onToggle: _toggleGroup,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _ResponsivePair(
+            children: [
+              _RangeControl(
+                icon: Icons.cake_outlined,
+                emoji: '🎂',
+                title: 'Age range',
+                value: '${_age.start.round()}–${_age.end.round()} years',
+                child: RangeSlider(
+                  values: _age,
+                  min: 18,
+                  max: 45,
+                  divisions: 27,
+                  labels: RangeLabels(
+                    '${_age.start.round()}',
+                    '${_age.end.round()}',
+                  ),
+                  onChanged: (value) => setState(() => _age = value),
+                ),
+              ),
+              _ValueSliderControl(
+                icon: Icons.near_me_outlined,
+                emoji: '📍',
+                title: 'Distance',
+                value: 'Up to ${_distance.round()} km',
+                current: _distance,
+                min: 0,
+                max: 300,
+                divisions: 60,
+                onChanged: (value) => setState(() => _distance = value),
+              ),
+            ],
+          ),
+          const _FilterDivider(),
+          _ResponsivePair(
+            children: [
+              _ControlBlock(
+                icon: Icons.location_city_rounded,
+                title: 'City or location',
+                description: 'Choose from available cities',
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _CompactSearchField(
+                      key: const ValueKey('filters-city-search'),
+                      hintText: 'Search cities',
+                      onChanged: (value) => setState(() => _cityQuery = value),
+                    ),
+                    const SizedBox(height: 10),
+                    if (visibleCities.isEmpty)
+                      const _InlineEmpty(message: 'No city matches that search')
+                    else
+                      _OptionWrap(
+                        options: visibleCities,
+                        selected: _cities,
+                        icon: Icons.location_on_outlined,
+                        onToggle: _toggle,
+                      ),
+                  ],
+                ),
+              ),
+              _ControlBlock(
+                icon: Icons.height_rounded,
+                title: 'Height',
+                description: 'Keep the existing minimum-height options',
+                child: _OptionWrap(
+                  options: _heightList,
+                  selected: _height,
+                  icon: Icons.straighten_rounded,
+                  onToggle: _toggle,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildIntentionsSection() {
+    return _ExpandableFilterSection(
+      key: _categoryKeys[_FilterCategory.intentions],
+      id: _GroupIds.intentions,
+      icon: Icons.favorite_outline_rounded,
+      title: 'Relationship intentions',
+      subtitle: 'What kind of connection feels right',
+      summary: _selectionSummary(_intents, fallback: 'Any intention'),
+      selectedCount: _intents.length,
+      expanded: _expandedGroups.contains(_GroupIds.intentions),
+      highlighted: _highlightedGroup == _GroupIds.intentions,
+      onToggle: _toggleGroup,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final twoColumns = constraints.maxWidth >= 560;
+          final width = twoColumns
+              ? (constraints.maxWidth - 10) / 2
+              : constraints.maxWidth;
+          return Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              for (final option in _relationshipIntentions)
+                SizedBox(
+                  width: width,
+                  child: _IntentChoiceTile(
+                    label: option,
+                    emoji: _intentEmoji[option] ?? '❤️',
+                    selected: _intents.contains(option),
+                    onTap: () => _toggle(_intents, option),
+                  ),
+                ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildLifestyleSection() {
+    final visible = _visibleLifestyleOptions;
+    return _ExpandableFilterSection(
+      key: _categoryKeys[_FilterCategory.lifestyle],
+      id: _GroupIds.lifestyle,
+      icon: Icons.interests_rounded,
+      title: 'Lifestyle and interests',
+      subtitle: 'The moments you would enjoy sharing',
+      summary: _selectionSummary(
+        _lifestyles,
+        fallback: 'No interests selected',
+      ),
+      selectedCount: _lifestyles.length,
+      expanded: _expandedGroups.contains(_GroupIds.lifestyle),
+      highlighted: _highlightedGroup == _GroupIds.lifestyle,
+      onToggle: _toggleGroup,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AnimatedSize(
+            duration: AmoraMotion.standard,
+            curve: AmoraMotion.curve,
+            alignment: Alignment.topCenter,
+            child: _OptionWrap(
+              options: visible,
+              selected: _lifestyles,
+              emojiFor: (option) => _lifestyleEmoji[option],
+              icon: Icons.auto_awesome_rounded,
+              onToggle: _toggle,
+            ),
+          ),
+          if (_lifestyleInterests.length > 8) ...[
+            const SizedBox(height: 8),
+            TextButton.icon(
+              key: const ValueKey('filters-lifestyle-show-more'),
+              onPressed: () =>
+                  setState(() => _showAllLifestyle = !_showAllLifestyle),
+              icon: AnimatedRotation(
+                turns: _showAllLifestyle ? .5 : 0,
+                duration: AmoraMotion.fast,
+                child: const Icon(Icons.expand_more_rounded),
+              ),
+              label: Text(_showAllLifestyle ? 'Show less' : 'Show more'),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCareerSection() {
+    return _ExpandableFilterSection(
+      key: _careerKey,
+      id: _GroupIds.career,
+      icon: Icons.school_outlined,
+      title: 'Education and profession',
+      subtitle: 'Background and career preferences',
+      summary: _joinedSummaries([
+        _selectionSummary(_education),
+        _selectionSummary(_profession),
+      ]),
+      selectedCount: _education.length + _profession.length,
+      expanded: _expandedGroups.contains(_GroupIds.career),
+      highlighted: _highlightedGroup == _GroupIds.career,
+      onToggle: _toggleGroup,
+      child: _ResponsivePair(
+        children: [
+          _ControlBlock(
+            icon: Icons.school_outlined,
+            title: 'Education',
+            child: _OptionWrap(
+              options: _educationList,
+              selected: _education,
+              icon: Icons.school_outlined,
+              onToggle: _toggle,
+            ),
+          ),
+          _ControlBlock(
+            icon: Icons.work_outline_rounded,
+            title: 'Profession',
+            child: _OptionWrap(
+              options: _professionList,
+              selected: _profession,
+              icon: Icons.work_outline_rounded,
+              onToggle: _toggle,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildIdentitySection() {
+    final visibleLanguages = _languageList
+        .where(
+          (language) => language.toLowerCase().contains(
+            _languageQuery.trim().toLowerCase(),
+          ),
+        )
+        .toList(growable: false);
+    return _ExpandableFilterSection(
+      key: _categoryKeys[_FilterCategory.identity],
+      id: _GroupIds.identity,
+      icon: Icons.person_outline_rounded,
+      title: 'Identity and background',
+      subtitle: 'Inclusive preferences you control',
+      summary: _joinedSummaries([
+        _selectionSummary(_community),
+        _selectionSummary(_religion),
+        _selectionSummary(_languages),
+      ]),
+      selectedCount: _community.length + _religion.length + _languages.length,
+      expanded: _expandedGroups.contains(_GroupIds.identity),
+      highlighted: _highlightedGroup == _GroupIds.identity,
+      onToggle: _toggleGroup,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _ResponsivePair(
+            children: [
+              _ControlBlock(
+                icon: Icons.groups_outlined,
+                title: 'Community preference',
+                description: 'No preference is inferred automatically',
+                child: _OptionWrap(
+                  options: _communityList,
+                  selected: _community,
+                  icon: Icons.groups_outlined,
+                  onToggle: _toggle,
+                ),
+              ),
+              _ControlBlock(
+                icon: Icons.public_rounded,
+                title: 'Religion',
+                description: 'Choose only what you are comfortable sharing',
+                child: _OptionWrap(
+                  options: _religionList,
+                  selected: _religion,
+                  icon: Icons.public_rounded,
+                  onToggle: _toggle,
+                ),
+              ),
+            ],
+          ),
+          const _FilterDivider(),
+          _ControlBlock(
+            icon: Icons.translate_rounded,
+            title: 'Languages',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _CompactSearchField(
+                  key: const ValueKey('filters-language-search'),
+                  hintText: 'Search languages',
+                  onChanged: (value) => setState(() => _languageQuery = value),
+                ),
+                const SizedBox(height: 10),
+                if (visibleLanguages.isEmpty)
+                  const _InlineEmpty(message: 'No language matches that search')
+                else
+                  _OptionWrap(
+                    options: visibleLanguages,
+                    selected: _languages,
+                    icon: Icons.translate_rounded,
+                    onToggle: _toggle,
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMediaSection() {
+    return _ExpandableFilterSection(
+      key: _mediaKey,
+      id: _GroupIds.media,
+      icon: Icons.explore_outlined,
+      title: 'Media, wellness and travel',
+      subtitle: 'Everyday interests and shared experiences',
+      summary: _joinedSummaries([
+        _selectionSummary(_travel),
+        _selectionSummary(_fitness),
+        _selectionSummary(_coffee),
+        _selectionSummary(_movies),
+      ]),
+      selectedCount:
+          _travel.length + _fitness.length + _coffee.length + _movies.length,
+      expanded: _expandedGroups.contains(_GroupIds.media),
+      highlighted: _highlightedGroup == _GroupIds.media,
+      onToggle: _toggleGroup,
+      child: Column(
+        children: [
+          _ResponsivePair(
+            children: [
+              _ControlBlock(
+                icon: Icons.flight_takeoff_rounded,
+                title: 'Travel',
+                child: _OptionWrap(
+                  options: _travelList,
+                  selected: _travel,
+                  emojiFor: (option) => _travelEmoji[option],
+                  icon: Icons.flight_takeoff_rounded,
+                  onToggle: _toggle,
+                ),
+              ),
+              _ControlBlock(
+                icon: Icons.fitness_center_rounded,
+                title: 'Fitness',
+                child: _OptionWrap(
+                  options: _fitnessList,
+                  selected: _fitness,
+                  emojiFor: (option) => _fitnessEmoji[option],
+                  icon: Icons.fitness_center_rounded,
+                  onToggle: _toggle,
+                ),
+              ),
+            ],
+          ),
+          const _FilterDivider(),
+          _ResponsivePair(
+            children: [
+              _ControlBlock(
+                icon: Icons.local_cafe_outlined,
+                title: 'Coffee',
+                child: _OptionWrap(
+                  options: _coffeeList,
+                  selected: _coffee,
+                  emojiFor: (option) => _coffeeEmoji[option],
+                  icon: Icons.local_cafe_outlined,
+                  onToggle: _toggle,
+                ),
+              ),
+              _ControlBlock(
+                icon: Icons.movie_outlined,
+                title: 'Movies',
+                child: _OptionWrap(
+                  options: _movieList,
+                  selected: _movies,
+                  emojiFor: (option) => _movieEmoji[option],
+                  icon: Icons.movie_outlined,
+                  onToggle: _toggle,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHabitsSection() {
+    return _ExpandableFilterSection(
+      key: _categoryKeys[_FilterCategory.habits],
+      id: _GroupIds.habits,
+      icon: Icons.self_improvement_rounded,
+      title: 'Habits and family',
+      subtitle: 'Daily choices and future preferences',
+      summary: _habitsSummary,
+      selectedCount: 0,
+      expanded: _expandedGroups.contains(_GroupIds.habits),
+      highlighted: _highlightedGroup == _GroupIds.habits,
+      onToggle: _toggleGroup,
+      child: Column(
+        children: [
+          _ResponsivePair(
+            children: [
+              _SegmentControl(
+                icon: Icons.smoke_free_rounded,
+                title: 'Smoking',
+                value: _smoking,
+                options: const ['Any', 'Never', 'Occasionally'],
+                onChanged: (value) => setState(() => _smoking = value),
+              ),
+              _SegmentControl(
+                icon: Icons.local_bar_outlined,
+                title: 'Drinking',
+                value: _drinking,
+                options: const ['Any', 'Never', 'Socially'],
+                onChanged: (value) => setState(() => _drinking = value),
+              ),
+            ],
+          ),
+          const _FilterDivider(),
+          _ResponsivePair(
+            children: [
+              _SegmentControl(
+                icon: Icons.pets_outlined,
+                title: 'Pets',
+                value: _pets,
+                options: const ['Any', 'Pet friendly', 'No pets'],
+                emojiFor: (option) => option == 'Pet friendly' ? '🐾' : null,
+                onChanged: (value) => setState(() => _pets = value),
+              ),
+              _SegmentControl(
+                icon: Icons.family_restroom_rounded,
+                title: 'Children',
+                value: _children,
+                options: const ['Any', 'Wants', 'Open', 'No'],
+                onChanged: (value) => setState(() => _children = value),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTrustSection() {
+    return _ExpandableFilterSection(
+      key: _categoryKeys[_FilterCategory.trust],
+      id: _GroupIds.trust,
+      icon: Icons.verified_user_outlined,
+      title: 'AI match quality and trust',
+      subtitle: 'Compatibility guidance and profile signals',
+      summary: _trustSummary,
+      selectedCount: [
+        _verifiedOnly,
+        _onlineNow,
+        _hasPrompts,
+        _eventInterest,
+      ].where((value) => value).length,
+      expanded: _expandedGroups.contains(_GroupIds.trust),
+      highlighted: _highlightedGroup == _GroupIds.trust,
+      onToggle: _toggleGroup,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _ValueSliderControl(
+            icon: Icons.auto_awesome_rounded,
+            title: 'Minimum AI score',
+            value: '${_score.round()}% compatibility',
+            description:
+                'Scores are guidance based on profile compatibility, not guarantees.',
+            current: _score,
+            min: 50,
+            max: 100,
+            divisions: 50,
+            onChanged: (value) => setState(() => _score = value),
+            infoTooltip:
+                'Match scores help prioritize compatible profiles. They do not predict relationship outcomes.',
+          ),
+          const _FilterDivider(),
+          _ResponsiveSwitchGrid(
+            children: [
+              _FilterSwitchTile(
+                icon: Icons.verified_rounded,
+                title: 'Verified profiles only',
+                description: 'Prioritize profiles with completed verification',
+                value: _verifiedOnly,
+                onChanged: (value) => setState(() => _verifiedOnly = value),
+              ),
+              _FilterSwitchTile(
+                icon: Icons.circle_outlined,
+                title: 'Online now',
+                description: 'Show people currently active',
+                value: _onlineNow,
+                onChanged: (value) => setState(() => _onlineNow = value),
+              ),
+              _FilterSwitchTile(
+                icon: Icons.chat_bubble_outline_rounded,
+                title: 'Has profile prompts',
+                description: 'Profiles with more conversation context',
+                value: _hasPrompts,
+                onChanged: (value) => setState(() => _hasPrompts = value),
+              ),
+              _FilterSwitchTile(
+                icon: Icons.event_outlined,
+                title: 'Has event interest',
+                description: 'People open to Amora experiences',
+                value: _eventInterest,
+                onChanged: (value) => setState(() => _eventInterest = value),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<String> get _summaryPreviews {
+    final previews = <String>[
+      if (_intents.isNotEmpty) '💍 ${_intents.first}',
+      if (_cities.isNotEmpty) '📍 ${_cities.join(', ')}',
+      if (_languages.isNotEmpty) '🌐 ${_languages.join(' + ')}',
+      if (_verifiedOnly) 'Verified only',
+      if (_lifestyles.isNotEmpty) '✨ ${_lifestyles.first}',
+      if (_community.isNotEmpty) _community.first,
+    ];
+    return previews;
+  }
+
+  List<String> get _visibleLifestyleOptions {
+    if (_showAllLifestyle) return _lifestyleInterests;
+    final visible = <String>{..._lifestyleInterests.take(8), ..._lifestyles};
+    return _lifestyleInterests.where(visible.contains).toList(growable: false);
+  }
+
+  String get _basicsSummary {
+    final parts = <String>[
+      '${_age.start.round()}–${_age.end.round()} years',
+      '${_distance.round()} km',
+      if (_cities.isNotEmpty) _cities.join(', '),
+      if (_height.isNotEmpty) _height.join(', '),
+    ];
+    return parts.join(' • ');
+  }
+
+  String get _habitsSummary {
+    final parts = <String>[
+      if (_smoking != 'Any') 'Smoking: $_smoking',
+      if (_drinking != 'Any') 'Drinking: $_drinking',
+      if (_pets != 'Any') 'Pets: $_pets',
+      if (_children != 'Any') 'Children: $_children',
+    ];
+    return parts.isEmpty
+        ? 'Any habits and family preferences'
+        : parts.join(' • ');
+  }
+
+  String get _trustSummary {
+    final parts = <String>[
+      '${_score.round()}% minimum',
+      if (_verifiedOnly) 'Verified',
+      if (_onlineNow) 'Online',
+      if (_hasPrompts) 'Prompts',
+      if (_eventInterest) 'Events',
+    ];
+    return parts.join(' • ');
+  }
+
+  String _selectionSummary(Set<String> values, {String fallback = ''}) {
+    if (values.isEmpty) return fallback;
+    return values.take(3).join(', ');
+  }
+
+  String _joinedSummaries(List<String> values) {
+    final visible = values.where((value) => value.isNotEmpty).toList();
+    return visible.isEmpty ? 'No preferences selected' : visible.join(' • ');
   }
 
   void _toggle(Set<String> selected, String option) {
@@ -329,6 +784,183 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
         selected.add(option);
       }
     });
+  }
+
+  void _toggleGroup(String id) {
+    setState(() {
+      if (!_expandedGroups.add(id)) {
+        _expandedGroups.remove(id);
+      }
+    });
+  }
+
+  void _openCategory(_FilterCategory category) {
+    final id = category.groupId;
+    setState(() {
+      _activeCategory = category;
+      _expandedGroups.add(id);
+      _highlightedGroup = id;
+    });
+    _scrollTo(_categoryKeys[category]);
+    _clearHighlightLater();
+  }
+
+  void _onFilterSearchChanged(String value) {
+    setState(() {});
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 260), () {
+      if (!mounted) return;
+      final query = value.trim().toLowerCase();
+      if (query.isEmpty) {
+        setState(() => _highlightedGroup = null);
+        return;
+      }
+      final target = _searchTargetFor(query);
+      if (target == null) {
+        setState(() => _highlightedGroup = _noSearchMatch);
+        return;
+      }
+      setState(() {
+        _highlightedGroup = target.id;
+        _expandedGroups.add(target.id);
+        if (target.category case final category?) {
+          _activeCategory = category;
+        }
+      });
+      _scrollTo(target.key);
+      _clearHighlightLater();
+    });
+  }
+
+  _SearchTarget? _searchTargetFor(String query) {
+    if (_containsKeyword(query, const [
+      'age',
+      'distance',
+      'city',
+      'location',
+      'height',
+      'basic',
+    ])) {
+      return _SearchTarget(
+        id: _GroupIds.basics,
+        key: _categoryKeys[_FilterCategory.basics],
+        category: _FilterCategory.basics,
+      );
+    }
+    if (_containsKeyword(query, const [
+      'relationship',
+      'intention',
+      'marriage',
+      'dating',
+    ])) {
+      return _SearchTarget(
+        id: _GroupIds.intentions,
+        key: _categoryKeys[_FilterCategory.intentions],
+        category: _FilterCategory.intentions,
+      );
+    }
+    if (_containsKeyword(query, const ['lifestyle', 'interest'])) {
+      return _SearchTarget(
+        id: _GroupIds.lifestyle,
+        key: _categoryKeys[_FilterCategory.lifestyle],
+        category: _FilterCategory.lifestyle,
+      );
+    }
+    if (_containsKeyword(query, const [
+      'education',
+      'profession',
+      'career',
+      'work',
+    ])) {
+      return _SearchTarget(id: _GroupIds.career, key: _careerKey);
+    }
+    if (_containsKeyword(query, const [
+      'community',
+      'religion',
+      'language',
+      'identity',
+      'background',
+    ])) {
+      return _SearchTarget(
+        id: _GroupIds.identity,
+        key: _categoryKeys[_FilterCategory.identity],
+        category: _FilterCategory.identity,
+      );
+    }
+    if (_containsKeyword(query, const [
+      'travel',
+      'fitness',
+      'coffee',
+      'movie',
+      'media',
+      'wellness',
+    ])) {
+      return _SearchTarget(id: _GroupIds.media, key: _mediaKey);
+    }
+    if (_containsKeyword(query, const [
+      'smoking',
+      'drinking',
+      'pets',
+      'children',
+      'habit',
+      'family',
+    ])) {
+      return _SearchTarget(
+        id: _GroupIds.habits,
+        key: _categoryKeys[_FilterCategory.habits],
+        category: _FilterCategory.habits,
+      );
+    }
+    if (_containsKeyword(query, const [
+      'ai',
+      'score',
+      'verified',
+      'online',
+      'prompt',
+      'event',
+      'trust',
+    ])) {
+      return _SearchTarget(
+        id: _GroupIds.trust,
+        key: _categoryKeys[_FilterCategory.trust],
+        category: _FilterCategory.trust,
+      );
+    }
+    return null;
+  }
+
+  bool _containsKeyword(String query, List<String> keywords) {
+    return keywords.any(
+      (keyword) => keyword.contains(query) || query.contains(keyword),
+    );
+  }
+
+  void _scrollTo(GlobalKey? key) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final targetContext = key?.currentContext;
+      if (targetContext == null || !mounted) return;
+      Scrollable.ensureVisible(
+        targetContext,
+        duration: AmoraMotion.standard,
+        curve: AmoraMotion.curve,
+        alignment: .08,
+      );
+    });
+  }
+
+  void _clearHighlightLater() {
+    _highlightTimer?.cancel();
+    _highlightTimer = Timer(const Duration(milliseconds: 950), () {
+      if (mounted && _filterSearchController.text.isEmpty) {
+        setState(() => _highlightedGroup = null);
+      }
+    });
+  }
+
+  void _clearFilterSearch() {
+    _searchDebounce?.cancel();
+    _filterSearchController.clear();
+    setState(() => _highlightedGroup = null);
   }
 
   void _reset() {
@@ -365,85 +997,523 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
   }
 
   void _apply() {
-    Navigator.of(context).pushReplacementNamed(BrowseGridScreen.routeName);
+    final navigator = Navigator.of(context);
     showAmoraSnackBar(context, message: 'Filters applied');
+    if (navigator.canPop()) {
+      navigator.pop();
+    } else {
+      navigator.pushReplacementNamed(BrowseGridScreen.routeName);
+    }
   }
 }
 
-class _FilterHeader extends StatelessWidget {
-  const _FilterHeader({required this.onBack, required this.onReset});
+class _FiltersHeader extends StatelessWidget {
+  const _FiltersHeader({required this.onBack, required this.onReset});
 
   final VoidCallback onBack;
   final VoidCallback onReset;
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final compact = constraints.maxWidth < 380;
-        final title = Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Advanced Filters',
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: AmoraTextStyles.headlineMedium.copyWith(
-                color: AppColors.deepWine,
-              ),
-            ),
-            Text(
-              'Find matches aligned with your lifestyle and intentions.',
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: AmoraTextStyles.bodyMedium.copyWith(
-                color: AppColors.textGray,
-              ),
-            ),
-          ],
-        );
-        if (compact) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  IconButton(
-                    tooltip: 'Back',
-                    onPressed: onBack,
-                    icon: const Icon(Icons.arrow_back_rounded),
-                  ),
-                  const Spacer(),
-                  AmoraTextAction(
-                    label: 'Reset',
-                    icon: Icons.refresh_rounded,
-                    tooltip: 'Reset all filters',
-                    onPressed: onReset,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              title,
-            ],
-          );
-        }
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border(
+          bottom: BorderSide(color: AppColors.tertiary.withValues(alpha: .78)),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: .05),
+            blurRadius: 16,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(8, 8, 10, 10),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             IconButton(
+              key: const ValueKey('filters-back-button'),
               tooltip: 'Back',
               onPressed: onBack,
               icon: const Icon(Icons.arrow_back_rounded),
             ),
-            const SizedBox(width: 8),
-            Expanded(child: title),
-            const SizedBox(width: 12),
-            AmoraTextAction(
-              label: 'Reset',
-              icon: Icons.refresh_rounded,
-              tooltip: 'Reset all filters',
-              onPressed: onReset,
+            const SizedBox(width: 4),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Filters',
+                    maxLines: 1,
+                    style: AmoraTextStyles.titleLarge.copyWith(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  Text(
+                    'Refine who appears in Discover',
+                    maxLines: 2,
+                    style: AmoraTextStyles.bodySmall.copyWith(
+                      color: AppColors.text.withValues(alpha: .68),
+                    ),
+                  ),
+                ],
+              ),
             ),
+            const SizedBox(width: 6),
+            TextButton.icon(
+              key: const ValueKey('filters-header-reset'),
+              onPressed: onReset,
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 10,
+                ),
+                minimumSize: const Size(72, 48),
+              ),
+              icon: const Icon(Icons.refresh_rounded, size: 18),
+              label: const Text('Reset', maxLines: 1),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SelectedFiltersSummary extends StatelessWidget {
+  const _SelectedFiltersSummary({required this.count, required this.previews});
+
+  final int count;
+  final List<String> previews;
+
+  @override
+  Widget build(BuildContext context) {
+    const visibleLimit = 4;
+    final visible = previews.take(visibleLimit).toList(growable: false);
+    final more = (count - visible.length).clamp(0, count);
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.tertiary.withValues(alpha: .28),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.tertiary),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.auto_awesome_rounded,
+                    color: AppColors.secondary,
+                    size: 19,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: AnimatedSwitcher(
+                    duration: AmoraMotion.fast,
+                    child: Text(
+                      '$count preferences selected',
+                      key: ValueKey(count),
+                      style: AmoraTextStyles.titleMedium.copyWith(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 5),
+            Text(
+              'Your Discover feed will prioritize profiles that match these choices.',
+              style: AmoraTextStyles.bodySmall.copyWith(
+                color: AppColors.text.withValues(alpha: .72),
+              ),
+            ),
+            if (visible.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 7,
+                runSpacing: 7,
+                children: [
+                  for (final preview in visible)
+                    _SelectedPreview(label: preview),
+                  if (more > 0) _SelectedPreview(label: '+$more more'),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SelectedPreview extends StatelessWidget {
+  const _SelectedPreview({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.secondary.withValues(alpha: .35)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        child: Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: AmoraTextStyles.labelSmall.copyWith(color: AppColors.primary),
+        ),
+      ),
+    );
+  }
+}
+
+class _FilterSearchField extends StatelessWidget {
+  const _FilterSearchField({
+    required this.controller,
+    required this.hasQuery,
+    required this.noMatch,
+    required this.onChanged,
+    required this.onClear,
+  });
+
+  final TextEditingController controller;
+  final bool hasQuery;
+  final bool noMatch;
+  final ValueChanged<String> onChanged;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      key: const ValueKey('filters-search-field'),
+      controller: controller,
+      onChanged: onChanged,
+      textInputAction: TextInputAction.search,
+      decoration: InputDecoration(
+        hintText: 'Search filters',
+        helperText: noMatch ? 'No matching filter section' : null,
+        prefixIcon: const Icon(
+          Icons.search_rounded,
+          color: AppColors.secondary,
+        ),
+        suffixIcon: hasQuery
+            ? IconButton(
+                tooltip: 'Clear filter search',
+                onPressed: onClear,
+                icon: const Icon(Icons.close_rounded),
+              )
+            : null,
+        filled: true,
+        fillColor: AppColors.surface,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(24),
+          borderSide: const BorderSide(color: AppColors.tertiary),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(24),
+          borderSide: const BorderSide(color: AppColors.tertiary),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(24),
+          borderSide: const BorderSide(color: AppColors.secondary, width: 1.5),
+        ),
+      ),
+    );
+  }
+}
+
+class _FilterCategoryNav extends StatelessWidget {
+  const _FilterCategoryNav({required this.active, required this.onSelected});
+
+  final _FilterCategory active;
+  final ValueChanged<_FilterCategory> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      key: const ValueKey('filters-category-navigation'),
+      height: 48,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        itemCount: _FilterCategory.values.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 7),
+        itemBuilder: (context, index) {
+          final category = _FilterCategory.values[index];
+          final selected = category == active;
+          return _CategoryChip(
+            key: ValueKey('filters-category-${category.label}'),
+            category: category,
+            selected: selected,
+            onTap: () => onSelected(category),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _CategoryChip extends StatelessWidget {
+  const _CategoryChip({
+    super.key,
+    required this.category,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final _FilterCategory category;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected ? AppColors.primary : AppColors.surface,
+      shape: StadiumBorder(
+        side: BorderSide(
+          color: selected ? AppColors.primary : AppColors.tertiary,
+        ),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        customBorder: const StadiumBorder(),
+        child: AnimatedPadding(
+          duration: AmoraMotion.fast,
+          padding: const EdgeInsets.symmetric(horizontal: 13),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                category.icon,
+                size: 17,
+                color: selected ? AppColors.surface : AppColors.secondary,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                category.label,
+                style: AmoraTextStyles.labelMedium.copyWith(
+                  color: selected ? AppColors.surface : AppColors.text,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ExpandableFilterSection extends StatelessWidget {
+  const _ExpandableFilterSection({
+    super.key,
+    required this.id,
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.summary,
+    required this.selectedCount,
+    required this.expanded,
+    required this.highlighted,
+    required this.onToggle,
+    required this.child,
+  });
+
+  final String id;
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final String summary;
+  final int selectedCount;
+  final bool expanded;
+  final bool highlighted;
+  final ValueChanged<String> onToggle;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      key: ValueKey('filters-section-$id'),
+      duration: AmoraMotion.standard,
+      curve: AmoraMotion.curve,
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: highlighted ? AppColors.secondary : AppColors.tertiary,
+          width: highlighted ? 1.6 : 1,
+        ),
+        boxShadow: highlighted
+            ? [
+                BoxShadow(
+                  color: AppColors.secondary.withValues(alpha: .16),
+                  blurRadius: 22,
+                  spreadRadius: -7,
+                ),
+              ]
+            : AmoraShadows.level1,
+      ),
+      child: Material(
+        color: AppColors.transparent,
+        borderRadius: BorderRadius.circular(24),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          children: [
+            InkWell(
+              key: ValueKey('filters-section-toggle-$id'),
+              onTap: () => onToggle(id),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 76),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 13, 12, 13),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: AppColors.tertiary.withValues(alpha: .36),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Icon(icon, color: AppColors.primary, size: 21),
+                      ),
+                      const SizedBox(width: 11),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              title,
+                              maxLines: 2,
+                              style: AmoraTextStyles.titleMedium.copyWith(
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              expanded ? subtitle : summary,
+                              maxLines: expanded ? 2 : 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AmoraTextStyles.bodySmall.copyWith(
+                                color: AppColors.text.withValues(alpha: .65),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (selectedCount > 0) ...[
+                        const SizedBox(width: 7),
+                        DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: AppColors.primary,
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            child: Text(
+                              '$selectedCount',
+                              style: AmoraTextStyles.labelSmall.copyWith(
+                                color: AppColors.surface,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                      const SizedBox(width: 3),
+                      AnimatedRotation(
+                        turns: expanded ? .5 : 0,
+                        duration: AmoraMotion.fast,
+                        child: const Icon(
+                          Icons.expand_more_rounded,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            AnimatedCrossFade(
+              duration: AmoraMotion.standard,
+              firstCurve: AmoraMotion.curve,
+              secondCurve: AmoraMotion.curve,
+              sizeCurve: AmoraMotion.curve,
+              crossFadeState: expanded
+                  ? CrossFadeState.showSecond
+                  : CrossFadeState.showFirst,
+              firstChild: const SizedBox(width: double.infinity),
+              secondChild: DecoratedBox(
+                decoration: BoxDecoration(
+                  border: Border(
+                    top: BorderSide(
+                      color: AppColors.tertiary.withValues(alpha: .62),
+                    ),
+                  ),
+                ),
+                child: Padding(padding: const EdgeInsets.all(16), child: child),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ResponsivePair extends StatelessWidget {
+  const _ResponsivePair({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth >= 700 && children.length == 2) {
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: children.first),
+              const SizedBox(width: 18),
+              Expanded(child: children.last),
+            ],
+          );
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (var index = 0; index < children.length; index++) ...[
+              if (index > 0) const SizedBox(height: 18),
+              children[index],
+            ],
           ],
         );
       },
@@ -451,34 +1521,82 @@ class _FilterHeader extends StatelessWidget {
   }
 }
 
-class _RangeSection extends StatelessWidget {
-  const _RangeSection({
+class _ControlBlock extends StatelessWidget {
+  const _ControlBlock({
+    required this.icon,
+    required this.title,
+    required this.child,
+    this.description,
+  });
+
+  final IconData icon;
+  final String title;
+  final String? description;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Icon(icon, color: AppColors.secondary, size: 19),
+            const SizedBox(width: 7),
+            Expanded(
+              child: Text(
+                title,
+                style: AmoraTextStyles.titleSmall.copyWith(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        ),
+        if (description case final text?) ...[
+          const SizedBox(height: 3),
+          Text(
+            text,
+            style: AmoraTextStyles.bodySmall.copyWith(
+              color: AppColors.text.withValues(alpha: .62),
+            ),
+          ),
+        ],
+        const SizedBox(height: 11),
+        child,
+      ],
+    );
+  }
+}
+
+class _RangeControl extends StatelessWidget {
+  const _RangeControl({
+    required this.icon,
     required this.title,
     required this.value,
     required this.child,
+    this.emoji,
   });
 
+  final IconData icon;
+  final String? emoji;
   final String title;
   final String value;
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    return PremiumCard(
-      padding: const EdgeInsets.fromLTRB(
-        AmoraSpacing.space20,
-        AmoraSpacing.space16,
-        AmoraSpacing.space20,
-        AmoraSpacing.space8,
-      ),
+    return _ControlBlock(
+      icon: icon,
+      title: title,
       child: Column(
         children: [
-          Row(
-            children: [
-              Expanded(child: _FilterTitle(title)),
-              Text(value, style: AmoraTextStyles.labelLarge),
-            ],
+          Align(
+            alignment: Alignment.centerLeft,
+            child: _ValuePill(emoji: emoji, value: value),
           ),
+          const SizedBox(height: 4),
           child,
         ],
       ),
@@ -486,93 +1604,123 @@ class _RangeSection extends StatelessWidget {
   }
 }
 
-class _SliderSection extends StatelessWidget {
-  const _SliderSection({
+class _ValueSliderControl extends StatelessWidget {
+  const _ValueSliderControl({
+    required this.icon,
     required this.title,
     required this.value,
+    required this.current,
     required this.min,
     required this.max,
-    required this.current,
     required this.onChanged,
+    this.emoji,
+    this.description,
+    this.divisions,
+    this.infoTooltip,
   });
 
+  final IconData icon;
+  final String? emoji;
   final String title;
   final String value;
+  final String? description;
+  final double current;
   final double min;
   final double max;
-  final double current;
+  final int? divisions;
   final ValueChanged<double> onChanged;
+  final String? infoTooltip;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: AmoraSpacing.space16),
-      child: _RangeSection(
-        title: title,
-        value: value,
-        child: Slider(
-          value: current,
-          min: min,
-          max: max,
-          activeColor: AppColors.primaryPurple,
-          onChanged: onChanged,
-        ),
+    return _ControlBlock(
+      icon: icon,
+      title: title,
+      description: description,
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Flexible(
+                child: _ValuePill(emoji: emoji, value: value),
+              ),
+              if (infoTooltip case final tooltip?) ...[
+                const SizedBox(width: 4),
+                IconButton(
+                  tooltip: tooltip,
+                  visualDensity: VisualDensity.compact,
+                  constraints: const BoxConstraints(
+                    minWidth: 48,
+                    minHeight: 48,
+                  ),
+                  onPressed: () => showDialog<void>(
+                    context: context,
+                    builder: (dialogContext) => AlertDialog(
+                      title: const Text('About AI match scores'),
+                      content: Text(tooltip),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.of(dialogContext).pop(),
+                          child: const Text('Close'),
+                        ),
+                      ],
+                    ),
+                  ),
+                  icon: const Icon(
+                    Icons.info_outline_rounded,
+                    color: AppColors.secondary,
+                    size: 19,
+                  ),
+                ),
+              ],
+            ],
+          ),
+          Slider(
+            value: current,
+            min: min,
+            max: max,
+            divisions: divisions,
+            label: value,
+            onChanged: onChanged,
+          ),
+        ],
       ),
     );
   }
 }
 
-class _ChipSection extends StatelessWidget {
-  const _ChipSection({
-    required this.title,
-    required this.options,
-    required this.selected,
-    required this.onToggle,
-    this.intent = false,
-    this.lifestyle = false,
-  });
+class _ValuePill extends StatelessWidget {
+  const _ValuePill({required this.value, this.emoji});
 
-  final String title;
-  final List<String> options;
-  final Set<String> selected;
-  final void Function(Set<String> selected, String option) onToggle;
-  final bool intent;
-  final bool lifestyle;
+  final String value;
+  final String? emoji;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: AmoraSpacing.space16),
-      child: PremiumCard(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.tertiary.withValues(alpha: .3),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            _FilterTitle(title),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (final option in options)
-                  if (intent)
-                    IntentChip(
-                      label: option,
-                      selected: selected.contains(option),
-                      onTap: () => onToggle(selected, option),
-                    )
-                  else if (lifestyle)
-                    LifestyleChip(
-                      label: option,
-                      selected: selected.contains(option),
-                      onTap: () => onToggle(selected, option),
-                    )
-                  else
-                    AmoraFilterChip(
-                      selected: selected.contains(option),
-                      label: option,
-                      onSelected: (_) => onToggle(selected, option),
-                    ),
-              ],
+            if (emoji case final emojiValue?) ...[
+              Text(emojiValue, style: const TextStyle(fontSize: 15)),
+              const SizedBox(width: 6),
+            ],
+            Flexible(
+              child: Text(
+                value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AmoraTextStyles.labelMedium.copyWith(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
             ),
           ],
         ),
@@ -581,82 +1729,447 @@ class _ChipSection extends StatelessWidget {
   }
 }
 
-class _FilterTitle extends StatelessWidget {
-  const _FilterTitle(this.title);
+class _OptionWrap extends StatelessWidget {
+  const _OptionWrap({
+    required this.options,
+    required this.selected,
+    required this.onToggle,
+    this.icon,
+    this.emojiFor,
+  });
 
-  final String title;
+  final List<String> options;
+  final Set<String> selected;
+  final IconData? icon;
+  final String? Function(String option)? emojiFor;
+  final void Function(Set<String> selected, String option) onToggle;
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      title,
-      style: AmoraTextStyles.titleMedium.copyWith(color: AppColors.deepWine),
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        for (final option in options)
+          _PremiumFilterChip(
+            key: ValueKey('filter-option-$option'),
+            label: option,
+            selected: selected.contains(option),
+            icon: icon,
+            emoji: emojiFor?.call(option),
+            onTap: () => onToggle(selected, option),
+          ),
+      ],
     );
   }
 }
 
-class _SwitchRow extends StatelessWidget {
-  const _SwitchRow({
+class _PremiumFilterChip extends StatelessWidget {
+  const _PremiumFilterChip({
+    super.key,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    this.icon,
+    this.emoji,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  final IconData? icon;
+  final String? emoji;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: '$label, ${selected ? 'selected' : 'not selected'}',
+      child: Material(
+        color: AppColors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(23),
+          child: AnimatedContainer(
+            duration: AmoraMotion.fast,
+            curve: AmoraMotion.curve,
+            constraints: const BoxConstraints(minHeight: 48),
+            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
+            decoration: BoxDecoration(
+              color: selected ? AppColors.primary : AppColors.surface,
+              borderRadius: BorderRadius.circular(23),
+              border: Border.all(
+                color: selected ? AppColors.primary : AppColors.tertiary,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (emoji case final value?)
+                  Text(value, style: const TextStyle(fontSize: 16))
+                else if (icon case final value?)
+                  Icon(
+                    value,
+                    size: 17,
+                    color: selected ? AppColors.surface : AppColors.secondary,
+                  ),
+                if (emoji != null || icon != null) const SizedBox(width: 7),
+                Flexible(
+                  child: Text(
+                    label,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: AmoraTextStyles.labelMedium.copyWith(
+                      color: selected ? AppColors.surface : AppColors.text,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                if (selected) ...[
+                  const SizedBox(width: 6),
+                  const Icon(
+                    Icons.check_rounded,
+                    color: AppColors.surface,
+                    size: 16,
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _IntentChoiceTile extends StatelessWidget {
+  const _IntentChoiceTile({
+    required this.label,
+    required this.emoji,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final String emoji;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      selected: selected,
+      child: Material(
+        color: selected
+            ? AppColors.tertiary.withValues(alpha: .44)
+            : AppColors.background,
+        borderRadius: BorderRadius.circular(20),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(20),
+          child: AnimatedContainer(
+            duration: AmoraMotion.fast,
+            constraints: const BoxConstraints(minHeight: 62),
+            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: selected ? AppColors.secondary : AppColors.tertiary,
+                width: selected ? 1.5 : 1,
+              ),
+            ),
+            child: Row(
+              children: [
+                Text(emoji, style: const TextStyle(fontSize: 20)),
+                const SizedBox(width: 9),
+                const Icon(
+                  Icons.favorite_outline_rounded,
+                  color: AppColors.secondary,
+                  size: 18,
+                ),
+                const SizedBox(width: 7),
+                Expanded(
+                  child: Text(
+                    label,
+                    maxLines: 2,
+                    style: AmoraTextStyles.labelMedium.copyWith(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                if (selected)
+                  const Icon(
+                    Icons.check_circle_rounded,
+                    color: AppColors.primary,
+                    size: 19,
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SegmentControl extends StatelessWidget {
+  const _SegmentControl({
+    required this.icon,
     required this.title,
+    required this.value,
+    required this.options,
+    required this.onChanged,
+    this.emojiFor,
+  });
+
+  final IconData icon;
+  final String title;
+  final String value;
+  final List<String> options;
+  final ValueChanged<String> onChanged;
+  final String? Function(String option)? emojiFor;
+
+  @override
+  Widget build(BuildContext context) {
+    return _ControlBlock(
+      icon: icon,
+      title: title,
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          for (final option in options)
+            _PremiumFilterChip(
+              label: option,
+              selected: value == option,
+              emoji: emojiFor?.call(option),
+              onTap: () => onChanged(option),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ResponsiveSwitchGrid extends StatelessWidget {
+  const _ResponsiveSwitchGrid({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final twoColumns = constraints.maxWidth >= 700;
+        final width = twoColumns
+            ? (constraints.maxWidth - 10) / 2
+            : constraints.maxWidth;
+        return Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            for (final child in children) SizedBox(width: width, child: child),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _FilterSwitchTile extends StatelessWidget {
+  const _FilterSwitchTile({
+    required this.icon,
+    required this.title,
+    required this.description,
     required this.value,
     required this.onChanged,
   });
 
+  final IconData icon;
   final String title;
+  final String description;
   final bool value;
   final ValueChanged<bool> onChanged;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.transparent,
-      child: SwitchListTile(
-        value: value,
-        onChanged: onChanged,
-        contentPadding: EdgeInsets.zero,
-        title: Text(
-          title,
-          style: AmoraTextStyles.bodyLarge.copyWith(color: AppColors.textDark),
+    return Semantics(
+      toggled: value,
+      label: title,
+      child: AnimatedContainer(
+        duration: AmoraMotion.fast,
+        constraints: const BoxConstraints(minHeight: 82),
+        decoration: BoxDecoration(
+          color: value
+              ? AppColors.tertiary.withValues(alpha: .28)
+              : AppColors.background,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: value ? AppColors.secondary : AppColors.tertiary,
+          ),
+        ),
+        child: Material(
+          color: AppColors.transparent,
+          borderRadius: BorderRadius.circular(20),
+          child: SwitchListTile(
+            value: value,
+            onChanged: onChanged,
+            contentPadding: const EdgeInsets.fromLTRB(12, 5, 8, 5),
+            secondary: Icon(icon, color: AppColors.primary, size: 22),
+            title: Text(
+              title,
+              style: AmoraTextStyles.labelLarge.copyWith(
+                color: AppColors.primary,
+              ),
+            ),
+            subtitle: Text(
+              description,
+              maxLines: 2,
+              style: AmoraTextStyles.bodySmall.copyWith(
+                color: AppColors.text.withValues(alpha: .64),
+              ),
+            ),
+          ),
         ),
       ),
     );
   }
 }
 
-class _SegmentSection extends StatelessWidget {
-  const _SegmentSection({
-    required this.title,
-    required this.value,
-    required this.options,
+class _CompactSearchField extends StatelessWidget {
+  const _CompactSearchField({
+    super.key,
+    required this.hintText,
     required this.onChanged,
   });
 
-  final String title;
-  final String value;
-  final List<String> options;
+  final String hintText;
   final ValueChanged<String> onChanged;
 
   @override
   Widget build(BuildContext context) {
+    return TextField(
+      onChanged: onChanged,
+      textInputAction: TextInputAction.search,
+      decoration: InputDecoration(
+        hintText: hintText,
+        prefixIcon: const Icon(
+          Icons.search_rounded,
+          color: AppColors.secondary,
+          size: 20,
+        ),
+        filled: true,
+        fillColor: AppColors.background,
+        isDense: true,
+        constraints: const BoxConstraints(minHeight: 48),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: const BorderSide(color: AppColors.tertiary),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: const BorderSide(color: AppColors.tertiary),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: const BorderSide(color: AppColors.secondary, width: 1.4),
+        ),
+      ),
+    );
+  }
+}
+
+class _InlineEmpty extends StatelessWidget {
+  const _InlineEmpty({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(top: AmoraSpacing.space16),
-      child: PremiumCard(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.search_off_rounded,
+            color: AppColors.secondary,
+            size: 19,
+          ),
+          const SizedBox(width: 8),
+          Expanded(child: Text(message, style: AmoraTextStyles.bodySmall)),
+        ],
+      ),
+    );
+  }
+}
+
+class _FilterDivider extends StatelessWidget {
+  const _FilterDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 18),
+      child: Divider(
+        height: 1,
+        color: AppColors.tertiary.withValues(alpha: .62),
+      ),
+    );
+  }
+}
+
+class _StickyFiltersActionBar extends StatelessWidget {
+  const _StickyFiltersActionBar({
+    required this.horizontalPadding,
+    required this.onReset,
+    required this.onApply,
+  });
+
+  final double horizontalPadding;
+  final VoidCallback onReset;
+  final VoidCallback onApply;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.surface.withValues(alpha: .96),
+        border: Border(
+          top: BorderSide(color: AppColors.tertiary.withValues(alpha: .7)),
+        ),
+        boxShadow: AmoraShadows.bottomSheet,
+      ),
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          horizontalPadding,
+          10,
+          horizontalPadding,
+          12,
+        ),
+        child: Row(
           children: [
-            _FilterTitle(title),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (final option in options)
-                  AmoraFilterChip(
-                    label: option,
-                    selected: value == option,
-                    onSelected: (_) => onChanged(option),
-                  ),
-              ],
+            Expanded(
+              flex: 35,
+              child: _FilterActionButton(
+                key: const ValueKey('filters-bottom-reset'),
+                label: 'Reset',
+                icon: Icons.refresh_rounded,
+                outlined: true,
+                onPressed: onReset,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              flex: 65,
+              child: _FilterActionButton(
+                key: const ValueKey('filters-apply-button'),
+                label: 'Apply Filters',
+                icon: Icons.check_rounded,
+                onPressed: onApply,
+              ),
             ),
           ],
         ),
@@ -664,6 +2177,96 @@ class _SegmentSection extends StatelessWidget {
     );
   }
 }
+
+class _FilterActionButton extends StatelessWidget {
+  const _FilterActionButton({
+    super.key,
+    required this.label,
+    required this.icon,
+    required this.onPressed,
+    this.outlined = false,
+  });
+
+  final String label;
+  final IconData icon;
+  final VoidCallback onPressed;
+  final bool outlined;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = ButtonStyle(
+      minimumSize: const WidgetStatePropertyAll(Size.fromHeight(52)),
+      padding: const WidgetStatePropertyAll(
+        EdgeInsets.symmetric(horizontal: 10),
+      ),
+      shape: WidgetStatePropertyAll(
+        RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      ),
+    );
+    final child = Row(
+      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(icon, size: 19),
+        const SizedBox(width: 6),
+        Flexible(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              label,
+              maxLines: 1,
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
+        ),
+      ],
+    );
+    if (outlined) {
+      return OutlinedButton(onPressed: onPressed, style: style, child: child);
+    }
+    return FilledButton(onPressed: onPressed, style: style, child: child);
+  }
+}
+
+class _SearchTarget {
+  const _SearchTarget({required this.id, required this.key, this.category});
+
+  final String id;
+  final GlobalKey? key;
+  final _FilterCategory? category;
+}
+
+enum _FilterCategory {
+  basics('Basics', Icons.tune_rounded, _GroupIds.basics),
+  intentions(
+    'Intentions',
+    Icons.favorite_outline_rounded,
+    _GroupIds.intentions,
+  ),
+  lifestyle('Lifestyle', Icons.auto_awesome_rounded, _GroupIds.lifestyle),
+  identity('Identity', Icons.person_outline_rounded, _GroupIds.identity),
+  habits('Habits', Icons.local_cafe_outlined, _GroupIds.habits),
+  trust('AI & Trust', Icons.verified_user_outlined, _GroupIds.trust);
+
+  const _FilterCategory(this.label, this.icon, this.groupId);
+
+  final String label;
+  final IconData icon;
+  final String groupId;
+}
+
+abstract final class _GroupIds {
+  static const basics = 'basics';
+  static const intentions = 'intentions';
+  static const lifestyle = 'lifestyle';
+  static const career = 'career';
+  static const identity = 'identity';
+  static const media = 'media';
+  static const habits = 'habits';
+  static const trust = 'trust';
+}
+
+const _noSearchMatch = '__no_match__';
 
 const _citiesList = [
   'Ahmedabad',
@@ -674,6 +2277,58 @@ const _citiesList = [
   'Mumbai',
   'Pune',
 ];
+
+const _relationshipIntentions = [
+  'Marriage Minded',
+  'Long-Term Relationship',
+  'Meaningful Dating',
+  'Exploring Possibilities',
+  'Friendship First',
+  'Casual Connection',
+];
+
+const _intentEmoji = <String, String>{
+  'Marriage Minded': '💍',
+  'Long-Term Relationship': '❤️',
+  'Meaningful Dating': '☕',
+  'Exploring Possibilities': '✨',
+  'Friendship First': '🤝',
+  'Casual Connection': '🌿',
+};
+
+const _lifestyleInterests = [
+  'Travel Companion',
+  'Adventure Seeker',
+  'Fitness Partner',
+  'Foodie Partner',
+  'Coffee Dates',
+  'Pet Lover',
+  'Movie Nights',
+  'Music Lover',
+  'Road Trip Buddy',
+  'Book Lover',
+  'Creative Soul',
+  'Tech Enthusiast',
+  'Wellness & Yoga',
+  'Volunteer & Community',
+];
+
+const _lifestyleEmoji = <String, String>{
+  'Travel Companion': '✈️',
+  'Adventure Seeker': '🏔️',
+  'Fitness Partner': '💪',
+  'Foodie Partner': '🍜',
+  'Coffee Dates': '☕',
+  'Pet Lover': '🐾',
+  'Movie Nights': '🎬',
+  'Music Lover': '🎵',
+  'Road Trip Buddy': '🚗',
+  'Book Lover': '📚',
+  'Creative Soul': '🎨',
+  'Tech Enthusiast': '💻',
+  'Wellness & Yoga': '🧘',
+  'Volunteer & Community': '❤️',
+};
 
 const _educationList = [
   'Graduate',
@@ -737,6 +2392,14 @@ const _travelList = [
   'Food trails',
 ];
 
+const _travelEmoji = <String, String>{
+  'Heritage trips': '🏛️',
+  'Luxury stays': '✨',
+  'Treks': '🥾',
+  'Beach breaks': '🏖️',
+  'Food trails': '🍽️',
+};
+
 const _fitnessList = [
   'Active',
   'Yoga',
@@ -745,7 +2408,22 @@ const _fitnessList = [
   'Balanced',
 ];
 
+const _fitnessEmoji = <String, String>{
+  'Active': '⚡',
+  'Yoga': '🧘',
+  'Gym regular': '🏋️',
+  'Weekend sports': '⚽',
+  'Balanced': '⚖️',
+};
+
 const _coffeeList = ['Filter coffee', 'Iced latte', 'Masala chai', 'Cold brew'];
+
+const _coffeeEmoji = <String, String>{
+  'Filter coffee': '☕',
+  'Iced latte': '🧊',
+  'Masala chai': '🫖',
+  'Cold brew': '🥤',
+};
 
 const _movieList = [
   'Rom-coms',
@@ -754,3 +2432,11 @@ const _movieList = [
   'Bollywood',
   'Comedy',
 ];
+
+const _movieEmoji = <String, String>{
+  'Rom-coms': '💕',
+  'Thrillers': '🔍',
+  'Indie cinema': '🎞️',
+  'Bollywood': '🎬',
+  'Comedy': '😂',
+};

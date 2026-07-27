@@ -1,27 +1,15 @@
-import 'package:amora_ai/core/access/amora_access.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
-<<<<<<< HEAD
-import 'package:amora_ai/core/widgets/app_primary_button.dart';
-import 'package:amora_ai/core/widgets/app_text_field.dart';
-import 'package:amora_ai/core/widgets/amora_snackbar.dart';
-import 'package:amora_ai/core/widgets/amora_inputs.dart';
-import 'package:amora_ai/core/widgets/premium_card.dart';
-import 'package:amora_ai/core/widgets/premium_asset_image.dart';
-import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
-import 'package:amora_ai/features/auth/presentation/login_screen.dart';
-import 'package:amora_ai/features/onboarding/data/local_onboarding_repository.dart';
-import 'package:amora_ai/features/onboarding/presentation/profile_onboarding_flow.dart';
-import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
-=======
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/amora_inputs.dart';
 import 'package:amora_ai/core/widgets/amora_snackbar.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
+import 'package:amora_ai/features/onboarding/data/local_onboarding_repository.dart';
+import 'package:amora_ai/features/onboarding/presentation/profile_onboarding_flow.dart';
+import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
 import 'package:amora_ai/core/widgets/app_text_field.dart';
 import 'package:amora_ai/features/auth/presentation/login_screen.dart';
 import 'package:amora_ai/features/auth/presentation/widgets/auth_presentation.dart';
->>>>>>> main
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -177,169 +165,6 @@ class _SignupScreenState extends State<SignupScreen> {
                         ? Icons.visibility_rounded
                         : Icons.visibility_off_rounded,
                   ),
-<<<<<<< HEAD
-                  child: Form(
-                    key: _formKey,
-                    autovalidateMode: AutovalidateMode.onUserInteraction,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        _BackHeader(
-                          onBack: () => Navigator.of(context).maybePop(),
-                        ),
-                        const SizedBox(height: AmoraSpacing.space24),
-                        const _SignupVisual(),
-                        const SizedBox(height: AmoraSpacing.space24),
-                        Text(
-                          'Create your AMORA profile',
-                          textAlign: TextAlign.center,
-                          style: AmoraTextStyles.headlineMedium,
-                        ),
-                        const SizedBox(height: AmoraSpacing.space8),
-                        Text(
-                          'The essentials help AMORA AI prepare better compatibility questions.',
-                          textAlign: TextAlign.center,
-                          style: AmoraTextStyles.bodyMedium.copyWith(
-                            color: AppColors.textGray,
-                          ),
-                        ),
-                        const SizedBox(height: AmoraSpacing.space20),
-                        _ProgressCard(progress: _progress),
-                        const SizedBox(height: AmoraSpacing.space16),
-                        PremiumCard(
-                          radius: AmoraRadius.extraLarge,
-                          padding: const EdgeInsets.all(AmoraSpacing.space20),
-                          child: Column(
-                            children: [
-                              AppTextField(
-                                controller: _nameController,
-                                label: 'Name',
-                                icon: Icons.person_outline_rounded,
-                                textInputAction: TextInputAction.next,
-                                validator: _requiredName,
-                              ),
-                              const SizedBox(height: AmoraSpacing.space16),
-                              AppTextField(
-                                controller: _emailController,
-                                label: 'Email',
-                                icon: Icons.mail_outline_rounded,
-                                keyboardType: TextInputType.emailAddress,
-                                textInputAction: TextInputAction.next,
-                                validator: _validateEmail,
-                              ),
-                              const SizedBox(height: AmoraSpacing.space16),
-                              AppTextField(
-                                controller: _phoneController,
-                                label: 'Phone',
-                                icon: Icons.phone_iphone_rounded,
-                                prefixText: '+91 ',
-                                keyboardType: TextInputType.phone,
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.digitsOnly,
-                                  LengthLimitingTextInputFormatter(10),
-                                ],
-                                validator: _validatePhone,
-                              ),
-                              const SizedBox(height: AmoraSpacing.space16),
-                              AppTextField(
-                                controller: _passwordController,
-                                label: 'Password',
-                                icon: Icons.lock_outline_rounded,
-                                obscureText: _obscurePassword,
-                                validator: _validatePassword,
-                                suffix: IconButton(
-                                  tooltip: _obscurePassword
-                                      ? 'Show password'
-                                      : 'Hide password',
-                                  onPressed: () => setState(
-                                    () => _obscurePassword = !_obscurePassword,
-                                  ),
-                                  icon: Icon(
-                                    _obscurePassword
-                                        ? Icons.visibility_outlined
-                                        : Icons.visibility_off_outlined,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: AmoraSpacing.space12),
-                              _PasswordStrength(score: _passwordScore),
-                              const SizedBox(height: AmoraSpacing.space16),
-                              AppTextField(
-                                controller: _confirmPasswordController,
-                                label: 'Confirm Password',
-                                icon: Icons.lock_reset_rounded,
-                                obscureText: _obscureConfirmation,
-                                validator: _validateConfirmPassword,
-                                suffix: IconButton(
-                                  tooltip: _obscureConfirmation
-                                      ? 'Show password confirmation'
-                                      : 'Hide password confirmation',
-                                  onPressed: () => setState(
-                                    () => _obscureConfirmation =
-                                        !_obscureConfirmation,
-                                  ),
-                                  icon: Icon(
-                                    _obscureConfirmation
-                                        ? Icons.visibility_outlined
-                                        : Icons.visibility_off_outlined,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: AmoraSpacing.space16),
-                              _ConsentTile(
-                                value: _terms,
-                                label: 'I accept the Terms of Service.',
-                                onChanged: (value) =>
-                                    setState(() => _terms = value),
-                              ),
-                              _ConsentTile(
-                                value: _privacy,
-                                label: 'I accept the Privacy Policy.',
-                                onChanged: (value) =>
-                                    setState(() => _privacy = value),
-                              ),
-                              _ConsentTile(
-                                value: _marketing,
-                                label:
-                                    'Send me premium events and dating tips.',
-                                onChanged: (value) =>
-                                    setState(() => _marketing = value),
-                              ),
-                              const SizedBox(height: AmoraSpacing.space12),
-                              AppPrimaryButton(
-                                label: 'Continue',
-                                icon: Icons.arrow_forward_rounded,
-                                isLoading: _loading,
-                                onPressed: _loading ? null : _submit,
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: AmoraSpacing.space16),
-                        Wrap(
-                          alignment: WrapAlignment.center,
-                          crossAxisAlignment: WrapCrossAlignment.center,
-                          children: [
-                            Text(
-                              'Already have an account?',
-                              style: AmoraTextStyles.bodyMedium.copyWith(
-                                color: AppColors.textGray,
-                              ),
-                            ),
-                            AppPrimaryButton(
-                              label: 'Log in',
-                              variant: AppPrimaryButtonVariant.text,
-                              size: AmoraButtonSize.compact,
-                              fullWidth: false,
-                              onPressed: () => Navigator.of(
-                                context,
-                              ).pushReplacementNamed(LoginScreen.routeName),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-=======
                 ),
               ),
               if (_passwordController.text.isNotEmpty) ...[
@@ -363,7 +188,6 @@ class _SignupScreenState extends State<SignupScreen> {
                       : 'Hide password confirmation',
                   onPressed: () => setState(
                     () => _obscureConfirmation = !_obscureConfirmation,
->>>>>>> main
                   ),
                   icon: Icon(
                     _obscureConfirmation

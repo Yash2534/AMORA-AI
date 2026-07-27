@@ -63,16 +63,9 @@ class AmoraSession {
       return;
     }
 
-<<<<<<< HEAD
     final route = LocalOnboardingRepository.instance.state.onboardingCompleted
         ? MainShell.routeName
         : ProfileOnboardingFlow.routeName;
-=======
-    final route = !_completedFirstAuthCheck && profileStrength.value < 60
-        ? '/profile-setup'
-        : '/browse';
-    _completedFirstAuthCheck = true;
->>>>>>> main
     Navigator.of(context).pushNamedAndRemoveUntil(route, (route) => false);
   }
 }

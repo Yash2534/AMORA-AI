@@ -146,21 +146,12 @@ const _hiddenLabels = [
 ];
 
 void main() {
-<<<<<<< HEAD
-  testWidgets('AMORA AI begins with Sign In or Create Account', (tester) async {
-=======
   testWidgets('AMORA AI launches through splash into authentication', (
     tester,
   ) async {
->>>>>>> main
     await tester.pumpWidget(const MyApp());
     await tester.pump(const Duration(milliseconds: 500));
 
-<<<<<<< HEAD
-    expect(find.byKey(const Key('auth-sign-in')), findsOneWidget);
-    expect(find.byKey(const Key('auth-create-account')), findsOneWidget);
-    expect(find.text('Discover'), findsNothing);
-=======
     expect(find.text('Preparing your compatibility engine'), findsOneWidget);
 
     await tester.pump(const Duration(milliseconds: 2600));
@@ -347,7 +338,6 @@ void main() {
       navigator.pop();
       await tester.pump();
     }
->>>>>>> main
   });
 
   testWidgets('all registered production routes build', (tester) async {
@@ -390,11 +380,7 @@ void main() {
       expect(
         tester.takeException(),
         isNull,
-<<<<<<< HEAD
-        reason: '/home failed at ${size.width.toInt()}x${size.height.toInt()}',
-=======
-        reason: '/browse failed at ${width.toInt()}px',
->>>>>>> main
+        reason: '/browse failed at ${size.width.toInt()}px',
       );
 
       final navigator = tester.state<NavigatorState>(find.byType(Navigator));

@@ -7,12 +7,7 @@ import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/app_text_field.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
-<<<<<<< HEAD
-import 'package:amora_ai/features/home/presentation/amora_home_screen.dart';
-import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
-=======
 import 'package:amora_ai/features/discover/presentation/browse_grid_screen.dart';
->>>>>>> main
 import 'package:flutter/material.dart';
 
 class ProfileSetupScreen extends StatefulWidget {
@@ -28,49 +23,6 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   static const _minimumAge = 18;
 
   final _formKey = GlobalKey<FormState>();
-<<<<<<< HEAD
-  late final TextEditingController _nameController;
-  late final TextEditingController _dobController;
-  final _heightController = TextEditingController(text: '5\'10"');
-  late final TextEditingController _professionController;
-  late final TextEditingController _companyController;
-  late final TextEditingController _educationController;
-  late final TextEditingController _cityController;
-  late final TextEditingController _bioController;
-  late final TextEditingController _sundayController;
-  late final TextEditingController _greenFlagController;
-  late final TextEditingController _togetherController;
-
-  final List<String?> _photos = List<String?>.filled(6, null, growable: true);
-  final Set<String> _languages = {'Gujarati', 'Hindi', 'English'};
-  final Set<String> _lifestyle = {'Coffee Dates', 'Family Values'};
-  final Set<String> _travel = {'Heritage Walks'};
-  final Set<String> _music = {'Old Bollywood'};
-  final Set<String> _food = {'Gujarati thali'};
-  String _gender = 'Man';
-  String _intent = 'Long-Term Relationship';
-  int _primaryPhoto = 0;
-
-  double get _completion {
-    var score = 0;
-    if (_photos.any((photo) => photo != null)) score++;
-    if (_nameController.text.trim().isNotEmpty) score++;
-    if (_dobController.text.trim().isNotEmpty) score++;
-    if (_gender.isNotEmpty) score++;
-    if (_heightController.text.trim().isNotEmpty) score++;
-    if (_professionController.text.trim().isNotEmpty) score++;
-    if (_companyController.text.trim().isNotEmpty) score++;
-    if (_educationController.text.trim().isNotEmpty) score++;
-    if (_cityController.text.trim().isNotEmpty) score++;
-    if (_languages.isNotEmpty) score++;
-    if (_bioController.text.trim().length >= 40) score++;
-    if (_lifestyle.length >= 2) score++;
-    if (_travel.isNotEmpty && _music.isNotEmpty && _food.isNotEmpty) score++;
-    if (_sundayController.text.trim().isNotEmpty) score++;
-    if (_greenFlagController.text.trim().isNotEmpty) score++;
-    if (_togetherController.text.trim().isNotEmpty) score++;
-    return score / 16;
-=======
   final _cityController = TextEditingController();
 
   String? _gender;
@@ -100,78 +52,19 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       return 'You must be at least $_minimumAge years old';
     }
     return null;
->>>>>>> main
   }
 
   @override
   void initState() {
     super.initState();
-<<<<<<< HEAD
-    final profile = LocalProfileRepository.instance.profile;
-    _nameController = TextEditingController(text: profile.name);
-    _dobController = TextEditingController(text: profile.birthdate);
-    _professionController = TextEditingController(text: profile.profession);
-    _companyController = TextEditingController(text: profile.company);
-    _educationController = TextEditingController(text: profile.education);
-    _cityController = TextEditingController(text: profile.location);
-    _bioController = TextEditingController(text: profile.bio);
-    _sundayController = TextEditingController(
-      text: profile.prompts['My ideal Sunday is...'],
-    );
-    _greenFlagController = TextEditingController(
-      text: profile.prompts['A green flag I value is...'],
-    );
-    _togetherController = TextEditingController(
-      text: profile.prompts['Together we could...'],
-    );
-    _gender = profile.gender;
-    _intent = profile.datingIntention;
-    _lifestyle
-      ..clear()
-      ..addAll(profile.interests.take(3));
-    for (var i = 0; i < profile.photos.length && i < _photos.length; i++) {
-      _photos[i] = profile.photos[i];
-    }
-    _primaryPhoto = profile.primaryPhotoIndex;
-    for (final controller in [
-      _nameController,
-      _dobController,
-      _heightController,
-      _professionController,
-      _companyController,
-      _educationController,
-      _cityController,
-      _bioController,
-      _sundayController,
-      _greenFlagController,
-      _togetherController,
-    ]) {
-      controller.addListener(() => setState(() {}));
-    }
-=======
     _cityController.addListener(_handleFormChanged);
->>>>>>> main
   }
 
   @override
   void dispose() {
-<<<<<<< HEAD
-    _nameController.dispose();
-    _dobController.dispose();
-    _heightController.dispose();
-    _professionController.dispose();
-    _companyController.dispose();
-    _educationController.dispose();
-    _cityController.dispose();
-    _bioController.dispose();
-    _sundayController.dispose();
-    _greenFlagController.dispose();
-    _togetherController.dispose();
-=======
     _cityController
       ..removeListener(_handleFormChanged)
       ..dispose();
->>>>>>> main
     super.dispose();
   }
 
@@ -222,17 +115,6 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                           canGoBack: Navigator.of(context).canPop(),
                           onBack: () => Navigator.of(context).maybePop(),
                         ),
-<<<<<<< HEAD
-                        const SizedBox(height: AmoraSpacing.space20),
-                        _PhotoManager(
-                          photos: _photos,
-                          primaryIndex: _primaryPhoto,
-                          onAdd: _addPhoto,
-                          onPrimary: (index) =>
-                              setState(() => _primaryPhoto = index),
-                          onReorder: _reorderPhoto,
-                          onRemove: _removePhoto,
-=======
                         const SizedBox(height: AmoraSpacing.space24),
                         Text(
                           'Tell us about yourself',
@@ -240,7 +122,6 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                           style: AmoraTextStyles.headlineLarge.copyWith(
                             color: AppColors.primary,
                           ),
->>>>>>> main
                         ),
                         const SizedBox(height: AmoraSpacing.space8),
                         Text(
@@ -281,26 +162,10 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                                 description:
                                     'You must be at least 18 to use AMORA.',
                               ),
-<<<<<<< HEAD
-                              const SizedBox(height: AmoraSpacing.space16),
-                              AppTextField(
-                                controller: _companyController,
-                                label: 'Company',
-                                icon: Icons.business_rounded,
-                                validator: _required,
-                              ),
-                              const SizedBox(height: AmoraSpacing.space16),
-                              AppTextField(
-                                controller: _educationController,
-                                label: 'Education',
-                                icon: Icons.school_outlined,
-                                validator: _required,
-=======
                               const SizedBox(height: AmoraSpacing.space12),
                               _DateOfBirthField(
                                 value: _dateOfBirth,
                                 onTap: _pickDateOfBirth,
->>>>>>> main
                               ),
                               _InlineError(
                                 message: _showValidationErrors
@@ -422,36 +287,6 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     });
   }
 
-<<<<<<< HEAD
-  void _removePhoto(int index) {
-    if (_photos[index] == null) return;
-    setState(() {
-      _photos.removeAt(index);
-      _photos.add(null);
-      final filled = _photos.whereType<String>().length;
-      _primaryPhoto = filled == 0 ? 0 : _primaryPhoto.clamp(0, filled - 1);
-    });
-    _snack('Photo removed from this draft');
-  }
-
-  void _toggle(Set<String> selected, String value) {
-    setState(() {
-      if (!selected.add(value)) selected.remove(value);
-    });
-  }
-
-  void _saveDraft() {
-    LocalProfileRepository.instance.save(_buildDraft());
-    AmoraSession.completeProfileStep(40);
-    _snack('Profile draft saved locally');
-  }
-
-  void _continue() {
-    if (!(_formKey.currentState?.validate() ?? false)) return;
-    if (_photos.whereType<String>().length < 2) {
-      _snack('Add at least two profile photos');
-      return;
-=======
   Future<void> _continue() async {
     if (_loading) return;
     FocusScope.of(context).unfocus();
@@ -466,7 +301,6 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         text: trimmedCity,
         selection: TextSelection.collapsed(offset: trimmedCity.length),
       );
->>>>>>> main
     }
 
     setState(() => _loading = true);
@@ -474,48 +308,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     if (!mounted) return;
 
     AmoraSession.completeProfileStep(60);
-<<<<<<< HEAD
-    LocalProfileRepository.instance.save(_buildDraft());
-    if (Navigator.of(context).canPop()) {
-      Navigator.of(context).pop(true);
-    } else {
-      Navigator.of(
-        context,
-      ).pushNamedAndRemoveUntil(AmoraHomeScreen.routeName, (route) => false);
-    }
-  }
-
-  LocalProfileDraft _buildDraft() {
-    final previous = LocalProfileRepository.instance.profile;
-    return previous.copyWith(
-      name: _nameController.text.trim(),
-      birthdate: _dobController.text.trim(),
-      gender: _gender,
-      bio: _bioController.text.trim(),
-      profession: _professionController.text.trim(),
-      company: _companyController.text.trim(),
-      education: _educationController.text.trim(),
-      location: _cityController.text.trim(),
-      datingIntention: _intent,
-      interests: <String>{
-        ..._lifestyle,
-        ..._travel,
-        ..._music,
-        ..._food,
-      }.toList(),
-      prompts: {
-        'My ideal Sunday is...': _sundayController.text.trim(),
-        'A green flag I value is...': _greenFlagController.text.trim(),
-        'Together we could...': _togetherController.text.trim(),
-      },
-      photos: _photos.whereType<String>().toList(),
-      primaryPhotoIndex: _primaryPhoto,
-    );
-=======
     Navigator.of(
       context,
     ).pushNamedAndRemoveUntil(BrowseGridScreen.routeName, (route) => false);
->>>>>>> main
   }
 
   String? _validateCity(String? value) {
@@ -526,229 +321,6 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   }
 }
 
-<<<<<<< HEAD
-class _PhotoManager extends StatelessWidget {
-  const _PhotoManager({
-    required this.photos,
-    required this.primaryIndex,
-    required this.onAdd,
-    required this.onPrimary,
-    required this.onReorder,
-    required this.onRemove,
-  });
-
-  final List<String?> photos;
-  final int primaryIndex;
-  final ValueChanged<int> onAdd;
-  final ValueChanged<int> onPrimary;
-  final void Function(int oldIndex, int newIndex) onReorder;
-  final ValueChanged<int> onRemove;
-
-  @override
-  Widget build(BuildContext context) {
-    return PremiumCard(
-      radius: AmoraRadius.extraLarge,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const _SectionTitle(
-            title: 'Profile Photos',
-            subtitle:
-                'Add 2-6 local photos. Drag to reorder and mark the primary image.',
-          ),
-          const SizedBox(height: AmoraSpacing.space16),
-          SizedBox(
-            height: 178,
-            child: ReorderableListView.builder(
-              scrollDirection: Axis.horizontal,
-              buildDefaultDragHandles: false,
-              itemCount: photos.length,
-              onReorderItem: onReorder,
-              itemBuilder: (context, index) {
-                return Padding(
-                  key: ValueKey('photo-$index-${photos[index] ?? 'empty'}'),
-                  padding: const EdgeInsets.only(right: AmoraSpacing.space12),
-                  child: ReorderableDragStartListener(
-                    index: index,
-                    child: _PhotoTile(
-                      index: index,
-                      imageUrl: photos[index],
-                      primary: index == primaryIndex,
-                      onAdd: () => onAdd(index),
-                      onPrimary: () => onPrimary(index),
-                      onRemove: () => onRemove(index),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PhotoTile extends StatelessWidget {
-  const _PhotoTile({
-    required this.index,
-    required this.imageUrl,
-    required this.primary,
-    required this.onAdd,
-    required this.onPrimary,
-    required this.onRemove,
-  });
-
-  final int index;
-  final String? imageUrl;
-  final bool primary;
-  final VoidCallback onAdd;
-  final VoidCallback onPrimary;
-  final VoidCallback onRemove;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 124,
-      child: InkWell(
-        onTap: imageUrl == null ? onAdd : onPrimary,
-        borderRadius: AmoraRadius.card,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          decoration: BoxDecoration(
-            color: AppColors.lightPinkBackground,
-            borderRadius: AmoraRadius.card,
-            border: Border.all(
-              color: primary ? AppColors.primaryPurple : AppColors.borderGray,
-              width: primary ? 2 : 1,
-            ),
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              if (imageUrl != null)
-                AmoraProfileImage(
-                  imageUrl: imageUrl!,
-                  assetPath: AppImages.fallbackMaleProfile,
-                  initials: 'YA',
-                  fit: BoxFit.cover,
-                )
-              else
-                const Center(
-                  child: Icon(
-                    Icons.add_a_photo_rounded,
-                    color: AppColors.primaryPurple,
-                    size: 30,
-                  ),
-                ),
-              Positioned(
-                right: AmoraSpacing.space4,
-                top: AmoraSpacing.space4,
-                child: imageUrl == null
-                    ? const SizedBox.shrink()
-                    : IconButton.filledTonal(
-                        tooltip: 'Remove photo ${index + 1}',
-                        onPressed: onRemove,
-                        icon: const Icon(Icons.close_rounded, size: 18),
-                      ),
-              ),
-              Positioned(
-                left: AmoraSpacing.space8,
-                right: AmoraSpacing.space8,
-                bottom: AmoraSpacing.space8,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: AmoraRadius.pillBorder,
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: AmoraSpacing.space4,
-                    ),
-                    child: Text(
-                      primary ? 'Primary' : 'Photo ${index + 1}',
-                      textAlign: TextAlign.center,
-                      style: AmoraTextStyles.labelMedium.copyWith(
-                        color: AppColors.deepWine,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ChipEditor extends StatelessWidget {
-  const _ChipEditor({
-    required this.title,
-    required this.subtitle,
-    required this.options,
-    required this.selected,
-    required this.onToggle,
-    this.lifestyle = false,
-  });
-
-  final String title;
-  final String subtitle;
-  final List<String> options;
-  final Set<String> selected;
-  final void Function(Set<String> selected, String value) onToggle;
-  final bool lifestyle;
-
-  @override
-  Widget build(BuildContext context) {
-    return PremiumCard(
-      radius: AmoraRadius.extraLarge,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _SectionTitle(title: title, subtitle: subtitle),
-          const SizedBox(height: AmoraSpacing.space12),
-          Wrap(
-            spacing: AmoraSpacing.space8,
-            runSpacing: AmoraSpacing.space8,
-            children: [
-              for (final option in options)
-                lifestyle
-                    ? LifestyleChip(
-                        label: option,
-                        selected: selected.contains(option),
-                        onTap: () => onToggle(selected, option),
-                      )
-                    : FilterChip(
-                        selected: selected.contains(option),
-                        label: Text(option),
-                        onSelected: (_) => onToggle(selected, option),
-                        selectedColor: AppColors.primaryPurple.withValues(
-                          alpha: .14,
-                        ),
-                        checkmarkColor: AppColors.primaryPurple,
-                      ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle({required this.title, required this.subtitle});
-
-  final String title;
-  final String subtitle;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-=======
 class _ScreenHeader extends StatelessWidget {
   const _ScreenHeader({required this.canGoBack, required this.onBack});
 
@@ -758,7 +330,6 @@ class _ScreenHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
->>>>>>> main
       children: [
         SizedBox(
           width: AmoraSpacing.minimumTouchTarget,

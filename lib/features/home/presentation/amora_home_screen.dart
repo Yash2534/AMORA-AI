@@ -329,7 +329,7 @@ class _AmoraHomeScreenState extends State<AmoraHomeScreen> {
                           FloatingBottomNav.bottomMargin + bottomInset,
                         ),
                         child: const FloatingBottomNav(
-                          activeTab: AmoraNavTab.home,
+                          activeTab: AmoraNavTab.discover,
                         ),
                       ),
                     ),

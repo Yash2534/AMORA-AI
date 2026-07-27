@@ -29,11 +29,16 @@ void main() {
 
     expect(find.byType(ChatsAppBar), findsOneWidget);
     expect(find.byKey(const ValueKey('chats-search-field')), findsOneWidget);
-    expect(find.text('Search chats or matches'), findsOneWidget);
+    expect(find.text('Search chats...'), findsOneWidget);
+    expect(find.byTooltip('Search chats'), findsOneWidget);
+    expect(find.byTooltip('Compose message'), findsOneWidget);
+    expect(find.byTooltip('More'), findsOneWidget);
     expect(find.text('Active now'), findsOneWidget);
     expect(find.byKey(const ValueKey('chats-filter-bar')), findsOneWidget);
-    expect(find.text('Messages'), findsOneWidget);
+    expect(find.text('Conversations'), findsOneWidget);
     expect(find.byType(ConversationTile), findsWidgets);
+    expect(find.textContaining('Date invite'), findsNothing);
+    expect(find.text('Draft'), findsNothing);
     expect(find.text('Pinned'), findsNothing);
     expect(find.text('Archived'), findsNothing);
     expect(
@@ -98,6 +103,34 @@ void main() {
 
     expect(find.text('chat-detail'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('compose and long press expose supported conversation actions', (
+    tester,
+  ) async {
+    await pumpChats(tester);
+
+    await tester.tap(find.byTooltip('Compose message'));
+    await tester.pumpAndSettle();
+    expect(find.text('New message'), findsOneWidget);
+    expect(
+      find.text('Continue a conversation with one of your matches.'),
+      findsOneWidget,
+    );
+
+    await tester.tapAt(const Offset(8, 8));
+    await tester.pumpAndSettle();
+
+    final firstChat = AmoraDummyData.chats.first;
+    await tester.longPress(
+      find.byKey(ValueKey('conversation-${firstChat.id}')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Open conversation'), findsOneWidget);
+    expect(find.text('View profile'), findsOneWidget);
+    expect(find.text('Archive'), findsNothing);
+    expect(find.text('Delete'), findsNothing);
   });
 
   testWidgets('desktop inbox remains centred and constrained', (tester) async {

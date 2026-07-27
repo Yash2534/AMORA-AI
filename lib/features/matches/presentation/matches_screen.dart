@@ -9,17 +9,11 @@ import 'package:amora_ai/features/chat/presentation/chat_detail_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_detail_screen.dart';
 import 'package:flutter/material.dart';
 
-<<<<<<< HEAD
-class MatchesScreen extends StatelessWidget {
+class MatchesScreen extends StatefulWidget {
   const MatchesScreen({super.key, this.showNavigation = true});
 
-  final bool showNavigation;
-=======
-class MatchesScreen extends StatefulWidget {
-  const MatchesScreen({super.key});
->>>>>>> main
-
   static const routeName = '/matches';
+  final bool showNavigation;
 
   @override
   State<MatchesScreen> createState() => _MatchesScreenState();
@@ -59,58 +53,8 @@ class _MatchesScreenState extends State<MatchesScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
+        bottom: !widget.showNavigation,
         child: ResponsiveMobileFrame(
-<<<<<<< HEAD
-          child: Stack(
-            children: [
-              SingleChildScrollView(
-                padding: EdgeInsets.fromLTRB(
-                  AmoraSpacing.space24,
-                  AmoraSpacing.space24,
-                  AmoraSpacing.space24,
-                  (showNavigation
-                          ? AmoraSpacing.navigationContentInset
-                          : AmoraSpacing.space32) +
-                      bottomInset,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const SectionHeader(
-                      title: 'Likes',
-                      subtitle: 'People who liked you and mutual connections.',
-                    ),
-                    const SizedBox(height: AmoraSpacing.space20),
-                    Text(
-                      'Liked you',
-                      style: AmoraTextStyles.titleLarge.copyWith(
-                        color: AppColors.deepWine,
-                      ),
-                    ),
-                    const SizedBox(height: AmoraSpacing.space12),
-                    SizedBox(
-                      height: 148,
-                      child: ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: _newMatches.length,
-                        separatorBuilder: (_, _) =>
-                            const SizedBox(width: AmoraSpacing.space12),
-                        itemBuilder: (context, index) {
-                          final match = _newMatches[index];
-                          return _NewMatchCard(match: match);
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: AmoraSpacing.space24),
-                    Text(
-                      'Mutual matches',
-                      style: AmoraTextStyles.titleLarge.copyWith(
-                        color: AppColors.deepWine,
-                      ),
-                    ),
-                    const SizedBox(height: AmoraSpacing.space12),
-                    for (final match in _conversations)
-=======
           maxWidth: 1080,
           child: LayoutBuilder(
             builder: (context, constraints) {
@@ -119,7 +63,6 @@ class _MatchesScreenState extends State<MatchesScreen> {
                 children: [
                   Column(
                     children: [
->>>>>>> main
                       Padding(
                         padding: EdgeInsets.fromLTRB(
                           desktop ? AmoraSpacing.space24 : AmoraSpacing.space16,
@@ -129,27 +72,6 @@ class _MatchesScreenState extends State<MatchesScreen> {
                         ),
                         child: AiMatchesAppBar(onInfo: _showRecommendationInfo),
                       ),
-<<<<<<< HEAD
-                  ],
-                ),
-              ),
-              if (showNavigation)
-                Align(
-                  alignment: Alignment.bottomCenter,
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(
-                      AmoraSpacing.space16,
-                      AmoraSpacing.space0,
-                      AmoraSpacing.space16,
-                      AmoraSpacing.space12 + bottomInset,
-                    ),
-                    child: const FloatingBottomNav(
-                      activeTab: AmoraNavTab.likes,
-                    ),
-                  ),
-                ),
-            ],
-=======
                       Expanded(
                         child: CustomScrollView(
                           key: const PageStorageKey<String>(
@@ -288,10 +210,11 @@ class _MatchesScreenState extends State<MatchesScreen> {
                                           _buildFeedCard(feed[index], index),
                                     ),
                                   ),
-                              const SliverToBoxAdapter(
+                              SliverToBoxAdapter(
                                 child: SizedBox(
-                                  height:
-                                      FloatingBottomNav.contentBottomPadding,
+                                  height: widget.showNavigation
+                                      ? FloatingBottomNav.contentBottomPadding
+                                      : AmoraSpacing.space16,
                                 ),
                               ),
                             ],
@@ -300,19 +223,14 @@ class _MatchesScreenState extends State<MatchesScreen> {
                       ),
                     ],
                   ),
-                  const Align(
-                    alignment: Alignment.bottomCenter,
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: AmoraSpacing.space16,
-                      ),
+                  if (widget.showNavigation)
+                    const Align(
+                      alignment: Alignment.bottomCenter,
                       child: FloatingBottomNav(activeTab: AmoraNavTab.matches),
                     ),
-                  ),
                 ],
               );
             },
->>>>>>> main
           ),
         ),
       ),

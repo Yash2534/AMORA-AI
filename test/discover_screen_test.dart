@@ -46,6 +46,23 @@ void main() {
     AmoraSession.logOut();
   });
 
+  test('photo cleaning preserves order, removes blanks and duplicates', () {
+    expect(
+      cleanDiscoverPhotoPaths(const [
+        '',
+        'photo-a',
+        ' photo-a ',
+        'photo-b',
+        'photo-a',
+      ], fallback: 'fallback'),
+      const ['photo-a', 'photo-b'],
+    );
+    expect(
+      cleanDiscoverPhotoPaths(const ['', '   '], fallback: 'fallback'),
+      const ['fallback'],
+    );
+  });
+
   testWidgets('renders the premium single-card hierarchy at 320px', (
     tester,
   ) async {
@@ -245,15 +262,120 @@ void main() {
 
     await pumpDiscover(tester, observers: <NavigatorObserver>[observer]);
     final firstProfile = ImageRepository.profiles.first;
-    await tester.tap(
-      find.byKey(ValueKey('discover-profile-card-${firstProfile.id}')),
-    );
+    await tester.tap(find.byKey(const ValueKey('discover-open-profile')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
 
     expect(observer.lastRoute?.settings.name, '/profile-detail');
     expect(observer.lastRoute?.settings.arguments, same(firstProfile));
     expect(find.byType(ProfileDetailScreen), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('gallery uses unique photos, tap zones, and progress segments', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(430, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await pumpDiscover(tester);
+    final profile = ImageRepository.profiles.first;
+    final photos = cleanDiscoverPhotoPaths(<String>[
+      profile.imageUrl,
+      ...profile.gallery,
+    ], fallback: profile.fallbackAsset);
+
+    expect(photos.length, greaterThan(1));
+    expect(
+      find.byKey(ValueKey('discover-photo-progress-${profile.id}')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(ValueKey('discover-photo-${profile.id}-0')),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(const ValueKey('discover-next-photo')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(ValueKey('discover-photo-${profile.id}-1')),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(const ValueKey('discover-previous-photo')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(ValueKey('discover-photo-${profile.id}-0')),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('vertical and vertical-dominant drags never move or dismiss', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(430, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    RouteSettings? openedRoute;
+
+    await pumpDiscover(
+      tester,
+      onNamedRoute: (settings) => openedRoute = settings,
+    );
+    final profile = ImageRepository.profiles.first;
+    final card = find.byKey(ValueKey('discover-profile-card-${profile.id}'));
+
+    await tester.drag(card, const Offset(0, -300));
+    await tester.pumpAndSettle();
+    expect(card, findsOneWidget);
+    expect(openedRoute?.name, isNot('/super-like'));
+
+    await tester.drag(card, const Offset(0, 300));
+    await tester.pumpAndSettle();
+    expect(card, findsOneWidget);
+
+    await tester.drag(card, const Offset(55, -280));
+    await tester.pumpAndSettle();
+    expect(card, findsOneWidget);
+
+    final slide = tester.widget<AnimatedSlide>(
+      find.byKey(const ValueKey('discover-card-slide')),
+    );
+    expect(slide.offset.dy, 0);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('horizontal-dominant diagonal drag remains X-only', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(430, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await pumpDiscover(tester);
+    final first = ImageRepository.profiles.first;
+    final gesture = await tester.startGesture(
+      tester.getCenter(
+        find.byKey(ValueKey('discover-profile-card-${first.id}')),
+      ),
+    );
+    // The first move crosses Flutter's gesture-arena touch slop and locks the
+    // recognizer; the second verifies that only the horizontal delta is used.
+    await gesture.moveBy(const Offset(50, 12));
+    await gesture.moveBy(const Offset(50, 12));
+    await tester.pump();
+
+    final slide = tester.widget<AnimatedSlide>(
+      find.byKey(const ValueKey('discover-card-slide')),
+    );
+    expect(slide.offset.dx, greaterThan(0));
+    expect(slide.offset.dy, 0);
+
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(ValueKey('discover-profile-card-${first.id}')),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
   });
 
@@ -285,6 +407,73 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('fast short horizontal flings dismiss in either direction', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(430, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await pumpDiscover(tester);
+    final firstProfile = ImageRepository.profiles.first;
+    final firstCard = find.byKey(
+      ValueKey('discover-profile-card-${firstProfile.id}'),
+    );
+
+    await tester.fling(firstCard, const Offset(60, 0), 1200);
+    await tester.pumpAndSettle();
+    expect(firstCard, findsNothing);
+    expect(
+      find.byKey(
+        ValueKey('discover-profile-card-${ImageRepository.profiles[1].id}'),
+      ),
+      findsOneWidget,
+    );
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+    await pumpDiscover(tester);
+    final resetFirstCard = find.byKey(
+      ValueKey('discover-profile-card-${firstProfile.id}'),
+    );
+    await tester.fling(resetFirstCard, const Offset(-60, 0), 1200);
+    await tester.pumpAndSettle();
+    expect(resetFirstCard, findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('slow right drag and Pass button use the existing actions', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(430, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await pumpDiscover(tester);
+    final firstProfile = ImageRepository.profiles.first;
+    final firstCard = find.byKey(
+      ValueKey('discover-profile-card-${firstProfile.id}'),
+    );
+    await tester.drag(firstCard, const Offset(280, 3));
+    await tester.pumpAndSettle();
+    expect(firstCard, findsNothing);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+    await pumpDiscover(tester);
+    final resetFirstCard = find.byKey(
+      ValueKey('discover-profile-card-${firstProfile.id}'),
+    );
+    await tester.tap(find.byKey(const ValueKey('discover-pass-button')));
+    await tester.pumpAndSettle();
+    expect(resetFirstCard, findsNothing);
+    expect(
+      find.byKey(
+        ValueKey('discover-profile-card-${ImageRepository.profiles[1].id}'),
+      ),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('floating Like and Undo actions reuse the swipe sequence', (
     tester,
   ) async {
@@ -294,6 +483,13 @@ void main() {
 
     await pumpDiscover(tester);
     final firstProfile = ImageRepository.profiles.first;
+    await tester.tap(find.byKey(const ValueKey('discover-next-photo')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(ValueKey('discover-photo-${firstProfile.id}-1')),
+      findsOneWidget,
+    );
+
     await tester.tap(find.byKey(const ValueKey('discover-like-button')));
     await tester.pumpAndSettle();
 
@@ -301,6 +497,12 @@ void main() {
     expect(
       find.byKey(
         ValueKey('discover-profile-card-${ImageRepository.profiles[1].id}'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(
+        ValueKey('discover-photo-${ImageRepository.profiles[1].id}-0'),
       ),
       findsOneWidget,
     );
