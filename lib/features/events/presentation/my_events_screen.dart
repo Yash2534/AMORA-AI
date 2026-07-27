@@ -8,6 +8,7 @@ import 'package:amora_ai/features/events/presentation/event_waitlist_screen.dart
 import 'package:amora_ai/features/events/presentation/post_event_feedback_screen.dart';
 import 'package:amora_ai/features/events/presentation/widgets/events_widgets.dart';
 import 'package:amora_ai/features/subscription/presentation/subscription_screen.dart';
+import 'package:amora_ai/features/subscription/presentation/testing/membership_test_flow.dart';
 import 'package:flutter/material.dart';
 
 class MyEventsScreen extends StatefulWidget {
@@ -20,9 +21,48 @@ class MyEventsScreen extends StatefulWidget {
 }
 
 class _MyEventsScreenState extends State<MyEventsScreen> {
-  late final List<MyEventTicket> _entries = List<MyEventTicket>.from(
-    myEventTickets,
-  );
+  late List<MyEventTicket> _entries;
+
+  @override
+  void initState() {
+    super.initState();
+    _entries = membershipTestMode
+        ? _testEntries()
+        : List<MyEventTicket>.from(myEventTickets);
+    if (membershipTestMode) {
+      MembershipTestFlowController.instance.addListener(_syncTestEntries);
+    }
+  }
+
+  @override
+  void dispose() {
+    if (membershipTestMode) {
+      MembershipTestFlowController.instance.removeListener(_syncTestEntries);
+    }
+    super.dispose();
+  }
+
+  List<MyEventTicket> _testEntries() {
+    final joined = MembershipTestFlowController.instance.joinedEventIds;
+    return events
+        .where((event) => joined.contains(event.id))
+        .map(
+          (event) => MyEventTicket(
+            event: event,
+            ticketNumber: '',
+            seat: '',
+            status: TicketStatus.upcoming,
+            position: 0,
+            estimatedEntry: 'Joined',
+          ),
+        )
+        .toList(growable: false);
+  }
+
+  void _syncTestEntries() {
+    if (!mounted) return;
+    setState(() => _entries = _testEntries());
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -79,8 +119,12 @@ class _MyEventsScreenState extends State<MyEventsScreen> {
                     ],
                   ),
                 ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 16, 18, 0),
+                  child: _MyEventsContext(entries: _entries),
+                ),
                 const Padding(
-                  padding: EdgeInsets.fromLTRB(18, 18, 18, 8),
+                  padding: EdgeInsets.fromLTRB(18, 14, 18, 8),
                   child: TabBar(
                     isScrollable: true,
                     tabAlignment: TabAlignment.start,
@@ -154,6 +198,13 @@ class _MyEventsScreenState extends State<MyEventsScreen> {
               variant: AppPrimaryButtonVariant.outlined,
               onPressed: () {
                 Navigator.pop(sheetContext);
+                if (membershipTestMode) {
+                  MembershipTestFlowController.instance.leaveEvent(
+                    entry.event.id,
+                  );
+                  showEventSnack(context, 'You left ${entry.event.title}');
+                  return;
+                }
                 setState(() {
                   final index = _entries.indexOf(entry);
                   _entries[index] = MyEventTicket(
@@ -175,6 +226,76 @@ class _MyEventsScreenState extends State<MyEventsScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _MyEventsContext extends StatelessWidget {
+  const _MyEventsContext({required this.entries});
+
+  final List<MyEventTicket> entries;
+
+  @override
+  Widget build(BuildContext context) {
+    final upcoming = entries
+        .where((entry) => entry.status == TicketStatus.upcoming)
+        .toList(growable: false);
+    final next = upcoming.isEmpty ? null : upcoming.first;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: AppColors.tertiary.withValues(alpha: .62)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: const BoxDecoration(
+              color: AppColors.background,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.calendar_month_rounded,
+              color: AppColors.secondary,
+            ),
+          ),
+          const SizedBox(width: 11),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  upcoming.isEmpty
+                      ? 'No upcoming gatherings'
+                      : '${upcoming.length} upcoming ${upcoming.length == 1 ? 'gathering' : 'gatherings'}',
+                  style: const TextStyle(
+                    color: AppColors.primary,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                if (next != null) ...[
+                  const SizedBox(height: 3),
+                  Text(
+                    'Next: ${next.event.title} · ${next.event.date}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppColors.text,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -213,16 +334,44 @@ class _JoinedEventList extends StatelessWidget {
         ],
       );
     }
-    return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(18, 14, 18, 28),
-      itemCount: visible.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 14),
-      itemBuilder: (context, index) {
-        final entry = visible[index];
-        return _JoinedEventCard(
-          key: ValueKey('joined-event-${entry.event.id}-${entry.status.name}'),
-          entry: entry,
-          onLeave: onLeave,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth >= 720) {
+          return GridView.builder(
+            padding: const EdgeInsets.fromLTRB(18, 14, 18, 28),
+            itemCount: visible.length,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: 14,
+              mainAxisSpacing: 14,
+              mainAxisExtent: 430,
+            ),
+            itemBuilder: (context, index) {
+              final entry = visible[index];
+              return _JoinedEventCard(
+                key: ValueKey(
+                  'joined-event-${entry.event.id}-${entry.status.name}',
+                ),
+                entry: entry,
+                onLeave: onLeave,
+              );
+            },
+          );
+        }
+        return ListView.separated(
+          padding: const EdgeInsets.fromLTRB(18, 14, 18, 28),
+          itemCount: visible.length,
+          separatorBuilder: (_, _) => const SizedBox(height: 14),
+          itemBuilder: (context, index) {
+            final entry = visible[index];
+            return _JoinedEventCard(
+              key: ValueKey(
+                'joined-event-${entry.event.id}-${entry.status.name}',
+              ),
+              entry: entry,
+              onLeave: onLeave,
+            );
+          },
         );
       },
     );

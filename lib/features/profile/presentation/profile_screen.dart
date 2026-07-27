@@ -10,6 +10,7 @@ import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
 import 'package:amora_ai/features/profile/presentation/profile_completion_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_preview_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_setup_screen.dart';
+import 'package:amora_ai/features/notifications/presentation/notifications_hub_screen.dart';
 import 'package:amora_ai/features/safety/presentation/report_flow_screen.dart';
 import 'package:amora_ai/features/settings/presentation/settings_screen.dart';
 import 'package:amora_ai/features/subscription/presentation/subscription_screen.dart';
@@ -70,7 +71,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                         ),
                         IconButton(
+                          key: const ValueKey('profile-notifications-button'),
+                          tooltip: 'Notifications',
+                          constraints: const BoxConstraints.tightFor(
+                            width: 48,
+                            height: 48,
+                          ),
+                          onPressed: () => Navigator.of(
+                            context,
+                          ).pushNamed(NotificationsHubScreen.routeName),
+                          icon: const Icon(Icons.notifications_none_rounded),
+                        ),
+                        IconButton(
                           tooltip: 'Settings',
+                          constraints: const BoxConstraints.tightFor(
+                            width: 48,
+                            height: 48,
+                          ),
                           onPressed: () => Navigator.of(
                             context,
                           ).pushNamed(SettingsScreen.routeName),

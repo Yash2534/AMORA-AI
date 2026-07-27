@@ -9,6 +9,7 @@ void main() {
     WidgetTester tester, {
     DummyProfile? profile,
     ValueChanged<RouteSettings>? onRoute,
+    Future<bool> Function()? onSuperLike,
   }) async {
     await tester.pumpWidget(
       MaterialApp(
@@ -18,7 +19,7 @@ void main() {
           if (settings.name == ProfileDetailScreen.routeName) {
             return MaterialPageRoute<void>(
               settings: settings,
-              builder: (_) => const ProfileDetailScreen(),
+              builder: (_) => ProfileDetailScreen(onSuperLike: onSuperLike),
             );
           }
           return MaterialPageRoute<void>(
@@ -129,7 +130,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Profile liked successfully'), findsOneWidget);
-    expect(find.text('Liked'), findsOneWidget);
+    expect(find.text('Like'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -145,6 +146,33 @@ void main() {
     expect(openedRoute?.name, '/chat-detail');
     expect(find.text('/chat-detail destination'), findsOneWidget);
   });
+
+  testWidgets(
+    'Super Like sends through the supplied callback without routing',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(430, 900));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      var calls = 0;
+      RouteSettings? openedRoute;
+
+      await pumpProfile(
+        tester,
+        onRoute: (settings) => openedRoute = settings,
+        onSuperLike: () async {
+          calls++;
+          return true;
+        },
+      );
+      openedRoute = null;
+      await tester.tap(find.byKey(const ValueKey('profile-super-like-button')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 900));
+
+      expect(calls, 1);
+      expect(openedRoute, isNull);
+      expect(find.text('Super Like sent'), findsWidgets);
+    },
+  );
 
   testWidgets('more control exposes existing report and block actions', (
     tester,

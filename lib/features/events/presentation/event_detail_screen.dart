@@ -11,6 +11,7 @@ import 'package:amora_ai/features/events/presentation/widgets/events_widgets.dar
 import 'package:amora_ai/features/safety/presentation/report_flow_screen.dart';
 import 'package:amora_ai/features/settings/presentation/safety_privacy_screen.dart';
 import 'package:amora_ai/features/subscription/presentation/subscription_screen.dart';
+import 'package:amora_ai/features/subscription/presentation/testing/membership_test_flow.dart';
 import 'package:flutter/material.dart';
 
 class EventDetailScreen extends StatefulWidget {
@@ -28,6 +29,31 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   bool _saved = false;
   TicketStatus? _status;
   String? _eventId;
+
+  @override
+  void initState() {
+    super.initState();
+    if (membershipTestMode) {
+      MembershipTestFlowController.instance.addListener(_syncTestStatus);
+    }
+  }
+
+  @override
+  void dispose() {
+    if (membershipTestMode) {
+      MembershipTestFlowController.instance.removeListener(_syncTestStatus);
+    }
+    super.dispose();
+  }
+
+  void _syncTestStatus() {
+    if (!mounted || _eventId == null) return;
+    setState(() {
+      _status = MembershipTestFlowController.instance.isJoined(_eventId!)
+          ? TicketStatus.upcoming
+          : null;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -103,10 +129,11 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                                 ],
                               ),
                               const Spacer(),
-                              Row(
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
                                 children: [
                                   EventStatusBadge(status: _status),
-                                  const SizedBox(width: 8),
                                   const EventsMemberBadge(compact: true),
                                 ],
                               ),
@@ -154,6 +181,10 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                           fontWeight: FontWeight.w400,
                         ),
                       ),
+                      const SizedBox(height: 24),
+                      const _DetailHeading('Why this may suit you'),
+                      const SizedBox(height: 12),
+                      _SuitabilityCard(event: event),
                       const SizedBox(height: 28),
                       const _DetailHeading('What to expect'),
                       const SizedBox(height: 12),
@@ -236,6 +267,11 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   }
 
   TicketStatus? _existingStatus(EventModel event) {
+    if (membershipTestMode) {
+      return MembershipTestFlowController.instance.isJoined(event.id)
+          ? TicketStatus.upcoming
+          : null;
+    }
     for (final entry in myEventTickets) {
       if (entry.event.id == event.id) return entry.status;
     }
@@ -271,6 +307,11 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     }
     if (_status == TicketStatus.cancelled) return;
 
+    if (membershipTestMode) {
+      MembershipTestFlowController.instance.joinEvent(event.id);
+      showEventSnack(context, 'You joined ${event.title}');
+      return;
+    }
     AmoraSession.requireAuth(
       context: context,
       onAuthenticated: () {
@@ -312,7 +353,11 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
               variant: AppPrimaryButtonVariant.outlined,
               onPressed: () {
                 Navigator.pop(sheetContext);
-                setState(() => _status = null);
+                if (membershipTestMode) {
+                  MembershipTestFlowController.instance.leaveEvent(event.id);
+                } else {
+                  setState(() => _status = null);
+                }
                 showEventSnack(context, 'You left ${event.title}');
               },
             ),
@@ -420,7 +465,12 @@ class _OverlayButton extends StatelessWidget {
         backgroundColor: AppColors.surface.withValues(alpha: .93),
         foregroundColor: AppColors.primary,
       ),
-      icon: Icon(icon),
+      icon: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 220),
+        transitionBuilder: (child, animation) =>
+            ScaleTransition(scale: animation, child: child),
+        child: Icon(icon, key: ValueKey(icon)),
+      ),
     );
   }
 }
@@ -463,6 +513,76 @@ class _DetailMetadata extends StatelessWidget {
   }
 }
 
+class _SuitabilityCard extends StatelessWidget {
+  const _SuitabilityCard({required this.event});
+
+  final EventModel event;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.tertiary.withValues(alpha: .7)),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: .06),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: const BoxDecoration(
+              color: AppColors.background,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.auto_awesome_rounded,
+              color: AppColors.secondary,
+            ),
+          ),
+          const SizedBox(width: 13),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${event.compatibility}% compatibility with this experience',
+                  style: const TextStyle(
+                    color: AppColors.primary,
+                    fontSize: 16,
+                    height: 1.25,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  '${event.intent} · ${event.interests.join(' · ')}',
+                  style: const TextStyle(
+                    color: AppColors.text,
+                    fontSize: 14,
+                    height: 1.4,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _Requirements extends StatelessWidget {
   const _Requirements({required this.event});
 
@@ -491,6 +611,7 @@ class _RequirementChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      constraints: const BoxConstraints(maxWidth: 300),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -502,12 +623,15 @@ class _RequirementChip extends StatelessWidget {
         children: [
           Icon(icon, size: 18, color: AppColors.secondary),
           const SizedBox(width: 7),
-          Text(
-            label,
-            style: const TextStyle(
-              color: AppColors.text,
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
+          Flexible(
+            child: Text(
+              label,
+              softWrap: true,
+              style: const TextStyle(
+                color: AppColors.text,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
@@ -685,6 +809,20 @@ class _DetailActionBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isJoined = status == TicketStatus.upcoming;
+    final label = switch (status) {
+      TicketStatus.upcoming => 'Leave Event',
+      TicketStatus.attended => 'Share feedback',
+      TicketStatus.waitlisted => 'View Waitlist',
+      TicketStatus.cancelled => 'Event Cancelled',
+      null => 'Join Event',
+    };
+    final icon = switch (status) {
+      TicketStatus.upcoming => Icons.logout_rounded,
+      TicketStatus.attended => Icons.rate_review_rounded,
+      TicketStatus.waitlisted => Icons.hourglass_top_rounded,
+      TicketStatus.cancelled => Icons.event_busy_rounded,
+      null => Icons.favorite_rounded,
+    };
     return SafeArea(
       top: false,
       minimum: const EdgeInsets.fromLTRB(18, 10, 18, 12),
@@ -702,25 +840,24 @@ class _DetailActionBar extends StatelessWidget {
         ),
         child: Padding(
           padding: const EdgeInsets.all(8),
-          child: AppPrimaryButton(
-            label: switch (status) {
-              TicketStatus.upcoming => 'Leave Event',
-              TicketStatus.attended => 'Share feedback',
-              TicketStatus.waitlisted => 'View Waitlist',
-              TicketStatus.cancelled => 'Event Cancelled',
-              null => 'Join Event',
-            },
-            icon: switch (status) {
-              TicketStatus.upcoming => Icons.logout_rounded,
-              TicketStatus.attended => Icons.rate_review_rounded,
-              TicketStatus.waitlisted => Icons.hourglass_top_rounded,
-              TicketStatus.cancelled => Icons.event_busy_rounded,
-              null => Icons.add_rounded,
-            },
-            variant: isJoined
-                ? AppPrimaryButtonVariant.outlined
-                : AppPrimaryButtonVariant.primary,
-            onPressed: status == TicketStatus.cancelled ? null : onPressed,
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 260),
+            transitionBuilder: (child, animation) => FadeTransition(
+              opacity: animation,
+              child: ScaleTransition(
+                scale: Tween<double>(begin: .96, end: 1).animate(animation),
+                child: child,
+              ),
+            ),
+            child: AppPrimaryButton(
+              key: ValueKey(label),
+              label: label,
+              icon: icon,
+              variant: isJoined
+                  ? AppPrimaryButtonVariant.outlined
+                  : AppPrimaryButtonVariant.primary,
+              onPressed: status == TicketStatus.cancelled ? null : onPressed,
+            ),
           ),
         ),
       ),

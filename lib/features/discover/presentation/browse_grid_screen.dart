@@ -13,8 +13,6 @@ import 'package:amora_ai/core/widgets/premium_motion.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/discover/presentation/advanced_filters_screen.dart';
 import 'package:amora_ai/features/discover/presentation/discover_action_controller.dart';
-import 'package:amora_ai/features/discovery/presentation/super_like_screen.dart';
-import 'package:amora_ai/features/notifications/presentation/notifications_hub_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_detail_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
@@ -64,8 +62,6 @@ class _BrowseGridScreenState extends State<BrowseGridScreen> {
     _QuickFilter('Coffee Dates', Icons.local_cafe_rounded),
   ];
 
-  late final TextEditingController _searchController;
-  late final FocusNode _searchFocus;
   late final FocusNode _keyboardFocus;
   late List<DummyProfile> _profiles;
   DiscoverActionController? _controller;
@@ -75,7 +71,6 @@ class _BrowseGridScreenState extends State<BrowseGridScreen> {
   bool _dragging = false;
   bool _horizontalDragLocked = false;
   final ValueNotifier<double> _dragOffsetX = ValueNotifier<double>(0);
-  String _query = '';
   final Set<String> _selectedQuickFilters = <String>{};
   final Map<String, int> _photoIndices = <String, int>{};
 
@@ -84,9 +79,6 @@ class _BrowseGridScreenState extends State<BrowseGridScreen> {
   @override
   void initState() {
     super.initState();
-    _searchController = TextEditingController();
-    _searchFocus = FocusNode(debugLabel: 'Discover search')
-      ..addListener(_handleSearchFocus);
     _keyboardFocus = FocusNode(debugLabel: 'Discover keyboard shortcuts');
     _loadProfiles();
   }
@@ -94,18 +86,10 @@ class _BrowseGridScreenState extends State<BrowseGridScreen> {
   @override
   void dispose() {
     _loadingTimer?.cancel();
-    _searchFocus
-      ..removeListener(_handleSearchFocus)
-      ..dispose();
-    _searchController.dispose();
     _keyboardFocus.dispose();
     _dragOffsetX.dispose();
     if (widget.controller == null) _controller?.dispose();
     super.dispose();
-  }
-
-  void _handleSearchFocus() {
-    if (mounted) setState(() {});
   }
 
   void _loadProfiles() {
@@ -127,19 +111,8 @@ class _BrowseGridScreenState extends State<BrowseGridScreen> {
   }
 
   List<DummyProfile> get _filteredProfiles {
-    final query = _query.trim().toLowerCase();
     return _profiles
         .where((profile) {
-          final searchable = <String>[
-            profile.name,
-            profile.city,
-            profile.profession,
-            profile.intent,
-            ...profile.interests,
-            ...profile.languages,
-          ].join(' ').toLowerCase();
-          if (query.isNotEmpty && !searchable.contains(query)) return false;
-
           final distance = int.tryParse(profile.distance.split(' ').first);
           for (final filter in _selectedQuickFilters) {
             switch (filter) {
@@ -244,15 +217,6 @@ class _BrowseGridScreenState extends State<BrowseGridScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _DiscoverSearchRow(
-                    controller: _searchController,
-                    focusNode: _searchFocus,
-                    focused: _searchFocus.hasFocus,
-                    onChanged: _updateSearch,
-                    onClear: _clearSearch,
-                    onNotifications: _openNotifications,
-                  ),
-                  const SizedBox(height: 10),
                   _DiscoverFilterRail(
                     filters: _quickFilters,
                     selected: _selectedQuickFilters,
@@ -281,22 +245,19 @@ class _BrowseGridScreenState extends State<BrowseGridScreen> {
         final profile = _profileFor(_actions.currentProfileId);
         if (profile == null) {
           return _DiscoverEmpty(
-            searchEmpty: _query.trim().isNotEmpty,
             onFilters: _openFilters,
             onRefresh: _resetFiltersAndDeck,
           );
         }
         return LayoutBuilder(
           builder: (context, constraints) {
-            const aspect = 1.35;
-            final width = math.min(
-              512.0,
-              math.min(constraints.maxWidth, constraints.maxHeight / aspect),
-            );
+            final width = math.min(512.0, constraints.maxWidth);
+            final desiredHeight = (width * 1.72).clamp(420.0, 760.0);
+            final height = math.min(constraints.maxHeight, desiredHeight);
             return Center(
               child: SizedBox(
                 width: width,
-                height: width * aspect,
+                height: height,
                 child: _buildDraggableCard(profile, width),
               ),
             );
@@ -383,7 +344,7 @@ class _BrowseGridScreenState extends State<BrowseGridScreen> {
                   width: width,
                 ),
                 onUndo: _rewind,
-                onSuperLike: () => _openSuperLike(profile),
+                onSuperLike: () => _sendSuperLike(profile),
                 onLike: () => _performAction(
                   profile,
                   action: DiscoverAction.like,
@@ -482,13 +443,23 @@ class _BrowseGridScreenState extends State<BrowseGridScreen> {
     }
   }
 
-  Future<void> _openSuperLike(DummyProfile profile) {
+  Future<void> _sendSuperLike(DummyProfile profile) {
     return AmoraSession.requireAuth(
       context: context,
-      onAuthenticated: () {
-        Navigator.of(
-          context,
-        ).pushNamed(SuperLikeScreen.routeName, arguments: profile);
+      onAuthenticated: () async {
+        if (_actions.isTransitioning) return;
+        HapticFeedback.mediumImpact();
+        await _actions.superLikeProfile();
+        if (!mounted) return;
+        setState(() => _photoIndices.remove(profile.id));
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            SnackBar(
+              duration: const Duration(milliseconds: 1200),
+              content: Text('Super Like sent to ${profile.name}'),
+            ),
+          );
       },
     );
   }
@@ -500,7 +471,14 @@ class _BrowseGridScreenState extends State<BrowseGridScreen> {
           name: ProfileDetailScreen.routeName,
           arguments: profile,
         ),
-        builder: (_) => const ProfileDetailScreen(),
+        builder: (_) => ProfileDetailScreen(
+          profile: profile,
+          onSuperLike: () async {
+            if (_actions.currentProfileId != profile.id) return false;
+            await _actions.superLikeProfile();
+            return _actions.superLikedProfileIds.contains(profile.id);
+          },
+        ),
       ),
     );
     if (!mounted || decision == null) return;
@@ -512,27 +490,8 @@ class _BrowseGridScreenState extends State<BrowseGridScreen> {
     );
   }
 
-  void _openNotifications() {
-    Navigator.of(context).pushNamed(NotificationsHubScreen.routeName);
-  }
-
   void _openFilters() {
     Navigator.of(context).pushNamed(AdvancedFiltersScreen.routeName);
-  }
-
-  void _updateSearch(String value) {
-    setState(() {
-      _query = value;
-      _replaceController();
-      _photoIndices.clear();
-    });
-    _dragOffsetX.value = 0;
-  }
-
-  void _clearSearch() {
-    _searchController.clear();
-    _updateSearch('');
-    _searchFocus.requestFocus();
   }
 
   void _toggleQuickFilter(String filter) {
@@ -548,8 +507,6 @@ class _BrowseGridScreenState extends State<BrowseGridScreen> {
 
   void _resetFiltersAndDeck() {
     setState(() {
-      _query = '';
-      _searchController.clear();
       _selectedQuickFilters.clear();
       _replaceController();
       _photoIndices.clear();
@@ -563,7 +520,7 @@ class _BrowseGridScreenState extends State<BrowseGridScreen> {
   }
 
   KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
-    if (event is! KeyDownEvent || _searchFocus.hasFocus) {
+    if (event is! KeyDownEvent) {
       return KeyEventResult.ignored;
     }
     if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
@@ -575,127 +532,6 @@ class _BrowseGridScreenState extends State<BrowseGridScreen> {
       return KeyEventResult.handled;
     }
     return KeyEventResult.ignored;
-  }
-}
-
-class _DiscoverSearchRow extends StatelessWidget {
-  const _DiscoverSearchRow({
-    required this.controller,
-    required this.focusNode,
-    required this.focused,
-    required this.onChanged,
-    required this.onClear,
-    required this.onNotifications,
-  });
-
-  final TextEditingController controller;
-  final FocusNode focusNode;
-  final bool focused;
-  final ValueChanged<String> onChanged;
-  final VoidCallback onClear;
-  final VoidCallback onNotifications;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: AnimatedContainer(
-            key: const ValueKey('discover-search-container'),
-            height: 56,
-            duration: AmoraMotion.fast,
-            curve: AmoraMotion.curve,
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(28),
-              border: Border.all(
-                color: focused ? AppColors.secondary : AppColors.tertiary,
-                width: focused ? 1.5 : 1,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.primary.withValues(
-                    alpha: focused ? .13 : .07,
-                  ),
-                  blurRadius: focused ? 22 : 14,
-                  offset: const Offset(0, 7),
-                ),
-              ],
-            ),
-            child: TextField(
-              key: const ValueKey('discover-search-field'),
-              controller: controller,
-              focusNode: focusNode,
-              onChanged: onChanged,
-              textInputAction: TextInputAction.search,
-              style: AmoraTextStyles.bodyMedium,
-              decoration: InputDecoration(
-                hintText: 'Search people, interests or cities',
-                hintStyle: AmoraTextStyles.bodyMedium.copyWith(
-                  color: AppColors.text.withValues(alpha: .62),
-                ),
-                prefixIcon: const Icon(
-                  Icons.search_rounded,
-                  color: AppColors.secondary,
-                ),
-                suffixIcon: controller.text.isEmpty
-                    ? null
-                    : IconButton(
-                        tooltip: 'Clear search',
-                        onPressed: onClear,
-                        icon: const Icon(
-                          Icons.close_rounded,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(vertical: 17),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 10),
-        _CircleSurfaceButton(
-          key: const ValueKey('discover-notifications-button'),
-          tooltip: 'Notifications',
-          icon: Icons.notifications_none_rounded,
-          onPressed: onNotifications,
-        ),
-      ],
-    );
-  }
-}
-
-class _CircleSurfaceButton extends StatelessWidget {
-  const _CircleSurfaceButton({
-    super.key,
-    required this.tooltip,
-    required this.icon,
-    required this.onPressed,
-  });
-
-  final String tooltip;
-  final IconData icon;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return Tooltip(
-      message: tooltip,
-      child: Material(
-        color: AppColors.surface,
-        shape: CircleBorder(side: BorderSide(color: AppColors.tertiary)),
-        elevation: 0,
-        child: InkWell(
-          onTap: onPressed,
-          customBorder: const CircleBorder(),
-          child: SizedBox.square(
-            dimension: 56,
-            child: Icon(icon, color: AppColors.primary),
-          ),
-        ),
-      ),
-    );
   }
 }
 
@@ -1516,13 +1352,8 @@ class _SkeletonLine extends StatelessWidget {
 }
 
 class _DiscoverEmpty extends StatelessWidget {
-  const _DiscoverEmpty({
-    required this.searchEmpty,
-    required this.onFilters,
-    required this.onRefresh,
-  });
+  const _DiscoverEmpty({required this.onFilters, required this.onRefresh});
 
-  final bool searchEmpty;
   final VoidCallback onFilters;
   final VoidCallback onRefresh;
 
@@ -1549,7 +1380,7 @@ class _DiscoverEmpty extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  searchEmpty ? 'No profiles match' : 'You are all caught up',
+                  'You are all caught up',
                   textAlign: TextAlign.center,
                   style: AmoraTextStyles.titleLarge.copyWith(
                     color: AppColors.primary,
@@ -1569,7 +1400,7 @@ class _DiscoverEmpty extends StatelessWidget {
                 ),
                 const SizedBox(height: 10),
                 AppPrimaryButton(
-                  label: searchEmpty ? 'Reset Filters' : 'View profiles again',
+                  label: 'View profiles again',
                   variant: AppPrimaryButtonVariant.outlined,
                   onPressed: onRefresh,
                 ),

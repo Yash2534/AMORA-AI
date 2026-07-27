@@ -2,7 +2,9 @@ import 'package:amora_ai/core/access/amora_access.dart';
 import 'package:amora_ai/core/data/image_repository.dart';
 import 'package:amora_ai/core/widgets/premium_image.dart';
 import 'package:amora_ai/features/discover/presentation/browse_grid_screen.dart';
+import 'package:amora_ai/features/discover/presentation/discover_action_controller.dart';
 import 'package:amora_ai/features/profile/presentation/profile_detail_screen.dart';
+import 'package:amora_ai/features/profile/presentation/profile_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -11,17 +13,17 @@ void main() {
     WidgetTester tester, {
     ValueChanged<RouteSettings>? onNamedRoute,
     List<NavigatorObserver> observers = const <NavigatorObserver>[],
+    DiscoverActionController? controller,
   }) async {
     await tester.pumpWidget(
       MaterialApp(
-        home: const BrowseGridScreen(),
+        home: BrowseGridScreen(controller: controller),
         navigatorObservers: observers,
         onGenerateRoute: (settings) {
           onNamedRoute?.call(settings);
           if (<String>{
             '/filters',
             '/notifications',
-            '/super-like',
             '/chats',
             '/matches',
             '/events',
@@ -71,7 +73,6 @@ void main() {
 
     await pumpDiscover(tester);
 
-    final search = find.byKey(const ValueKey('discover-search-field'));
     final filters = find.byKey(const ValueKey('discover-filter-rail'));
     final firstProfile = ImageRepository.profiles.first;
     final card = find.byKey(
@@ -87,9 +88,9 @@ void main() {
     expect(find.byKey(const ValueKey('discover-menu-button')), findsNothing);
     expect(
       find.byKey(const ValueKey('discover-notifications-button')),
-      findsOneWidget,
+      findsNothing,
     );
-    expect(search, findsOneWidget);
+    expect(find.byKey(const ValueKey('discover-search-field')), findsNothing);
     expect(filters, findsOneWidget);
     expect(card, findsOneWidget);
     expect(find.byType(PremiumImage), findsOneWidget);
@@ -101,11 +102,8 @@ void main() {
       findsOneWidget,
     );
     expect(find.byKey(const ValueKey('discover-like-button')), findsOneWidget);
-    expect(
-      tester.getTopLeft(search).dy,
-      lessThan(tester.getTopLeft(filters).dy),
-    );
     expect(tester.getTopLeft(filters).dy, lessThan(tester.getTopLeft(card).dy));
+    expect(tester.getSize(card).height, greaterThan(450));
     expect(tester.takeException(), isNull);
   });
 
@@ -120,10 +118,9 @@ void main() {
     final card = find.byKey(
       ValueKey('discover-profile-card-${firstProfile.id}'),
     );
-    final search = find.byKey(const ValueKey('discover-search-field'));
 
-    expect(tester.getSize(search).width, lessThanOrEqualTo(464));
     expect(tester.getSize(card).width, lessThanOrEqualTo(512));
+    expect(tester.getSize(card).height, lessThanOrEqualTo(760));
     expect(find.byType(PremiumImage), findsOneWidget);
     expect(tester.getCenter(card).dx, moreOrLessEquals(600, epsilon: 1));
     expect(tester.takeException(), isNull);
@@ -161,31 +158,19 @@ void main() {
     expect(find.text('/matches destination'), findsOneWidget);
   });
 
-  testWidgets('search focus animates and local search exposes clear', (
+  testWidgets('search and notification controls are absent from Discover', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(430, 900));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     await pumpDiscover(tester);
-    final search = find.byKey(const ValueKey('discover-search-field'));
-    final container = find.byKey(const ValueKey('discover-search-container'));
-
-    await tester.tap(search);
-    await tester.pump(const Duration(milliseconds: 350));
-    final field = tester.widget<TextField>(search);
-    final decoration = tester.widget<AnimatedContainer>(container).decoration;
-    expect(field.focusNode?.hasFocus, isTrue);
-    expect((decoration as BoxDecoration).border, isNotNull);
-
-    await tester.enterText(search, 'profile-that-does-not-exist');
-    await tester.pump();
-    expect(find.text('No profiles match'), findsOneWidget);
-    expect(find.byIcon(Icons.close_rounded), findsOneWidget);
-
-    await tester.tap(find.byIcon(Icons.close_rounded));
-    await tester.pumpAndSettle();
-    expect(find.text('No profiles match'), findsNothing);
+    expect(find.byKey(const ValueKey('discover-search-field')), findsNothing);
+    expect(
+      find.byKey(const ValueKey('discover-notifications-button')),
+      findsNothing,
+    );
+    expect(find.byKey(const ValueKey('discover-filter-rail')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -235,17 +220,33 @@ void main() {
     expect(find.text('/filters destination'), findsOneWidget);
   });
 
-  testWidgets('notification control opens the existing route', (tester) async {
+  testWidgets('Profile notification control opens the existing route', (
+    tester,
+  ) async {
     await tester.binding.setSurfaceSize(const Size(430, 900));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     RouteSettings? openedRoute;
 
-    await pumpDiscover(
-      tester,
-      onNamedRoute: (settings) => openedRoute = settings,
+    await tester.pumpWidget(
+      MaterialApp(
+        home: const ProfileScreen(showNavigation: false),
+        onGenerateRoute: (settings) {
+          openedRoute = settings;
+          if (settings.name == '/notifications') {
+            return MaterialPageRoute<void>(
+              settings: settings,
+              builder: (_) => const Scaffold(
+                body: Center(child: Text('/notifications destination')),
+              ),
+            );
+          }
+          return null;
+        },
+      ),
     );
+    await tester.pumpAndSettle();
     await tester.tap(
-      find.byKey(const ValueKey('discover-notifications-button')),
+      find.byKey(const ValueKey('profile-notifications-button')),
     );
     await tester.pumpAndSettle();
 
@@ -516,24 +517,30 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Super Like reuses its existing route and profile argument', (
+  testWidgets('Super Like sends directly without opening a route', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(430, 900));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     AmoraSession.logIn();
     RouteSettings? openedRoute;
+    final controller = DiscoverActionController(
+      profileIds: ImageRepository.profiles.map((profile) => profile.id),
+      transitionDuration: const Duration(milliseconds: 1),
+    );
+    addTearDown(controller.dispose);
 
     await pumpDiscover(
       tester,
       onNamedRoute: (settings) => openedRoute = settings,
+      controller: controller,
     );
     final firstProfile = ImageRepository.profiles.first;
     await tester.tap(find.byKey(const ValueKey('discover-super-like-button')));
     await tester.pumpAndSettle();
 
-    expect(openedRoute?.name, '/super-like');
-    expect(openedRoute?.arguments, same(firstProfile));
+    expect(openedRoute, isNull);
+    expect(controller.superLikedProfileIds, contains(firstProfile.id));
   });
 
   testWidgets('filtered profiles reach and restart the end state safely', (

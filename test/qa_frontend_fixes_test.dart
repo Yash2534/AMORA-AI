@@ -112,8 +112,8 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Events are for Amora members'), findsOneWidget);
-    expect(find.text('Explore Membership'), findsOneWidget);
+    expect(find.text('Meet beyond the screen'), findsOneWidget);
+    expect(find.text('Unlock Events'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

@@ -3,6 +3,7 @@ import 'package:amora_ai/core/access/amora_access.dart';
 import 'package:amora_ai/core/theme/amora_theme.dart';
 import 'package:amora_ai/features/auth/presentation/amora_auth_screen.dart';
 import 'package:amora_ai/features/onboarding/data/local_onboarding_repository.dart';
+import 'package:amora_ai/features/onboarding/data/gujarat_cities.dart';
 import 'package:amora_ai/features/onboarding/presentation/profile_onboarding_flow.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
 import 'package:amora_ai/features/profile/presentation/profile_completion_screen.dart';
@@ -147,10 +148,16 @@ void main() {
 
     expect(find.text('Step 5 of 5'), findsOneWidget);
     await tester.ensureVisible(find.byKey(const Key('onboarding-city')));
+    await tester.tap(find.byKey(const Key('onboarding-city')));
+    await tester.pumpAndSettle();
     await tester.enterText(
-      find.byKey(const Key('onboarding-city')),
-      'Ahmedabad',
+      find.byKey(const ValueKey('gujarat-city-search')),
+      'Ahmed',
     );
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('gujarat-city-Ahmedabad')));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const Key('onboarding-continue')));
     await tester.pump();
     await tester.tap(find.byKey(const Key('onboarding-continue')));
     await tester.pumpAndSettle();
@@ -274,5 +281,15 @@ void main() {
     );
     expect(button.onPressed, isNotNull);
     expect(find.text('Return to Discover'), findsOneWidget);
+  });
+
+  test('Gujarat city catalogue is unique and alphabetically sorted', () {
+    final sorted = [...gujaratCities]..sort();
+    expect(gujaratCities, orderedEquals(sorted));
+    expect(gujaratCities.toSet(), hasLength(gujaratCities.length));
+    expect(
+      gujaratCities,
+      containsAll(const ['Ahmedabad', 'Surat', 'Vadodara', 'Bilimora']),
+    );
   });
 }

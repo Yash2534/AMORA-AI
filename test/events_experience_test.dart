@@ -1,11 +1,31 @@
 import 'package:amora_ai/core/theme/amora_theme.dart';
 import 'package:amora_ai/features/events/data/events_dummy_data.dart';
+import 'package:amora_ai/features/events/data/event_asset_catalog.dart';
 import 'package:amora_ai/features/events/presentation/event_detail_screen.dart';
 import 'package:amora_ai/features/events/presentation/events_browse_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  testWidgets('all local event assets load and core events map uniquely', (
+    tester,
+  ) async {
+    for (final asset in EventAssetCatalog.all) {
+      final data = await rootBundle.load(asset);
+      expect(data.lengthInBytes, greaterThan(0), reason: asset);
+    }
+    expect(
+      events.take(5).map((event) => event.image.assetPath).toSet(),
+      hasLength(5),
+    );
+    expect(events[0].image.assetPath, EventAssetCatalog.coffee);
+    expect(events[1].image.assetPath, EventAssetCatalog.garba);
+    expect(events[2].image.assetPath, EventAssetCatalog.liveMusic);
+    expect(events[3].image.assetPath, EventAssetCatalog.foundersMixer);
+    expect(events[4].image.assetPath, EventAssetCatalog.heritageFoodWalk);
+  });
+
   testWidgets('free users receive a dedicated member locked state', (
     tester,
   ) async {
@@ -20,8 +40,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Events are for Amora members'), findsOneWidget);
-    expect(find.text('Explore Membership'), findsOneWidget);
+    expect(find.text('Meet beyond the screen'), findsOneWidget);
+    expect(find.text('Unlock Events'), findsOneWidget);
     expect(find.textContaining('ticket', findRichText: true), findsNothing);
     expect(tester.takeException(), isNull);
   });
@@ -44,13 +64,30 @@ void main() {
     await tester.pump(const Duration(milliseconds: 520));
     await tester.pump();
 
-    expect(find.text('Featured for you'), findsOneWidget);
+    expect(find.text('Featured experience'), findsOneWidget);
     await tester.scrollUntilVisible(
-      find.text('Upcoming events'),
+      find.text('Recommended for You'),
       320,
       scrollable: find.byType(Scrollable).first,
     );
-    expect(find.text('Upcoming events'), findsOneWidget);
+    expect(find.text('Recommended for You'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('This Week'),
+      320,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('This Week'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Amora Circles'),
+      420,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Amora Circles'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('My Events'),
+      420,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('Joined'), findsWidgets);
     expect(find.textContaining('ticket', findRichText: true), findsNothing);
     expect(find.textContaining('Rs ', findRichText: true), findsNothing);
@@ -91,11 +128,11 @@ void main() {
     await tester.pump();
 
     await tester.scrollUntilVisible(
-      find.text('Upcoming events'),
+      find.text('This Week'),
       320,
       scrollable: find.byType(Scrollable).first,
     );
-    expect(find.text('Upcoming events'), findsOneWidget);
+    expect(find.text('This Week'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

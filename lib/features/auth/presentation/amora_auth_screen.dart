@@ -9,7 +9,6 @@ import 'package:amora_ai/features/auth/presentation/login_screen.dart';
 import 'package:amora_ai/features/auth/presentation/signup_screen.dart';
 import 'package:amora_ai/features/auth/presentation/widgets/auth_presentation.dart';
 import 'package:amora_ai/features/auth/presentation/phone_otp_screen.dart';
-import 'package:amora_ai/features/discover/presentation/browse_grid_screen.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
@@ -42,9 +41,10 @@ class _AmoraAuthScreenState extends State<AmoraAuthScreen>
   @override
   Widget build(BuildContext context) {
     return AmoraAuthShell(
-      title: 'Welcome to AMORA AI',
-      subtitle: 'Choose the quickest way to begin your private Amora journey.',
+      title: 'Meaningful connections begin here.',
+      subtitle: 'Create an account or return to your private Amora space.',
       statement: 'Meet with intention.',
+      showComposition: false,
       onBack: _goBack,
       footer: const _AuthFooter(),
       child: FadeTransition(
@@ -52,13 +52,25 @@ class _AmoraAuthScreenState extends State<AmoraAuthScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              'Continue securely',
-              style: AmoraTextStyles.titleMedium.copyWith(
-                color: AppColors.primary,
-              ),
+            AppPrimaryButton(
+              key: const ValueKey('auth-create-account'),
+              label: 'Create account',
+              icon: Icons.favorite_rounded,
+              onPressed: () =>
+                  Navigator.of(context).pushNamed(SignupScreen.routeName),
             ),
             const SizedBox(height: AmoraSpacing.space12),
+            AppPrimaryButton(
+              key: const ValueKey('auth-sign-in'),
+              label: 'Log in',
+              icon: Icons.login_rounded,
+              variant: AppPrimaryButtonVariant.outlined,
+              onPressed: () =>
+                  Navigator.of(context).pushNamed(LoginScreen.routeName),
+            ),
+            const SizedBox(height: AmoraSpacing.space20),
+            const AuthDivider(),
+            const SizedBox(height: AmoraSpacing.space16),
             AuthPrimaryButton(
               label: 'Continue with phone',
               icon: Icons.phone_iphone_rounded,
@@ -66,16 +78,6 @@ class _AmoraAuthScreenState extends State<AmoraAuthScreen>
                   Navigator.of(context).pushNamed(PhoneOtpScreen.routeName),
             ),
             const SizedBox(height: AmoraSpacing.space12),
-            AppPrimaryButton(
-              label: 'Continue with email',
-              icon: Icons.mail_outline_rounded,
-              variant: AppPrimaryButtonVariant.outlined,
-              onPressed: () =>
-                  Navigator.of(context).pushNamed(LoginScreen.routeName),
-            ),
-            const SizedBox(height: AmoraSpacing.space16),
-            const AuthDivider(),
-            const SizedBox(height: AmoraSpacing.space16),
             AppPrimaryButton(
               label: 'Continue with Google',
               variant: AppPrimaryButtonVariant.outlined,
@@ -92,17 +94,8 @@ class _AmoraAuthScreenState extends State<AmoraAuthScreen>
             ],
             const SizedBox(height: AmoraSpacing.space20),
             const AuthTrustNote(
-              text: 'Sign in is required only when you are ready to connect.',
+              text: 'Your profile and conversations stay private.',
               icon: Icons.verified_user_outlined,
-            ),
-            const SizedBox(height: AmoraSpacing.space16),
-            AppPrimaryButton(
-              label: 'Explore AMORA AI',
-              icon: Icons.explore_outlined,
-              variant: AppPrimaryButtonVariant.text,
-              onPressed: () => Navigator.of(
-                context,
-              ).pushReplacementNamed(BrowseGridScreen.routeName),
             ),
           ],
         ),
@@ -129,21 +122,6 @@ class _AuthFooter extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Wrap(
-          alignment: WrapAlignment.center,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            Text('Already have an account?', style: AmoraTextStyles.bodyMedium),
-            AppPrimaryButton(
-              label: 'Log in',
-              variant: AppPrimaryButtonVariant.text,
-              size: AmoraButtonSize.compact,
-              fullWidth: false,
-              onPressed: () =>
-                  Navigator.of(context).pushNamed(LoginScreen.routeName),
-            ),
-          ],
-        ),
         Text(
           'By continuing, you agree to Amora’s Terms and Privacy Policy.',
           textAlign: TextAlign.center,
@@ -166,14 +144,6 @@ class _AuthFooter extends StatelessWidget {
                     showAmoraSnackBar(context, message: '$label selected'),
               ),
           ],
-        ),
-        AppPrimaryButton(
-          label: 'Create a new account',
-          icon: Icons.person_add_alt_1_rounded,
-          variant: AppPrimaryButtonVariant.text,
-          fullWidth: false,
-          onPressed: () =>
-              Navigator.of(context).pushNamed(SignupScreen.routeName),
         ),
       ],
     );

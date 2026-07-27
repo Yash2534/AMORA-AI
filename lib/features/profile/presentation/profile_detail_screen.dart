@@ -1,4 +1,5 @@
 import 'dart:ui' as ui;
+import 'dart:math' as math;
 
 import 'package:amora_ai/core/access/amora_access.dart';
 import 'package:amora_ai/core/data/image_repository.dart';
@@ -11,7 +12,6 @@ import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/chat/presentation/chat_detail_screen.dart';
 import 'package:amora_ai/features/commerce/presentation/send_gift_screen.dart';
 import 'package:amora_ai/features/discover/presentation/browse_grid_screen.dart';
-import 'package:amora_ai/features/discovery/presentation/super_like_screen.dart';
 import 'package:amora_ai/features/match/presentation/why_we_matched_screen.dart';
 import 'package:amora_ai/features/safety/presentation/blocked_user_success_sheet.dart';
 import 'package:amora_ai/features/safety/presentation/report_flow_screen.dart';
@@ -22,25 +22,38 @@ import 'package:flutter/physics.dart';
 enum ProfileDetailDecision { reject, like }
 
 class ProfileDetailScreen extends StatefulWidget {
-  const ProfileDetailScreen({super.key, this.profile});
+  const ProfileDetailScreen({super.key, this.profile, this.onSuperLike});
 
   static const routeName = '/profile-detail';
   final DummyProfile? profile;
+  final Future<bool> Function()? onSuperLike;
 
   @override
   State<ProfileDetailScreen> createState() => _ProfileDetailScreenState();
 }
 
-class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
+class _ProfileDetailScreenState extends State<ProfileDetailScreen>
+    with SingleTickerProviderStateMixin {
   final PageController _galleryController = PageController();
+  late final AnimationController _superLikeAnimation;
 
   int _photoIndex = 0;
   bool _liked = false;
   bool _superLiked = false;
+  bool _superLikeSending = false;
   bool _saved = false;
   bool _blocked = false;
   DummyProfile? _routeProfile;
   bool _argumentsRead = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _superLikeAnimation = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 780),
+    );
+  }
 
   DummyProfile get _profile => _routeProfile ?? _detailProfile;
 
@@ -79,6 +92,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
   @override
   void dispose() {
     _galleryController.dispose();
+    _superLikeAnimation.dispose();
     super.dispose();
   }
 
@@ -126,11 +140,19 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                       child: ProfileActionBar(
                         liked: _liked,
                         superLiked: _superLiked,
+                        superLikeSending: _superLikeSending,
                         onLike: _toggleLike,
-                        onSuperLike: _openSuperLike,
+                        onSuperLike: _sendSuperLike,
                         onGift: _openGift,
-                        onDate: () => _snack('Date booking draft created'),
                         onMessage: _startChat,
+                      ),
+                    ),
+                  ),
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: _SuperLikeCelebration(
+                        animation: _superLikeAnimation,
+                        profileName: _profile.name,
                       ),
                     ),
                   ),
@@ -229,13 +251,43 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
     _snack(_liked ? 'Profile liked successfully' : 'Like removed');
   }
 
-  void _openSuperLike() {
+  Future<void> _sendSuperLike() async {
+    if (_superLikeSending || _superLiked) return;
     if (AmoraSession.isGuest) {
-      _requireAuth(_openSuperLike);
+      await _requireAuth(_sendSuperLike);
       return;
     }
-    setState(() => _superLiked = true);
-    Navigator.of(context).pushNamed(SuperLikeScreen.routeName);
+    final callback = widget.onSuperLike;
+    if (callback == null) {
+      _snack('Super Like is unavailable for this profile');
+      return;
+    }
+
+    setState(() => _superLikeSending = true);
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    try {
+      final sent = await callback();
+      if (!mounted) return;
+      if (!sent) {
+        _superLikeAnimation.reset();
+        _snack('Super Like could not be sent');
+        return;
+      }
+      setState(() => _superLiked = true);
+      if (reduceMotion) {
+        _snack('Super Like sent');
+      } else {
+        await _superLikeAnimation.forward(from: 0);
+        if (mounted) _snack('Super Like sent');
+      }
+    } catch (_) {
+      if (mounted) {
+        _superLikeAnimation.reset();
+        _snack('Super Like could not be sent');
+      }
+    } finally {
+      if (mounted) setState(() => _superLikeSending = false);
+    }
   }
 
   void _openGift() {
@@ -1641,15 +1693,150 @@ class _TrustRow extends StatelessWidget {
   }
 }
 
+class _SuperLikeCelebration extends StatelessWidget {
+  const _SuperLikeCelebration({
+    required this.animation,
+    required this.profileName,
+  });
+
+  final Animation<double> animation;
+  final String profileName;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: animation,
+      builder: (context, _) {
+        final t = animation.value;
+        if (t == 0) return const SizedBox.shrink();
+        final opacity = math.sin(math.pi * t).clamp(0.0, 1.0);
+        final pulse = 1 + (math.sin(math.pi * t) * .22);
+        return Opacity(
+          opacity: opacity,
+          child: Align(
+            alignment: const Alignment(0, -.18),
+            child: Semantics(
+              liveRegion: true,
+              label: 'Super Like sent to $profileName',
+              child: SizedBox(
+                width: 280,
+                height: 230,
+                child: Stack(
+                  alignment: Alignment.center,
+                  clipBehavior: Clip.none,
+                  children: [
+                    Container(
+                      width: 150 * pulse,
+                      height: 150 * pulse,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppColors.tertiary.withValues(alpha: .18),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.secondary.withValues(alpha: .34),
+                            blurRadius: 42,
+                            spreadRadius: 10 * t,
+                          ),
+                        ],
+                      ),
+                    ),
+                    Transform.scale(
+                      scale: (.72 + t * .5).clamp(.72, 1.14),
+                      child: Container(
+                        width: 78,
+                        height: 78,
+                        decoration: const BoxDecoration(
+                          color: AppColors.secondary,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.star_rounded,
+                          color: AppColors.surface,
+                          size: 46,
+                        ),
+                      ),
+                    ),
+                    for (final particle in const <(Offset, IconData)>[
+                      (Offset(-72, -54), Icons.auto_awesome_rounded),
+                      (Offset(76, -44), Icons.star_rounded),
+                      (Offset(-92, 18), Icons.favorite_rounded),
+                      (Offset(92, 26), Icons.auto_awesome_rounded),
+                      (Offset(-54, 76), Icons.star_rounded),
+                      (Offset(58, 82), Icons.favorite_rounded),
+                    ])
+                      Transform.translate(
+                        offset: particle.$1 * (.35 + t),
+                        child: Transform.scale(
+                          scale: (.45 + t).clamp(.45, 1),
+                          child: Icon(
+                            particle.$2,
+                            color: particle.$2 == Icons.favorite_rounded
+                                ? AppColors.secondary
+                                : AppColors.primary,
+                            size: 18,
+                          ),
+                        ),
+                      ),
+                    Positioned(
+                      bottom: 0,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(99),
+                          border: Border.all(color: AppColors.tertiary),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.primary.withValues(alpha: .14),
+                              blurRadius: 20,
+                              offset: const Offset(0, 8),
+                            ),
+                          ],
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.star_rounded,
+                              color: AppColors.secondary,
+                              size: 18,
+                            ),
+                            SizedBox(width: 7),
+                            Text(
+                              'Super Like sent',
+                              style: TextStyle(
+                                color: AppColors.primary,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
 class ProfileActionBar extends StatelessWidget {
   const ProfileActionBar({
     super.key,
     required this.liked,
     required this.superLiked,
+    required this.superLikeSending,
     required this.onLike,
     required this.onSuperLike,
     required this.onGift,
-    required this.onDate,
     required this.onMessage,
   });
 
@@ -1658,10 +1845,10 @@ class ProfileActionBar extends StatelessWidget {
 
   final bool liked;
   final bool superLiked;
+  final bool superLikeSending;
   final VoidCallback onLike;
   final VoidCallback onSuperLike;
   final VoidCallback onGift;
-  final VoidCallback onDate;
   final VoidCallback onMessage;
 
   @override
@@ -1695,27 +1882,12 @@ class ProfileActionBar extends StatelessWidget {
               ),
               Expanded(
                 child: _ProfileActionButton(
-                  label: superLiked ? 'Supered' : 'Super',
+                  key: const ValueKey('profile-super-like-button'),
+                  label: 'Super Like',
                   icon: Icons.star_rounded,
                   selected: superLiked,
+                  loading: superLikeSending,
                   onTap: onSuperLike,
-                ),
-              ),
-              Expanded(
-                child: _ProfileActionButton(
-                  key: const ValueKey('profile-like-button'),
-                  label: liked ? 'Liked' : 'Like',
-                  icon: Icons.favorite_rounded,
-                  selected: liked,
-                  dominant: true,
-                  onTap: onLike,
-                ),
-              ),
-              Expanded(
-                child: _ProfileActionButton(
-                  label: 'Date',
-                  icon: Icons.event_available_rounded,
-                  onTap: onDate,
                 ),
               ),
               Expanded(
@@ -1724,6 +1896,16 @@ class ProfileActionBar extends StatelessWidget {
                   label: 'Message',
                   icon: Icons.chat_bubble_rounded,
                   onTap: onMessage,
+                ),
+              ),
+              Expanded(
+                child: _ProfileActionButton(
+                  key: const ValueKey('profile-like-button'),
+                  label: 'Like',
+                  icon: Icons.favorite_rounded,
+                  selected: liked,
+                  dominant: true,
+                  onTap: onLike,
                 ),
               ),
             ],
@@ -1742,6 +1924,7 @@ class _ProfileActionButton extends StatefulWidget {
     required this.onTap,
     this.selected = false,
     this.dominant = false,
+    this.loading = false,
   });
 
   final String label;
@@ -1749,6 +1932,7 @@ class _ProfileActionButton extends StatefulWidget {
   final VoidCallback onTap;
   final bool selected;
   final bool dominant;
+  final bool loading;
 
   @override
   State<_ProfileActionButton> createState() => _ProfileActionButtonState();
@@ -1797,7 +1981,7 @@ class _ProfileActionButtonState extends State<_ProfileActionButton>
             borderRadius: BorderRadius.circular(24),
             clipBehavior: Clip.antiAlias,
             child: InkWell(
-              onTap: widget.onTap,
+              onTap: widget.loading ? null : widget.onTap,
               child: SizedBox(
                 height: 70,
                 child: Column(
@@ -1816,11 +2000,21 @@ class _ProfileActionButtonState extends State<_ProfileActionButton>
                               : AppColors.tertiary,
                         ),
                       ),
-                      child: Icon(
-                        widget.icon,
-                        color: filled ? AppColors.surface : AppColors.primary,
-                        size: widget.dominant ? 22 : 19,
-                      ),
+                      child: widget.loading
+                          ? const Padding(
+                              padding: EdgeInsets.all(9),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppColors.secondary,
+                              ),
+                            )
+                          : Icon(
+                              widget.icon,
+                              color: filled
+                                  ? AppColors.surface
+                                  : AppColors.primary,
+                              size: widget.dominant ? 22 : 19,
+                            ),
                     ),
                     const SizedBox(height: 2),
                     Text(
@@ -1831,7 +2025,7 @@ class _ProfileActionButtonState extends State<_ProfileActionButton>
                         color: widget.dominant
                             ? AppColors.secondary
                             : AppColors.textNeutral,
-                        fontSize: 10,
+                        fontSize: 10.5,
                         fontWeight: FontWeight.w700,
                       ),
                     ),

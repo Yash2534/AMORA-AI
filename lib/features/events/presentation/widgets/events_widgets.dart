@@ -6,11 +6,41 @@ import 'package:amora_ai/core/widgets/premium_image.dart';
 import 'package:amora_ai/core/widgets/premium_motion.dart';
 import 'package:amora_ai/features/events/domain/event_models.dart';
 import 'package:amora_ai/features/monetization/data/monetization_data.dart';
+import 'package:amora_ai/features/subscription/presentation/testing/membership_test_flow.dart';
 import 'package:flutter/material.dart';
 
-bool get hasPremiumEventsAccess => subscriptionPlans.any(
+bool get hasProductionPremiumEventsAccess => subscriptionPlans.any(
   (plan) => plan.current && plan.features.contains('Premium events'),
 );
+
+bool get hasPremiumEventsAccess =>
+    (membershipTestMode &&
+        MembershipTestFlowController.instance.membershipActive) ||
+    hasProductionPremiumEventsAccess;
+
+class EventsAccessGate extends StatelessWidget {
+  const EventsAccessGate({
+    super.key,
+    required this.member,
+    required this.locked,
+  });
+
+  final Widget member;
+  final Widget locked;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!membershipTestMode) {
+      return hasProductionPremiumEventsAccess ? member : locked;
+    }
+    return ListenableBuilder(
+      listenable: MembershipTestFlowController.instance,
+      builder: (_, _) => MembershipTestFlowController.instance.membershipActive
+          ? member
+          : locked,
+    );
+  }
+}
 
 void showEventSnack(BuildContext context, String message) {
   showAmoraSnackBar(context, message: message);
@@ -43,10 +73,12 @@ Route<T> premiumEventRoute<T>(Widget screen) {
 class EventsAppBar extends StatelessWidget {
   const EventsAppBar({
     super.key,
+    required this.onSearch,
     required this.onCalendar,
     required this.onFilter,
   });
 
+  final VoidCallback onSearch;
   final VoidCallback onCalendar;
   final VoidCallback onFilter;
 
@@ -54,45 +86,65 @@ class EventsAppBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Semantics(
       header: true,
-      child: Row(
-        children: [
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Events',
-                  style: TextStyle(
-                    color: AppColors.primary,
-                    fontSize: 28,
-                    height: 1.05,
-                    fontWeight: FontWeight.w700,
-                  ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final compact = constraints.maxWidth < 390;
+          return Row(
+            children: [
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Events',
+                      maxLines: 1,
+                      style: TextStyle(
+                        color: AppColors.primary,
+                        fontSize: compact ? 25 : 28,
+                        height: 1.05,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    if (!compact) ...[
+                      const SizedBox(height: 3),
+                      const Text(
+                        'Curated for meaningful connections',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: AppColors.text,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
-                SizedBox(height: 4),
-                Text(
-                  'Curated for Amora members',
-                  style: TextStyle(
-                    color: AppColors.text,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          _ToolbarButton(
-            tooltip: 'My Events',
-            icon: Icons.calendar_month_rounded,
-            onPressed: onCalendar,
-          ),
-          const SizedBox(width: 6),
-          _ToolbarButton(
-            tooltip: 'Filter events',
-            icon: Icons.tune_rounded,
-            onPressed: onFilter,
-          ),
-        ],
+              ),
+              _ToolbarButton(
+                key: const ValueKey('events-search-button'),
+                tooltip: 'Search events',
+                icon: Icons.search_rounded,
+                onPressed: onSearch,
+              ),
+              const SizedBox(width: 4),
+              _ToolbarButton(
+                key: const ValueKey('events-filter-button'),
+                tooltip: 'Filter events',
+                icon: Icons.tune_rounded,
+                onPressed: onFilter,
+              ),
+              const SizedBox(width: 4),
+              _ToolbarButton(
+                key: const ValueKey('events-my-events-button'),
+                tooltip: 'My Events',
+                icon: Icons.calendar_month_rounded,
+                onPressed: onCalendar,
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -100,6 +152,7 @@ class EventsAppBar extends StatelessWidget {
 
 class _ToolbarButton extends StatelessWidget {
   const _ToolbarButton({
+    super.key,
     required this.tooltip,
     required this.icon,
     required this.onPressed,
@@ -172,8 +225,8 @@ class EventsMemberBadge extends StatelessWidget {
   }
 }
 
-class EventsSummary extends StatelessWidget {
-  const EventsSummary({
+class EventsContextBar extends StatelessWidget {
+  const EventsContextBar({
     super.key,
     required this.eventCount,
     required this.city,
@@ -187,57 +240,132 @@ class EventsSummary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(22),
         border: Border.all(color: AppColors.tertiary.withValues(alpha: .55)),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: .06),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
-      child: Row(
-        children: [
-          Container(
-            width: 46,
-            height: 46,
-            decoration: const BoxDecoration(
-              color: AppColors.background,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.place_rounded, color: AppColors.secondary),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              '$eventCount curated ${eventCount == 1 ? 'event' : 'events'} in '
-              '$city',
-              style: const TextStyle(
-                color: AppColors.text,
-                fontSize: 15,
-                height: 1.3,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final compact = constraints.maxWidth < 430;
+          final contextText =
+              '$eventCount curated ${eventCount == 1 ? 'experience' : 'experiences'} in $city';
+          final chips = Wrap(
+            spacing: 8,
+            runSpacing: 8,
             children: [
-              Text(
-                '$joinedCount',
-                style: const TextStyle(
-                  color: AppColors.primary,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                ),
+              const _ContextPill(
+                icon: Icons.date_range_rounded,
+                label: 'This week',
               ),
-              const Text(
-                'joined',
-                style: TextStyle(
-                  color: AppColors.text,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                ),
+              _ContextPill(
+                icon: Icons.favorite_rounded,
+                label: '$joinedCount joined',
               ),
             ],
+          );
+          return compact
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _ContextLocation(text: contextText),
+                    const SizedBox(height: 12),
+                    chips,
+                  ],
+                )
+              : Row(
+                  children: [
+                    Expanded(child: _ContextLocation(text: contextText)),
+                    const SizedBox(width: 12),
+                    chips,
+                  ],
+                );
+        },
+      ),
+    );
+  }
+}
+
+class EventsSummary extends EventsContextBar {
+  const EventsSummary({
+    super.key,
+    required super.eventCount,
+    required super.city,
+    required super.joinedCount,
+  });
+}
+
+class _ContextLocation extends StatelessWidget {
+  const _ContextLocation({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 42,
+          height: 42,
+          decoration: const BoxDecoration(
+            color: AppColors.background,
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(Icons.place_rounded, color: AppColors.secondary),
+        ),
+        const SizedBox(width: 11),
+        Expanded(
+          child: Text(
+            text,
+            style: const TextStyle(
+              color: AppColors.text,
+              fontSize: 14,
+              height: 1.3,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ContextPill extends StatelessWidget {
+  const _ContextPill({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(minHeight: 36),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(99),
+        border: Border.all(color: AppColors.tertiary.withValues(alpha: .72)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: AppColors.secondary, size: 16),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: const TextStyle(
+              color: AppColors.primary,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ],
       ),
@@ -302,6 +430,9 @@ class EventCategoryBar extends StatelessWidget {
 IconData _categoryIcon(String category) {
   final value = category.toLowerCase();
   if (value.contains('coffee')) return Icons.coffee_rounded;
+  if (value.contains('dinner')) return Icons.dinner_dining_rounded;
+  if (value.contains('wellness')) return Icons.self_improvement_rounded;
+  if (value.contains('culture')) return Icons.museum_rounded;
   if (value.contains('music') || value.contains('garba')) {
     return Icons.music_note_rounded;
   }
@@ -309,6 +440,8 @@ IconData _categoryIcon(String category) {
     return Icons.landscape_rounded;
   }
   if (value.contains('speed')) return Icons.favorite_rounded;
+  if (value.contains('circle')) return Icons.groups_rounded;
+  if (value.contains('near')) return Icons.near_me_rounded;
   if (value.contains('week')) return Icons.date_range_rounded;
   if (value.contains('member') || value.contains('premium')) {
     return Icons.auto_awesome_rounded;
@@ -334,36 +467,40 @@ class EventImagePanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Widget panel = SizedBox(
-      height: height,
-      width: double.infinity,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(radius),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            PremiumImage(
-              imageUrl: event.image.imageUrl,
-              assetPath: event.image.assetPath,
-              fallbackAsset: event.image.assetPath,
-              initials: event.image.label.characters.first,
-              fit: BoxFit.cover,
-              borderRadius: BorderRadius.circular(radius),
-            ),
-            DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    AppColors.primary.withValues(alpha: .04),
-                    AppColors.primary.withValues(alpha: .82),
-                  ],
+    Widget panel = Semantics(
+      image: true,
+      label: '${event.title} event image',
+      child: SizedBox(
+        height: height,
+        width: double.infinity,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(radius),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              PremiumImage(
+                imageUrl: event.image.imageUrl,
+                assetPath: event.image.assetPath,
+                fallbackAsset: event.image.assetPath,
+                initials: event.image.label.characters.first,
+                fit: BoxFit.cover,
+                borderRadius: BorderRadius.circular(radius),
+              ),
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      AppColors.primary.withValues(alpha: .02),
+                      AppColors.primary.withValues(alpha: .84),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            ?child,
-          ],
+              ?child,
+            ],
+          ),
         ),
       ),
     );
@@ -378,12 +515,14 @@ class FeaturedEventCard extends StatelessWidget {
   const FeaturedEventCard({
     super.key,
     required this.event,
+    required this.attendees,
     required this.status,
     required this.onOpen,
     required this.onJoin,
   });
 
   final EventModel event;
+  final List<EventAttendee> attendees;
   final TicketStatus? status;
   final VoidCallback onOpen;
   final VoidCallback onJoin;
@@ -397,45 +536,58 @@ class FeaturedEventCard extends StatelessWidget {
             'Featured member event, ${event.title}, ${event.date} at ${event.time}',
         child: Material(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(30),
+          elevation: 3,
+          shadowColor: AppColors.primary.withValues(alpha: .16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(30),
+            side: BorderSide(color: AppColors.tertiary.withValues(alpha: .58)),
+          ),
           clipBehavior: Clip.antiAlias,
           child: InkWell(
             onTap: onOpen,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                EventImagePanel(
-                  event: event,
-                  height: 252,
-                  radius: 30,
-                  child: Padding(
-                    padding: const EdgeInsets.all(18),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const EventsMemberBadge(),
-                        const Spacer(),
-                        Text(
-                          event.category,
-                          style: const TextStyle(
-                            color: AppColors.surface,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
+                LayoutBuilder(
+                  builder: (context, constraints) => EventImagePanel(
+                    event: event,
+                    height: (constraints.maxWidth * 10 / 16).clamp(230, 360),
+                    radius: 30,
+                    child: Padding(
+                      padding: const EdgeInsets.all(18),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const EventsMemberBadge(),
+                              const Spacer(),
+                              EventDateBadge(date: event.date),
+                            ],
                           ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          event.title,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: AppColors.surface,
-                            fontSize: 26,
-                            height: 1.08,
-                            fontWeight: FontWeight.w700,
+                          const Spacer(),
+                          Text(
+                            event.category,
+                            style: const TextStyle(
+                              color: AppColors.surface,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 6),
+                          Text(
+                            event.title,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: AppColors.surface,
+                              fontSize: 26,
+                              height: 1.08,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -465,35 +617,64 @@ class FeaturedEventCard extends StatelessWidget {
                           fontWeight: FontWeight.w400,
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 14),
                       Row(
                         children: [
-                          Expanded(
-                            child: EventJoinButton(
-                              eventTitle: event.title,
-                              status: status,
-                              onPressed: onJoin,
-                            ),
+                          PremiumAvatar(
+                            imageUrl: event.host.photoAsset,
+                            fallbackAsset: event.host.photoAsset,
+                            initials: event.host.name.characters.first,
+                            radius: 18,
                           ),
-                          const SizedBox(width: 10),
-                          SizedBox(
-                            width: 52,
-                            height: 52,
-                            child: OutlinedButton(
-                              onPressed: onOpen,
-                              style: OutlinedButton.styleFrom(
-                                padding: EdgeInsets.zero,
-                                side: const BorderSide(
-                                  color: AppColors.tertiary,
-                                ),
-                              ),
-                              child: const Icon(
-                                Icons.arrow_forward_rounded,
+                          const SizedBox(width: 9),
+                          Expanded(
+                            child: Text(
+                              'Hosted by ${event.host.name}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
                                 color: AppColors.primary,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
                               ),
                             ),
                           ),
                         ],
+                      ),
+                      const SizedBox(height: 12),
+                      EventAttendeePreview(attendees: attendees),
+                      const SizedBox(height: 16),
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          final join = EventJoinButton(
+                            eventTitle: event.title,
+                            status: status,
+                            onPressed: onJoin,
+                          );
+                          final details = AppPrimaryButton(
+                            label: 'View Details',
+                            icon: Icons.arrow_forward_rounded,
+                            variant: AppPrimaryButtonVariant.outlined,
+                            onPressed: onOpen,
+                          );
+                          if (constraints.maxWidth < 300) {
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                join,
+                                const SizedBox(height: 9),
+                                details,
+                              ],
+                            );
+                          }
+                          return Row(
+                            children: [
+                              Expanded(child: join),
+                              const SizedBox(width: 10),
+                              Expanded(child: details),
+                            ],
+                          );
+                        },
                       ),
                     ],
                   ),
@@ -545,6 +726,259 @@ class EventCard extends StatelessWidget {
   }
 }
 
+class AmoraCircleCard extends StatelessWidget {
+  const AmoraCircleCard({
+    super.key,
+    required this.event,
+    required this.attendees,
+    required this.status,
+    required this.onOpen,
+    required this.onJoin,
+  });
+
+  final EventModel event;
+  final List<EventAttendee> attendees;
+  final TicketStatus? status;
+  final VoidCallback onOpen;
+  final VoidCallback onJoin;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      container: true,
+      label: 'Amora Circle, ${event.title}',
+      child: Material(
+        color: AppColors.surface,
+        elevation: 2,
+        shadowColor: AppColors.primary.withValues(alpha: .14),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(26),
+          side: BorderSide(color: AppColors.tertiary.withValues(alpha: .62)),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onOpen,
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                EventImagePanel(
+                  event: event,
+                  height: 142,
+                  radius: 18,
+                  child: Padding(
+                    padding: const EdgeInsets.all(11),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              width: 38,
+                              height: 38,
+                              decoration: BoxDecoration(
+                                color: AppColors.surface.withValues(alpha: .94),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                event.image.icon,
+                                color: AppColors.primary,
+                                size: 20,
+                              ),
+                            ),
+                            const Spacer(),
+                            EventStatusBadge(status: status),
+                          ],
+                        ),
+                        const Spacer(),
+                        const Text(
+                          'Amora Circle',
+                          style: TextStyle(
+                            color: AppColors.surface,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 11),
+                Text(
+                  event.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.primary,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 7),
+                EventMetadataRow(
+                  icon: Icons.calendar_month_rounded,
+                  text: '${event.date} · ${event.time}',
+                  compact: true,
+                ),
+                const SizedBox(height: 5),
+                EventMetadataRow(
+                  icon: Icons.place_rounded,
+                  text: event.venue,
+                  compact: true,
+                ),
+                const SizedBox(height: 7),
+                Text(
+                  'Hosted by ${event.host.name} · ${event.intent}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.text,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const Spacer(),
+                Row(
+                  children: [
+                    Expanded(
+                      child: EventAttendeePreview(
+                        attendees: attendees.take(3).toList(growable: false),
+                        maxVisible: 3,
+                        compact: true,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    SizedBox(
+                      width: 116,
+                      child: EventJoinButton(
+                        eventTitle: event.title,
+                        status: status,
+                        onPressed: onJoin,
+                        compact: true,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class MyEventsPreview extends StatelessWidget {
+  const MyEventsPreview({
+    super.key,
+    required this.event,
+    required this.status,
+    required this.onOpen,
+    required this.onViewAll,
+  });
+
+  final EventModel event;
+  final TicketStatus? status;
+  final VoidCallback onOpen;
+  final VoidCallback onViewAll;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(24),
+        side: BorderSide(color: AppColors.tertiary.withValues(alpha: .6)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onOpen,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final compact = constraints.maxWidth < 360;
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(
+                        width: compact ? 92 : 116,
+                        child: EventImagePanel(
+                          event: event,
+                          height: 116,
+                          radius: 18,
+                        ),
+                      ),
+                      const SizedBox(width: 13),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            EventStatusBadge(status: status),
+                            const SizedBox(height: 8),
+                            Text(
+                              event.title,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: AppColors.primary,
+                                fontSize: 17,
+                                height: 1.15,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            EventMetadataRow(
+                              icon: Icons.calendar_month_rounded,
+                              text: '${event.date} · ${event.time}',
+                              compact: true,
+                            ),
+                            const SizedBox(height: 5),
+                            EventMetadataRow(
+                              icon: Icons.place_rounded,
+                              text: event.venue,
+                              compact: true,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 11),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: AppPrimaryButton(
+                          label: 'View Details',
+                          size: AmoraButtonSize.compact,
+                          onPressed: onOpen,
+                        ),
+                      ),
+                      const SizedBox(width: 9),
+                      Expanded(
+                        child: AppPrimaryButton(
+                          label: 'View All',
+                          size: AmoraButtonSize.compact,
+                          variant: AppPrimaryButtonVariant.outlined,
+                          onPressed: onViewAll,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _HorizontalEventCard extends StatelessWidget {
   const _HorizontalEventCard({
     required this.event,
@@ -562,7 +996,12 @@ class _HorizontalEventCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: AppColors.surface,
-      borderRadius: BorderRadius.circular(24),
+      elevation: 1.5,
+      shadowColor: AppColors.primary.withValues(alpha: .12),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(24),
+        side: BorderSide(color: AppColors.tertiary.withValues(alpha: .5)),
+      ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onOpen,
@@ -615,7 +1054,12 @@ class _VerticalEventCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: AppColors.surface,
-      borderRadius: BorderRadius.circular(26),
+      elevation: 1.5,
+      shadowColor: AppColors.primary.withValues(alpha: .12),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(26),
+        side: BorderSide(color: AppColors.tertiary.withValues(alpha: .5)),
+      ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onOpen,
@@ -938,10 +1382,12 @@ class EventAttendeePreview extends StatelessWidget {
     super.key,
     required this.attendees,
     this.maxVisible = 4,
+    this.compact = false,
   });
 
   final List<EventAttendee> attendees;
   final int maxVisible;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -969,17 +1415,19 @@ class EventAttendeePreview extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              '${attendees.length} members attending',
-              style: const TextStyle(
-                color: AppColors.text,
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
+          if (!compact) ...[
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                '${attendees.length} members attending',
+                style: const TextStyle(
+                  color: AppColors.text,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
-          ),
+          ],
         ],
       ),
     );
@@ -1069,12 +1517,14 @@ class EventSafetySection extends StatelessWidget {
             children: [
               Icon(Icons.shield_rounded, color: AppColors.primary),
               SizedBox(width: 9),
-              Text(
-                'Safety & community',
-                style: TextStyle(
-                  color: AppColors.primary,
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700,
+              Expanded(
+                child: Text(
+                  'Safety & community',
+                  style: TextStyle(
+                    color: AppColors.primary,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ],
@@ -1121,9 +1571,23 @@ class EventsSkeleton extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _SkeletonBlock(height: 44, width: 310),
-        const SizedBox(height: 18),
-        const _SkeletonBlock(height: 320),
+        const _SkeletonBlock(height: 56),
+        const SizedBox(height: 16),
+        const _SkeletonBlock(height: 76),
+        const SizedBox(height: 14),
+        SizedBox(
+          height: 42,
+          child: Row(
+            children: [
+              for (var index = 0; index < 4; index++) ...[
+                _SkeletonBlock(height: 38, width: index == 0 ? 92 : 74),
+                const SizedBox(width: 8),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(height: 22),
+        const _SkeletonBlock(height: 390),
         const SizedBox(height: 24),
         const _SkeletonBlock(height: 24, width: 180),
         const SizedBox(height: 14),
@@ -1165,7 +1629,7 @@ class EventsEmptyState extends StatelessWidget {
     required this.onShowAll,
     this.title = 'No events match your preferences yet',
     this.description =
-        'Try another category or check back for new member gatherings.',
+        'Try another category or check back for new curated experiences.',
   });
 
   final VoidCallback onShowAll;
@@ -1193,7 +1657,7 @@ class EventsErrorState extends StatelessWidget {
   Widget build(BuildContext context) {
     return _EventsStateCard(
       icon: Icons.cloud_off_rounded,
-      title: 'Couldn’t load events',
+      title: 'Couldn’t load Events',
       description: 'Your member gatherings are temporarily unavailable.',
       actionLabel: 'Try Again',
       onAction: onRetry,

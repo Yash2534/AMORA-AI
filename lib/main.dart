@@ -1,4 +1,5 @@
 import 'package:amora_ai/core/constants/app_images.dart';
+import 'package:amora_ai/core/access/amora_access.dart';
 import 'package:amora_ai/core/theme/amora_theme.dart';
 import 'package:amora_ai/core/navigation/main_shell.dart';
 import 'package:amora_ai/core/widgets/floating_bottom_nav.dart';
@@ -16,7 +17,6 @@ import 'package:amora_ai/features/commerce/presentation/send_gift_screen.dart';
 import 'package:amora_ai/features/discover/presentation/discover_screen.dart';
 import 'package:amora_ai/features/discover/presentation/advanced_filters_screen.dart';
 import 'package:amora_ai/features/discover/presentation/browse_grid_screen.dart';
-import 'package:amora_ai/features/discovery/presentation/super_like_screen.dart';
 import 'package:amora_ai/features/events/presentation/event_detail_screen.dart';
 import 'package:amora_ai/features/events/presentation/events_screen.dart';
 import 'package:amora_ai/features/events/presentation/event_group_chat_screen.dart';
@@ -53,7 +53,6 @@ import 'package:amora_ai/features/settings/presentation/profile_settings_screen.
 import 'package:amora_ai/features/settings/presentation/safety_privacy_screen.dart';
 import 'package:amora_ai/features/settings/presentation/settings_screen.dart';
 import 'package:amora_ai/features/social_proof/presentation/success_stories_screen.dart';
-import 'package:amora_ai/features/splash/presentation/splash_screen.dart';
 import 'package:amora_ai/features/subscription/presentation/subscription_screen.dart';
 import 'package:amora_ai/features/support/presentation/faq_support_screen.dart';
 import 'package:amora_ai/features/theme/presentation/dark_mode_settings_screen.dart';
@@ -88,10 +87,11 @@ class _MyAppState extends State<MyApp> {
       title: 'AMORA AI',
       debugShowCheckedModeBanner: false,
       theme: AmoraTheme.light(),
-      initialRoute: SplashScreen.routeName,
+      initialRoute: AmoraSession.isLoggedIn.value
+          ? MainShell.routeName
+          : AmoraAuthScreen.routeName,
       routes: {
         // First-launch workflow.
-        SplashScreen.routeName: (_) => const SplashScreen(),
         AmoraLandingScreen.routeName: (_) => const AmoraLandingScreen(),
         OnboardingScreen.routeName: (_) => const OnboardingScreen(),
         AmoraAuthScreen.routeName: (_) => const AmoraAuthScreen(),
@@ -112,6 +112,7 @@ class _MyAppState extends State<MyApp> {
         KycVerificationScreen.routeName: (_) => const KycVerificationScreen(),
 
         // Primary app tabs and product flows.
+        MainShell.routeName: (_) => const MainShell(),
         BrowseGridScreen.routeName: (_) => const BrowseGridScreen(),
         AdvancedFiltersScreen.routeName: (_) => const AdvancedFiltersScreen(),
         DiscoverScreen.routeName: (_) => const MainShell(),
@@ -121,7 +122,6 @@ class _MyAppState extends State<MyApp> {
         MatchesScreen.routeName: (_) =>
             const MainShell(initialTab: AmoraNavTab.matches),
         MatchScreen.routeName: (_) => const MatchScreen(),
-        SuperLikeScreen.routeName: (_) => const SuperLikeScreen(),
         SendGiftScreen.routeName: (_) => const SendGiftScreen(),
         ChatListScreen.routeName: (_) =>
             const MainShell(initialTab: AmoraNavTab.chats),

@@ -75,11 +75,9 @@ const _productionRoutes = [
   '/settings',
   '/shared-media-gallery',
   '/signup',
-  '/splash',
   '/stories',
   '/subscription',
   '/success-stories',
-  '/super-like',
   '/twenty-questions',
   '/travel-mode',
   '/video-speed-dating-room',
@@ -144,19 +142,15 @@ const _hiddenLabels = [
 ];
 
 void main() {
-  testWidgets('AMORA AI launches through splash into authentication', (
-    tester,
-  ) async {
+  testWidgets('AMORA AI launches directly into authentication', (tester) async {
+    AmoraSession.logOut();
     await tester.pumpWidget(const MyApp());
-    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pump(const Duration(milliseconds: 450));
 
-    expect(find.text('Preparing your compatibility engine'), findsOneWidget);
-
-    await tester.pump(const Duration(milliseconds: 2600));
-    await tester.pump(const Duration(milliseconds: 500));
-
-    expect(find.text('Welcome to AMORA AI'), findsOneWidget);
-    expect(find.text('Create a new account'), findsOneWidget);
+    expect(find.text('Preparing your compatibility engine'), findsNothing);
+    expect(find.text('Meaningful connections begin here.'), findsOneWidget);
+    expect(find.byKey(const ValueKey('auth-create-account')), findsOneWidget);
+    expect(find.byKey(const ValueKey('auth-sign-in')), findsOneWidget);
   });
 
   testWidgets('profile information keeps all questions on one page', (
@@ -245,7 +239,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
 
     expect(find.byType(BrowseGridScreen), findsOneWidget);
-    expect(find.byKey(const ValueKey('discover-search-field')), findsOneWidget);
+    expect(find.byKey(const ValueKey('discover-search-field')), findsNothing);
   });
 
   testWidgets('signup continues to the four-question profile screen', (

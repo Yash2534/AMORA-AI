@@ -7,6 +7,7 @@ import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/core/navigation/main_shell.dart';
+import 'package:amora_ai/features/onboarding/data/gujarat_cities.dart';
 import 'package:amora_ai/features/onboarding/data/local_onboarding_repository.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
 import 'package:flutter/material.dart';
@@ -401,8 +402,8 @@ class _BirthDateQuestionState extends State<_BirthDateQuestion> {
           ),
           SizedBox(height: compactHeight ? 6 : 10),
           Text(
-            "We use your birth date to calculate your age. It won't be "
-            'displayed as your full date of birth.',
+            'We use your date of birth to calculate your age. Your full birth '
+            'date won’t appear on your public profile.',
             textAlign: TextAlign.center,
             style: AmoraTextStyles.bodyLarge.copyWith(
               color: AppColors.text,
@@ -656,7 +657,7 @@ class _WheelLabel extends StatelessWidget {
       textAlign: TextAlign.center,
       style: const TextStyle(
         color: AppColors.text,
-        fontSize: 12,
+        fontSize: 14,
         height: 1.25,
         fontWeight: FontWeight.w600,
       ),
@@ -980,23 +981,22 @@ class _LocationQuestion extends StatelessWidget {
   Widget build(BuildContext context) {
     return _QuestionFrame(
       icon: Icons.location_on_rounded,
-      title: 'Where would you like to meet people?',
-      supporting:
-          'Enter a city manually. This demo does not request or claim live GPS access.',
+      title: 'Your city',
+      supporting: 'Choose the city where you currently live.',
       child: PremiumCard(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            TextField(
+            _OnboardingCityField(
               key: const Key('onboarding-city'),
-              controller: cityController,
-              textInputAction: TextInputAction.done,
-              decoration: const InputDecoration(
-                labelText: 'City',
-                prefixIcon: Icon(Icons.location_city_rounded),
-              ),
-              onChanged: (value) =>
-                  onChanged(state.copyWith(city: value.trim())),
+              city: cityController.text,
+              onSelect: () => _selectCity(context),
+              onClear: cityController.text.trim().isEmpty
+                  ? null
+                  : () {
+                      cityController.clear();
+                      onChanged(state.copyWith(city: ''));
+                    },
             ),
             const SizedBox(height: 20),
             Text('Preferred distance: ${state.preferredDistance.round()} km'),
@@ -1017,6 +1017,370 @@ class _LocationQuestion extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Future<void> _selectCity(BuildContext context) async {
+    final width = MediaQuery.sizeOf(context).width;
+    final current = cityController.text.trim();
+    final result = width >= 700
+        ? await showDialog<String>(
+            context: context,
+            builder: (_) => Dialog(
+              insetPadding: const EdgeInsets.all(24),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(28),
+              ),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(
+                  maxWidth: 560,
+                  maxHeight: 680,
+                ),
+                child: _GujaratCitySearchSheet(currentCity: current),
+              ),
+            ),
+          )
+        : await showModalBottomSheet<String>(
+            context: context,
+            isScrollControlled: true,
+            useSafeArea: true,
+            backgroundColor: AppColors.surface,
+            shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+            ),
+            builder: (_) => FractionallySizedBox(
+              heightFactor: .88,
+              child: _GujaratCitySearchSheet(currentCity: current),
+            ),
+          );
+    if (result == null || !context.mounted) return;
+    cityController.text = result;
+    onChanged(state.copyWith(city: result));
+  }
+}
+
+class _OnboardingCityField extends StatelessWidget {
+  const _OnboardingCityField({
+    super.key,
+    required this.city,
+    required this.onSelect,
+    this.onClear,
+  });
+
+  final String city;
+  final VoidCallback onSelect;
+  final VoidCallback? onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasCity = city.trim().isNotEmpty;
+    return Semantics(
+      button: true,
+      liveRegion: hasCity,
+      label: hasCity
+          ? 'Your city, $city. Open city selection.'
+          : 'Search or select a city',
+      child: Material(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(18),
+        child: InkWell(
+          onTap: onSelect,
+          borderRadius: BorderRadius.circular(18),
+          child: Container(
+            constraints: const BoxConstraints(minHeight: 64),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: AppColors.tertiary),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.location_on_rounded,
+                  color: AppColors.secondary,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Your city',
+                        style: AmoraTextStyles.labelMedium.copyWith(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        hasCity ? city : 'Search or select a city',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AmoraTextStyles.bodyLarge.copyWith(
+                          color: hasCity
+                              ? AppColors.text
+                              : AppColors.text.withValues(alpha: .58),
+                          fontWeight: hasCity
+                              ? FontWeight.w600
+                              : FontWeight.w400,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (onClear != null)
+                  IconButton(
+                    tooltip: 'Clear selected city',
+                    onPressed: onClear,
+                    icon: const Icon(Icons.close_rounded),
+                  )
+                else
+                  const Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    color: AppColors.primary,
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GujaratCitySearchSheet extends StatefulWidget {
+  const _GujaratCitySearchSheet({required this.currentCity});
+
+  final String currentCity;
+
+  @override
+  State<_GujaratCitySearchSheet> createState() =>
+      _GujaratCitySearchSheetState();
+}
+
+class _GujaratCitySearchSheetState extends State<_GujaratCitySearchSheet> {
+  final _searchController = TextEditingController();
+  final _searchFocusNode = FocusNode(debugLabel: 'Gujarat city search');
+  final _keyboardFocusNode = FocusNode(debugLabel: 'Gujarat city keyboard');
+  int _highlightedIndex = 0;
+
+  List<String> get _filteredCities {
+    final query = _searchController.text.trim().toLowerCase();
+    if (query.isEmpty) return gujaratCities;
+    return gujaratCities
+        .where((city) => city.toLowerCase().contains(query))
+        .toList(growable: false);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController.addListener(_filterChanged);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _searchFocusNode.requestFocus();
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController
+      ..removeListener(_filterChanged)
+      ..dispose();
+    _searchFocusNode.dispose();
+    _keyboardFocusNode.dispose();
+    super.dispose();
+  }
+
+  void _filterChanged() {
+    setState(() => _highlightedIndex = 0);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cities = _filteredCities;
+    return Focus(
+      focusNode: _keyboardFocusNode,
+      onKeyEvent: (_, event) => _handleKey(event, cities),
+      child: Material(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(28),
+        clipBehavior: Clip.antiAlias,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 44,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: .18),
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Choose your city',
+                      style: AmoraTextStyles.headlineSmall.copyWith(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Close city selection',
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close_rounded),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                key: const ValueKey('gujarat-city-search'),
+                controller: _searchController,
+                focusNode: _searchFocusNode,
+                textInputAction: TextInputAction.search,
+                onSubmitted: (_) {
+                  if (cities.isNotEmpty) {
+                    Navigator.pop(context, cities[_highlightedIndex]);
+                  }
+                },
+                decoration: InputDecoration(
+                  hintText: 'Search or select a city',
+                  prefixIcon: const Icon(Icons.search_rounded),
+                  suffixIcon: _searchController.text.isEmpty
+                      ? null
+                      : IconButton(
+                          tooltip: 'Clear city search',
+                          onPressed: _searchController.clear,
+                          icon: const Icon(Icons.close_rounded),
+                        ),
+                ),
+              ),
+              if (widget.currentCity.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Text(
+                  'Current selection: ${widget.currentCity}',
+                  style: AmoraTextStyles.bodySmall.copyWith(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 12),
+              Expanded(
+                child: cities.isEmpty
+                    ? const _NoCityResults()
+                    : ListView.builder(
+                        key: const ValueKey('gujarat-city-list'),
+                        itemCount: cities.length,
+                        itemBuilder: (context, index) {
+                          final city = cities[index];
+                          final selected = city == widget.currentCity;
+                          final highlighted = index == _highlightedIndex;
+                          return Semantics(
+                            selected: selected,
+                            button: true,
+                            child: ListTile(
+                              key: ValueKey('gujarat-city-$city'),
+                              minTileHeight: 52,
+                              selected: selected || highlighted,
+                              selectedTileColor: AppColors.tertiary.withValues(
+                                alpha: selected ? .32 : .16,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              leading: Icon(
+                                selected
+                                    ? Icons.check_circle_rounded
+                                    : Icons.location_city_rounded,
+                                color: selected
+                                    ? AppColors.secondary
+                                    : AppColors.primary,
+                              ),
+                              title: Text(
+                                city,
+                                style: AmoraTextStyles.bodyLarge.copyWith(
+                                  fontWeight: selected
+                                      ? FontWeight.w700
+                                      : FontWeight.w500,
+                                ),
+                              ),
+                              onTap: () => Navigator.pop(context, city),
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  KeyEventResult _handleKey(KeyEvent event, List<String> cities) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    if (event.logicalKey == LogicalKeyboardKey.escape) {
+      Navigator.pop(context);
+      return KeyEventResult.handled;
+    }
+    if (cities.isEmpty) return KeyEventResult.ignored;
+    if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+      setState(() {
+        _highlightedIndex = (_highlightedIndex + 1).clamp(0, cities.length - 1);
+      });
+      return KeyEventResult.handled;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+      setState(() {
+        _highlightedIndex = (_highlightedIndex - 1).clamp(0, cities.length - 1);
+      });
+      return KeyEventResult.handled;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.enter) {
+      Navigator.pop(context, cities[_highlightedIndex]);
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+}
+
+class _NoCityResults extends StatelessWidget {
+  const _NoCityResults();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.location_off_rounded,
+            color: AppColors.secondary,
+            size: 38,
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'No Gujarat cities found',
+            style: AmoraTextStyles.titleMedium.copyWith(
+              color: AppColors.primary,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Try a shorter or different spelling.',
+            style: AmoraTextStyles.bodyMedium,
+          ),
+        ],
       ),
     );
   }

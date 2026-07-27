@@ -2,6 +2,7 @@ import 'package:amora_ai/core/constants/app_images.dart';
 import 'package:amora_ai/core/data/image_repository.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/features/events/domain/event_models.dart';
+import 'package:amora_ai/features/events/data/event_asset_catalog.dart';
 import 'package:flutter/material.dart';
 
 const eventCities = ['Ahmedabad', 'Gandhinagar', 'Vadodara', 'Surat', 'Rajkot'];
@@ -132,6 +133,10 @@ final events = ImageRepository.events
 
 EventModel _eventFromRepository(int index, EventImageData visual) {
   final hostProfile = ImageRepository.profileAt(index + 4);
+  final localAsset = EventAssetCatalog.forEvent(
+    title: visual.title,
+    category: visual.category,
+  );
   return EventModel(
     id: visual.id,
     title: visual.title,
@@ -145,8 +150,8 @@ EventModel _eventFromRepository(int index, EventImageData visual) {
     image: EventVisual(
       icon: visual.icon,
       label: visual.title,
-      imageUrl: visual.imageUrl,
-      assetPath: visual.fallbackAsset,
+      imageUrl: localAsset,
+      assetPath: localAsset,
     ),
     host: EventHost(
       name: visual.organizer,
