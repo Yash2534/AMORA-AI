@@ -9,8 +9,11 @@ import 'package:amora_ai/features/profile/domain/profile_form_validators.dart';
 import 'package:amora_ai/features/profile/presentation/controllers/profile_form_controller.dart';
 import 'package:amora_ai/features/profile/presentation/profile_completion_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_edit_screen.dart';
+import 'package:amora_ai/features/profile/presentation/widgets/amoraa_dating_intention_selector.dart';
+import 'package:amora_ai/features/profile/presentation/widgets/amoraa_language_selector.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_fields.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_form.dart';
+import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_prompt_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -47,7 +50,7 @@ void main() {
     profession: 'Product Designer',
     education: 'MBA',
     location: 'Surat',
-    datingIntention: 'Marriage',
+    datingIntention: 'Marriage Minded',
     bio:
         'A thoughtful AMORAA member who values kind conversation and meaningful plans.',
     interests: const ['Coffee', 'Cooking', 'Road trips', 'Yoga', 'Reading'],
@@ -172,7 +175,7 @@ void main() {
     await pumpFlow(
       tester,
       const ProfileEditScreen(),
-      size: const Size(430, 5000),
+      size: const Size(430, 8000),
     );
     for (final section in ProfileCompletionSectionId.values) {
       expect(
@@ -208,6 +211,9 @@ void main() {
       AmoraaInterestsSelector,
       AmoraaLifestyleSelector,
       AmoraaProfilePromptField,
+      AmoraaLanguageSelector,
+      AmoraaProfilePromptSelector,
+      AmoraaDatingIntentionSelector,
     ];
     for (final type in sharedTypes) {
       expect(find.byType(type), findsOneWidget, reason: 'Completion: $type');

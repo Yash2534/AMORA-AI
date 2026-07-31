@@ -8,6 +8,9 @@ import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
 import 'package:amora_ai/features/profile/domain/profile_form_options.dart';
 import 'package:amora_ai/features/profile/domain/profile_form_validators.dart';
 import 'package:amora_ai/features/profile/presentation/controllers/profile_form_controller.dart';
+import 'package:amora_ai/features/profile/presentation/widgets/amoraa_dating_intention_selector.dart';
+import 'package:amora_ai/features/profile/presentation/widgets/amoraa_language_selector.dart';
+import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_prompt_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -207,12 +210,6 @@ class AmoraaLocationIntentionsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final intention =
-        ProfileFormOptions.datingIntentions.contains(
-          controller.datingIntention.text,
-        )
-        ? controller.datingIntention.text
-        : null;
     return Column(
       children: [
         AmoraaSearchableDropdown(
@@ -223,23 +220,9 @@ class AmoraaLocationIntentionsSection extends StatelessWidget {
           options: gujaratCities,
         ),
         const SizedBox(height: AmoraSpacing.space12),
-        DropdownButtonFormField<String>(
-          key: const ValueKey('profile-dating-intention-field'),
-          initialValue: intention,
-          isExpanded: true,
-          validator: ProfileFormValidators.requiredText,
-          decoration: const InputDecoration(
-            labelText: 'Dating Intention',
-            prefixIcon: Icon(Icons.favorite_outline_rounded),
-          ),
-          items: ProfileFormOptions.datingIntentions
-              .map(
-                (value) => DropdownMenuItem(value: value, child: Text(value)),
-              )
-              .toList(growable: false),
-          onChanged: (value) {
-            if (value != null) controller.datingIntention.text = value;
-          },
+        AmoraaDatingIntentionSelector(
+          value: controller.datingIntention.text,
+          onChanged: (value) => controller.datingIntention.text = value,
         ),
       ],
     );
@@ -260,45 +243,73 @@ class AmoraaIdentityDetailsSelector extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        for (final entry in ProfileFormOptions.identityOptions.entries) ...[
-          DropdownButtonFormField<String>(
-            key: ValueKey('profile-${entry.key.toLowerCase()}-field'),
-            initialValue: entry.value.contains(controller.lifestyle[entry.key])
-                ? controller.lifestyle[entry.key]
-                : null,
-            isExpanded: true,
-            decoration: InputDecoration(
-              labelText: entry.key,
-              prefixIcon: Icon(_identityIcon(entry.key)),
-              errorText: showValidation
-                  ? ProfileFormValidators.identityValue(
-                      controller.lifestyle[entry.key],
-                      entry.key.toLowerCase(),
-                    )
-                  : null,
-            ),
-            items: entry.value
-                .map(
-                  (value) => DropdownMenuItem(
-                    value: value,
-                    child: Text(value, overflow: TextOverflow.ellipsis),
-                  ),
-                )
-                .toList(growable: false),
-            onChanged: (value) => controller.setLifestyle(entry.key, value),
-          ),
-          if (entry.key != ProfileFormOptions.identityOptions.keys.last)
-            const SizedBox(height: AmoraSpacing.space12),
-        ],
+        _IdentityDropdown(
+          fieldName: 'Height',
+          controller: controller,
+          showValidation: showValidation,
+        ),
+        const SizedBox(height: AmoraSpacing.space12),
+        AmoraaLanguageSelector(
+          selectedLanguages: controller.languages,
+          onChanged: controller.setLanguages,
+          showError: showValidation,
+        ),
+        const SizedBox(height: AmoraSpacing.space12),
+        _IdentityDropdown(
+          fieldName: 'Religion',
+          controller: controller,
+          showValidation: showValidation,
+        ),
       ],
     );
   }
+}
 
-  IconData _identityIcon(String key) => switch (key) {
-    'Height' => Icons.height_rounded,
-    'Languages' => Icons.translate_rounded,
-    _ => Icons.diversity_3_rounded,
-  };
+class _IdentityDropdown extends StatelessWidget {
+  const _IdentityDropdown({
+    required this.fieldName,
+    required this.controller,
+    required this.showValidation,
+  });
+
+  final String fieldName;
+  final ProfileFormController controller;
+  final bool showValidation;
+
+  @override
+  Widget build(BuildContext context) {
+    final options = ProfileFormOptions.identityOptions[fieldName]!;
+    return DropdownButtonFormField<String>(
+      key: ValueKey('profile-${fieldName.toLowerCase()}-field'),
+      initialValue: options.contains(controller.lifestyle[fieldName])
+          ? controller.lifestyle[fieldName]
+          : null,
+      isExpanded: true,
+      decoration: InputDecoration(
+        labelText: fieldName,
+        prefixIcon: Icon(
+          fieldName == 'Height'
+              ? Icons.height_rounded
+              : Icons.diversity_3_rounded,
+        ),
+        errorText: showValidation
+            ? ProfileFormValidators.identityValue(
+                controller.lifestyle[fieldName],
+                fieldName.toLowerCase(),
+              )
+            : null,
+      ),
+      items: options
+          .map(
+            (value) => DropdownMenuItem(
+              value: value,
+              child: Text(value, overflow: TextOverflow.ellipsis),
+            ),
+          )
+          .toList(growable: false),
+      onChanged: (value) => controller.setLifestyle(fieldName, value),
+    );
+  }
 }
 
 class AmoraaProfileBioField extends StatelessWidget {
@@ -432,28 +443,12 @@ class AmoraaProfilePromptField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final promptTitles = <String>{
-      ...ProfileFormOptions.promptTitles,
-      controller.promptTitle,
-    };
     return Column(
       children: [
-        DropdownButtonFormField<String>(
-          key: const ValueKey('profile-prompt-selector'),
-          initialValue: controller.promptTitle,
-          isExpanded: true,
-          decoration: const InputDecoration(labelText: 'Prompt'),
-          items: promptTitles
-              .map(
-                (title) => DropdownMenuItem(
-                  value: title,
-                  child: Text(title, overflow: TextOverflow.ellipsis),
-                ),
-              )
-              .toList(growable: false),
-          onChanged: (value) {
-            if (value != null) controller.setPromptTitle(value);
-          },
+        AmoraaProfilePromptSelector(
+          selectedPrompt: controller.promptTitle,
+          options: {...ProfileFormOptions.promptTitles, controller.promptTitle},
+          onSelected: controller.setPromptTitle,
         ),
         const SizedBox(height: AmoraSpacing.space12),
         TextFormField(

@@ -1,12 +1,13 @@
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
-import 'package:amora_ai/core/widgets/amora_profile_image.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
+import 'package:amora_ai/features/profile/domain/profile_form_options.dart';
 import 'package:amora_ai/features/profile/domain/profile_interest_policy.dart';
 import 'package:amora_ai/features/profile/presentation/profile_edit_screen.dart';
+import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_story_image.dart';
 import 'package:amora_ai/features/discover/presentation/discover_screen.dart';
 import 'package:flutter/material.dart';
 
@@ -39,18 +40,12 @@ class ProfilePreviewScreen extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 96),
                 sliver: SliverList.list(
                   children: [
-                    AspectRatio(
-                      aspectRatio: 4 / 5,
-                      child: AmoraProfileImage(
-                        imageUrl: profile.primaryPhoto,
-                        assetPath: profile.primaryPhoto,
-                        initials: profile.name.isEmpty
-                            ? 'AM'
-                            : profile.name.substring(0, 1),
-                        fit: BoxFit.cover,
-                        borderRadius: BorderRadius.circular(24),
-                        semanticLabel: 'Primary profile photo',
-                      ),
+                    AmoraaProfileStoryImage(
+                      image: profile.primaryPhoto,
+                      initials: profile.name.isEmpty
+                          ? 'AM'
+                          : profile.name.substring(0, 1),
+                      semanticLabel: 'Primary profile photo',
                     ),
                     const SizedBox(height: 20),
                     Text(
@@ -61,7 +56,7 @@ class ProfilePreviewScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      '${profile.location} • ${profile.datingIntention}',
+                      '${profile.location} • ${ProfileFormOptions.normalizeDatingIntention(profile.datingIntention)}',
                       style: AmoraTextStyles.bodyMedium.copyWith(
                         color: AppColors.textSecondary,
                       ),
@@ -94,16 +89,10 @@ class ProfilePreviewScreen extends StatelessWidget {
                         ),
                     for (var index = 0; index < profile.photos.length; index++)
                       if (index != profile.primaryPhotoIndex) ...[
-                        AspectRatio(
-                          aspectRatio: 4 / 5,
-                          child: AmoraProfileImage(
-                            imageUrl: profile.photos[index],
-                            assetPath: profile.photos[index],
-                            initials: 'AM',
-                            fit: BoxFit.cover,
-                            borderRadius: BorderRadius.circular(22),
-                            semanticLabel: 'Profile photo ${index + 1}',
-                          ),
+                        AmoraaProfileStoryImage(
+                          image: profile.photos[index],
+                          initials: 'AM',
+                          semanticLabel: 'Profile photo ${index + 1}',
                         ),
                         const SizedBox(height: 20),
                       ],
@@ -115,7 +104,16 @@ class ProfilePreviewScreen extends StatelessWidget {
                           runSpacing: 8,
                           children: [
                             for (final entry in profile.lifestyle.entries)
-                              Chip(label: Text('${entry.key}: ${entry.value}')),
+                              if (entry.key == 'Languages')
+                                for (final language
+                                    in ProfileFormOptions.parseLanguages(
+                                      entry.value,
+                                    ))
+                                  Chip(label: Text(language))
+                              else
+                                Chip(
+                                  label: Text('${entry.key}: ${entry.value}'),
+                                ),
                           ],
                         ),
                       ),

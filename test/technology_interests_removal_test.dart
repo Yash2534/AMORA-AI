@@ -164,7 +164,7 @@ void main() {
     tester,
   ) async {
     LocalProfileRepository.instance.save(legacyProfile());
-    await tester.binding.setSurfaceSize(const Size(390, 2400));
+    await tester.binding.setSurfaceSize(const Size(390, 5000));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     for (final screen in <Widget>[

@@ -6,6 +6,8 @@ import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
 import 'package:amora_ai/features/profile/domain/profile_form_options.dart';
 import 'package:amora_ai/features/profile/domain/profile_interest_policy.dart';
+import 'package:amora_ai/features/profile/presentation/widgets/amoraa_language_selector.dart';
+import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_prompt_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -190,29 +192,17 @@ class _ProfileSectionEditorScreenState
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                DropdownButtonFormField<String>(
+                AmoraaProfilePromptSelector(
                   key: ValueKey('profile-prompt-selector-${entry.key}'),
-                  initialValue: entry.key,
-                  decoration: const InputDecoration(labelText: 'Prompt'),
-                  items:
-                      <String>{
-                            ...ProfileFormOptions.promptTitles,
-                            ..._promptControllers.keys,
-                          }
-                          .map(
-                            (title) => DropdownMenuItem(
-                              value: title,
-                              child: Text(
-                                title,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          )
-                          .toList(growable: false),
-                  onChanged: (value) {
-                    if (value == null || value == entry.key) return;
-                    _changePromptTitle(entry.key, value);
+                  selectedPrompt: entry.key,
+                  options: {
+                    ...ProfileFormOptions.promptTitles,
+                    ..._promptControllers.keys,
+                  },
+                  onSelected: (value) {
+                    if (value != entry.key) {
+                      _changePromptTitle(entry.key, value);
+                    }
                   },
                 ),
                 const SizedBox(height: 12),
@@ -241,6 +231,26 @@ class _ProfileSectionEditorScreenState
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         for (final entry in ProfileFormOptions.allLifestyleOptions.entries) ...[
+          if (entry.key == 'Religion') ...[
+            PremiumCard(
+              radius: 24,
+              padding: const EdgeInsets.all(16),
+              child: AmoraaLanguageSelector(
+                selectedLanguages: ProfileFormOptions.parseLanguages(
+                  _lifestyle['Languages'],
+                ),
+                onChanged: (languages) => setState(() {
+                  final stored = ProfileFormOptions.serializeLanguages(
+                    languages,
+                  );
+                  stored.isEmpty
+                      ? _lifestyle.remove('Languages')
+                      : _lifestyle['Languages'] = stored;
+                }),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
           PremiumCard(
             radius: 24,
             padding: const EdgeInsets.all(16),

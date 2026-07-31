@@ -14,6 +14,7 @@ import 'package:amora_ai/features/auth/presentation/login_screen.dart';
 import 'package:amora_ai/features/chat/data/local_chat_repository.dart';
 import 'package:amora_ai/features/onboarding/data/local_onboarding_repository.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
+import 'package:amora_ai/features/profile/domain/profile_form_options.dart';
 import 'package:amora_ai/features/profile/domain/profile_interest_policy.dart';
 import 'package:amora_ai/features/profile/presentation/kyc_verification_screen.dart';
 import 'package:amora_ai/features/profile/presentation/photo_manager_screen.dart';
@@ -23,6 +24,7 @@ import 'package:amora_ai/features/profile/presentation/profile_edit_screen.dart'
 import 'package:amora_ai/features/profile/presentation/profile_preview_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_section_editor_screen.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/profile_photo_gallery.dart';
+import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_story_image.dart';
 import 'package:amora_ai/features/settings/presentation/profile_settings_screen.dart';
 import 'package:amora_ai/features/settings/presentation/safety_privacy_screen.dart';
 import 'package:amora_ai/features/subscription/presentation/subscription_screen.dart';
@@ -68,6 +70,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final profile = _repository.profile;
+    final primaryPhotoIndex = profile.photos.isEmpty
+        ? -1
+        : profile.primaryPhotoIndex.clamp(0, profile.photos.length - 1);
+    final storyPhotos = <(int, String)>[
+      for (var index = 0; index < profile.photos.length; index++)
+        if (index != primaryPhotoIndex) (index, profile.photos[index]),
+    ];
     final bottomInset = widget.showNavigation ? 116.0 : 36.0;
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -134,6 +143,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     const SizedBox(height: 12),
                     ProfilePromptsCard(profile: profile),
                     const SizedBox(height: 30),
+                    if (storyPhotos.isNotEmpty) ...[
+                      AmoraaProfileStoryImage(
+                        image: storyPhotos.first.$2,
+                        semanticLabel:
+                            'Profile photo ${storyPhotos.first.$1 + 1}',
+                        initials: AppImages.initialsForName(profile.name),
+                      ),
+                      const SizedBox(height: 30),
+                    ],
                     ProfileSectionHeading(
                       icon: Icons.favorite_rounded,
                       title: 'Dating intentions',
@@ -154,6 +172,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     const SizedBox(height: 12),
                     ProfileInterestsCard(interests: profile.interests),
                     const SizedBox(height: 30),
+                    if (storyPhotos.length > 1) ...[
+                      AmoraaProfileStoryImage(
+                        image: storyPhotos[1].$2,
+                        semanticLabel: 'Profile photo ${storyPhotos[1].$1 + 1}',
+                        initials: AppImages.initialsForName(profile.name),
+                      ),
+                      const SizedBox(height: 30),
+                    ],
                     ProfileSectionHeading(
                       icon: Icons.psychology_alt_rounded,
                       title: 'Personality',
@@ -163,6 +189,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     const SizedBox(height: 12),
                     ProfilePersonalityCard(lifestyle: profile.lifestyle),
+                    for (
+                      var index = 2;
+                      index < storyPhotos.length;
+                      index++
+                    ) ...[
+                      const SizedBox(height: 24),
+                      AmoraaProfileStoryImage(
+                        image: storyPhotos[index].$2,
+                        semanticLabel:
+                            'Profile photo ${storyPhotos[index].$1 + 1}',
+                        initials: AppImages.initialsForName(profile.name),
+                      ),
+                    ],
                     const SizedBox(height: 30),
                     const ProfileSectionHeading(
                       icon: Icons.verified_user_rounded,
@@ -1899,14 +1938,53 @@ class DatingIntentionsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ProfileInfoCard(
-      items: [
-        (
-          Icons.favorite_outline_rounded,
-          'Looking for',
-          profile.datingIntention,
-        ),
-      ],
+    final intention = ProfileFormOptions.normalizeDatingIntention(
+      profile.datingIntention,
+    );
+    final description =
+        ProfileFormOptions.datingIntentionDescriptions[intention] ?? '';
+    return PremiumCard(
+      radius: 24,
+      padding: const EdgeInsets.all(18),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: AppColors.background,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: const Icon(
+              Icons.favorite_rounded,
+              color: AppColors.secondary,
+            ),
+          ),
+          const SizedBox(width: 13),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  intention.isEmpty ? 'Dating intention' : intention,
+                  style: AmoraTextStyles.titleMedium,
+                ),
+                if (description.isNotEmpty) ...[
+                  const SizedBox(height: 5),
+                  Text(
+                    description,
+                    style: AmoraTextStyles.bodySmall.copyWith(
+                      color: AppColors.textSecondary,
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -2067,7 +2145,9 @@ class ProfilePersonalityCard extends StatelessWidget {
           (
             icons[entry.key] ?? Icons.psychology_alt_rounded,
             entry.key,
-            entry.value,
+            entry.key == 'Languages'
+                ? ProfileFormOptions.parseLanguages(entry.value).join(' · ')
+                : entry.value,
           ),
       ],
     );

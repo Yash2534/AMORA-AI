@@ -14,7 +14,11 @@ class ProfileFormController extends ChangeNotifier {
     education = TextEditingController(text: _baseProfile.education);
     city = TextEditingController(text: _baseProfile.location);
     bio = TextEditingController(text: _baseProfile.bio);
-    datingIntention = TextEditingController(text: _baseProfile.datingIntention);
+    datingIntention = TextEditingController(
+      text: ProfileFormOptions.normalizeDatingIntention(
+        _baseProfile.datingIntention,
+      ),
+    );
     birthDate = _baseProfile.dateOfBirth;
     gender = switch (_baseProfile.gender.toLowerCase()) {
       'woman' || 'female' => 'Female',
@@ -26,6 +30,7 @@ class ProfileFormController extends ChangeNotifier {
     );
     _retiredInterests = ProfileInterestPolicy.retired(_baseProfile.interests);
     lifestyle = Map<String, String>.of(_baseProfile.lifestyle);
+    languages = ProfileFormOptions.parseLanguages(lifestyle['Languages']);
     final prompt = _baseProfile.prompts.entries
         .where((entry) => entry.value.trim().isNotEmpty)
         .firstOrNull;
@@ -51,6 +56,7 @@ class ProfileFormController extends ChangeNotifier {
   late String gender;
   late Set<String> interests;
   late Map<String, String> lifestyle;
+  late Set<String> languages;
   late String promptTitle;
   late List<String> _retiredInterests;
   String? _originalPromptTitle;
@@ -69,6 +75,13 @@ class ProfileFormController extends ChangeNotifier {
   ];
 
   UserProfile get draftProfile {
+    final updatedLifestyle = Map<String, String>.of(lifestyle);
+    final storedLanguages = ProfileFormOptions.serializeLanguages(languages);
+    if (storedLanguages.isEmpty) {
+      updatedLifestyle.remove('Languages');
+    } else {
+      updatedLifestyle['Languages'] = storedLanguages;
+    }
     final prompts = Map<String, String>.of(_baseProfile.prompts);
     if (_originalPromptTitle != null && _originalPromptTitle != promptTitle) {
       prompts.remove(_originalPromptTitle);
@@ -89,7 +102,7 @@ class ProfileFormController extends ChangeNotifier {
       location: city.text.trim(),
       datingIntention: datingIntention.text.trim(),
       interests: [...interests, ..._retiredInterests],
-      lifestyle: lifestyle,
+      lifestyle: updatedLifestyle,
       prompts: prompts,
     );
   }
@@ -116,6 +129,11 @@ class ProfileFormController extends ChangeNotifier {
     markDirty();
   }
 
+  void setLanguages(Set<String> values) {
+    languages = Set<String>.of(values);
+    markDirty();
+  }
+
   void toggleInterest(String value, bool selected) {
     if (selected && interests.length >= 10) return;
     selected ? interests.add(value) : interests.remove(value);
@@ -135,6 +153,8 @@ class ProfileFormController extends ChangeNotifier {
     final refreshed = repository.profile;
     _baseProfile = refreshed;
     _retiredInterests = ProfileInterestPolicy.retired(refreshed.interests);
+    lifestyle = Map<String, String>.of(refreshed.lifestyle);
+    languages = ProfileFormOptions.parseLanguages(lifestyle['Languages']);
     notifyListeners();
   }
 
