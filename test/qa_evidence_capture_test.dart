@@ -7,6 +7,7 @@ import 'package:amora_ai/features/events/presentation/event_detail_screen.dart';
 import 'package:amora_ai/features/events/presentation/events_browse_screen.dart';
 import 'package:amora_ai/features/matches/presentation/matches_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_screen.dart';
+import 'package:amora_ai/features/settings/presentation/notification_preferences_screen.dart';
 import 'package:amora_ai/features/support/presentation/faq_support_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -120,6 +121,15 @@ void main() {
       screen: const MatchesScreen(showNavigation: false),
       size: const Size(390, 844),
       fileName: 'EV-UI-008_ai_matches_mobile.png',
+    );
+  });
+
+  testWidgets('capture global switch states evidence', (tester) async {
+    await capture(
+      tester,
+      screen: const NotificationPreferencesScreen(),
+      size: const Size(390, 844),
+      fileName: 'EV-UI-009_switch_states_mobile.png',
     );
   });
 

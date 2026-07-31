@@ -158,8 +158,8 @@ void main() {
       ),
     );
 
-    expect(find.text('Safety help and support'), findsOneWidget);
-    expect(find.text('Correct profile details'), findsOneWidget);
+    expect(find.text('Verified Profile'), findsOneWidget);
+    expect(find.text('Photo Verification'), findsOneWidget);
     expect(find.text('Report History'), findsNothing);
     expect(find.text('Data Portability'), findsNothing);
     expect(find.text('Delete Account'), findsNothing);
@@ -174,14 +174,13 @@ void main() {
       ),
     );
 
-    expect(find.text('Change Password'), findsNothing);
-    final phoneTile = tester.widget<ListTile>(
-      find.ancestor(
-        of: find.text('Phone Number'),
-        matching: find.byType(ListTile),
-      ),
+    await tester.scrollUntilVisible(
+      find.text('Change Password'),
+      420,
+      scrollable: find.byType(Scrollable).first,
     );
-    expect(phoneTile.onTap, isNull);
+    expect(find.text('Change Password'), findsOneWidget);
+    expect(find.text('Phone Number'), findsNothing);
   });
 
   testWidgets('Return to Discover replaces the stack with /discover', (

@@ -81,7 +81,6 @@ class _NotificationsHubScreenState extends State<NotificationsHubScreen> {
             children: [
               _NotificationsAppBar(
                 onBack: _goBack,
-                unreadCount: unreadCount,
                 onMarkAllRead: unreadCount == 0 ? null : _markAllRead,
                 onSettings: () => Navigator.of(
                   context,
@@ -270,19 +269,18 @@ class _NotificationsHubScreenState extends State<NotificationsHubScreen> {
 class _NotificationsAppBar extends StatelessWidget {
   const _NotificationsAppBar({
     required this.onBack,
-    required this.unreadCount,
     required this.onMarkAllRead,
     required this.onSettings,
   });
 
   final VoidCallback onBack;
-  final int unreadCount;
   final VoidCallback? onMarkAllRead;
   final VoidCallback onSettings;
 
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
+      key: const ValueKey('notifications-header'),
       decoration: BoxDecoration(
         color: AppColors.surface,
         border: Border(
@@ -315,50 +313,15 @@ class _NotificationsAppBar extends StatelessWidget {
                   ),
                   const SizedBox(width: 4),
                   Expanded(
-                    child: Row(
-                      children: [
-                        Flexible(
-                          child: Text(
-                            'Notifications',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AmoraTextStyles.titleLarge.copyWith(
-                              color: AppColors.primary,
-                              fontSize: compact ? 21 : 24,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                        if (unreadCount > 0 && !compact) ...[
-                          const SizedBox(width: 8),
-                          Semantics(
-                            label: '$unreadCount unread notifications',
-                            child: Container(
-                              constraints: const BoxConstraints(
-                                minWidth: 24,
-                                minHeight: 24,
-                              ),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 7,
-                              ),
-                              decoration: const BoxDecoration(
-                                color: AppColors.secondary,
-                                borderRadius: BorderRadius.all(
-                                  Radius.circular(99),
-                                ),
-                              ),
-                              alignment: Alignment.center,
-                              child: Text(
-                                '$unreadCount',
-                                style: AmoraTextStyles.labelSmall.copyWith(
-                                  color: AppColors.surface,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
+                    child: Text(
+                      'Notifications',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AmoraTextStyles.titleLarge.copyWith(
+                        color: AppColors.primary,
+                        fontSize: compact ? 21 : 24,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
                   if (showMarkAllLabel)

@@ -8,6 +8,7 @@ import 'package:amora_ai/core/widgets/amora_profile_image.dart';
 import 'package:amora_ai/core/widgets/amora_super_like_animation.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
+import 'package:amora_ai/features/profile/domain/profile_interest_policy.dart';
 import 'package:amora_ai/features/chat/data/local_chat_repository.dart';
 import 'package:amora_ai/features/chat/presentation/chat_detail_screen.dart';
 import 'package:amora_ai/features/discover/presentation/browse_grid_screen.dart';
@@ -1191,7 +1192,7 @@ class _InterestsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final seen = <String>{};
-    final interests = profile.interests
+    final interests = ProfileInterestPolicy.visible(profile.interests)
         .map((interest) => interest.trim())
         .where(
           (interest) => interest.isNotEmpty && seen.add(interest.toLowerCase()),
@@ -1395,7 +1396,7 @@ class CompatibilitySection extends StatelessWidget {
     final signals = <String>{
       profile.intent,
       profile.loveLanguage,
-      ...profile.interests.take(3),
+      ...ProfileInterestPolicy.visible(profile.interests).take(3),
     }.where((value) => value.trim().isNotEmpty).toList(growable: false);
     return _SectionSurface(
       color: AppColors.primary,

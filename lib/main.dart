@@ -25,6 +25,7 @@ import 'package:amora_ai/features/events/presentation/my_events_screen.dart';
 import 'package:amora_ai/features/events/presentation/post_event_feedback_screen.dart';
 import 'package:amora_ai/features/insights/presentation/dating_recap_screen.dart';
 import 'package:amora_ai/features/legal/presentation/legal_document_screen.dart';
+import 'package:amora_ai/features/legal/presentation/community_guidelines_screen.dart';
 import 'package:amora_ai/features/matches/presentation/matches_screen.dart';
 import 'package:amora_ai/features/messaging/presentation/match_screen.dart';
 import 'package:amora_ai/features/notifications/presentation/notifications_hub_screen.dart';
@@ -49,6 +50,8 @@ import 'package:amora_ai/features/match/presentation/why_we_matched_screen.dart'
 import 'package:amora_ai/features/monetization/presentation/liked_you_paywall_screen.dart';
 import 'package:amora_ai/features/monetization/presentation/profile_boost_screen.dart';
 import 'package:amora_ai/features/safety/presentation/report_flow_screen.dart';
+import 'package:amora_ai/features/safety/presentation/sos_checkin_screen.dart';
+import 'package:amora_ai/features/settings/presentation/account_action_screens.dart';
 import 'package:amora_ai/features/settings/presentation/notification_preferences_screen.dart';
 import 'package:amora_ai/features/settings/presentation/managed_profiles_screen.dart';
 import 'package:amora_ai/features/settings/presentation/profile_settings_screen.dart';
@@ -144,14 +147,20 @@ class _MyAppState extends State<MyApp> {
           MyEventsScreen.routeName: (_) => const MyEventsScreen(),
           AiIcebreakersScreen.routeName: (_) => const AiIcebreakersScreen(),
           SubscriptionScreen.routeName: (_) => const SubscriptionScreen(),
+          SubscriptionScreen.membershipRoute: (_) => const SubscriptionScreen(),
+          SubscriptionScreen.manageRoute: (_) => const SubscriptionScreen(),
           PaymentScreen.routeName: (_) => const PaymentScreen(),
           ProfileSettingsScreen.routeName: (_) => const ProfileSettingsScreen(),
           SavedProfilesScreen.routeName: (_) => const SavedProfilesScreen(),
           BlockedProfilesScreen.routeName: (_) => const BlockedProfilesScreen(),
           SafetyPrivacyScreen.routeName: (_) => const SafetyPrivacyScreen(),
+          SafetyPrivacyScreen.legacyRouteName: (_) =>
+              const SafetyPrivacyScreen(),
           FaqSupportScreen.routeName: (_) => const FaqSupportScreen(),
+          FaqSupportScreen.legacyRouteName: (_) => const FaqSupportScreen(),
           SettingsScreen.routeName: (_) => const SettingsScreen(),
           ReportFlowScreen.routeName: (_) => const ReportFlowScreen(),
+          SosCheckinScreen.routeName: (_) => const SosCheckinScreen(),
           PhotoManagerScreen.routeName: (_) => const PhotoManagerScreen(),
           ProfileEditScreen.routeName: (_) => const ProfileEditScreen(),
           PostEventFeedbackScreen.routeName: (_) =>
@@ -174,7 +183,14 @@ class _MyAppState extends State<MyApp> {
           ReferralLeaderboardScreen.routeName: (_) =>
               const ReferralLeaderboardScreen(),
           TermsConditionsScreen.routeName: (_) => const TermsConditionsScreen(),
+          TermsConditionsScreen.legacyRouteName: (_) =>
+              const TermsConditionsScreen(),
           PrivacyPolicyScreen.routeName: (_) => const PrivacyPolicyScreen(),
+          CommunityGuidelinesScreen.routeName: (_) =>
+              const CommunityGuidelinesScreen(),
+          LogoutAccountScreen.routeName: (_) => const LogoutAccountScreen(),
+          DeleteAccountInformationScreen.routeName: (_) =>
+              const DeleteAccountInformationScreen(),
         },
         onUnknownRoute: (_) {
           return MaterialPageRoute<void>(

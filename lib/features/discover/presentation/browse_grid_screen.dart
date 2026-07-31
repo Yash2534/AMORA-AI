@@ -16,6 +16,7 @@ import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/discover/presentation/advanced_filters_screen.dart';
 import 'package:amora_ai/features/discover/presentation/discover_action_controller.dart';
 import 'package:amora_ai/features/notifications/presentation/notifications_hub_screen.dart';
+import 'package:amora_ai/features/profile/domain/profile_interest_policy.dart';
 import 'package:amora_ai/features/profile/presentation/profile_detail_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
@@ -1088,11 +1089,9 @@ class _ProfileOverlay extends StatelessWidget {
           spacing: 6,
           runSpacing: 6,
           children: [
-            for (final interest
-                in profile.interests
-                    .where((interest) => interest.trim().isNotEmpty)
-                    .toSet()
-                    .take(3))
+            for (final interest in ProfileInterestPolicy.visible(
+              profile.interests,
+            ).toSet().take(3))
               _InterestPill(label: interest),
           ],
         ),

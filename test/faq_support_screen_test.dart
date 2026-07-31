@@ -25,7 +25,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('FAQ & Support'), findsOneWidget);
+    expect(find.text('Support Center'), findsOneWidget);
     for (final removed in const [
       'WhatsApp Support',
       'Call Support',

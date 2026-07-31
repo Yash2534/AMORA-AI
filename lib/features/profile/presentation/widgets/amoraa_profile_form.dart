@@ -1,0 +1,394 @@
+import 'package:amora_ai/core/theme/amora_spacing.dart';
+import 'package:amora_ai/core/theme/amora_text_styles.dart';
+import 'package:amora_ai/core/theme/app_colors.dart';
+import 'package:amora_ai/core/widgets/app_primary_button.dart';
+import 'package:amora_ai/core/widgets/premium_card.dart';
+import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
+import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
+import 'package:amora_ai/features/profile/domain/profile_completion_calculator.dart';
+import 'package:amora_ai/features/profile/domain/profile_form_validators.dart';
+import 'package:amora_ai/features/profile/presentation/controllers/profile_form_controller.dart';
+import 'package:amora_ai/features/profile/presentation/kyc_verification_screen.dart';
+import 'package:amora_ai/features/profile/presentation/photo_manager_screen.dart';
+import 'package:amora_ai/features/profile/presentation/profile_preview_screen.dart';
+import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_fields.dart';
+import 'package:flutter/material.dart';
+
+enum ProfileFormMode { edit }
+
+typedef ProfileFormSaved =
+    Future<void> Function(BuildContext context, UserProfile profile);
+
+/// The concise, full-form Edit Profile experience.
+///
+/// Profile Completion intentionally does not use this page shell. Both flows
+/// share the controller, fields, validators, repository and completion result.
+class AmoraaProfileForm extends StatefulWidget {
+  const AmoraaProfileForm({
+    super.key,
+    this.mode = ProfileFormMode.edit,
+    required this.onSaved,
+  });
+
+  final ProfileFormMode mode;
+  final ProfileFormSaved onSaved;
+
+  @override
+  State<AmoraaProfileForm> createState() => _AmoraaProfileFormState();
+}
+
+class _AmoraaProfileFormState extends State<AmoraaProfileForm> {
+  final _formKey = GlobalKey<FormState>();
+  late final ProfileFormController _controller;
+  bool _showValidation = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = ProfileFormController()..addListener(_refresh);
+  }
+
+  @override
+  void dispose() {
+    _controller
+      ..removeListener(_refresh)
+      ..dispose();
+    super.dispose();
+  }
+
+  void _refresh() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final profile = _controller.draftProfile;
+    return PopScope<Object?>(
+      canPop: !_controller.dirty,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _confirmDiscard();
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: AppBar(
+          backgroundColor: AppColors.surface,
+          surfaceTintColor: AppColors.surface,
+          titleSpacing: 0,
+          title: const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Edit profile'),
+              Text(
+                'Update your AMORAA story',
+                style: TextStyle(
+                  color: AppColors.text,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+            ],
+          ),
+          leading: IconButton(
+            tooltip: 'Back to profile',
+            onPressed: () => Navigator.of(context).maybePop(),
+            icon: const Icon(Icons.arrow_back_rounded),
+          ),
+          actions: [
+            IconButton(
+              tooltip: 'Preview profile',
+              onPressed: () => Navigator.of(
+                context,
+              ).pushNamed(ProfilePreviewScreen.routeName),
+              icon: const Icon(Icons.visibility_rounded),
+            ),
+            const SizedBox(width: AmoraSpacing.space4),
+          ],
+        ),
+        body: SafeArea(
+          top: false,
+          bottom: false,
+          child: ResponsiveMobileFrame(
+            maxWidth: 820,
+            child: Form(
+              key: _formKey,
+              child: CustomScrollView(
+                key: const PageStorageKey<String>('edit-profile-scroll'),
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
+                slivers: [
+                  SliverPadding(
+                    padding: EdgeInsets.fromLTRB(
+                      AmoraSpacing.space20,
+                      AmoraSpacing.space20,
+                      AmoraSpacing.space20,
+                      AmoraSpacing.space40 +
+                          MediaQuery.viewInsetsOf(context).bottom,
+                    ),
+                    sliver: SliverList.list(
+                      children: [
+                        Text(
+                          'All profile details',
+                          style: AmoraTextStyles.headlineSmall.copyWith(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: AmoraSpacing.space4),
+                        Text(
+                          'Edit any supported field, then save everything together.',
+                          style: AmoraTextStyles.bodyMedium.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                        const SizedBox(height: AmoraSpacing.space24),
+                        _EditSection(
+                          id: ProfileCompletionSectionId.photos,
+                          icon: Icons.photo_camera_rounded,
+                          title: 'Profile Photos',
+                          child: AmoraaProfilePhotoSection(
+                            profile: profile,
+                            showError: _showValidation,
+                            onManage: () =>
+                                _openNamed(PhotoManagerScreen.routeName),
+                          ),
+                        ),
+                        _EditSection(
+                          id: ProfileCompletionSectionId.basicDetails,
+                          icon: Icons.badge_rounded,
+                          title: 'Basic Details',
+                          child: AmoraaBasicDetailsSection(
+                            controller: _controller,
+                            showValidation: _showValidation,
+                          ),
+                        ),
+                        _EditSection(
+                          id: ProfileCompletionSectionId.workEducation,
+                          icon: Icons.work_outline_rounded,
+                          title: 'Work & Education',
+                          child: AmoraaWorkEducationSection(
+                            controller: _controller,
+                          ),
+                        ),
+                        _EditSection(
+                          id: ProfileCompletionSectionId.locationIntentions,
+                          icon: Icons.favorite_outline_rounded,
+                          title: 'Location & Dating Intentions',
+                          child: AmoraaLocationIntentionsSection(
+                            controller: _controller,
+                          ),
+                        ),
+                        _EditSection(
+                          id: ProfileCompletionSectionId.identityDetails,
+                          icon: Icons.tune_rounded,
+                          title: 'Height, Languages & Religion',
+                          child: AmoraaIdentityDetailsSelector(
+                            controller: _controller,
+                            showValidation: _showValidation,
+                          ),
+                        ),
+                        _EditSection(
+                          id: ProfileCompletionSectionId.bio,
+                          icon: Icons.notes_rounded,
+                          title: 'Bio',
+                          child: AmoraaProfileBioField(
+                            controller: _controller.bio,
+                          ),
+                        ),
+                        _EditSection(
+                          id: ProfileCompletionSectionId.interests,
+                          icon: Icons.interests_rounded,
+                          title: 'Interests',
+                          child: AmoraaInterestsSelector(
+                            controller: _controller,
+                            showValidation: _showValidation,
+                          ),
+                        ),
+                        _EditSection(
+                          id: ProfileCompletionSectionId.lifestyle,
+                          icon: Icons.self_improvement_rounded,
+                          title: 'Lifestyle',
+                          child: AmoraaLifestyleSelector(
+                            controller: _controller,
+                            showValidation: _showValidation,
+                          ),
+                        ),
+                        _EditSection(
+                          id: ProfileCompletionSectionId.prompt,
+                          icon: Icons.forum_outlined,
+                          title: 'Profile Prompt',
+                          child: AmoraaProfilePromptField(
+                            controller: _controller,
+                            showValidation: _showValidation,
+                          ),
+                        ),
+                        _EditSection(
+                          id: null,
+                          icon: Icons.verified_user_rounded,
+                          title: 'Verification',
+                          child: AmoraaVerificationSection(
+                            onOpenVerification: () =>
+                                _openNamed(KycVerificationScreen.routeName),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        bottomNavigationBar: _ProfileSaveBar(
+          saving: _controller.saving,
+          label: 'Save changes',
+          onPressed: _save,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _save() async {
+    FocusScope.of(context).unfocus();
+    setState(() => _showValidation = true);
+    final profile = _controller.draftProfile;
+    final validForm = _formKey.currentState?.validate() ?? false;
+    final errors = ProfileFormValidators.editableProfile(profile);
+    if (!validForm || errors.isNotEmpty || _controller.saving) {
+      if (errors.isNotEmpty) _showError(errors.first);
+      return;
+    }
+    try {
+      final saved = await _controller.save();
+      if (!mounted) return;
+      await widget.onSaved(context, saved);
+    } catch (_) {
+      if (mounted) {
+        _showError('Profile could not be saved. Please try again.');
+      }
+    }
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _openNamed(String route) async {
+    await Navigator.of(context).pushNamed(route);
+    if (mounted) _controller.refreshExternalProfile();
+  }
+
+  Future<void> _confirmDiscard() async {
+    if (_controller.saving) return;
+    final discard = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Discard unsaved changes?'),
+        content: const Text(
+          'Your latest profile edits have not been saved yet.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Keep editing'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Discard'),
+          ),
+        ],
+      ),
+    );
+    if (discard != true || !mounted) return;
+    Navigator.of(context).pop();
+  }
+}
+
+class _EditSection extends StatelessWidget {
+  const _EditSection({
+    required this.id,
+    required this.icon,
+    required this.title,
+    required this.child,
+  });
+
+  final ProfileCompletionSectionId? id;
+  final IconData icon;
+  final String title;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AmoraSpacing.space16),
+      child: PremiumCard(
+        key: ValueKey('edit-section-${id?.name ?? 'verification'}'),
+        radius: 22,
+        padding: const EdgeInsets.all(AmoraSpacing.space20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: AmoraSpacing.minimumTouchTarget,
+                  height: AmoraSpacing.minimumTouchTarget,
+                  decoration: BoxDecoration(
+                    color: AppColors.tertiary.withValues(alpha: .55),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Icon(icon, color: AppColors.primary),
+                ),
+                const SizedBox(width: AmoraSpacing.space12),
+                Expanded(child: Text(title, style: AmoraTextStyles.titleLarge)),
+              ],
+            ),
+            const SizedBox(height: AmoraSpacing.space16),
+            child,
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ProfileSaveBar extends StatelessWidget {
+  const _ProfileSaveBar({
+    required this.saving,
+    required this.label,
+    required this.onPressed,
+  });
+
+  final bool saving;
+  final String label;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.surface,
+      elevation: 12,
+      shadowColor: AppColors.primary.withValues(alpha: .12),
+      child: SafeArea(
+        top: false,
+        child: Center(
+          heightFactor: 1,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 820),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 10, 20, 12),
+              child: AppPrimaryButton(
+                key: const ValueKey('profile-save-button'),
+                label: label,
+                icon: Icons.check_rounded,
+                isLoading: saving,
+                onPressed: saving ? null : onPressed,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

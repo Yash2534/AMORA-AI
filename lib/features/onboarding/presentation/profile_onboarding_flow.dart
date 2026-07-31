@@ -908,7 +908,7 @@ class _GenderQuestion extends StatelessWidget {
               ),
             ),
           ],
-          SwitchListTile.adaptive(
+          SwitchListTile(
             contentPadding: EdgeInsets.zero,
             title: const Text('Show my gender on my profile'),
             value: state.showGender,

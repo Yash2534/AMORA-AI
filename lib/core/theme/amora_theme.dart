@@ -161,27 +161,70 @@ abstract final class AmoraTheme {
         visualDensity: VisualDensity.standard,
       ),
       switchTheme: SwitchThemeData(
-        thumbColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.disabled)) {
-            return AppColors.textDisabled;
-          }
-          return states.contains(WidgetState.selected)
-              ? AppColors.onPrimary
-              : AppColors.outline;
+        thumbIcon: WidgetStateProperty.resolveWith<Icon>((states) {
+          final disabled = states.contains(WidgetState.disabled);
+          final selected = states.contains(WidgetState.selected);
+          return Icon(
+            selected ? Icons.check_rounded : Icons.remove_rounded,
+            size: 16,
+            color: (selected ? AppColors.secondary : AppColors.primary)
+                .withValues(alpha: disabled ? .42 : .72),
+          );
         }),
-        trackColor: WidgetStateProperty.resolveWith((states) {
+        thumbColor: WidgetStateProperty.resolveWith<Color>((states) {
           if (states.contains(WidgetState.disabled)) {
-            return AppColors.surfaceContainerHighest;
+            return AppColors.surface.withValues(alpha: .62);
           }
-          return states.contains(WidgetState.selected)
+          return AppColors.surface;
+        }),
+        trackColor: WidgetStateProperty.resolveWith<Color>((states) {
+          final selected = states.contains(WidgetState.selected);
+          if (states.contains(WidgetState.disabled)) {
+            return selected
+                ? AppColors.secondary.withValues(alpha: .36)
+                : AppColors.tertiary.withValues(alpha: .34);
+          }
+          return selected
               ? AppColors.active
-              : AppColors.surfaceContainerHighest;
+              : AppColors.tertiary.withValues(alpha: .72);
         }),
-        trackOutlineColor: WidgetStateProperty.resolveWith((states) {
-          return states.contains(WidgetState.selected)
-              ? AppColors.transparent
-              : AppColors.outline;
+        trackOutlineColor: WidgetStateProperty.resolveWith<Color>((states) {
+          final selected = states.contains(WidgetState.selected);
+          if (states.contains(WidgetState.disabled)) {
+            return selected
+                ? AppColors.secondary.withValues(alpha: .28)
+                : AppColors.primary.withValues(alpha: .12);
+          }
+          if (states.contains(WidgetState.focused)) {
+            return AppColors.primary.withValues(alpha: .42);
+          }
+          if (states.contains(WidgetState.hovered)) {
+            return AppColors.primary.withValues(alpha: .30);
+          }
+          return selected
+              ? AppColors.secondary
+              : AppColors.primary.withValues(alpha: .22);
         }),
+        trackOutlineWidth: WidgetStateProperty.resolveWith<double>((states) {
+          return states.contains(WidgetState.focused) ? 2 : 1;
+        }),
+        overlayColor: WidgetStateProperty.resolveWith<Color>((states) {
+          if (states.contains(WidgetState.pressed)) {
+            return AppColors.secondary.withValues(alpha: .12);
+          }
+          if (states.contains(WidgetState.hovered) ||
+              states.contains(WidgetState.focused)) {
+            return AppColors.primary.withValues(alpha: .08);
+          }
+          return AppColors.transparent;
+        }),
+        mouseCursor: WidgetStateProperty.resolveWith<MouseCursor>((states) {
+          return states.contains(WidgetState.disabled)
+              ? SystemMouseCursors.forbidden
+              : SystemMouseCursors.click;
+        }),
+        materialTapTargetSize: MaterialTapTargetSize.padded,
+        splashRadius: 24,
       ),
       sliderTheme: SliderThemeData(
         activeTrackColor: AppColors.active,

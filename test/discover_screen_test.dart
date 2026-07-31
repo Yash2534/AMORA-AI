@@ -6,6 +6,7 @@ import 'package:amora_ai/features/discover/presentation/browse_grid_screen.dart'
 import 'package:amora_ai/features/discover/presentation/discover_action_controller.dart';
 import 'package:amora_ai/features/profile/presentation/profile_detail_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_screen.dart';
+import 'package:amora_ai/features/settings/presentation/profile_settings_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -239,7 +240,7 @@ void main() {
     expect(find.text('/filters destination'), findsOneWidget);
   });
 
-  testWidgets('Profile notification control opens the existing route', (
+  testWidgets('Profile settings control opens the existing route', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(430, 900));
@@ -251,11 +252,13 @@ void main() {
         home: const ProfileScreen(showNavigation: false),
         onGenerateRoute: (settings) {
           openedRoute = settings;
-          if (settings.name == '/notifications') {
+          if (settings.name == ProfileSettingsScreen.routeName) {
             return MaterialPageRoute<void>(
               settings: settings,
-              builder: (_) => const Scaffold(
-                body: Center(child: Text('/notifications destination')),
+              builder: (_) => Scaffold(
+                body: Center(
+                  child: Text('${ProfileSettingsScreen.routeName} destination'),
+                ),
               ),
             );
           }
@@ -264,13 +267,14 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(
-      find.byKey(const ValueKey('profile-notifications-button')),
-    );
+    await tester.tap(find.byKey(const ValueKey('profile-settings-button')));
     await tester.pumpAndSettle();
 
-    expect(openedRoute?.name, '/notifications');
-    expect(find.text('/notifications destination'), findsOneWidget);
+    expect(openedRoute?.name, ProfileSettingsScreen.routeName);
+    expect(
+      find.text('${ProfileSettingsScreen.routeName} destination'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('card opens profile detail with a named Hero route', (

@@ -337,8 +337,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
               setState(() => _readReceipts = value);
               _snack(value ? 'Read receipts on' : 'Read receipts off');
             },
-            activeThumbColor: AppColors.surface,
-            activeTrackColor: AppColors.secondary,
             title: const Text(
               'Read Receipts',
               style: TextStyle(

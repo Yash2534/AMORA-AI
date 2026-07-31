@@ -1453,12 +1453,12 @@ void _showControls(BuildContext context, _ModuleSpec spec) {
                 ),
               ),
               const SizedBox(height: 16),
-              SwitchListTile.adaptive(
+              SwitchListTile(
                 value: true,
                 onChanged: (_) {},
                 title: const Text('Personalized AI recommendations'),
               ),
-              SwitchListTile.adaptive(
+              SwitchListTile(
                 value: true,
                 onChanged: (_) {},
                 title: const Text('Premium notifications'),

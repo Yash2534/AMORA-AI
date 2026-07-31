@@ -12,9 +12,9 @@ import 'package:amora_ai/core/widgets/premium_motion.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/auth/presentation/login_screen.dart';
 import 'package:amora_ai/features/chat/data/local_chat_repository.dart';
-import 'package:amora_ai/features/notifications/presentation/notifications_hub_screen.dart';
 import 'package:amora_ai/features/onboarding/data/local_onboarding_repository.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
+import 'package:amora_ai/features/profile/domain/profile_interest_policy.dart';
 import 'package:amora_ai/features/profile/presentation/kyc_verification_screen.dart';
 import 'package:amora_ai/features/profile/presentation/photo_manager_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_completion_metrics.dart';
@@ -22,10 +22,10 @@ import 'package:amora_ai/features/profile/presentation/profile_completion_screen
 import 'package:amora_ai/features/profile/presentation/profile_edit_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_preview_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_section_editor_screen.dart';
+import 'package:amora_ai/features/profile/presentation/widgets/profile_photo_gallery.dart';
+import 'package:amora_ai/features/settings/presentation/profile_settings_screen.dart';
 import 'package:amora_ai/features/settings/presentation/safety_privacy_screen.dart';
-import 'package:amora_ai/features/legal/presentation/legal_document_screen.dart';
-import 'package:amora_ai/features/support/data/support_faq_data.dart';
-import 'package:amora_ai/features/support/presentation/faq_support_screen.dart';
+import 'package:amora_ai/features/subscription/presentation/subscription_screen.dart';
 import 'package:flutter/material.dart';
 
 typedef ProfileAccountDeletionCallback =
@@ -84,8 +84,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               SliverPersistentHeader(
                 pinned: true,
                 delegate: _ProfileHeaderDelegate(
-                  onNotifications: () =>
-                      _open(NotificationsHubScreen.routeName),
+                  onSettings: () => _open(ProfileSettingsScreen.routeName),
                 ),
               ),
               SliverPadding(
@@ -111,8 +110,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     const SizedBox(height: 30),
                     ProfileSectionHeading(
+                      key: const ValueKey('profile-photo-gallery-heading'),
                       icon: Icons.photo_camera_rounded,
-                      title: 'Photo gallery',
+                      title: 'Photo Gallery',
                       subtitle: 'The moments that make your story feel real.',
                       actionLabel: 'Manage',
                       onAction: () => _open(PhotoManagerScreen.routeName),
@@ -176,49 +176,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     const SizedBox(height: 30),
                     const ProfileSectionHeading(
-                      icon: Icons.mail_rounded,
-                      title: 'Support',
-                      subtitle: 'Private, straightforward help by email.',
+                      icon: Icons.workspace_premium_rounded,
+                      title: 'Premium membership',
+                      subtitle: 'A quieter invitation to get more from AMORAA.',
                     ),
                     const SizedBox(height: 12),
-                    EmailSupportProfileCard(
-                      email: SupportContact.email,
-                      onContact: () => _open(FaqSupportScreen.routeName),
-                    ),
-                    const SizedBox(height: 30),
-                    const ProfileSectionHeading(
-                      icon: Icons.gavel_rounded,
-                      title: 'Legal',
-                      subtitle: 'The standards that protect the community.',
-                    ),
-                    const SizedBox(height: 12),
-                    ProfileLinkGroup(
-                      items: [
-                        ProfileLinkItem(
-                          icon: Icons.description_rounded,
-                          title: 'Terms & Conditions',
-                          subtitle: 'Review AMORAA account terms',
-                          onTap: () => _open(TermsConditionsScreen.routeName),
-                        ),
-                        ProfileLinkItem(
-                          icon: Icons.policy_rounded,
-                          title: 'Privacy policy',
-                          subtitle: 'How personal information is handled',
-                          onTap: () => _open(PrivacyPolicyScreen.routeName),
-                        ),
-                        ProfileLinkItem(
-                          icon: Icons.people_alt_rounded,
-                          title: 'Community guidelines',
-                          subtitle: 'Respectful behavior across AMORAA',
-                          onTap: () => _open(SafetyPrivacyScreen.routeName),
-                        ),
-                        ProfileLinkItem(
-                          icon: Icons.shield_rounded,
-                          title: 'Safety center',
-                          subtitle: 'Tools for safer dating',
-                          onTap: () => _open(SafetyPrivacyScreen.routeName),
-                        ),
-                      ],
+                    PremiumMembershipCard(
+                      onViewPremium: () => _open(SubscriptionScreen.routeName),
+                      onManage: () => _open(SubscriptionScreen.routeName),
                     ),
                     const SizedBox(height: 30),
                     const ProfileSectionHeading(
@@ -335,9 +300,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 }
 
 class _ProfileHeaderDelegate extends SliverPersistentHeaderDelegate {
-  const _ProfileHeaderDelegate({required this.onNotifications});
+  const _ProfileHeaderDelegate({required this.onSettings});
 
-  final VoidCallback onNotifications;
+  final VoidCallback onSettings;
 
   @override
   double get minExtent => 64;
@@ -383,11 +348,11 @@ class _ProfileHeaderDelegate extends SliverPersistentHeaderDelegate {
               ),
             ),
             _ProfileHeaderActionButton(
-              key: const ValueKey('profile-notifications-button'),
-              tooltip: 'Notifications',
-              semanticLabel: 'Open notifications',
-              onPressed: onNotifications,
-              icon: Icons.notifications_none_rounded,
+              key: const ValueKey('profile-settings-button'),
+              tooltip: 'Profile settings',
+              semanticLabel: 'Open profile settings',
+              onPressed: onSettings,
+              icon: Icons.settings_rounded,
             ),
           ],
         ),
@@ -397,7 +362,7 @@ class _ProfileHeaderDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   bool shouldRebuild(covariant _ProfileHeaderDelegate oldDelegate) {
-    return oldDelegate.onNotifications != onNotifications;
+    return oldDelegate.onSettings != onSettings;
   }
 }
 
@@ -1634,7 +1599,8 @@ class ProfileCompletionCard extends StatelessWidget {
     final missing = <String>[
       if (profile.photos.length < 2) 'Add another photo',
       if (profile.bio.trim().length < 40) 'Write a fuller introduction',
-      if (profile.interests.length < 5) 'Add more interests',
+      if (ProfileInterestPolicy.visibleCount(profile.interests) < 5)
+        'Add more interests',
       if (profile.completedPromptCount < 1) 'Complete a profile prompt',
       if ((profile.lifestyle['Height'] ?? '').trim().isEmpty) 'Add your height',
       if ((profile.lifestyle['Languages'] ?? '').trim().isEmpty)
@@ -1830,164 +1796,6 @@ class ProfileSectionHeading extends StatelessWidget {
   }
 }
 
-class ProfilePhotoGallery extends StatelessWidget {
-  const ProfilePhotoGallery({
-    super.key,
-    required this.profile,
-    required this.onManage,
-  });
-
-  final LocalProfileDraft profile;
-  final VoidCallback onManage;
-
-  @override
-  Widget build(BuildContext context) {
-    if (profile.photos.isEmpty) {
-      return _ProfileEmptyCard(
-        icon: Icons.add_a_photo_rounded,
-        title: 'Add your first photos',
-        description: 'Use the existing photo manager to build your gallery.',
-        actionLabel: 'Add photos',
-        onAction: onManage,
-      );
-    }
-    final secondary = <String>[
-      for (var index = 0; index < profile.photos.length; index++)
-        if (index != profile.primaryPhotoIndex) profile.photos[index],
-    ].take(5).toList(growable: false);
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final wide = constraints.maxWidth >= 720;
-        final hero = Stack(
-          children: [
-            Positioned.fill(
-              child: AmoraProfileImage(
-                imageUrl: profile.primaryPhoto,
-                assetPath: profile.primaryPhoto,
-                initials: 'AM',
-                fit: BoxFit.cover,
-                borderRadius: BorderRadius.circular(26),
-                semanticLabel: 'Primary profile photo',
-              ),
-            ),
-            Positioned(
-              left: 12,
-              top: 12,
-              child: _GalleryLabel(
-                icon: Icons.star_rounded,
-                label: 'Primary photo',
-              ),
-            ),
-          ],
-        );
-        final grid = _SecondaryPhotoGrid(photos: secondary);
-        if (wide) {
-          return SizedBox(
-            height: 430,
-            child: Row(
-              children: [
-                Expanded(flex: 7, child: hero),
-                const SizedBox(width: 12),
-                Expanded(flex: 6, child: grid),
-              ],
-            ),
-          );
-        }
-        return Column(
-          children: [
-            SizedBox(
-              height: math.min(430, constraints.maxWidth * 1.05),
-              child: hero,
-            ),
-            if (secondary.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              SizedBox(height: 232, child: grid),
-            ],
-          ],
-        );
-      },
-    );
-  }
-}
-
-class _SecondaryPhotoGrid extends StatelessWidget {
-  const _SecondaryPhotoGrid({required this.photos});
-
-  final List<String> photos;
-
-  @override
-  Widget build(BuildContext context) {
-    if (photos.isEmpty) {
-      return Container(
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: AppColors.tertiary),
-        ),
-        child: const Center(
-          child: Icon(Icons.add_a_photo_rounded, color: AppColors.secondary),
-        ),
-      );
-    }
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final itemWidth = (constraints.maxWidth - 10) / 2;
-        final itemHeight = (constraints.maxHeight - 10) / 2;
-        return Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: [
-            for (var index = 0; index < math.min(4, photos.length); index++)
-              SizedBox(
-                width: itemWidth,
-                height: itemHeight,
-                child: AmoraProfileImage(
-                  imageUrl: photos[index],
-                  assetPath: photos[index],
-                  initials: 'AM',
-                  fit: BoxFit.cover,
-                  borderRadius: BorderRadius.circular(20),
-                  semanticLabel: 'Profile photo ${index + 1}',
-                ),
-              ),
-          ],
-        );
-      },
-    );
-  }
-}
-
-class _GalleryLabel extends StatelessWidget {
-  const _GalleryLabel({required this.icon, required this.label});
-
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-      decoration: BoxDecoration(
-        color: AppColors.primary.withValues(alpha: .86),
-        borderRadius: BorderRadius.circular(99),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 15, color: AppColors.surface),
-          const SizedBox(width: 5),
-          Text(
-            label,
-            style: AmoraTextStyles.labelMedium.copyWith(
-              color: AppColors.surface,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class ProfilePromptsCard extends StatelessWidget {
   const ProfilePromptsCard({super.key, required this.profile});
 
@@ -2171,7 +1979,8 @@ class ProfileInterestsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (interests.isEmpty) {
+    final visibleInterests = ProfileInterestPolicy.visible(interests);
+    if (visibleInterests.isEmpty) {
       return const _ProfileEmptyCard(
         icon: Icons.interests_rounded,
         title: 'No interests yet',
@@ -2186,7 +1995,7 @@ class ProfileInterestsCard extends StatelessWidget {
           spacing: 9,
           runSpacing: 9,
           children: [
-            for (final interest in interests)
+            for (final interest in visibleInterests)
               Container(
                 constraints: BoxConstraints(
                   minHeight: 42,
@@ -2348,6 +2157,167 @@ class _TrustStatusRow extends StatelessWidget {
   }
 }
 
+class PremiumMembershipCard extends StatelessWidget {
+  const PremiumMembershipCard({
+    super.key,
+    required this.onViewPremium,
+    required this.onManage,
+  });
+
+  final VoidCallback onViewPremium;
+  final VoidCallback onManage;
+
+  static const _features = <(IconData, String)>[
+    (Icons.favorite_rounded, 'See likes'),
+    (Icons.tune_rounded, 'Advanced filters'),
+    (Icons.visibility_rounded, 'Priority visibility'),
+    (Icons.auto_awesome_rounded, 'Exclusive features'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return PremiumCard(
+      key: const ValueKey('premium-membership-section'),
+      radius: 24,
+      padding: const EdgeInsets.all(20),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final compactActions = constraints.maxWidth < 360;
+          final featureWidth = constraints.maxWidth >= 480
+              ? (constraints.maxWidth - 12) / 2
+              : constraints.maxWidth;
+
+          final viewPremium = AppPrimaryButton(
+            key: const ValueKey('profile-view-premium-button'),
+            label: 'View premium',
+            icon: Icons.workspace_premium_rounded,
+            onPressed: onViewPremium,
+          );
+          final manage = AppPrimaryButton(
+            key: const ValueKey('profile-manage-membership-button'),
+            label: 'Manage',
+            icon: Icons.manage_accounts_rounded,
+            variant: AppPrimaryButtonVariant.outlined,
+            onPressed: onManage,
+          );
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: AppColors.tertiary.withValues(alpha: .48),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    alignment: Alignment.center,
+                    child: const Icon(
+                      Icons.workspace_premium_rounded,
+                      color: AppColors.primary,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'AMORAA Premium',
+                          style: AmoraTextStyles.titleLarge.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Explore the membership options already available.',
+                          style: AmoraTextStyles.bodyMedium.copyWith(
+                            color: AppColors.text.withValues(alpha: .72),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              Wrap(
+                spacing: 12,
+                runSpacing: 10,
+                children: [
+                  for (final feature in _features)
+                    SizedBox(
+                      width: featureWidth,
+                      child: _PremiumFeatureRow(
+                        icon: feature.$1,
+                        label: feature.$2,
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              if (compactActions) ...[
+                viewPremium,
+                const SizedBox(height: 10),
+                manage,
+              ] else
+                Row(
+                  children: [
+                    Expanded(child: viewPremium),
+                    const SizedBox(width: 10),
+                    Expanded(child: manage),
+                  ],
+                ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _PremiumFeatureRow extends StatelessWidget {
+  const _PremiumFeatureRow({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 40),
+      child: Row(
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: AppColors.background,
+              borderRadius: BorderRadius.circular(11),
+            ),
+            alignment: Alignment.center,
+            child: Icon(icon, color: AppColors.secondary, size: 18),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              label,
+              style: AmoraTextStyles.bodyMedium.copyWith(
+                color: AppColors.text,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class ProfileLinkItem {
   const ProfileLinkItem({
     required this.icon,
@@ -2412,61 +2382,6 @@ class ProfileLinkGroup extends StatelessWidget {
   }
 }
 
-class EmailSupportProfileCard extends StatelessWidget {
-  const EmailSupportProfileCard({
-    super.key,
-    required this.email,
-    required this.onContact,
-  });
-
-  final String email;
-  final VoidCallback onContact;
-
-  @override
-  Widget build(BuildContext context) {
-    return PremiumCard(
-      radius: 24,
-      padding: const EdgeInsets.all(20),
-      child: Row(
-        children: [
-          Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(
-              color: AppColors.tertiary.withValues(alpha: .55),
-              borderRadius: BorderRadius.circular(17),
-            ),
-            child: const Icon(Icons.mail_rounded, color: AppColors.primary),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Email support',
-                  style: AmoraTextStyles.titleMedium.copyWith(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  email,
-                  style: AmoraTextStyles.bodyMedium.copyWith(
-                    color: AppColors.text.withValues(alpha: .68),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          TextButton(onPressed: onContact, child: const Text('Contact')),
-        ],
-      ),
-    );
-  }
-}
-
 class SessionActionButton extends StatelessWidget {
   const SessionActionButton({
     super.key,
@@ -2505,15 +2420,11 @@ class _ProfileEmptyCard extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.description,
-    this.actionLabel,
-    this.onAction,
   });
 
   final IconData icon;
   final String title;
   final String description;
-  final String? actionLabel;
-  final VoidCallback? onAction;
 
   @override
   Widget build(BuildContext context) {
@@ -2539,8 +2450,6 @@ class _ProfileEmptyCard extends StatelessWidget {
               ],
             ),
           ),
-          if (actionLabel != null)
-            TextButton(onPressed: onAction, child: Text(actionLabel!)),
         ],
       ),
     );

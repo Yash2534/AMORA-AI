@@ -2,6 +2,7 @@ import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
+import 'package:amora_ai/features/legal/presentation/community_guidelines_screen.dart';
 import 'package:amora_ai/features/safety/presentation/report_flow_screen.dart';
 import 'package:amora_ai/features/settings/presentation/safety_privacy_screen.dart';
 import 'package:amora_ai/features/support/data/support_faq_data.dart';
@@ -13,7 +14,8 @@ typedef SupportEmailLauncher = Future<bool> Function(Uri uri);
 class FaqSupportScreen extends StatefulWidget {
   const FaqSupportScreen({super.key, this.launchEmail});
 
-  static const routeName = '/faq-support';
+  static const routeName = '/support';
+  static const legacyRouteName = '/faq-support';
 
   final SupportEmailLauncher? launchEmail;
 
@@ -178,7 +180,7 @@ class _FaqSupportScreenState extends State<FaqSupportScreen> {
                     ).pushNamed(SafetyPrivacyScreen.routeName),
                     onGuidelines: () => Navigator.of(
                       context,
-                    ).pushNamed(SafetyPrivacyScreen.routeName),
+                    ).pushNamed(CommunityGuidelinesScreen.routeName),
                     onReportConcern: () => Navigator.of(
                       context,
                     ).pushNamed(ReportFlowScreen.routeName),
@@ -262,7 +264,7 @@ class FaqSupportAppBar extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'FAQ & Support',
+                    'Support Center',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
@@ -274,7 +276,7 @@ class FaqSupportAppBar extends StatelessWidget {
                   ),
                   SizedBox(height: 3),
                   Text(
-                    'Find quick answers or contact us by email.',
+                    'Answers, reporting, and help from AMORAA.',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
@@ -734,7 +736,7 @@ class LegalSupportLinks extends StatelessWidget {
             ),
             _ResourceLink(
               icon: Icons.flag_outlined,
-              label: 'Report a Safety Concern',
+              label: 'Report a Problem',
               onTap: onReportConcern,
             ),
           ],

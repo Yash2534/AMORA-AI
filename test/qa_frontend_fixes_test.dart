@@ -11,6 +11,7 @@ import 'package:amora_ai/features/profile/presentation/profile_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_completion_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_edit_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_setup_screen.dart';
+import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_form.dart';
 import 'package:amora_ai/features/subscription/presentation/subscription_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -78,8 +79,10 @@ void main() {
     );
     tester.widget<AppPrimaryButton>(completeAction).onPressed?.call();
     await tester.pumpAndSettle();
-    expect(find.byKey(const Key('profile-completion-hub')), findsOneWidget);
-    expect(find.text('Required'), findsOneWidget);
+    expect(find.byType(AmoraaProfileForm), findsNothing);
+    expect(find.text('Complete your profile'), findsOneWidget);
+    expect(find.text('Profile Photos'), findsOneWidget);
+    expect(find.text('Continue profile'), findsOneWidget);
     expect(find.text('Preview profile'), findsNothing);
   });
 

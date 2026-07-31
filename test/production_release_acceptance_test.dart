@@ -62,12 +62,9 @@ void main() {
   ) async {
     await pumpScreen(tester, const ProfileCompletionScreen());
 
+    await tester.tap(find.text('Height, Languages & Religion'));
+    await tester.pumpAndSettle();
     for (final field in const ['Height', 'Languages', 'Religion']) {
-      await tester.scrollUntilVisible(
-        find.text(field),
-        300,
-        scrollable: find.byType(Scrollable).first,
-      );
       expect(find.text(field), findsOneWidget);
     }
     expect(find.text('Children'), findsNothing);

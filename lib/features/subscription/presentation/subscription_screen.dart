@@ -13,6 +13,8 @@ class SubscriptionScreen extends StatefulWidget {
   const SubscriptionScreen({super.key});
 
   static const routeName = '/subscription';
+  static const membershipRoute = '/membership';
+  static const manageRoute = '/manage-subscription';
 
   @override
   State<SubscriptionScreen> createState() => _SubscriptionScreenState();

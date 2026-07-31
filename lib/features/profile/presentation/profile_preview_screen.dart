@@ -5,6 +5,7 @@ import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
+import 'package:amora_ai/features/profile/domain/profile_interest_policy.dart';
 import 'package:amora_ai/features/profile/presentation/profile_edit_screen.dart';
 import 'package:amora_ai/features/discover/presentation/discover_screen.dart';
 import 'package:flutter/material.dart';
@@ -16,6 +17,7 @@ class ProfilePreviewScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final profile = LocalProfileRepository.instance.profile;
+    final visibleInterests = ProfileInterestPolicy.visible(profile.interests);
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -69,17 +71,18 @@ class ProfilePreviewScreen extends StatelessWidget {
                       title: 'About me',
                       child: Text(profile.bio),
                     ),
-                    _PreviewSection(
-                      title: 'Interests',
-                      child: Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          for (final interest in profile.interests)
-                            Chip(label: Text(interest)),
-                        ],
+                    if (visibleInterests.isNotEmpty)
+                      _PreviewSection(
+                        title: 'Interests',
+                        child: Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            for (final interest in visibleInterests)
+                              Chip(label: Text(interest)),
+                          ],
+                        ),
                       ),
-                    ),
                     for (final prompt in profile.prompts.entries)
                       if (prompt.value.trim().isNotEmpty)
                         _PreviewSection(

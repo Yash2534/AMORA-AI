@@ -7,6 +7,7 @@ import 'package:amora_ai/features/onboarding/data/gujarat_cities.dart';
 import 'package:amora_ai/features/onboarding/presentation/profile_onboarding_flow.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
 import 'package:amora_ai/features/profile/presentation/profile_completion_screen.dart';
+import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_form.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -303,11 +304,17 @@ void main() {
 
     final complete = originalProfile.copyWith(
       interests: const ['Coffee', 'Travel', 'Music', 'Design', 'Nature'],
+      lifestyle: {
+        ...originalProfile.lifestyle,
+        'Height': '5′8″–5′11″',
+        'Languages': 'English & Hindi',
+        'Religion': 'Hindu',
+      },
     );
     expect(complete.completionPercent, 100);
   });
 
-  testWidgets('profile completion never blocks returning to Discover', (
+  testWidgets('profile completion uses its dedicated guided form', (
     tester,
   ) async {
     profiles.startNewProfile('New Member');
@@ -317,20 +324,16 @@ void main() {
         home: const ProfileCompletionScreen(),
       ),
     );
-    await tester.scrollUntilVisible(
-      find.byKey(const Key('start-discovering-button')),
-      500,
-      scrollable: find.byType(Scrollable).first,
+    expect(find.byType(AmoraaProfileForm), findsNothing);
+    expect(find.text('Complete your profile'), findsOneWidget);
+    expect(find.text('Next best step'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('profile-completion-primary-button')),
+      findsOneWidget,
     );
-
-    final button = tester.widget<FilledButton>(
-      find.descendant(
-        of: find.byKey(const Key('start-discovering-button')),
-        matching: find.byType(FilledButton),
-      ),
-    );
-    expect(button.onPressed, isNotNull);
-    expect(find.text('Return to Discover'), findsOneWidget);
+    await tester.tap(find.text('Basic Details'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('profile-name-field')), findsOneWidget);
   });
 
   test('Gujarat city catalogue is unique and alphabetically sorted', () {

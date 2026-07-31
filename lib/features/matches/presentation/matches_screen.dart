@@ -9,6 +9,7 @@ import 'package:amora_ai/features/chat/data/local_chat_repository.dart';
 import 'package:amora_ai/features/chat/presentation/chat_detail_screen.dart';
 import 'package:amora_ai/features/discover/presentation/discover_action_controller.dart';
 import 'package:amora_ai/features/matches/presentation/widgets/amora_compatibility_slider.dart';
+import 'package:amora_ai/features/profile/domain/profile_interest_policy.dart';
 import 'package:amora_ai/features/profile/presentation/profile_detail_screen.dart';
 import 'package:flutter/material.dart';
 
@@ -1402,6 +1403,7 @@ class _AiMatchContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final firstName = profile.name.trim().split(RegExp(r'\s+')).first;
+    final visibleInterests = ProfileInterestPolicy.visible(profile.interests);
     return ColoredBox(
       color: AppColors.surface,
       child: Padding(
@@ -1458,7 +1460,7 @@ class _AiMatchContent extends StatelessWidget {
             MatchQuickFacts(profile: profile),
             const SizedBox(height: AmoraSpacing.space12),
             AiMatchReason(profile: profile, onTap: onWhyMatch),
-            if (profile.interests.isNotEmpty) ...[
+            if (visibleInterests.isNotEmpty) ...[
               const SizedBox(height: AmoraSpacing.space12),
               Text(
                 '$firstName’s interests',
@@ -1471,11 +1473,11 @@ class _AiMatchContent extends StatelessWidget {
                 spacing: AmoraSpacing.space8,
                 runSpacing: AmoraSpacing.space8,
                 children: [
-                  for (final interest in profile.interests.take(3))
+                  for (final interest in visibleInterests.take(3))
                     SharedInterestChip(label: interest),
-                  if (profile.interests.length > 3)
+                  if (visibleInterests.length > 3)
                     SharedInterestChip(
-                      label: '+${profile.interests.length - 3} more',
+                      label: '+${visibleInterests.length - 3} more',
                     ),
                 ],
               ),

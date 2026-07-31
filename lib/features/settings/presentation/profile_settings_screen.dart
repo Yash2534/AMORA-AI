@@ -1,506 +1,188 @@
 import 'package:amora_ai/core/theme/amora_spacing.dart';
+import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
-import 'package:amora_ai/core/widgets/premium_avatar.dart';
-import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
-import 'package:amora_ai/features/settings/presentation/safety_privacy_screen.dart';
-import 'package:amora_ai/features/settings/presentation/widgets/settings_support_widgets.dart';
-import 'package:amora_ai/features/settings/presentation/notification_preferences_screen.dart';
+import 'package:amora_ai/features/auth/presentation/forgot_password_screen.dart';
+import 'package:amora_ai/features/profile/presentation/profile_basic_details_screen.dart';
+import 'package:amora_ai/features/settings/presentation/account_action_screens.dart';
 import 'package:amora_ai/features/settings/presentation/managed_profiles_screen.dart';
-import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
-import 'package:amora_ai/features/profile/presentation/profile_completion_metrics.dart';
-import 'package:amora_ai/features/profile/presentation/profile_edit_screen.dart';
+import 'package:amora_ai/features/settings/presentation/notification_preferences_screen.dart';
+import 'package:amora_ai/features/settings/presentation/widgets/profile_settings_hub_widgets.dart';
+import 'package:amora_ai/features/settings/presentation/widgets/support_legal_settings_section.dart';
 import 'package:amora_ai/features/subscription/presentation/subscription_screen.dart';
-import 'package:amora_ai/features/support/presentation/faq_support_screen.dart';
 import 'package:flutter/material.dart';
 
-class ProfileSettingsScreen extends StatefulWidget {
+class ProfileSettingsScreen extends StatelessWidget {
   const ProfileSettingsScreen({super.key});
 
   static const routeName = '/profile-settings';
 
   @override
-  State<ProfileSettingsScreen> createState() => _ProfileSettingsScreenState();
-}
-
-class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
-  var _newMatches = true;
-  var _newMessages = true;
-  var _eventReminders = true;
-  var _promotions = false;
-  var _showDistance = true;
-  var _showOnline = true;
-  var _incognito = false;
-  var _hideContacts = false;
-  String _visibility = 'Everyone';
-
-  @override
   Widget build(BuildContext context) {
-    final profile = LocalProfileRepository.instance.profile;
-    final personalInfo = <String, String>{
-      'Full Name': profile.name,
-      'Email': profile.email,
-      'Phone Number': profile.phoneNumber,
-      'City': profile.location,
-      'Gender': profile.gender,
-      'Date of Birth': profile.birthdate,
-      'Relationship Intention': profile.datingIntention,
-    };
+    void open(String route) => Navigator.of(context).pushNamed(route);
+
     return Scaffold(
-      body: DecoratedBox(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [AppColors.background, AppColors.surface],
-          ),
-        ),
-        child: SafeArea(
-          child: ResponsiveMobileFrame(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(
-                AmoraSpacing.space20,
-                AmoraSpacing.space20,
-                AmoraSpacing.space20,
-                AmoraSpacing.navigationContentInset,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SettingsHeader(
-                    title: 'Profile Settings',
-                    subtitle:
-                        'Manage your account, preferences, and visibility.',
-                    icon: Icons.manage_accounts_rounded,
-                    onBack: () => Navigator.of(context).maybePop(),
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: ResponsiveMobileFrame(
+          maxWidth: 760,
+          child: CustomScrollView(
+            slivers: [
+              SliverAppBar(
+                pinned: true,
+                backgroundColor: AppColors.background.withValues(alpha: .96),
+                surfaceTintColor: AppColors.background,
+                toolbarHeight: 80,
+                leadingWidth: 64,
+                leading: Padding(
+                  padding: const EdgeInsets.only(left: AmoraSpacing.space12),
+                  child: IconButton.filledTonal(
+                    tooltip: 'Back',
+                    onPressed: () => Navigator.of(context).maybePop(),
+                    icon: const Icon(Icons.arrow_back_rounded),
                   ),
-                  const SizedBox(height: 18),
-                  const _UserSummaryCard(),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _MiniNavButton(
-                          icon: Icons.verified_user_rounded,
-                          label: 'Safety',
-                          onTap: () => Navigator.of(
-                            context,
-                          ).pushNamed(SafetyPrivacyScreen.routeName),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _MiniNavButton(
-                          icon: Icons.help_outline_rounded,
-                          label: 'Support',
-                          onTap: () => Navigator.of(
-                            context,
-                          ).pushNamed(FaqSupportScreen.routeName),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  SettingsSectionCard(
-                    title: 'Personal Info',
-                    children: [
-                      for (final entry in personalInfo.entries)
-                        SettingsTile(
-                          icon: _iconFor(entry.key),
-                          title: entry.key,
-                          subtitle: entry.value.isEmpty
-                              ? 'Not provided'
-                              : entry.value,
-                          onTap:
-                              entry.key == 'Email' ||
-                                  entry.key == 'Phone Number'
-                              ? null
-                              : _openProfileEditor,
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  SettingsSectionCard(
-                    title: 'Profile & Membership',
-                    children: [
-                      SettingsTile(
-                        icon: Icons.bookmark_rounded,
-                        title: 'Saved Profiles',
-                        subtitle: 'Revisit people you saved.',
-                        onTap: () => Navigator.of(
-                          context,
-                        ).pushNamed(SavedProfilesScreen.routeName),
-                      ),
-                      SettingsTile(
-                        icon: Icons.block_rounded,
-                        title: 'Blocked Profiles',
-                        subtitle: 'Review private blocking controls.',
-                        onTap: () => Navigator.of(
-                          context,
-                        ).pushNamed(BlockedProfilesScreen.routeName),
-                      ),
-                      SettingsTile(
-                        icon: Icons.workspace_premium_rounded,
-                        title: 'Membership',
-                        subtitle: 'View, upgrade, or manage your plan.',
-                        onTap: () => Navigator.of(
-                          context,
-                        ).pushNamed(SubscriptionScreen.routeName),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  SettingsSectionCard(
-                    title: 'Notification Preferences',
-                    children: [
-                      PrivacyToggleTile(
-                        title: 'New Matches',
-                        subtitle: 'Notify when someone compatible matches.',
-                        value: _newMatches,
-                        icon: Icons.favorite_rounded,
-                        onChanged: (value) =>
-                            setState(() => _newMatches = value),
-                      ),
-                      PrivacyToggleTile(
-                        title: 'New Messages',
-                        subtitle: 'Conversation alerts from your matches.',
-                        value: _newMessages,
-                        icon: Icons.chat_rounded,
-                        onChanged: (value) =>
-                            setState(() => _newMessages = value),
-                      ),
-                      PrivacyToggleTile(
-                        title: 'Event Reminders',
-                        subtitle: 'Reminders for bookings and singles events.',
-                        value: _eventReminders,
-                        icon: Icons.event_rounded,
-                        onChanged: (value) =>
-                            setState(() => _eventReminders = value),
-                      ),
-                      PrivacyToggleTile(
-                        title: 'Promotions',
-                        subtitle: 'Plan offers, coins, and event discounts.',
-                        value: _promotions,
-                        icon: Icons.local_offer_rounded,
-                        onChanged: (value) =>
-                            setState(() => _promotions = value),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  RadioGroup<String>(
-                    groupValue: _visibility,
-                    onChanged: (value) {
-                      if (value != null) {
-                        setState(() => _visibility = value);
-                      }
-                    },
-                    child: SettingsSectionCard(
-                      title: 'Who can discover me',
-                      children: [
-                        for (final option in const [
-                          ('Everyone', 'Show me to compatible members'),
-                          ('People I like', 'Only people I like can find me'),
-                          ('Paused', 'Temporarily hide my profile'),
-                        ])
-                          _VisibilityChoice(
-                            title: option.$1,
-                            subtitle: option.$2,
-                            selected: _visibility == option.$1,
-                            onTap: () =>
-                                setState(() => _visibility = option.$1),
-                          ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  SettingsSectionCard(
-                    title: 'Privacy Controls',
-                    children: [
-                      PrivacyToggleTile(
-                        title: 'Show distance',
-                        subtitle: 'Let matches see approximate distance.',
-                        value: _showDistance,
-                        onChanged: (value) =>
-                            setState(() => _showDistance = value),
-                      ),
-                      PrivacyToggleTile(
-                        title: 'Show online status',
-                        subtitle: 'Show when you are active now.',
-                        value: _showOnline,
-                        onChanged: (value) =>
-                            setState(() => _showOnline = value),
-                      ),
-                      PrivacyToggleTile(
-                        title: 'Incognito mode',
-                        subtitle: 'Only people you like can see you.',
-                        value: _incognito,
-                        onChanged: (value) =>
-                            setState(() => _incognito = value),
-                      ),
-                      PrivacyToggleTile(
-                        title: 'Hide from contacts',
-                        subtitle: 'Reduce visibility to imported contacts.',
-                        value: _hideContacts,
-                        onChanged: (value) =>
-                            setState(() => _hideContacts = value),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  SettingsSectionCard(
-                    title: 'Account Actions',
-                    children: [
-                      SettingsTile(
-                        icon: Icons.notifications_active_rounded,
-                        title: 'Notification Preferences',
-                        subtitle: 'Matches, messages, events, payments.',
-                        onTap: () => Navigator.of(
-                          context,
-                        ).pushNamed(NotificationPreferencesScreen.routeName),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  IconData _iconFor(String key) {
-    return switch (key) {
-      'Full Name' => Icons.badge_rounded,
-      'Email' => Icons.email_rounded,
-      'Phone Number' => Icons.phone_rounded,
-      'City' => Icons.location_city_rounded,
-      'Gender' => Icons.person_rounded,
-      'Date of Birth' => Icons.cake_rounded,
-      _ => Icons.favorite_rounded,
-    };
-  }
-
-  Future<void> _openProfileEditor() async {
-    await Navigator.of(context).pushNamed(ProfileEditScreen.routeName);
-    if (mounted) setState(() {});
-  }
-}
-
-class _VisibilityChoice extends StatelessWidget {
-  const _VisibilityChoice({
-    required this.title,
-    required this.subtitle,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String title;
-  final String subtitle;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      checked: selected,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AmoraSpacing.space12,
-            vertical: AmoraSpacing.space8,
-          ),
-          child: Row(
-            children: [
-              Radio<String>(value: title),
-              const SizedBox(width: AmoraSpacing.space4),
-              Expanded(
-                child: Column(
+                ),
+                titleSpacing: AmoraSpacing.space8,
+                title: const Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      title,
-                      style: const TextStyle(fontWeight: FontWeight.w800),
+                      'Profile Settings',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: AmoraSpacing.space4),
+                    SizedBox(height: 2),
                     Text(
-                      subtitle,
+                      'Manage your AMORAA account',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        color: AppColors.text.withValues(alpha: .64),
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
                       ),
+                    ),
+                  ],
+                ),
+              ),
+              SliverPadding(
+                padding: EdgeInsets.fromLTRB(
+                  AmoraSpacing.space20,
+                  AmoraSpacing.space16,
+                  AmoraSpacing.space20,
+                  AmoraSpacing.space40 +
+                      MediaQuery.viewPaddingOf(context).bottom,
+                ),
+                sliver: SliverList.list(
+                  children: [
+                    Text(
+                      'Everything important, thoughtfully organized.',
+                      style: AmoraTextStyles.bodyMedium.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: AmoraSpacing.space24),
+                    ProfileSettingsGroup(
+                      label: 'Account',
+                      children: [
+                        ProfileSettingsHubRow(
+                          key: const ValueKey('settings-personal-information'),
+                          icon: Icons.person_outline_rounded,
+                          title: 'Personal Information',
+                          subtitle: 'Update your identity and profile details.',
+                          onTap: () =>
+                              open(ProfileBasicDetailsScreen.routeName),
+                        ),
+                        ProfileSettingsHubRow(
+                          key: const ValueKey('settings-saved-profiles'),
+                          icon: Icons.bookmark_outline_rounded,
+                          title: 'Saved Profiles',
+                          subtitle: 'Return to people you saved.',
+                          onTap: () => open(SavedProfilesScreen.routeName),
+                        ),
+                        ProfileSettingsHubRow(
+                          key: const ValueKey('settings-blocked-profiles'),
+                          icon: Icons.block_rounded,
+                          title: 'Blocked Profiles',
+                          subtitle: 'Review profiles you chose not to see.',
+                          onTap: () => open(BlockedProfilesScreen.routeName),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AmoraSpacing.space24),
+                    ProfileSettingsGroup(
+                      label: 'Membership',
+                      children: [
+                        ProfileSettingsHubRow(
+                          key: const ValueKey('settings-membership'),
+                          icon: Icons.workspace_premium_outlined,
+                          title: 'Membership',
+                          subtitle: 'Explore AMORAA Premium benefits.',
+                          onTap: () => open(SubscriptionScreen.membershipRoute),
+                        ),
+                        ProfileSettingsHubRow(
+                          key: const ValueKey('settings-manage-subscription'),
+                          icon: Icons.credit_card_rounded,
+                          title: 'Manage Subscription',
+                          subtitle: 'Review your current plan and billing.',
+                          onTap: () => open(SubscriptionScreen.manageRoute),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AmoraSpacing.space24),
+                    ProfileSettingsGroup(
+                      label: 'Notifications',
+                      children: [
+                        ProfileSettingsHubRow(
+                          key: const ValueKey(
+                            'settings-notification-preferences',
+                          ),
+                          icon: Icons.notifications_none_rounded,
+                          title: 'Notification Preferences',
+                          subtitle: 'Choose which AMORAA updates reach you.',
+                          onTap: () =>
+                              open(NotificationPreferencesScreen.routeName),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AmoraSpacing.space24),
+                    const SupportLegalSettingsSection(),
+                    const SizedBox(height: AmoraSpacing.space24),
+                    ProfileSettingsGroup(
+                      label: 'Account Actions',
+                      children: [
+                        ProfileSettingsHubRow(
+                          key: const ValueKey('settings-change-password'),
+                          icon: Icons.password_rounded,
+                          title: 'Change Password',
+                          subtitle: 'Securely reset your password by email.',
+                          onTap: () => open(ForgotPasswordScreen.routeName),
+                        ),
+                        ProfileSettingsHubRow(
+                          key: const ValueKey('settings-logout'),
+                          icon: Icons.logout_rounded,
+                          title: 'Logout',
+                          subtitle: 'Sign out safely on this device.',
+                          onTap: () => open(LogoutAccountScreen.routeName),
+                        ),
+                        ProfileSettingsHubRow(
+                          key: const ValueKey('settings-delete-account'),
+                          icon: Icons.person_remove_outlined,
+                          title: 'Delete Account',
+                          subtitle:
+                              'Review permanent account deletion options.',
+                          danger: true,
+                          onTap: () =>
+                              open(DeleteAccountInformationScreen.routeName),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _UserSummaryCard extends StatelessWidget {
-  const _UserSummaryCard();
-
-  @override
-  Widget build(BuildContext context) {
-    final repository = LocalProfileRepository.instance;
-    return AnimatedBuilder(
-      animation: repository,
-      builder: (context, _) {
-        final profile = repository.profile;
-        return Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [
-                AppColors.secondary,
-                AppColors.tertiary,
-                AppColors.primary,
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(32),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.deepWine.withValues(alpha: .18),
-                blurRadius: 30,
-                offset: const Offset(0, 16),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  PremiumAvatar(
-                    imageUrl: profile.primaryPhoto,
-                    fallbackAsset: profile.primaryPhoto,
-                    initials: 'YA',
-                    radius: 34,
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          profile.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: AppColors.surface,
-                            fontSize: 23,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          profile.location,
-                          style: const TextStyle(
-                            color: AppColors.surface,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: const [
-                  TrustPill(
-                    icon: Icons.workspace_premium_rounded,
-                    label: 'Gold Member',
-                    color: AppColors.premiumGold,
-                  ),
-                  TrustPill(icon: Icons.verified_rounded, label: 'Verified'),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Profile completion',
-                      style: TextStyle(
-                        color: AppColors.surface,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ),
-                  Text(
-                    '${profile.presentationCompletionPercent}%',
-                    style: const TextStyle(
-                      color: AppColors.surface,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(99),
-                child: LinearProgressIndicator(
-                  value: profile.presentationCompletionPercent / 100,
-                  minHeight: 9,
-                  color: AppColors.active,
-                  backgroundColor: AppColors.surface,
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _MiniNavButton extends StatelessWidget {
-  const _MiniNavButton({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(24),
-      onTap: onTap,
-      child: PremiumCard(
-        padding: const EdgeInsets.all(14),
-        radius: 24,
-        child: Row(
-          children: [
-            Icon(icon, color: AppColors.primaryPurple),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: AppColors.deepWine,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ),
-          ],
         ),
       ),
     );

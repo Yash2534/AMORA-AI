@@ -86,7 +86,9 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('Profile Settings contains no Logout action', (tester) async {
+  testWidgets('Profile Settings exposes dedicated account action rows', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       MaterialApp(
         theme: AmoraTheme.light(),
@@ -95,9 +97,15 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Logout'), findsNothing);
-    expect(find.text('Log out'), findsNothing);
-    expect(find.byIcon(Icons.logout_rounded), findsNothing);
+    await tester.scrollUntilVisible(
+      find.text('Logout'),
+      420,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Logout'), findsOneWidget);
+    expect(find.text('Change Password'), findsOneWidget);
+    expect(find.text('Delete Account'), findsOneWidget);
+    expect(find.byIcon(Icons.logout_rounded), findsOneWidget);
   });
 
   testWidgets('canonical account actions appear once in Profile', (
@@ -105,7 +113,7 @@ void main() {
   ) async {
     await pumpProfile(tester);
     await tester.scrollUntilVisible(
-      find.text('Account actions'),
+      find.text('Log out'),
       420,
       scrollable: find.byType(Scrollable).first,
     );

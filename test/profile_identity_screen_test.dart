@@ -2,6 +2,8 @@ import 'package:amora_ai/core/theme/amora_theme.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
 import 'package:amora_ai/features/profile/presentation/profile_edit_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_screen.dart';
+import 'package:amora_ai/features/settings/presentation/profile_settings_screen.dart';
+import 'package:amora_ai/features/subscription/presentation/subscription_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -41,19 +43,25 @@ void main() {
     expect(find.text('Aquarius'), findsWidgets);
     expect(find.text('Edit profile'), findsOneWidget);
     expect(find.text('Preview'), findsOneWidget);
-    expect(find.byKey(const ValueKey('profile-settings-button')), findsNothing);
+    expect(
+      find.byKey(const ValueKey('profile-settings-button')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('profile-notifications-button')),
+      findsNothing,
+    );
     // Overflow assertions are checked after the responsive scroll pass below.
 
     final scrollable = find.byType(Scrollable).first;
     for (final section in [
-      'Photo gallery',
+      'Photo Gallery',
       'Profile prompts',
       'Dating intentions',
       'Interests',
       'Personality',
       'Verification & trust',
-      'Support',
-      'Legal',
+      'Premium membership',
       'Log out',
       'Delete account',
     ]) {
@@ -66,11 +74,139 @@ void main() {
         await tester.pumpAndSettle();
       }
       expect(find.text(section), findsWidgets);
+      if (section == 'Premium membership') {
+        await tester.scrollUntilVisible(
+          find.byKey(const ValueKey('premium-membership-section')),
+          240,
+          scrollable: scrollable,
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('AMORAA Premium'), findsOneWidget);
+        expect(find.text('See likes'), findsOneWidget);
+        expect(find.text('Advanced filters'), findsOneWidget);
+        expect(find.text('Priority visibility'), findsOneWidget);
+        expect(find.text('Exclusive features'), findsOneWidget);
+        expect(find.text('View premium'), findsOneWidget);
+        expect(find.text('Manage'), findsOneWidget);
+      }
     }
 
     expect(find.textContaining('WhatsApp'), findsNothing);
     expect(find.textContaining('Create Ticket'), findsNothing);
     expect(find.textContaining('Phone Support'), findsNothing);
+    expect(find.text('Support'), findsNothing);
+    expect(find.text('Legal'), findsNothing);
+    expect(find.text('Email Support'), findsNothing);
+    expect(find.text('Terms & Conditions'), findsNothing);
+    expect(find.text('Privacy Policy'), findsNothing);
+    expect(find.text('Community Guidelines'), findsNothing);
+    expect(find.text('Safety Center'), findsNothing);
+  });
+
+  testWidgets('Profile header settings and membership actions keep routes', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    RouteSettings? openedRoute;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AmoraTheme.light(),
+        home: const ProfileScreen(showNavigation: false),
+        onGenerateRoute: (settings) {
+          openedRoute = settings;
+          return MaterialPageRoute<void>(
+            settings: settings,
+            builder: (_) => Scaffold(
+              body: Center(child: Text('${settings.name} destination')),
+            ),
+          );
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final settingsButton = find.byKey(
+      const ValueKey('profile-settings-button'),
+    );
+    expect(settingsButton, findsOneWidget);
+    expect(find.bySemanticsLabel('Open profile settings'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('profile-notifications-button')),
+      findsNothing,
+    );
+    expect(tester.getSize(settingsButton), const Size(48, 48));
+
+    await tester.tap(settingsButton);
+    await tester.pumpAndSettle();
+    expect(openedRoute?.name, ProfileSettingsScreen.routeName);
+
+    tester.state<NavigatorState>(find.byType(Navigator)).pop();
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('premium-membership-section')),
+      420,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('profile-view-premium-button')));
+    await tester.pumpAndSettle();
+    expect(openedRoute?.name, SubscriptionScreen.routeName);
+
+    tester.state<NavigatorState>(find.byType(Navigator)).pop();
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('profile-manage-membership-button')),
+      420,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(
+      find.byKey(const ValueKey('profile-manage-membership-button')),
+    );
+    await tester.pumpAndSettle();
+    expect(openedRoute?.name, SubscriptionScreen.routeName);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Profile header and membership stay responsive', (tester) async {
+    for (final width in <double>[320, 360, 390, 430, 600, 768, 1024]) {
+      await tester.binding.setSurfaceSize(
+        Size(width, width >= 600 ? 900 : 760),
+      );
+      await tester.pumpWidget(
+        MaterialApp(theme: AmoraTheme.light(), home: const ProfileScreen()),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('My dating identity'), findsOneWidget);
+      expect(find.text('Your story, your way'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('profile-settings-button')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('profile-notifications-button')),
+        findsNothing,
+      );
+
+      await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('premium-membership-section')),
+        520,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('AMORAA Premium'), findsOneWidget);
+      expect(
+        tester
+            .getSize(find.byKey(const ValueKey('premium-membership-section')))
+            .width,
+        lessThanOrEqualTo(width - 32),
+      );
+      expect(tester.takeException(), isNull, reason: 'Overflow at $width px');
+    }
+    addTearDown(() => tester.binding.setSurfaceSize(null));
   });
 
   testWidgets('profile uses a centred responsive identity canvas on desktop', (
@@ -118,7 +254,7 @@ void main() {
     final nameField = find.byType(TextFormField).first;
     await tester.enterText(nameField, 'Updated AMORAA Member');
     await tester.tap(find.byKey(const ValueKey('profile-save-button')));
-    await tester.pump(const Duration(milliseconds: 260));
+    await tester.pumpAndSettle();
 
     expect(
       LocalProfileRepository.instance.profile.name,

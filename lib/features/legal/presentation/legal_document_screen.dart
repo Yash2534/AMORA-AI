@@ -9,7 +9,8 @@ import 'package:flutter/material.dart';
 class TermsConditionsScreen extends StatelessWidget {
   const TermsConditionsScreen({super.key});
 
-  static const routeName = '/terms-and-conditions';
+  static const routeName = '/terms';
+  static const legacyRouteName = '/terms-and-conditions';
 
   @override
   Widget build(BuildContext context) {

@@ -4,6 +4,8 @@ import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
+import 'package:amora_ai/features/profile/domain/profile_form_options.dart';
+import 'package:amora_ai/features/profile/domain/profile_interest_policy.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -20,53 +22,8 @@ class ProfileSectionEditorScreen extends StatefulWidget {
 
 class _ProfileSectionEditorScreenState
     extends State<ProfileSectionEditorScreen> {
-  static const _interestGroups = <String, List<String>>{
-    'Lifestyle': ['Coffee', 'Mindfulness', 'Volunteering', 'Reading'],
-    'Food': ['Cooking', 'Cafes', 'Street food', 'Baking'],
-    'Travel': ['Road trips', 'City breaks', 'Heritage walks', 'Beaches'],
-    'Music': ['Live music', 'Indie', 'Classical', 'Bollywood'],
-    'Fitness': ['Yoga', 'Running', 'Cycling', 'Hiking'],
-    'Creativity': ['Photography', 'Design', 'Writing', 'Pottery'],
-    'Technology': ['Flutter', 'Startups', 'Product design', 'Gaming'],
-    'Nature & pets': ['Dogs', 'Cats', 'Gardening', 'Wildlife'],
-  };
-  static const _promptTitles = [
-    'A perfect weekend for me is…',
-    'The quickest way to my heart is…',
-    'My ideal first date would be…',
-  ];
-  static const _lifestyleOptions = <String, List<String>>{
-    'Height': ['Under 5′4″', '5′4″–5′7″', '5′8″–5′11″', '6′0″ and above'],
-    'Languages': [
-      'English',
-      'Hindi',
-      'Gujarati',
-      'English & Hindi',
-      'English, Hindi & Gujarati',
-    ],
-    'Religion': [
-      'Hindu',
-      'Muslim',
-      'Christian',
-      'Sikh',
-      'Jain',
-      'Spiritual',
-      'Prefer not to say',
-    ],
-    'Drinking': ['Never', 'Sometimes', 'Socially'],
-    'Smoking': ['No', 'Sometimes', 'Prefer not to say'],
-    'Exercise': ['Daily', 'A few times a week', 'Occasionally'],
-    'Food preference': ['Vegetarian', 'Vegan', 'Everything'],
-    'Pets': ['Dog person', 'Cat person', 'Love all pets'],
-    'Sleep habits': ['Early bird', 'Night owl', 'Flexible'],
-  };
-  static const _curatedPromptTitles = <String>[
-    'My ideal Sunday is...',
-    'A green flag I value is...',
-    'Together we could...',
-  ];
-
   late Set<String> _interests;
+  late List<String> _retiredInterests;
   late Map<String, String> _lifestyle;
   late Map<String, TextEditingController> _promptControllers;
 
@@ -74,14 +31,17 @@ class _ProfileSectionEditorScreenState
   void initState() {
     super.initState();
     final profile = LocalProfileRepository.instance.profile;
-    _interests = Set<String>.of(profile.interests);
+    _interests = Set<String>.of(
+      ProfileInterestPolicy.visible(profile.interests),
+    );
+    _retiredInterests = ProfileInterestPolicy.retired(profile.interests);
     _lifestyle = Map<String, String>.of(profile.lifestyle);
     final existingPrompts = profile.prompts.entries
         .where((entry) => entry.value.trim().isNotEmpty)
         .take(3)
         .toList(growable: false);
     final promptTitles = existingPrompts.isEmpty
-        ? <String>[_curatedPromptTitles.first]
+        ? <String>[ProfileFormOptions.promptTitles.first]
         : existingPrompts.map((entry) => entry.key);
     _promptControllers = {
       for (final title in promptTitles)
@@ -191,7 +151,7 @@ class _ProfileSectionEditorScreenState
           style: AmoraTextStyles.labelLarge,
         ),
         const SizedBox(height: 16),
-        for (final group in _interestGroups.entries) ...[
+        for (final group in ProfileFormOptions.interestGroups.entries) ...[
           Text(group.key, style: AmoraTextStyles.titleMedium),
           const SizedBox(height: 8),
           Wrap(
@@ -236,8 +196,7 @@ class _ProfileSectionEditorScreenState
                   decoration: const InputDecoration(labelText: 'Prompt'),
                   items:
                       <String>{
-                            ..._curatedPromptTitles,
-                            ..._promptTitles,
+                            ...ProfileFormOptions.promptTitles,
                             ..._promptControllers.keys,
                           }
                           .map(
@@ -281,7 +240,7 @@ class _ProfileSectionEditorScreenState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        for (final entry in _lifestyleOptions.entries) ...[
+        for (final entry in ProfileFormOptions.allLifestyleOptions.entries) ...[
           PremiumCard(
             radius: 24,
             padding: const EdgeInsets.all(16),
@@ -379,7 +338,7 @@ class _ProfileSectionEditorScreenState
     final profile = repository.profile;
     repository.save(
       profile.copyWith(
-        interests: _interests.toList(growable: false),
+        interests: <String>[..._interests, ..._retiredInterests],
         prompts: {
           for (final entry in _promptControllers.entries)
             if (entry.value.text.trim().isNotEmpty)

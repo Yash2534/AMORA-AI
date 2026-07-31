@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:amora_ai/core/constants/app_images.dart';
 import 'package:amora_ai/core/widgets/amora_dob_field.dart';
+import 'package:amora_ai/features/profile/domain/profile_completion_calculator.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -54,16 +55,28 @@ class UserProfile {
       ? AppImages.fallbackProfile
       : photos[primaryPhotoIndex.clamp(0, photos.length - 1)];
 
-  int get completionPercent {
-    var percentage = 0;
-    if (photos.length >= 2) percentage += 25;
-    if (basicDetailsComplete) percentage += 15;
-    if (bio.trim().length >= 40) percentage += 15;
-    if (interests.length >= 5) percentage += 15;
-    if (completedPromptCount >= 3) percentage += 20;
-    if (lifestyle.isNotEmpty) percentage += 10;
-    return percentage;
-  }
+  ProfileCompletionResult get completionResult =>
+      ProfileCompletionCalculator.calculate(
+        ProfileCompletionInput(
+          photoCount: photos.length,
+          name: name,
+          birthdate: dateOfBirth,
+          gender: gender,
+          profession: profession,
+          education: education,
+          location: location,
+          datingIntention: datingIntention,
+          height: lifestyle['Height'] ?? '',
+          languages: lifestyle['Languages'] ?? '',
+          religion: lifestyle['Religion'] ?? '',
+          bio: bio,
+          interests: interests,
+          lifestyle: lifestyle,
+          completedPromptCount: completedPromptCount,
+        ),
+      );
+
+  int get completionPercent => completionResult.percentage;
 
   int get completedPromptCount =>
       prompts.values.where((value) => value.trim().isNotEmpty).length;
@@ -79,12 +92,7 @@ class UserProfile {
       location.trim().isNotEmpty &&
       datingIntention.trim().isNotEmpty;
 
-  bool get requiredProfileComplete =>
-      basicDetailsComplete &&
-      photos.length >= 2 &&
-      bio.trim().length >= 40 &&
-      interests.length >= 5 &&
-      completedPromptCount >= 3;
+  bool get requiredProfileComplete => completionResult.isComplete;
 
   UserProfile copyWith({
     String? name,

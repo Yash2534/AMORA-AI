@@ -5,6 +5,7 @@ import 'package:amora_ai/core/theme/amora_shadows.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/widgets/amora_profile_image.dart';
+import 'package:amora_ai/features/profile/domain/profile_interest_policy.dart';
 import 'package:flutter/material.dart';
 
 class AmoraProfileCardData {
@@ -58,7 +59,9 @@ class ProfileCard extends StatelessWidget {
     const radius = AmoraRadius.extraLarge;
     final bio = profile.bio?.trim();
     final profession = profile.profession ?? 'Intentional dater';
-    final interests = profile.interests.take(compact ? 1 : 3).toList();
+    final interests = ProfileInterestPolicy.visible(
+      profile.interests,
+    ).take(compact ? 1 : 3).toList(growable: false);
 
     return InkWell(
       onTap: onTap,

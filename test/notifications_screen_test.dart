@@ -45,6 +45,13 @@ void main() {
       find.byKey(const ValueKey('notification-filter-rail')),
       findsOneWidget,
     );
+    final header = find.byKey(const ValueKey('notifications-header'));
+    expect(header, findsOneWidget);
+    expect(
+      find.descendant(of: header, matching: find.text('Notifications')),
+      findsOneWidget,
+    );
+    expect(find.descendant(of: header, matching: find.text('7')), findsNothing);
     expect(find.text('Today'), findsOneWidget);
     expect(find.text('Kavya liked your profile'), findsOneWidget);
     expect(find.text('Priority Hub'), findsNothing);

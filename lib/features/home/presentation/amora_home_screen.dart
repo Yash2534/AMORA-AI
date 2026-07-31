@@ -35,6 +35,7 @@ import 'package:amora_ai/features/profile/presentation/photo_manager_screen.dart
 import 'package:amora_ai/features/profile/presentation/profile_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_setup_screen.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
+import 'package:amora_ai/features/profile/domain/profile_interest_policy.dart';
 import 'package:amora_ai/features/subscription/presentation/subscription_screen.dart';
 import 'package:flutter/material.dart';
 
@@ -716,6 +717,7 @@ class _HeroMatchCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final visibleInterests = ProfileInterestPolicy.visible(profile.interests);
     return Semantics(
       button: true,
       label: 'Best match ${profile.name}, ${profile.score}% AI match',
@@ -811,8 +813,8 @@ class _HeroMatchCard extends StatelessWidget {
                           runSpacing: AmoraSpacing.space8,
                           children: [
                             _SolidOverlayPill(text: profile.intent),
-                            if (profile.interests.isNotEmpty)
-                              _SolidOverlayPill(text: profile.interests.first),
+                            if (visibleInterests.isNotEmpty)
+                              _SolidOverlayPill(text: visibleInterests.first),
                           ],
                         ),
                       ],
@@ -1089,9 +1091,10 @@ class _AiCoachPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final interest = profile.interests.isEmpty
+    final visibleInterests = ProfileInterestPolicy.visible(profile.interests);
+    final interest = visibleInterests.isEmpty
         ? 'coffee'
-        : profile.interests.first;
+        : visibleInterests.first;
     return PremiumCard(
       radius: AmoraRadius.extraLarge,
       padding: const EdgeInsets.all(AmoraSpacing.space20),
