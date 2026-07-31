@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:amora_ai/core/constants/app_images.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/image_fallback.dart';
@@ -96,13 +98,63 @@ class _PremiumImageState extends State<PremiumImage> {
   }
 
   Widget _buildImage() {
-    final assetPath = AppImages.resolveAsset(
-      widget.assetPath ?? widget.imageUrl,
-      fallback: widget.fallbackAsset,
-    );
+    final source = (widget.assetPath ?? widget.imageUrl)?.trim();
+    if (source != null && source.startsWith('data:image/')) {
+      final comma = source.indexOf(',');
+      if (comma > 0) {
+        try {
+          return Image.memory(
+            base64Decode(source.substring(comma + 1)),
+            width: widget.width,
+            height: widget.height,
+            fit: widget.fit,
+            alignment: widget.alignment,
+            filterQuality: FilterQuality.medium,
+            cacheWidth: widget.cacheWidth,
+            cacheHeight: widget.cacheHeight,
+            frameBuilder: _fadeFrame,
+            errorBuilder: (_, _, _) => _fallbackAsset(),
+          );
+        } on FormatException {
+          return _fallbackAsset();
+        }
+      }
+    }
+
+    if (source != null &&
+        (source.startsWith('http://') ||
+            source.startsWith('https://') ||
+            source.startsWith('blob:'))) {
+      return Image.network(
+        source,
+        width: widget.width,
+        height: widget.height,
+        fit: widget.fit,
+        alignment: widget.alignment,
+        filterQuality: FilterQuality.medium,
+        cacheWidth: widget.cacheWidth,
+        cacheHeight: widget.cacheHeight,
+        frameBuilder: _fadeFrame,
+        loadingBuilder: (context, child, progress) {
+          if (progress == null) return child;
+          final expected = progress.expectedTotalBytes;
+          return ColoredBox(
+            color: Theme.of(context).colorScheme.surfaceContainer,
+            child: Center(
+              child: CircularProgressIndicator(
+                value: expected == null
+                    ? null
+                    : progress.cumulativeBytesLoaded / expected,
+              ),
+            ),
+          );
+        },
+        errorBuilder: (_, _, _) => _fallbackAsset(),
+      );
+    }
 
     return Image.asset(
-      assetPath,
+      AppImages.resolveAsset(source, fallback: widget.fallbackAsset),
       width: widget.width,
       height: widget.height,
       fit: widget.fit,

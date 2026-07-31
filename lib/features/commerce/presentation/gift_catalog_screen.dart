@@ -33,7 +33,7 @@ class _GiftShopCatalogScreenState extends State<GiftShopCatalogScreen> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [AppColors.background, AppColors.lavenderBackground],
+            colors: [AppColors.background, AppColors.surface],
           ),
         ),
         child: SafeArea(
@@ -323,7 +323,7 @@ const _gifts = [
     'Luxury',
     'Fine Dining Invite',
     1999,
-    'Premium dinner voucher placeholder.',
+    'A premium dinner invitation for an intentional date.',
     91,
   ),
   _Gift('Virtual', 'Heart Burst', 99, 'Lightweight virtual affection.', 95),

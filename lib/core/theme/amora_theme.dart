@@ -32,14 +32,23 @@ abstract final class AmoraTheme {
     surfaceContainer: AppColors.surfaceContainer,
     surfaceContainerHigh: AppColors.surfaceContainerHigh,
     surfaceContainerHighest: AppColors.surfaceContainerHighest,
+    onSurfaceVariant: AppColors.text,
     outline: AppColors.outline,
     outlineVariant: AppColors.outlineVariant,
     shadow: AppColors.shadow,
     scrim: AppColors.scrim,
+    inverseSurface: AppColors.primary,
+    onInverseSurface: AppColors.surface,
+    inversePrimary: AppColors.secondary,
+    surfaceTint: AppColors.primary,
   );
 
   static ThemeData light() {
     final inputTheme = _inputDecorationTheme();
+    final textTheme = AmoraTextStyles.textTheme.apply(
+      bodyColor: AppColors.textPrimary,
+      displayColor: AppColors.primary,
+    );
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
@@ -47,12 +56,12 @@ abstract final class AmoraTheme {
       scaffoldBackgroundColor: AppColors.background,
       canvasColor: AppColors.background,
       cardColor: AppColors.surface,
-      disabledColor: AppColors.textDisabled,
+      disabledColor: AppColors.text.withValues(alpha: .48),
       splashFactory: InkRipple.splashFactory,
       visualDensity: VisualDensity.standard,
       materialTapTargetSize: MaterialTapTargetSize.padded,
-      textTheme: AmoraTextStyles.textTheme,
-      primaryTextTheme: AmoraTextStyles.textTheme,
+      textTheme: textTheme,
+      primaryTextTheme: textTheme,
       pageTransitionsTheme: const PageTransitionsTheme(
         builders: {
           TargetPlatform.android: AmoraPageTransitionsBuilder(),
@@ -62,22 +71,24 @@ abstract final class AmoraTheme {
           TargetPlatform.linux: AmoraPageTransitionsBuilder(),
         },
       ),
-      appBarTheme: const AppBarTheme(
+      appBarTheme: AppBarTheme(
         centerTitle: false,
         elevation: 0,
         scrolledUnderElevation: 0,
         toolbarHeight: AmoraSpacing.appBarHeight,
         backgroundColor: AppColors.background,
-        foregroundColor: AppColors.textPrimary,
+        foregroundColor: AppColors.primary,
         surfaceTintColor: AppColors.transparent,
         titleSpacing: AmoraSpacing.space20,
-        titleTextStyle: AmoraTextStyles.titleLarge,
+        titleTextStyle: AmoraTextStyles.titleLarge.copyWith(
+          color: AppColors.primary,
+        ),
         iconTheme: IconThemeData(
-          color: AppColors.textPrimary,
+          color: AppColors.primary,
           size: AmoraIconSizes.standard,
         ),
         actionsIconTheme: IconThemeData(
-          color: AppColors.textPrimary,
+          color: AppColors.primary,
           size: AmoraIconSizes.standard,
         ),
       ),
@@ -227,7 +238,7 @@ abstract final class AmoraTheme {
         elevation: 4,
         modalElevation: 8,
         shape: RoundedRectangleBorder(borderRadius: AmoraRadius.sheet),
-        showDragHandle: true,
+        showDragHandle: false,
         dragHandleColor: AppColors.outlineVariant,
         dragHandleSize: Size(AmoraSpacing.space32, AmoraSpacing.space4),
       ),
@@ -263,11 +274,11 @@ abstract final class AmoraTheme {
         selectedLabelTextStyle: AmoraTextStyles.navigation,
         unselectedLabelTextStyle: AmoraTextStyles.navigation,
       ),
-      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+      bottomNavigationBarTheme: BottomNavigationBarThemeData(
         elevation: 0,
         backgroundColor: AppColors.surface,
         selectedItemColor: AppColors.active,
-        unselectedItemColor: AppColors.primary,
+        unselectedItemColor: AppColors.text.withValues(alpha: .60),
         selectedLabelStyle: AmoraTextStyles.navigation,
         unselectedLabelStyle: AmoraTextStyles.navigation,
         type: BottomNavigationBarType.fixed,
@@ -361,8 +372,74 @@ abstract final class AmoraTheme {
           vertical: AmoraSpacing.space8,
         ),
       ),
+      datePickerTheme: DatePickerThemeData(
+        backgroundColor: AppColors.surface,
+        surfaceTintColor: AppColors.transparent,
+        headerBackgroundColor: AppColors.primary,
+        headerForegroundColor: AppColors.surface,
+        dayForegroundColor: WidgetStateProperty.resolveWith((states) {
+          return states.contains(WidgetState.disabled)
+              ? AppColors.text.withValues(alpha: .48)
+              : AppColors.text;
+        }),
+        dayBackgroundColor: WidgetStateProperty.resolveWith((states) {
+          return states.contains(WidgetState.selected)
+              ? AppColors.secondary
+              : AppColors.transparent;
+        }),
+        todayForegroundColor: const WidgetStatePropertyAll(AppColors.primary),
+        todayBorder: const BorderSide(color: AppColors.secondary),
+        yearForegroundColor: WidgetStateProperty.resolveWith((states) {
+          return states.contains(WidgetState.selected)
+              ? AppColors.surface
+              : AppColors.text;
+        }),
+        yearBackgroundColor: WidgetStateProperty.resolveWith((states) {
+          return states.contains(WidgetState.selected)
+              ? AppColors.primary
+              : AppColors.transparent;
+        }),
+        dividerColor: AppColors.tertiary,
+      ),
+      timePickerTheme: TimePickerThemeData(
+        backgroundColor: AppColors.surface,
+        hourMinuteColor: AppColors.tertiary,
+        hourMinuteTextColor: AppColors.primary,
+        dayPeriodColor: AppColors.tertiary,
+        dayPeriodTextColor: AppColors.primary,
+        dialBackgroundColor: AppColors.background,
+        dialHandColor: AppColors.secondary,
+        dialTextColor: AppColors.text,
+        entryModeIconColor: AppColors.primary,
+        helpTextStyle: AmoraTextStyles.labelLarge.copyWith(
+          color: AppColors.primary,
+        ),
+      ),
+      expansionTileTheme: const ExpansionTileThemeData(
+        backgroundColor: AppColors.surface,
+        collapsedBackgroundColor: AppColors.surface,
+        iconColor: AppColors.primary,
+        collapsedIconColor: AppColors.text,
+        textColor: AppColors.primary,
+        collapsedTextColor: AppColors.text,
+        shape: Border(bottom: BorderSide(color: AppColors.tertiary)),
+        collapsedShape: Border(bottom: BorderSide(color: AppColors.tertiary)),
+      ),
+      badgeTheme: const BadgeThemeData(
+        backgroundColor: AppColors.tertiary,
+        textColor: AppColors.primary,
+      ),
+      bottomAppBarTheme: const BottomAppBarThemeData(
+        color: AppColors.surface,
+        surfaceTintColor: AppColors.transparent,
+        elevation: 0,
+      ),
     );
   }
+
+  /// Compatibility entry point that intentionally returns the approved light
+  /// palette until a separate dark brand palette is approved.
+  static ThemeData dark() => light();
 
   static ButtonStyle _filledButtonStyle({double elevation = 0}) {
     return FilledButton.styleFrom(
@@ -372,8 +449,8 @@ abstract final class AmoraTheme {
       ),
       backgroundColor: AppColors.primary,
       foregroundColor: AppColors.onPrimary,
-      disabledBackgroundColor: AppColors.surfaceContainerHighest,
-      disabledForegroundColor: AppColors.textDisabled,
+      disabledBackgroundColor: AppColors.tertiary,
+      disabledForegroundColor: AppColors.primary.withValues(alpha: .55),
       elevation: elevation,
       padding: AmoraSpacing.button,
       textStyle: AmoraTextStyles.button,
@@ -388,7 +465,7 @@ abstract final class AmoraTheme {
         AmoraSpacing.controlHeight,
       ),
       foregroundColor: AppColors.primary,
-      disabledForegroundColor: AppColors.textDisabled,
+      disabledForegroundColor: AppColors.text.withValues(alpha: .48),
       side: const BorderSide(color: AppColors.primary),
       padding: AmoraSpacing.button,
       textStyle: AmoraTextStyles.button,
@@ -399,7 +476,7 @@ abstract final class AmoraTheme {
   static ButtonStyle _textButtonStyle() {
     return TextButton.styleFrom(
       foregroundColor: AppColors.primary,
-      disabledForegroundColor: AppColors.textDisabled,
+      disabledForegroundColor: AppColors.text.withValues(alpha: .48),
       textStyle: AmoraTextStyles.button,
       shape: const RoundedRectangleBorder(borderRadius: AmoraRadius.button),
     ).copyWith(overlayColor: _buttonOverlay(AppColors.primary));
@@ -408,7 +485,7 @@ abstract final class AmoraTheme {
   static ButtonStyle _iconButtonStyle() {
     return IconButton.styleFrom(
       foregroundColor: AppColors.textPrimary,
-      disabledForegroundColor: AppColors.textDisabled,
+      disabledForegroundColor: AppColors.text.withValues(alpha: .48),
       minimumSize: const Size.square(AmoraSpacing.minimumTouchTarget),
       iconSize: AmoraIconSizes.standard,
       tapTargetSize: MaterialTapTargetSize.padded,
@@ -426,18 +503,16 @@ abstract final class AmoraTheme {
       fillColor: AppColors.inputBackground,
       contentPadding: AmoraSpacing.field,
       floatingLabelStyle: AmoraTextStyles.labelMedium.copyWith(
-        color: AppColors.focus,
+        color: AppColors.primary,
       ),
-      labelStyle: AmoraTextStyles.bodyMedium.copyWith(
-        color: AppColors.textSecondary,
-      ),
+      labelStyle: AmoraTextStyles.bodyMedium.copyWith(color: AppColors.primary),
       hintStyle: AmoraTextStyles.bodyLarge.copyWith(
-        color: AppColors.textDisabled,
+        color: AppColors.text.withValues(alpha: .60),
       ),
       helperStyle: AmoraTextStyles.bodySmall,
       errorStyle: AmoraTextStyles.bodySmall.copyWith(color: AppColors.error),
-      prefixIconColor: AppColors.textSecondary,
-      suffixIconColor: AppColors.textSecondary,
+      prefixIconColor: AppColors.primary,
+      suffixIconColor: AppColors.text,
       border: border,
       enabledBorder: border,
       focusedBorder: const OutlineInputBorder(

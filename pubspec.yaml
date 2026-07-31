@@ -9,8 +9,12 @@ environment:
 
 dependencies:
   cupertino_icons: ^1.0.8
+  emoji_picker_flutter: ^4.5.3
   flutter:
     sdk: flutter
+  image_picker: ^1.1.2
+  permission_handler: ^12.0.1
+  shared_preferences: ^2.5.3
   url_launcher: ^6.3.2
 
 dev_dependencies:
@@ -18,13 +22,37 @@ dev_dependencies:
     sdk: flutter
 
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
 
 flutter:
   uses-material-design: true
 
   assets:
+    - assets/branding/
     - assets/images/
     - assets/images/profiles/female/
     - assets/images/profiles/male/
     - assets/images/events/
     - assets/images/profiles/profile_gallery/
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: assets/branding/amora_launcher_icon.png
+  adaptive_icon_background: "#FFFBFD"
+  adaptive_icon_foreground: assets/branding/amora_icon.png
+  adaptive_icon_foreground_inset: 18
+  remove_alpha_ios: true
+  background_color_ios: "#FFFBFD"
+  web:
+    generate: true
+    image_path: assets/branding/amora_launcher_icon.png
+    background_color: "#FFFBFD"
+    theme_color: "#FFFBFD"
+  windows:
+    generate: true
+    image_path: assets/branding/amora_launcher_icon.png
+    icon_size: 256
+  macos:
+    generate: true
+    image_path: assets/branding/amora_launcher_icon.png

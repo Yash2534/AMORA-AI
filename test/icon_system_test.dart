@@ -57,7 +57,6 @@ void main() {
       AmoraIcons.pause,
       AmoraIcons.photo,
       AmoraIcons.video,
-      AmoraIcons.mic,
       AmoraIcons.shield,
       AmoraIcons.location,
       AmoraIcons.copy,

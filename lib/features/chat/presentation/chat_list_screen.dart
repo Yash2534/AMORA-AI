@@ -1,4 +1,3 @@
-import 'package:amora_ai/core/data/amora_dummy_data.dart';
 import 'package:amora_ai/core/data/image_repository.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
@@ -7,6 +6,7 @@ import 'package:amora_ai/core/widgets/amora_bottom_sheet.dart';
 import 'package:amora_ai/core/widgets/floating_bottom_nav.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/chat/presentation/chat_detail_screen.dart';
+import 'package:amora_ai/features/chat/data/local_chat_repository.dart';
 import 'package:amora_ai/features/chat/presentation/widgets/chat_presence_avatar.dart';
 import 'package:amora_ai/features/profile/presentation/profile_detail_screen.dart';
 import 'package:flutter/material.dart';
@@ -24,21 +24,22 @@ class ChatListScreen extends StatefulWidget {
 }
 
 class _ChatListScreenState extends State<ChatListScreen> {
+  final _repository = LocalChatRepository.instance;
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
   String _query = '';
   ChatInboxFilter _filter = ChatInboxFilter.all;
 
-  List<DummyConversation> get _allChats => AmoraDummyData.chats;
+  List<ChatConversation> get _allChats => _repository.conversations;
 
-  List<DummyConversation> get _activeChats {
+  List<ChatConversation> get _activeChats {
     final participantIds = <String>{};
     return _allChats
         .where((chat) => chat.online && participantIds.add(chat.user.id))
         .toList(growable: false);
   }
 
-  List<DummyConversation> get _visibleChats {
+  List<ChatConversation> get _visibleChats {
     final normalizedQuery = _query.trim().toLowerCase();
     return _allChats
         .where((chat) {
@@ -59,7 +60,14 @@ class _ChatListScreenState extends State<ChatListScreen> {
       _allChats.fold<int>(0, (total, chat) => total + chat.unread);
 
   @override
+  void initState() {
+    super.initState();
+    _repository.addListener(_refreshConversations);
+  }
+
+  @override
   void dispose() {
+    _repository.removeListener(_refreshConversations);
     _searchController.dispose();
     _searchFocusNode.dispose();
     super.dispose();
@@ -90,9 +98,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                   children: [
                     ChatsAppBar(
                       unreadCount: _unreadTotal,
-                      onSearch: _focusSearch,
                       onCompose: _showComposeSheet,
-                      onMore: _showInboxMenu,
                     ),
                     const SizedBox(height: AmoraSpacing.space12),
                     ChatSearchField(
@@ -205,10 +211,6 @@ class _ChatListScreenState extends State<ChatListScreen> {
     setState(() => _query = '');
   }
 
-  void _focusSearch() {
-    _searchFocusNode.requestFocus();
-  }
-
   void _clearSearchAndFilter() {
     _searchController.clear();
     setState(() {
@@ -217,8 +219,21 @@ class _ChatListScreenState extends State<ChatListScreen> {
     });
   }
 
-  void _openConversation(DummyConversation chat) {
-    Navigator.of(context).pushNamed(ChatDetailScreen.routeName);
+  void _refreshConversations() {
+    if (mounted) setState(() {});
+  }
+
+  void _openConversation(ChatConversation chat) {
+    Navigator.of(context).pushNamed(
+      ChatDetailScreen.routeName,
+      arguments: ChatDetailArgs(
+        conversationId: chat.id,
+        recipientId: chat.user.id,
+        recipientName: chat.user.name,
+        recipientImage: chat.user.imageUrl,
+        recipientStatus: chat.online ? 'Online' : chat.user.status,
+      ),
+    );
   }
 
   void _openProfile() {
@@ -250,48 +265,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
     );
   }
 
-  void _showInboxMenu() {
-    showAmoraBottomSheet<void>(
-      context: context,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const _InboxSheetHeader(
-            title: 'Inbox view',
-            supporting: 'Choose which supported conversations to show.',
-          ),
-          const SizedBox(height: AmoraSpacing.space8),
-          for (final filter in ChatInboxFilter.values)
-            ListTile(
-              minTileHeight: 54,
-              leading: Icon(
-                filter == _filter
-                    ? Icons.check_circle_rounded
-                    : Icons.circle_outlined,
-                color: filter == _filter
-                    ? AppColors.secondary
-                    : AppColors.primary,
-              ),
-              title: Text(
-                _filterLabel(filter),
-                style: const TextStyle(
-                  color: AppColors.text,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              onTap: () {
-                Navigator.pop(context);
-                setState(() => _filter = filter);
-              },
-            ),
-        ],
-      ),
-    );
-  }
-
-  void _showConversationActions(DummyConversation chat) {
+  void _showConversationActions(ChatConversation chat) {
     showAmoraBottomSheet<void>(
       context: context,
       child: Column(
@@ -345,15 +319,11 @@ class ChatsAppBar extends StatelessWidget {
   const ChatsAppBar({
     super.key,
     required this.unreadCount,
-    required this.onSearch,
     required this.onCompose,
-    required this.onMore,
   });
 
   final int unreadCount;
-  final VoidCallback onSearch;
   final VoidCallback onCompose;
-  final VoidCallback onMore;
 
   @override
   Widget build(BuildContext context) {
@@ -413,19 +383,9 @@ class ChatsAppBar extends StatelessWidget {
             ),
           const SizedBox(width: 4),
           _InboxIconButton(
-            tooltip: 'Search chats',
-            icon: Icons.search_rounded,
-            onPressed: onSearch,
-          ),
-          _InboxIconButton(
             tooltip: 'Compose message',
             icon: Icons.edit_square,
             onPressed: onCompose,
-          ),
-          _InboxIconButton(
-            tooltip: 'More',
-            icon: Icons.more_horiz_rounded,
-            onPressed: onMore,
           ),
         ],
       ),
@@ -514,7 +474,7 @@ class _InboxSheetHeader extends StatelessWidget {
 class _ConversationSheetAction extends StatelessWidget {
   const _ConversationSheetAction({required this.chat, required this.onTap});
 
-  final DummyConversation chat;
+  final ChatConversation chat;
   final VoidCallback onTap;
 
   @override
@@ -610,7 +570,7 @@ class _ChatSearchFieldState extends State<ChatSearchField> {
       height: 54,
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(AmoraRadius.extraLarge),
         border: Border.all(
           color: focused
               ? AppColors.secondary
@@ -633,7 +593,7 @@ class _ChatSearchFieldState extends State<ChatSearchField> {
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(AmoraRadius.extraLarge),
         child: TextField(
           key: const ValueKey('chats-search-field'),
           controller: widget.controller,
@@ -721,8 +681,8 @@ class ActiveMatchesSection extends StatelessWidget {
     required this.onOpen,
   });
 
-  final List<DummyConversation> chats;
-  final ValueChanged<DummyConversation> onOpen;
+  final List<ChatConversation> chats;
+  final ValueChanged<ChatConversation> onOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -762,7 +722,7 @@ class ActiveMatchesSection extends StatelessWidget {
 class ActiveMatchAvatar extends StatelessWidget {
   const ActiveMatchAvatar({super.key, required this.chat, required this.onTap});
 
-  final DummyConversation chat;
+  final ChatConversation chat;
   final VoidCallback onTap;
 
   @override
@@ -926,7 +886,7 @@ class ConversationTile extends StatefulWidget {
     required this.onLongPress,
   });
 
-  final DummyConversation chat;
+  final ChatConversation chat;
   final VoidCallback onOpen;
   final VoidCallback onOpenProfile;
   final VoidCallback onLongPress;

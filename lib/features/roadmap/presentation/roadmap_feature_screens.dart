@@ -134,7 +134,7 @@ class _RoadmapPremiumScreen extends StatelessWidget {
                         height: 58,
                         decoration: BoxDecoration(
                           gradient: const LinearGradient(
-                            colors: [AppColors.primaryRose, AppColors.softPink],
+                            colors: [AppColors.secondary, AppColors.primary],
                           ),
                           borderRadius: BorderRadius.circular(22),
                         ),

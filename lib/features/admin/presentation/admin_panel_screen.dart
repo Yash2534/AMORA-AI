@@ -32,7 +32,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
         body: DecoratedBox(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
-              colors: [AppColors.background, AppColors.lavenderBackground],
+              colors: [AppColors.background, AppColors.surface],
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
             ),
@@ -385,8 +385,8 @@ class _AnalyticsTab extends StatelessWidget {
                             decoration: BoxDecoration(
                               gradient: const LinearGradient(
                                 colors: [
-                                  AppColors.primaryRose,
-                                  AppColors.primaryPurple,
+                                  AppColors.secondary,
+                                  AppColors.primary,
                                 ],
                                 begin: Alignment.bottomCenter,
                                 end: Alignment.topCenter,

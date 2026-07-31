@@ -59,12 +59,6 @@ class PremiumEditorialPanel extends StatelessWidget {
                 fallbackAsset: AppImages.fallbackDateSpot,
                 initials: 'AI',
                 borderRadius: radius,
-                gradientColors: [
-                  AppColors.deepWine.withValues(alpha: .14),
-                  AppColors.deepWine.withValues(alpha: .12),
-                  AppColors.deepWine.withValues(alpha: .46),
-                  AppColors.deepNavy.withValues(alpha: .88),
-                ],
                 onTap: onTap,
                 overlayChild: Padding(
                   padding: AmoraSpacing.compactCard,

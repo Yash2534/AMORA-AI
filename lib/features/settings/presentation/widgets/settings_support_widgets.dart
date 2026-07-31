@@ -43,7 +43,7 @@ class SettingsHeader extends StatelessWidget {
           height: AmoraSpacing.controlHeight,
           decoration: BoxDecoration(
             gradient: const LinearGradient(
-              colors: [AppColors.primaryRose, AppColors.primaryPurple],
+              colors: [AppColors.secondary, AppColors.primary],
             ),
             borderRadius: AmoraRadius.card,
           ),
@@ -177,7 +177,8 @@ class SettingsTile extends StatelessWidget {
           fontWeight: FontWeight.w500,
         ),
       ),
-      trailing: trailing ?? const Icon(AmoraIcons.forward),
+      trailing:
+          trailing ?? (onTap == null ? null : const Icon(AmoraIcons.forward)),
     );
   }
 }

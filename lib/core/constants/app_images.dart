@@ -1,3 +1,4 @@
+import 'package:amora_ai/core/branding/amora_brand_assets.dart';
 import 'package:flutter/widgets.dart';
 
 class AppImages {
@@ -6,7 +7,7 @@ class AppImages {
   static const _root = 'assets/images/profiles';
   static const _eventRoot = 'assets/images/events';
 
-  static const logo = '$_eventRoot/coffee_meetup.png';
+  static const logo = AmoraBrandAssets.icon;
   static const defaultAvatar = '$_root/female/profile_fallback_female.jpg';
   static const fallbackProfile = '$_root/female/profile_fallback_female.jpg';
   static const femaleProfileFallback =

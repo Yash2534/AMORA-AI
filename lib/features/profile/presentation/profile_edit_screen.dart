@@ -1,7 +1,8 @@
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
+import 'package:amora_ai/core/widgets/amora_profile_image.dart';
+import 'package:amora_ai/core/widgets/amora_dob_field.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
-import 'package:amora_ai/core/widgets/premium_asset_image.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
@@ -26,7 +27,6 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
   final _repository = LocalProfileRepository.instance;
 
   late final TextEditingController _name;
-  late final TextEditingController _birthdate;
   late final TextEditingController _profession;
   late final TextEditingController _company;
   late final TextEditingController _education;
@@ -34,6 +34,8 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
   late final TextEditingController _bio;
   late final TextEditingController _datingIntention;
   late String _gender;
+  DateTime? _birthDate;
+  bool _showDobError = false;
   bool _saving = false;
 
   @override
@@ -41,7 +43,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     super.initState();
     final profile = _repository.profile;
     _name = TextEditingController(text: profile.name);
-    _birthdate = TextEditingController(text: profile.birthdate);
+    _birthDate = profile.dateOfBirth;
     _profession = TextEditingController(text: profile.profession);
     _company = TextEditingController(text: profile.company);
     _education = TextEditingController(text: profile.education);
@@ -56,7 +58,6 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
   void dispose() {
     _repository.removeListener(_refresh);
     _name.dispose();
-    _birthdate.dispose();
     _profession.dispose();
     _company.dispose();
     _education.dispose();
@@ -164,13 +165,17 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                               textInputAction: TextInputAction.next,
                             ),
                             const SizedBox(height: 12),
-                            _PremiumField(
-                              controller: _birthdate,
-                              label: 'Date of birth',
-                              hint: 'DD / MM / YYYY',
-                              icon: Icons.calendar_month_rounded,
-                              validator: _required,
-                              textInputAction: TextInputAction.next,
+                            AmoraDobField(
+                              value: _birthDate,
+                              errorText: _showDobError
+                                  ? AmoraDateOfBirth.validate(_birthDate)
+                                  : null,
+                              onChanged: (value) {
+                                setState(() {
+                                  _birthDate = value;
+                                  _showDobError = true;
+                                });
+                              },
                             ),
                             const SizedBox(height: 12),
                             DropdownButtonFormField<String>(
@@ -271,17 +276,6 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                       const SizedBox(height: 16),
                       _EditorSection(
                         number: '05',
-                        icon: Icons.graphic_eq_rounded,
-                        title: 'Voice introduction',
-                        subtitle:
-                            'Your existing voice response is shown without changing media behavior.',
-                        child: _VoiceEditorSummary(
-                          hasVoice: profile.voicePrompt != null,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      _EditorSection(
-                        number: '06',
                         icon: Icons.interests_rounded,
                         title: 'Interests',
                         subtitle:
@@ -296,7 +290,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                       ),
                       const SizedBox(height: 16),
                       _EditorSection(
-                        number: '07',
+                        number: '06',
                         icon: Icons.favorite_rounded,
                         title: 'Dating intentions',
                         subtitle:
@@ -311,7 +305,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                       ),
                       const SizedBox(height: 16),
                       _EditorSection(
-                        number: '08',
+                        number: '07',
                         icon: Icons.psychology_alt_rounded,
                         title: 'Personality & lifestyle',
                         subtitle:
@@ -328,7 +322,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                       ),
                       const SizedBox(height: 16),
                       _EditorSection(
-                        number: '09',
+                        number: '08',
                         icon: Icons.verified_user_rounded,
                         title: 'Verification',
                         subtitle:
@@ -356,13 +350,18 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
 
   Future<void> _save() async {
     FocusScope.of(context).unfocus();
-    if (!(_formKey.currentState?.validate() ?? false) || _saving) return;
+    setState(() => _showDobError = true);
+    if (!(_formKey.currentState?.validate() ?? false) ||
+        AmoraDateOfBirth.validate(_birthDate) != null ||
+        _saving) {
+      return;
+    }
     setState(() => _saving = true);
     final profile = _repository.profile;
     _repository.save(
       profile.copyWith(
         name: _name.text.trim(),
-        birthdate: _birthdate.text.trim(),
+        birthdate: AmoraDateOfBirth.format(_birthDate!),
         gender: _gender,
         bio: _bio.text.trim(),
         profession: _profession.text.trim(),
@@ -404,14 +403,15 @@ class _EditorIntro extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        PremiumAssetImage(
+        AmoraProfileImage(
           imageUrl: profile.primaryPhoto,
-          fallbackAsset: profile.primaryPhoto,
+          assetPath: profile.primaryPhoto,
           initials: profile.name.isEmpty ? 'AM' : profile.name.substring(0, 1),
           width: 76,
           height: 92,
           fit: BoxFit.cover,
           borderRadius: BorderRadius.circular(22),
+          semanticLabel: 'Primary profile photo',
         ),
         const SizedBox(width: 16),
         Expanded(
@@ -580,14 +580,17 @@ class _PhotoStrip extends StatelessWidget {
           final primary = index == profile.primaryPhotoIndex;
           return Stack(
             children: [
-              PremiumAssetImage(
+              AmoraProfileImage(
                 imageUrl: profile.photos[index],
-                fallbackAsset: profile.photos[index],
+                assetPath: profile.photos[index],
                 initials: 'AM',
                 width: 98,
                 height: 128,
                 fit: BoxFit.cover,
                 borderRadius: BorderRadius.circular(18),
+                semanticLabel: primary
+                    ? 'Primary profile photo'
+                    : 'Profile photo ${index + 1}',
               ),
               if (primary)
                 Positioned(
@@ -669,57 +672,6 @@ class _PromptSummary extends StatelessWidget {
             ),
         ],
       ],
-    );
-  }
-}
-
-class _VoiceEditorSummary extends StatelessWidget {
-  const _VoiceEditorSummary({required this.hasVoice});
-
-  final bool hasVoice;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(minHeight: 72),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.tertiary),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.graphic_eq_rounded, color: AppColors.secondary),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  hasVoice
-                      ? 'Voice introduction added'
-                      : 'No voice introduction',
-                  style: AmoraTextStyles.titleMedium,
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  hasVoice
-                      ? 'Existing local voice response · up to 30 seconds'
-                      : 'Recording controls are not available in this build.',
-                  style: AmoraTextStyles.bodySmall.copyWith(
-                    color: AppColors.text.withValues(alpha: .65),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Icon(
-            hasVoice ? Icons.check_circle_rounded : Icons.mic_none_rounded,
-            color: hasVoice ? AppColors.primary : AppColors.text,
-          ),
-        ],
-      ),
     );
   }
 }

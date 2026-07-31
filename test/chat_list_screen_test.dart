@@ -30,9 +30,9 @@ void main() {
     expect(find.byType(ChatsAppBar), findsOneWidget);
     expect(find.byKey(const ValueKey('chats-search-field')), findsOneWidget);
     expect(find.text('Search chats...'), findsOneWidget);
-    expect(find.byTooltip('Search chats'), findsOneWidget);
+    expect(find.byTooltip('Search chats'), findsNothing);
     expect(find.byTooltip('Compose message'), findsOneWidget);
-    expect(find.byTooltip('More'), findsOneWidget);
+    expect(find.byTooltip('More'), findsNothing);
     expect(find.text('Active now'), findsOneWidget);
     expect(find.byKey(const ValueKey('chats-filter-bar')), findsOneWidget);
     expect(find.text('Conversations'), findsOneWidget);

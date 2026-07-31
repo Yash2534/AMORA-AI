@@ -6,104 +6,104 @@ abstract final class AmoraTextStyles {
   static const String? fontFamily = null;
 
   static const displayLarge = TextStyle(
-    color: AppColors.primary,
     fontSize: 48,
     height: 1.08,
     fontWeight: FontWeight.w600,
     letterSpacing: -0.5,
+    color: AppColors.primary,
   );
   static const displayMedium = TextStyle(
-    color: AppColors.primary,
     fontSize: 40,
     height: 1.1,
     fontWeight: FontWeight.w600,
     letterSpacing: -0.25,
+    color: AppColors.primary,
   );
   static const displaySmall = TextStyle(
-    color: AppColors.primary,
     fontSize: 34,
     height: 1.12,
     fontWeight: FontWeight.w600,
+    color: AppColors.primary,
   );
   static const headlineLarge = TextStyle(
-    color: AppColors.primary,
     fontSize: 32,
     height: 1.16,
     fontWeight: FontWeight.w600,
+    color: AppColors.primary,
   );
   static const headlineMedium = TextStyle(
-    color: AppColors.primary,
     fontSize: 28,
     height: 1.18,
     fontWeight: FontWeight.w600,
+    color: AppColors.primary,
   );
   static const headlineSmall = TextStyle(
-    color: AppColors.primary,
     fontSize: 24,
     height: 1.2,
     fontWeight: FontWeight.w600,
+    color: AppColors.primary,
   );
   static const titleLarge = TextStyle(
-    color: AppColors.primary,
     fontSize: 22,
     height: 1.24,
     fontWeight: FontWeight.w600,
+    color: AppColors.primary,
   );
   static const titleMedium = TextStyle(
-    color: AppColors.textPrimary,
     fontSize: 16,
     height: 1.35,
     fontWeight: FontWeight.w600,
     letterSpacing: 0.1,
+    color: AppColors.primary,
   );
   static const titleSmall = TextStyle(
-    color: AppColors.textPrimary,
     fontSize: 14,
     height: 1.4,
     fontWeight: FontWeight.w600,
     letterSpacing: 0.1,
+    color: AppColors.primary,
   );
   static const bodyLarge = TextStyle(
-    color: AppColors.textPrimary,
     fontSize: 16,
     height: 1.5,
     fontWeight: FontWeight.w400,
     letterSpacing: 0.15,
+    color: AppColors.text,
   );
   static const bodyMedium = TextStyle(
-    color: AppColors.textPrimary,
     fontSize: 14,
     height: 1.45,
     fontWeight: FontWeight.w400,
     letterSpacing: 0.15,
+    color: AppColors.text,
   );
   static const bodySmall = TextStyle(
-    color: AppColors.textSecondary,
     fontSize: 12,
     height: 1.4,
     fontWeight: FontWeight.w400,
     letterSpacing: 0.2,
+    color: AppColors.text,
   );
   static const labelLarge = TextStyle(
-    color: AppColors.textPrimary,
     fontSize: 14,
     height: 1.25,
     fontWeight: FontWeight.w600,
     letterSpacing: 0.1,
+    color: AppColors.text,
   );
   static const labelMedium = TextStyle(
-    color: AppColors.textPrimary,
     fontSize: 12,
     height: 1.3,
     fontWeight: FontWeight.w600,
     letterSpacing: 0.3,
+    color: AppColors.text,
   );
   static const labelSmall = TextStyle(
-    color: AppColors.textSecondary,
     fontSize: 11,
     height: 1.3,
     fontWeight: FontWeight.w600,
     letterSpacing: 0.4,
+    color: AppColors.text,
   );
 
   static const button = labelLarge;
@@ -114,10 +114,27 @@ abstract final class AmoraTextStyles {
   static const bottomSheetTitle = titleLarge;
   static const screenTitle = headlineMedium;
   static const sectionTitle = titleLarge;
+  static const cardTitle = titleMedium;
+  static const supportingText = bodyMedium;
+  static const inputLabel = labelMedium;
+  static const badge = labelSmall;
   static const profileName = headlineSmall;
   static const metadata = bodySmall;
   static const buttonLabel = button;
   static const navigationLabel = navigation;
+  static const buttonLabelOnPrimary = TextStyle(
+    fontSize: 14,
+    height: 1.25,
+    fontWeight: FontWeight.w600,
+    letterSpacing: 0.1,
+    color: AppColors.surface,
+  );
+  static const accentText = TextStyle(
+    fontSize: 14,
+    height: 1.45,
+    fontWeight: FontWeight.w600,
+    color: AppColors.secondary,
+  );
 
   // Compatibility aliases.
   static const display = displaySmall;

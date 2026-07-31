@@ -8,8 +8,8 @@ import 'package:amora_ai/core/widgets/amora_profile_image.dart';
 import 'package:amora_ai/core/widgets/amora_super_like_animation.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
+import 'package:amora_ai/features/chat/data/local_chat_repository.dart';
 import 'package:amora_ai/features/chat/presentation/chat_detail_screen.dart';
-import 'package:amora_ai/features/commerce/presentation/send_gift_screen.dart';
 import 'package:amora_ai/features/discover/presentation/browse_grid_screen.dart';
 import 'package:amora_ai/features/match/presentation/why_we_matched_screen.dart';
 import 'package:amora_ai/features/safety/presentation/blocked_user_success_sheet.dart';
@@ -142,7 +142,6 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
                         superLikeSending: _superLikeSending,
                         onLike: _toggleLike,
                         onSuperLike: _sendSuperLike,
-                        onGift: _openGift,
                         onMessage: _startChat,
                       ),
                     ),
@@ -289,20 +288,17 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
     }
   }
 
-  void _openGift() {
-    if (AmoraSession.isGuest) {
-      _requireAuth(_openGift);
-      return;
-    }
-    Navigator.of(context).pushNamed(SendGiftScreen.routeName);
-  }
-
   void _startChat() {
     if (AmoraSession.isGuest) {
       _requireAuth(_startChat);
       return;
     }
-    Navigator.of(context).pushNamed(ChatDetailScreen.routeName);
+    final conversationId = LocalChatRepository.instance
+        .ensureConversationForProfile(_profile);
+    Navigator.of(context).pushNamed(
+      ChatDetailScreen.routeName,
+      arguments: ChatDetailArgs(conversationId: conversationId),
+    );
   }
 
   void _toggleSave() {
@@ -541,15 +537,7 @@ class _MediaReadabilityOverlay extends StatelessWidget {
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          stops: [.45, 1],
-          colors: [
-            AppColors.primary.withValues(alpha: 0),
-            AppColors.primary.withValues(alpha: .90),
-          ],
-        ),
+        color: AppColors.primary.withValues(alpha: .42),
       ),
     );
   }
@@ -1295,7 +1283,6 @@ class _ProfilePromptsSection extends StatelessWidget {
               onReply: () => onReact('Reply shortcut opened'),
             ),
           ),
-        _MatchNoteComposer(onSend: () => onReact('Match note drafted')),
       ],
     );
   }
@@ -1388,49 +1375,6 @@ class _PromptAction extends StatelessWidget {
           onPressed: onTap,
           icon: Icon(icon, color: AppColors.primary, size: 20),
         ),
-      ),
-    );
-  }
-}
-
-class _MatchNoteComposer extends StatelessWidget {
-  const _MatchNoteComposer({required this.onSend});
-
-  final VoidCallback onSend;
-
-  @override
-  Widget build(BuildContext context) {
-    return _SectionSurface(
-      color: AppColors.tertiary.withValues(alpha: .22),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const _SectionTitle(
-            icon: Icons.edit_note_rounded,
-            title: 'Match note',
-          ),
-          const SizedBox(height: AmoraSpacing.space12),
-          const TextField(
-            minLines: 2,
-            maxLines: 4,
-            maxLength: 180,
-            decoration: InputDecoration(
-              hintText: 'Add a thoughtful note before sending a like',
-            ),
-          ),
-          Align(
-            alignment: Alignment.centerRight,
-            child: FilledButton.icon(
-              onPressed: onSend,
-              icon: const Icon(Icons.send_rounded, size: 18),
-              label: const Text('Attach note'),
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: AppColors.surface,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -1693,7 +1637,6 @@ class ProfileActionBar extends StatelessWidget {
     required this.superLikeSending,
     required this.onLike,
     required this.onSuperLike,
-    required this.onGift,
     required this.onMessage,
   });
 
@@ -1705,7 +1648,6 @@ class ProfileActionBar extends StatelessWidget {
   final bool superLikeSending;
   final VoidCallback onLike;
   final VoidCallback onSuperLike;
-  final VoidCallback onGift;
   final VoidCallback onMessage;
 
   @override
@@ -1730,13 +1672,6 @@ class ProfileActionBar extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 5),
           child: Row(
             children: [
-              Expanded(
-                child: _ProfileActionButton(
-                  label: 'Gift',
-                  icon: Icons.card_giftcard_rounded,
-                  onTap: onGift,
-                ),
-              ),
               Expanded(
                 child: _ProfileActionButton(
                   key: const ValueKey('profile-super-like-button'),

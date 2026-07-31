@@ -10,6 +10,7 @@ import 'package:amora_ai/core/navigation/main_shell.dart';
 import 'package:amora_ai/features/onboarding/data/gujarat_cities.dart';
 import 'package:amora_ai/features/onboarding/data/local_onboarding_repository.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
+import 'package:amora_ai/features/profile/presentation/photo_manager_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -29,6 +30,7 @@ class _ProfileOnboardingFlowState extends State<ProfileOnboardingFlow> {
     OnboardingStage.interestedIn,
     OnboardingStage.relationshipGoal,
     OnboardingStage.location,
+    OnboardingStage.photos,
   ];
 
   final _repository = LocalOnboardingRepository.instance;
@@ -74,7 +76,9 @@ class _ProfileOnboardingFlowState extends State<ProfileOnboardingFlow> {
                 page: _page,
                 total: _stages.length,
                 onBack: _page == 0
-                    ? () => Navigator.of(context).maybePop()
+                    ? (Navigator.of(context).canPop()
+                          ? () => Navigator.of(context).maybePop()
+                          : null)
                     : _back,
               ),
               Expanded(
@@ -104,6 +108,11 @@ class _ProfileOnboardingFlowState extends State<ProfileOnboardingFlow> {
                       cityController: _cityController,
                       onChanged: _update,
                     ),
+                    _PhotoQuestion(
+                      photoCount:
+                          LocalProfileRepository.instance.profile.photos.length,
+                      onManagePhotos: _openPhotoManager,
+                    ),
                   ],
                 ),
               ),
@@ -117,19 +126,14 @@ class _ProfileOnboardingFlowState extends State<ProfileOnboardingFlow> {
                 child: Row(
                   children: [
                     Expanded(
-                      child: _page == 0
-                          ? _BirthDateContinueButton(
-                              key: const Key('onboarding-continue'),
-                              onPressed: _canContinue ? _continue : null,
-                            )
-                          : AppPrimaryButton(
-                              key: const Key('onboarding-continue'),
-                              label: _page == _stages.length - 1
-                                  ? 'Start discovering'
-                                  : 'Continue',
-                              icon: Icons.arrow_forward_rounded,
-                              onPressed: _canContinue ? _continue : null,
-                            ),
+                      child: AppPrimaryButton(
+                        key: const Key('onboarding-continue'),
+                        label: _page == _stages.length - 1
+                            ? 'Start discovering'
+                            : 'Continue',
+                        icon: Icons.arrow_forward_rounded,
+                        onPressed: _canContinue ? _continue : null,
+                      ),
                     ),
                   ],
                 ),
@@ -152,6 +156,7 @@ class _ProfileOnboardingFlowState extends State<ProfileOnboardingFlow> {
       2 => state.interestedIn.isNotEmpty,
       3 => state.relationshipGoal != null,
       4 => _cityController.text.trim().isNotEmpty,
+      5 => LocalProfileRepository.instance.profile.photos.length >= 2,
       _ => false,
     };
   }
@@ -171,10 +176,14 @@ class _ProfileOnboardingFlowState extends State<ProfileOnboardingFlow> {
         ),
       );
     }
+    if (_page == 4) {
+      _repository.update(
+        _repository.state.copyWith(city: _cityController.text.trim()),
+      );
+    }
     if (_page == _stages.length - 1) {
       _repository.update(
         _repository.state.copyWith(
-          city: _cityController.text.trim(),
           onboardingCompleted: true,
           stage: OnboardingStage.complete,
         ),
@@ -186,6 +195,11 @@ class _ProfileOnboardingFlowState extends State<ProfileOnboardingFlow> {
       return;
     }
     _goTo(_page + 1, MediaQuery.disableAnimationsOf(context));
+  }
+
+  Future<void> _openPhotoManager() async {
+    await Navigator.of(context).pushNamed(PhotoManagerScreen.routeName);
+    if (mounted) setState(() {});
   }
 
   void _seedStarterProfile() {
@@ -217,6 +231,84 @@ class _ProfileOnboardingFlowState extends State<ProfileOnboardingFlow> {
         curve: Curves.easeOutCubic,
       );
     }
+  }
+}
+
+class _PhotoQuestion extends StatelessWidget {
+  const _PhotoQuestion({
+    required this.photoCount,
+    required this.onManagePhotos,
+  });
+
+  final int photoCount;
+  final VoidCallback onManagePhotos;
+
+  @override
+  Widget build(BuildContext context) {
+    final complete = photoCount >= 2;
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('Add your best photos', style: AmoraTextStyles.headlineMedium),
+          const SizedBox(height: AmoraSpacing.space8),
+          Text(
+            'Add 2–6 photos, choose a primary photo, and put them in the order you want people to see.',
+            style: AmoraTextStyles.bodyLarge,
+          ),
+          const SizedBox(height: AmoraSpacing.space24),
+          PremiumCard(
+            child: Row(
+              children: [
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: complete
+                        ? AppColors.success.withValues(alpha: .12)
+                        : AppColors.tertiary.withValues(alpha: .28),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    complete
+                        ? Icons.check_rounded
+                        : Icons.add_photo_alternate_rounded,
+                    color: complete ? AppColors.success : AppColors.primary,
+                  ),
+                ),
+                const SizedBox(width: AmoraSpacing.space12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '$photoCount of 6 photos added',
+                        style: AmoraTextStyles.titleMedium,
+                      ),
+                      const SizedBox(height: AmoraSpacing.space4),
+                      Text(
+                        complete
+                            ? 'Minimum photo requirement met.'
+                            : 'Add at least ${2 - photoCount} more.',
+                        style: AmoraTextStyles.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AmoraSpacing.space16),
+          AppPrimaryButton(
+            label: complete ? 'Manage photos' : 'Add photos',
+            icon: Icons.photo_library_rounded,
+            variant: AppPrimaryButtonVariant.outlined,
+            onPressed: onManagePhotos,
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -769,71 +861,6 @@ class _WheelColumn extends StatelessWidget {
       index,
       duration: const Duration(milliseconds: 220),
       curve: Curves.easeOutCubic,
-    );
-  }
-}
-
-class _BirthDateContinueButton extends StatefulWidget {
-  const _BirthDateContinueButton({super.key, required this.onPressed});
-
-  final VoidCallback? onPressed;
-
-  @override
-  State<_BirthDateContinueButton> createState() =>
-      _BirthDateContinueButtonState();
-}
-
-class _BirthDateContinueButtonState extends State<_BirthDateContinueButton> {
-  bool _pressed = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final enabled = widget.onPressed != null;
-    return Semantics(
-      button: true,
-      enabled: enabled,
-      label: 'Continue',
-      child: Listener(
-        onPointerDown: enabled ? (_) => setState(() => _pressed = true) : null,
-        onPointerUp: enabled ? (_) => setState(() => _pressed = false) : null,
-        onPointerCancel: enabled
-            ? (_) => setState(() => _pressed = false)
-            : null,
-        child: AnimatedScale(
-          scale: _pressed ? 0.985 : 1,
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOut,
-          child: SizedBox(
-            height: 56,
-            child: FilledButton(
-              onPressed: widget.onPressed,
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: AppColors.surface,
-                disabledBackgroundColor: AppColors.tertiary,
-                disabledForegroundColor: AppColors.text,
-                textStyle: const TextStyle(
-                  fontSize: 16,
-                  height: 1.2,
-                  fontWeight: FontWeight.w600,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(18),
-                ),
-              ),
-              child: const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text('Continue'),
-                  SizedBox(width: 8),
-                  Icon(Icons.arrow_forward_rounded, size: 20),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

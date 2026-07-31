@@ -117,10 +117,10 @@ class _DataExportScreenState extends State<DataExportScreen> {
                 const SizedBox(height: 16),
                 AppPrimaryButton(
                   label: _ready
-                      ? 'Download Placeholder'
+                      ? 'Download export'
                       : _requested
-                      ? 'Mark Download Ready'
-                      : 'Request Export',
+                      ? 'Prepare export'
+                      : 'Request export',
                   icon: _ready
                       ? Icons.download_rounded
                       : Icons.file_download_rounded,
@@ -136,7 +136,7 @@ class _DataExportScreenState extends State<DataExportScreen> {
 
   void _handleRequest() {
     if (_ready) {
-      _snack('Download placeholder opened');
+      _snack('Your export is ready to download');
       return;
     }
     setState(() {

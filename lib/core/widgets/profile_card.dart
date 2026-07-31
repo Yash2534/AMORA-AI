@@ -81,18 +81,9 @@ class ProfileCard extends StatelessWidget {
                 fit: BoxFit.cover,
                 alignment: Alignment.center,
               ),
-              const DecoratedBox(
+              DecoratedBox(
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      AppColors.transparent,
-                      AppColors.transparent,
-                      AppColors.text,
-                    ],
-                    stops: [0, .48, 1],
-                  ),
+                  color: AppColors.primary.withValues(alpha: .42),
                 ),
               ),
               Positioned(

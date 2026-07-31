@@ -182,27 +182,29 @@ class EventsMemberBadge extends StatelessWidget {
           borderRadius: BorderRadius.circular(999),
           border: Border.all(color: AppColors.tertiary.withValues(alpha: .75)),
         ),
-        child: const Row(
+        child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
+            const Icon(
               Icons.auto_awesome_rounded,
               size: 15,
               color: AppColors.primary,
             ),
-            SizedBox(width: 5),
-            Flexible(
-              child: Text(
-                'Curated by Amora',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: AppColors.primary,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
+            if (!compact) ...[
+              const SizedBox(width: 5),
+              const Flexible(
+                child: Text(
+                  'Curated by Amora',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: AppColors.primary,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
-            ),
+            ],
           ],
         ),
       ),
@@ -483,14 +485,7 @@ class EventImagePanel extends StatelessWidget {
               ),
               DecoratedBox(
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      AppColors.primary.withValues(alpha: .02),
-                      AppColors.primary.withValues(alpha: .84),
-                    ],
-                  ),
+                  color: AppColors.primary.withValues(alpha: .38),
                 ),
               ),
               ?child,
@@ -1444,7 +1439,7 @@ class _EventCardDetails extends StatelessWidget {
             compact: true,
           ),
         ],
-        const SizedBox(height: 8),
+        const SizedBox(height: 4),
         Text(
           event.category,
           maxLines: 1,

@@ -2,14 +2,15 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:amora_ai/core/access/amora_access.dart';
+import 'package:amora_ai/core/branding/amora_brand_assets.dart';
 import 'package:amora_ai/core/constants/app_images.dart';
 import 'package:amora_ai/core/data/image_repository.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
+import 'package:amora_ai/core/widgets/amora_profile_image.dart';
 import 'package:amora_ai/core/widgets/amora_super_like_animation.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/floating_bottom_nav.dart';
-import 'package:amora_ai/core/widgets/premium_image.dart';
 import 'package:amora_ai/core/widgets/premium_motion.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/discover/presentation/advanced_filters_screen.dart';
@@ -580,27 +581,47 @@ class _DiscoverFilterRail extends StatelessWidget {
     return SizedBox(
       key: const ValueKey('discover-filter-rail'),
       height: 46,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
+      child: Row(
         children: [
-          _DiscoverFilterChip(
-            key: const ValueKey('discover-filters-button'),
-            label: 'Filters',
-            icon: Icons.tune_rounded,
-            selected: false,
-            onTap: onFilters,
-          ),
-          for (final filter in filters) ...[
-            const SizedBox(width: 5),
-            _DiscoverFilterChip(
-              key: ValueKey('discover-filter-${filter.label}'),
-              label: filter.label,
-              icon: filter.icon,
-              selected: selected.contains(filter.label),
-              onTap: () => onToggle(filter.label),
+          Semantics(
+            image: true,
+            label: 'Amora Discover',
+            child: SizedBox(
+              width: 72,
+              child: Image.asset(
+                AmoraBrandAssets.wordmark,
+                height: 17,
+                fit: BoxFit.contain,
+                alignment: Alignment.centerLeft,
+              ),
             ),
-          ],
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              children: [
+                _DiscoverFilterChip(
+                  key: const ValueKey('discover-filters-button'),
+                  label: 'Filters',
+                  icon: Icons.tune_rounded,
+                  selected: false,
+                  onTap: onFilters,
+                ),
+                for (final filter in filters) ...[
+                  const SizedBox(width: 5),
+                  _DiscoverFilterChip(
+                    key: ValueKey('discover-filter-${filter.label}'),
+                    label: filter.label,
+                    icon: filter.icon,
+                    selected: selected.contains(filter.label),
+                    onTap: () => onToggle(filter.label),
+                  ),
+                ],
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -777,33 +798,26 @@ class _DiscoverProfileCard extends StatelessWidget {
                               children: [...previousChildren, ?currentChild],
                             );
                           },
-                          child: PremiumImage(
+                          child: AmoraProfileImage(
                             key: ValueKey(
                               'discover-photo-${profile.id}-$photoIndex',
                             ),
+                            imageUrl: photos[photoIndex],
                             assetPath: photos[photoIndex],
-                            fallbackAsset: profile.fallbackAsset,
                             initials: profile.initials,
                             fit: BoxFit.cover,
-                            alignment: Alignment.topCenter,
+                            alignment: Alignment.center,
                             borderRadius: BorderRadius.zero,
+                            semanticLabel:
+                                '${profile.name} profile photo ${photoIndex + 1}',
                           ),
                         ),
                       ),
                     ),
                   ),
-                  const DecoratedBox(
+                  DecoratedBox(
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          AppColors.transparent,
-                          AppColors.transparent,
-                          AppColors.overlayDark,
-                        ],
-                        stops: [0, .44, 1],
-                      ),
+                      color: AppColors.primary.withValues(alpha: .40),
                     ),
                   ),
                   if (photos.length > 1)

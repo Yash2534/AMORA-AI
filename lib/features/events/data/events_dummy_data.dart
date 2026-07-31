@@ -205,6 +205,6 @@ final myEventTickets = [
     seat: 'Cancelled',
     status: TicketStatus.cancelled,
     position: 0,
-    estimatedEntry: 'Refund placeholder',
+    estimatedEntry: 'Refund pending',
   ),
 ];

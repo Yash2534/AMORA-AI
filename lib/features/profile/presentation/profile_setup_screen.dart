@@ -4,10 +4,12 @@ import 'package:amora_ai/core/access/amora_access.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
+import 'package:amora_ai/core/widgets/amora_dob_field.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/app_text_field.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/discover/presentation/browse_grid_screen.dart';
+import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
 import 'package:flutter/material.dart';
 
 class ProfileSetupScreen extends StatefulWidget {
@@ -20,8 +22,6 @@ class ProfileSetupScreen extends StatefulWidget {
 }
 
 class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
-  static const _minimumAge = 18;
-
   final _formKey = GlobalKey<FormState>();
   final _cityController = TextEditingController();
 
@@ -39,20 +39,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       _preferredGender != null &&
       _cityController.text.trim().isNotEmpty;
 
-  String? get _dateOfBirthError {
-    final selected = _dateOfBirth;
-    if (selected == null) return 'Select your date of birth';
-
-    final today = DateUtils.dateOnly(DateTime.now());
-    final selectedDay = DateUtils.dateOnly(selected);
-    if (selectedDay.isAfter(today)) {
-      return 'Date of birth cannot be in the future';
-    }
-    if (selectedDay.isAfter(_dateYearsAgo(today, _minimumAge))) {
-      return 'You must be at least $_minimumAge years old';
-    }
-    return null;
-  }
+  String? get _dateOfBirthError => AmoraDateOfBirth.validate(_dateOfBirth);
 
   @override
   void initState() {
@@ -163,14 +150,17 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                                     'You must be at least 18 to use AMORA.',
                               ),
                               const SizedBox(height: AmoraSpacing.space12),
-                              _DateOfBirthField(
+                              AmoraDobField(
                                 value: _dateOfBirth,
-                                onTap: _pickDateOfBirth,
-                              ),
-                              _InlineError(
-                                message: _showValidationErrors
+                                errorText: _showValidationErrors
                                     ? _dateOfBirthError
                                     : null,
+                                onChanged: (value) {
+                                  setState(() {
+                                    _dateOfBirth = value;
+                                    _showValidationErrors = true;
+                                  });
+                                },
                               ),
                               const _SectionDivider(),
                               const _SectionHeading(
@@ -234,7 +224,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                         ),
                         const SizedBox(height: AmoraSpacing.space12),
                         Text(
-                          'Your answers stay in this onboarding flow for now.',
+                          'Your answers are saved to your Amora profile.',
                           textAlign: TextAlign.center,
                           style: AmoraTextStyles.bodySmall.copyWith(
                             color: AppColors.textNeutral,
@@ -262,31 +252,6 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     _formKey.currentState?.validate();
   }
 
-  Future<void> _pickDateOfBirth() async {
-    FocusScope.of(context).unfocus();
-    final today = DateUtils.dateOnly(DateTime.now());
-    final lastDate = _dateYearsAgo(today, _minimumAge);
-    final firstDate = _dateYearsAgo(today, 100);
-    final initialDate = _dateOfBirth == null
-        ? _dateYearsAgo(today, 24)
-        : _clampDate(DateUtils.dateOnly(_dateOfBirth!), firstDate, lastDate);
-
-    final selected = await showDatePicker(
-      context: context,
-      initialDate: initialDate,
-      firstDate: firstDate,
-      lastDate: lastDate,
-      initialDatePickerMode: DatePickerMode.year,
-      helpText: 'Select date of birth',
-      fieldLabelText: 'Date of birth',
-    );
-    if (!mounted) return;
-    setState(() {
-      _showValidationErrors = true;
-      if (selected != null) _dateOfBirth = DateUtils.dateOnly(selected);
-    });
-  }
-
   Future<void> _continue() async {
     if (_loading) return;
     FocusScope.of(context).unfocus();
@@ -304,6 +269,14 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     }
 
     setState(() => _loading = true);
+    final repository = LocalProfileRepository.instance;
+    await repository.savePersisted(
+      repository.profile.copyWith(
+        birthdate: AmoraDateOfBirth.format(_dateOfBirth!),
+        gender: _gender,
+        location: trimmedCity,
+      ),
+    );
     await Future<void>.delayed(const Duration(milliseconds: 350));
     if (!mounted) return;
 
@@ -591,48 +564,6 @@ class _ChoiceCard extends StatelessWidget {
   }
 }
 
-class _DateOfBirthField extends StatelessWidget {
-  const _DateOfBirthField({required this.value, required this.onTap});
-
-  final DateTime? value;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: value == null
-          ? 'Select date of birth'
-          : 'Date of birth, ${_formatDate(value!)}',
-      child: InkWell(
-        borderRadius: AmoraRadius.input,
-        onTap: onTap,
-        child: InputDecorator(
-          isEmpty: value == null,
-          decoration: const InputDecoration(
-            labelText: 'Date of birth',
-            hintText: 'Select your date',
-            prefixIcon: Icon(
-              Icons.calendar_month_rounded,
-              color: AppColors.primary,
-            ),
-            suffixIcon: Icon(
-              Icons.expand_more_rounded,
-              color: AppColors.secondary,
-            ),
-          ),
-          child: Text(
-            value == null ? 'Select your date' : _formatDate(value!),
-            style: AmoraTextStyles.bodyLarge.copyWith(
-              color: value == null ? AppColors.textNeutral : AppColors.primary,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _InlineError extends StatelessWidget {
   const _InlineError({required this.message});
 
@@ -710,35 +641,4 @@ const _preferredGenderChoices = [
     label: 'Everyone',
     icon: Icons.groups_rounded,
   ),
-];
-
-DateTime _dateYearsAgo(DateTime date, int years) {
-  final targetYear = date.year - years;
-  final lastDayOfMonth = DateTime(targetYear, date.month + 1, 0).day;
-  return DateTime(targetYear, date.month, math.min(date.day, lastDayOfMonth));
-}
-
-DateTime _clampDate(DateTime date, DateTime firstDate, DateTime lastDate) {
-  if (date.isBefore(firstDate)) return firstDate;
-  if (date.isAfter(lastDate)) return lastDate;
-  return date;
-}
-
-String _formatDate(DateTime date) {
-  return '${date.day} ${_monthNames[date.month - 1]} ${date.year}';
-}
-
-const _monthNames = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
 ];

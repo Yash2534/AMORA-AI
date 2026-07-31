@@ -49,7 +49,7 @@ class MonetizationHeader extends StatelessWidget {
           height: AmoraSpacing.minimumTouchTarget,
           decoration: BoxDecoration(
             gradient: const LinearGradient(
-              colors: [AppColors.primaryRose, AppColors.primaryPurple],
+              colors: [AppColors.secondary, AppColors.primary],
             ),
             borderRadius: AmoraRadius.button,
           ),
@@ -211,11 +211,7 @@ class PremiumPlanCard extends StatelessWidget {
       padding: AmoraSpacing.card,
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [
-            AppColors.deepWine,
-            AppColors.primary,
-            AppColors.premiumGold,
-          ],
+          colors: [AppColors.secondary, AppColors.tertiary, AppColors.primary],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -457,7 +453,7 @@ class WalletBalanceCard extends StatelessWidget {
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [AppColors.primaryPurple, AppColors.primaryRose],
+          colors: [AppColors.secondary, AppColors.primary],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),

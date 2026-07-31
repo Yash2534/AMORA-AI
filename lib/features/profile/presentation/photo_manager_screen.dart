@@ -1,22 +1,27 @@
 import 'package:amora_ai/core/access/amora_access.dart';
-import 'package:amora_ai/core/constants/app_images.dart';
+import 'package:amora_ai/core/media/amora_media_picker.dart';
 import 'package:amora_ai/core/theme/amora_icon_sizes.dart';
 import 'package:amora_ai/core/theme/amora_icons.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
+import 'package:amora_ai/core/widgets/amora_profile_image.dart';
 import 'package:amora_ai/core/widgets/amora_snackbar.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
-import 'package:amora_ai/core/widgets/premium_asset_image.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
 import 'package:flutter/material.dart';
 
 class PhotoManagerScreen extends StatefulWidget {
-  const PhotoManagerScreen({super.key});
+  const PhotoManagerScreen({
+    super.key,
+    this.mediaPicker = const DeviceAmoraMediaPicker(),
+  });
 
   static const routeName = '/photo-manager';
+
+  final AmoraMediaPicker mediaPicker;
 
   @override
   State<PhotoManagerScreen> createState() => _PhotoManagerScreenState();
@@ -25,6 +30,9 @@ class PhotoManagerScreen extends StatefulWidget {
 class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
   late List<String> _photos;
   late int _primary;
+  bool _picking = false;
+  bool _saving = false;
+  String? _saveError;
 
   @override
   void initState() {
@@ -64,7 +72,10 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
                     ),
                     itemBuilder: (context, index) {
                       if (index >= _photos.length) {
-                        return _AddPhotoTile(onTap: _addPhoto);
+                        return _AddPhotoTile(
+                          onTap: _picking ? null : _addPhoto,
+                          loading: _picking,
+                        );
                       }
                       return _PhotoTile(
                         photo: _photos[index],
@@ -103,10 +114,21 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
                     ),
                   ),
                   const SizedBox(height: AmoraSpacing.space16),
+                  if (_saveError != null) ...[
+                    Text(
+                      _saveError!,
+                      textAlign: TextAlign.center,
+                      style: AmoraTextStyles.bodySmall.copyWith(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
+                    const SizedBox(height: AmoraSpacing.space8),
+                  ],
                   AppPrimaryButton(
                     label: 'Save Changes',
                     icon: AmoraIcons.check,
-                    onPressed: _saveChanges,
+                    isLoading: _saving,
+                    onPressed: _saving ? null : _saveChanges,
                   ),
                 ],
               ),
@@ -119,16 +141,67 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
 
   Future<void> _addPhoto() async {
     if (_photos.length >= 6) return _snack('Maximum 6 photos allowed');
-    final selected = await showModalBottomSheet<String>(
+    final source = await showModalBottomSheet<AmoraMediaSource>(
       context: context,
       useSafeArea: true,
       showDragHandle: true,
-      isScrollControlled: true,
-      builder: (context) => _LocalPhotoPicker(selected: _photos.toSet()),
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('Add a profile photo', style: AmoraTextStyles.headlineSmall),
+              const SizedBox(height: AmoraSpacing.space8),
+              Text(
+                'Choose a clear JPEG, PNG, WebP, HEIC, or HEIF image up to 12 MB.',
+                style: AmoraTextStyles.bodyMedium,
+              ),
+              const SizedBox(height: AmoraSpacing.space16),
+              ListTile(
+                leading: const Icon(Icons.camera_alt_rounded),
+                title: const Text('Take a photo'),
+                subtitle: const Text('Camera permission is requested next'),
+                onTap: () => Navigator.of(context).pop(AmoraMediaSource.camera),
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library_rounded),
+                title: const Text('Choose from photo library'),
+                subtitle: const Text('Select an existing photo'),
+                onTap: () =>
+                    Navigator.of(context).pop(AmoraMediaSource.gallery),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
-    if (!mounted || selected == null) return;
-    setState(() => _photos.add(selected));
-    _snack('Photo added to this local draft');
+    if (!mounted || source == null) return;
+    await _pickPhoto(source);
+  }
+
+  Future<void> _pickPhoto(AmoraMediaSource source) async {
+    setState(() => _picking = true);
+    final result = await widget.mediaPicker.pickImage(source: source);
+    if (!mounted) return;
+    setState(() => _picking = false);
+
+    final media = result.media;
+    if (media == null) {
+      showAmoraMediaResult(
+        context,
+        result: result,
+        picker: widget.mediaPicker,
+        onRetry: () => _pickPhoto(source),
+      );
+      return;
+    }
+    setState(() {
+      _photos.add(media.dataUri);
+      if (_photos.length == 1) _primary = 0;
+    });
+    _snack('Photo added. Save changes to keep it.');
   }
 
   void _delete(int index) {
@@ -136,6 +209,10 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
       _photos.removeAt(index);
       if (_photos.isEmpty) {
         _primary = 0;
+      } else if (index < _primary) {
+        _primary--;
+      } else if (index == _primary) {
+        _primary = index.clamp(0, _photos.length - 1).toInt();
       } else {
         _primary = _primary.clamp(0, _photos.length - 1).toInt();
       }
@@ -148,20 +225,40 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
     setState(() {
       final item = _photos.removeAt(index);
       _photos.insert(index - 1, item);
-      if (_primary == index) _primary = index - 1;
+      if (_primary == index) {
+        _primary = index - 1;
+      } else if (_primary == index - 1) {
+        _primary = index;
+      }
     });
-    _snack('Reorder placeholder applied');
+    _snack('Photo moved earlier');
   }
 
-  void _saveChanges() {
+  Future<void> _saveChanges() async {
     if (_photos.length < 2) {
       _snack('Add at least two profile photos before saving');
       return;
     }
-    LocalProfileRepository.instance.updatePhotos(_photos, _primary);
-    AmoraSession.completeProfileStep(40);
-    _snack('Photo changes saved locally');
-    Navigator.of(context).pop(true);
+    setState(() {
+      _saving = true;
+      _saveError = null;
+    });
+    try {
+      await LocalProfileRepository.instance.updatePhotosPersisted(
+        _photos,
+        _primary,
+      );
+      if (!mounted) return;
+      AmoraSession.completeProfileStep(40);
+      _snack('Photo changes saved on this device');
+      Navigator.of(context).pop(true);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _saveError = 'Could not save photo changes. Please try again.';
+      });
+    }
   }
 
   void _snack(String message) {
@@ -193,7 +290,7 @@ class _Header extends StatelessWidget {
                 ),
               ),
               Text(
-                'Curate a strong, verified first impression.',
+                'Choose clear photos that represent you.',
                 style: AmoraTextStyles.bodySmall.copyWith(
                   color: AppColors.textGray,
                   fontWeight: FontWeight.w600,
@@ -227,11 +324,12 @@ class _PhotoTile extends StatelessWidget {
     return Stack(
       children: [
         Positioned.fill(
-          child: PremiumAssetImage(
+          child: AmoraProfileImage(
             imageUrl: photo,
-            fallbackAsset: photo,
+            assetPath: photo,
             initials: 'AM',
             borderRadius: AmoraRadius.card,
+            semanticLabel: primary ? 'Primary profile photo' : 'Profile photo',
           ),
         ),
         Positioned(
@@ -265,106 +363,11 @@ class _PhotoTile extends StatelessWidget {
   }
 }
 
-class _LocalPhotoPicker extends StatelessWidget {
-  const _LocalPhotoPicker({required this.selected});
-
-  final Set<String> selected;
-
-  static const choices = [
-    AppImages.profileYash,
-    'assets/images/profiles/male/male_06.jpg',
-    'assets/images/profiles/male/male_08.jpg',
-    'assets/images/profiles/male/male_11.jpg',
-    'assets/images/profiles/male/male_14.jpg',
-    'assets/images/profiles/male/male_17.jpg',
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return DraggableScrollableSheet(
-      expand: false,
-      initialChildSize: .72,
-      minChildSize: .45,
-      maxChildSize: .92,
-      builder: (context, scrollController) => ListView(
-        controller: scrollController,
-        padding: EdgeInsets.fromLTRB(
-          20,
-          4,
-          20,
-          MediaQuery.viewPaddingOf(context).bottom + 24,
-        ),
-        children: [
-          Text(
-            'Choose a local demo photo',
-            style: AmoraTextStyles.headlineSmall,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'The selection stays on this device and is not uploaded.',
-            style: AmoraTextStyles.bodyMedium,
-          ),
-          const SizedBox(height: 16),
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: choices.length,
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              mainAxisSpacing: 12,
-              crossAxisSpacing: 12,
-              childAspectRatio: .84,
-            ),
-            itemBuilder: (context, index) {
-              final choice = choices[index];
-              final disabled = selected.contains(choice);
-              return Semantics(
-                button: true,
-                enabled: !disabled,
-                label: 'Local profile photo ${index + 1}',
-                child: InkWell(
-                  onTap: disabled
-                      ? null
-                      : () => Navigator.of(context).pop(choice),
-                  borderRadius: AmoraRadius.card,
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      PremiumAssetImage(
-                        imageUrl: choice,
-                        fallbackAsset: choice,
-                        initials: 'YA',
-                        borderRadius: AmoraRadius.card,
-                      ),
-                      if (disabled)
-                        DecoratedBox(
-                          decoration: BoxDecoration(
-                            color: AppColors.deepWine.withValues(alpha: .5),
-                            borderRadius: AmoraRadius.card,
-                          ),
-                          child: const Center(
-                            child: Icon(
-                              Icons.check_circle_rounded,
-                              color: AppColors.surface,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _AddPhotoTile extends StatelessWidget {
-  const _AddPhotoTile({required this.onTap});
+  const _AddPhotoTile({required this.onTap, required this.loading});
 
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
+  final bool loading;
 
   @override
   Widget build(BuildContext context) {
@@ -377,10 +380,14 @@ class _AddPhotoTile extends StatelessWidget {
           borderRadius: AmoraRadius.card,
           border: Border.all(color: AppColors.borderGray),
         ),
-        child: const Icon(
-          Icons.add_photo_alternate_rounded,
-          color: AppColors.primaryPurple,
-          size: AmoraIconSizes.large,
+        child: Center(
+          child: loading
+              ? const CircularProgressIndicator()
+              : const Icon(
+                  Icons.add_photo_alternate_rounded,
+                  color: AppColors.primaryPurple,
+                  size: AmoraIconSizes.large,
+                ),
         ),
       ),
     );

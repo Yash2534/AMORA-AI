@@ -12,7 +12,7 @@ class ChatPresenceAvatar extends StatelessWidget {
     this.showVerified = true,
   });
 
-  static const onlineGreen = Color(0xFF34C759);
+  static const onlineGreen = AppColors.success;
 
   final DummyProfile profile;
   final bool online;

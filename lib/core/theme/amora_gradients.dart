@@ -7,43 +7,42 @@ class AmoraGradients {
   static const LinearGradient primary = LinearGradient(
     begin: Alignment.centerLeft,
     end: Alignment.centerRight,
-    colors: [AppColors.primary, AppColors.secondary],
+    colors: [AppColors.secondary, AppColors.primary],
   );
 
   static const LinearGradient primaryDiagonal = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [AppColors.primary, AppColors.secondary],
+    colors: [AppColors.secondary, AppColors.primary],
   );
 
   static const LinearGradient surface = LinearGradient(
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
-    colors: [AppColors.background, AppColors.tertiarySoft, AppColors.surface],
-    stops: [0, .58, 1],
+    colors: [AppColors.background, AppColors.surface],
   );
 
   static const LinearGradient warmSurface = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [AppColors.surface, AppColors.tertiarySoft],
+    colors: [AppColors.background, AppColors.surface],
   );
 
   static const LinearGradient premium = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [AppColors.primary, AppColors.primaryLight],
+    colors: [AppColors.secondary, AppColors.tertiary, AppColors.primary],
   );
 
   static const LinearGradient premiumBadge = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [AppColors.premiumContainer, AppColors.premium],
+    colors: [AppColors.secondary, AppColors.tertiary, AppColors.primary],
   );
 
   static const LinearGradient verifiedBadge = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [AppColors.infoContainer, AppColors.info],
+    colors: [AppColors.secondary, AppColors.primary],
   );
 }

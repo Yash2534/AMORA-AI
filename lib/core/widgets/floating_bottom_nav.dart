@@ -235,7 +235,7 @@ class _BottomNavButtonState extends State<_BottomNavButton>
                           overflow: TextOverflow.fade,
                           style: AmoraTextStyles.labelSmall.copyWith(
                             color: widget.selected
-                                ? AppColors.primary
+                                ? AppColors.active
                                 : AppColors.textNeutral,
                             fontSize: 10,
                             height: 1,

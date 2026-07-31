@@ -149,18 +149,9 @@ class _LockedProfileCard extends StatelessWidget {
               initials: 'AM',
               borderRadius: AmoraRadius.card,
             ),
-            const DecoratedBox(
+            DecoratedBox(
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    AppColors.transparent,
-                    AppColors.transparent,
-                    AppColors.text,
-                  ],
-                  stops: [0, .48, 1],
-                ),
+                color: AppColors.primary.withValues(alpha: .42),
               ),
             ),
             if (locked)

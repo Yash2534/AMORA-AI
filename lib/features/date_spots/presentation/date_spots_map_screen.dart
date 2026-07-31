@@ -48,11 +48,7 @@ class _DateSpotsMapScreenState extends State<DateSpotsMapScreen> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              AppColors.porcelain,
-              AppColors.blushMist,
-              AppColors.lavenderBackground,
-            ],
+            colors: [AppColors.background, AppColors.surface],
           ),
         ),
         child: SafeArea(
@@ -152,7 +148,7 @@ class _DateSpotsMapScreenState extends State<DateSpotsMapScreen> {
                   const VenueMapPreviewCard(),
                   const SizedBox(height: 8),
                   const Text(
-                    'Map integration coming soon. Pins, clusters, routes, and package inventory are ready for Google Maps SDK.',
+                    'Browse the curated venue list below. Map view is currently unavailable.',
                     style: TextStyle(
                       color: AppColors.textGray,
                       fontWeight: FontWeight.w700,

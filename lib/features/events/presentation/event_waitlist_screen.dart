@@ -104,31 +104,32 @@ class _EventWaitlistScreenState extends State<EventWaitlistScreen> {
                   ),
                 ),
                 const SizedBox(height: 14),
-                Container(
-                  padding: const EdgeInsets.fromLTRB(18, 8, 8, 8),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(22),
-                  ),
-                  child: SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    value: _notify,
-                    onChanged: _joined
-                        ? (value) => setState(() => _notify = value)
-                        : null,
-                    title: const Text(
-                      'Waitlist updates',
-                      style: TextStyle(
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.w600,
+                Material(
+                  color: Theme.of(context).colorScheme.surface,
+                  borderRadius: BorderRadius.circular(22),
+                  clipBehavior: Clip.antiAlias,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(18, 8, 8, 8),
+                    child: SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      value: _notify,
+                      onChanged: _joined
+                          ? (value) => setState(() => _notify = value)
+                          : null,
+                      title: const Text(
+                        'Waitlist updates',
+                        style: TextStyle(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    ),
-                    subtitle: const Text(
-                      'Use the existing notification preference for changes.',
-                    ),
-                    secondary: const Icon(
-                      Icons.notifications_active_rounded,
-                      color: AppColors.secondary,
+                      subtitle: const Text(
+                        'Use the existing notification preference for changes.',
+                      ),
+                      secondary: const Icon(
+                        Icons.notifications_active_rounded,
+                        color: AppColors.secondary,
+                      ),
                     ),
                   ),
                 ),

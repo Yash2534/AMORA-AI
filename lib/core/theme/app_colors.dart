@@ -1,136 +1,136 @@
 import 'package:flutter/material.dart';
 
-/// AMORA's approved semantic colour palette.
+/// The complete approved Amora colour palette.
 ///
-/// Every visible role resolves to one of the six approved brand colours. The
-/// compatibility aliases keep existing screens stable while allowing new UI
-/// to use concise semantic names.
+/// Every semantic role and compatibility alias below resolves to one of these
+/// six colours. Do not add raw colour values outside this file.
 abstract final class AppColors {
-  // Approved brand palette.
-  static const primary = Color(0xFF3D0B3F);
-  static const secondary = Color(0xFFEC5FA8);
-  static const tertiary = Color(0xFFF4A9CE);
-  static const background = Color(0xFFFDF1F7);
-  static const surface = Color(0xFFFFFFFF);
-  static const text = Color(0xFF2B2B2B);
+  static const Color primary = Color(0xFF3D0B3F);
+  static const Color secondary = Color(0xFFEC5FA8);
+  static const Color tertiary = Color(0xFFF4A9CE);
+  static const Color background = Color(0xFFFDF1F7);
+  static const Color surface = Color(0xFFFFFFFF);
+  static const Color text = Color(0xFF2B2B2B);
+  static const Color transparent = Colors.transparent;
 
-  // Material 3 brand roles.
-  static const onPrimary = surface;
-  static const primaryContainer = tertiary;
-  static const onPrimaryContainer = primary;
-  static const onSecondary = surface;
-  static const secondaryContainer = tertiary;
-  static const onSecondaryContainer = primary;
-  static const onTertiary = primary;
-  static const tertiaryContainer = background;
-  static const onTertiaryContainer = primary;
+  // Material 3 roles.
+  static const Color onPrimary = surface;
+  static const Color primaryContainer = tertiary;
+  static const Color onPrimaryContainer = primary;
+  static const Color onSecondary = surface;
+  static const Color secondaryContainer = tertiary;
+  static const Color onSecondaryContainer = primary;
+  static const Color onTertiary = primary;
+  static const Color tertiaryContainer = background;
+  static const Color onTertiaryContainer = primary;
+  static const Color error = primary;
+  static const Color onError = surface;
+  static const Color errorContainer = tertiary;
+  static const Color onErrorContainer = primary;
+  static const Color outline = tertiary;
+  static const Color outlineVariant = tertiary;
+  static const Color shadow = text;
+  static const Color scrim = text;
 
   // Interaction and selection roles.
-  static const active = secondary;
-  static const onActive = surface;
-  static const activeContainer = tertiary;
-  static const selectedContainer = tertiary;
-  static const focus = secondary;
-  static const hover = background;
-  static const pressed = tertiary;
-  static const disabled = tertiary;
+  static const Color active = secondary;
+  static const Color onActive = surface;
+  static const Color activeContainer = tertiary;
+  static const Color selectedContainer = tertiary;
+  static const Color focus = secondary;
+  static const Color hover = background;
+  static const Color pressed = tertiary;
+  static const Color disabled = tertiary;
 
   // Surfaces.
-  static const onBackground = textNeutral;
-  static const onSurface = textNeutral;
-  static const surfaceSoft = background;
-  static const surfaceDim = background;
-  static const surfaceBright = surface;
-  static const surfaceContainerLowest = surface;
-  static const surfaceContainerLow = background;
-  static const surfaceContainer = background;
-  static const surfaceContainerHigh = tertiary;
-  static const surfaceContainerHighest = tertiary;
-  static const cardBackground = surface;
-  static const inputBackground = surface;
-  static const chipBackground = background;
+  static const Color onBackground = text;
+  static const Color onSurface = text;
+  static const Color surfaceSoft = background;
+  static const Color surfaceDim = background;
+  static const Color surfaceBright = surface;
+  static const Color surfaceContainerLowest = surface;
+  static const Color surfaceContainerLow = surface;
+  static const Color surfaceContainer = surface;
+  static const Color surfaceContainerHigh = background;
+  static const Color surfaceContainerHighest = tertiary;
+  static const Color cardBackground = surface;
+  static const Color inputBackground = surface;
+  static const Color chipBackground = surface;
+  static const Color splashBackground = background;
+  static const Color splashGlow = tertiary;
 
-  // Content and outlines.
-  static const textPrimary = textNeutral;
-  static const textSecondary = textNeutral;
-  static const textMuted = textNeutral;
-  static const textDisabled = tertiary;
-  static const outline = secondary;
-  static const outlineVariant = tertiary;
-  static const border = tertiary;
-  static const borderStrong = tertiary;
-  static const divider = tertiary;
-  static const scrim = primary;
-  static const shadow = primary;
-  static const overlayDark = primary;
-  static const overlayLight = surface;
-  static const transparent = Color(0x00000000);
+  // Content and structure.
+  static const Color textPrimary = text;
+  static const Color textSecondary = text;
+  static const Color textMuted = text;
+  static const Color textDisabled = text;
+  static const Color border = tertiary;
+  static const Color borderStrong = tertiary;
+  static const Color divider = tertiary;
+  static const Color overlayDark = text;
+  static const Color overlayLight = surface;
 
-  // Feedback and status roles use approved brand colours.
-  static const error = secondary;
-  static const onError = surface;
-  static const errorContainer = background;
-  static const onErrorContainer = primary;
-  static const success = primary;
-  static const onSuccess = surface;
-  static const successContainer = tertiary;
-  static const onSuccessContainer = primary;
-  static const warning = secondary;
-  static const onWarning = surface;
-  static const warningContainer = tertiary;
-  static const onWarningContainer = primary;
-  static const info = primary;
-  static const onInfo = surface;
-  static const infoContainer = background;
-  static const onInfoContainer = primary;
-  static const online = success;
-  static const offline = textNeutral;
-  static const unread = primary;
+  // Feedback and status roles. Meaning is also communicated with copy/icons.
+  static const Color success = primary;
+  static const Color onSuccess = surface;
+  static const Color successContainer = tertiary;
+  static const Color onSuccessContainer = primary;
+  static const Color warning = secondary;
+  static const Color onWarning = surface;
+  static const Color warningContainer = tertiary;
+  static const Color onWarningContainer = primary;
+  static const Color info = secondary;
+  static const Color onInfo = surface;
+  static const Color infoContainer = tertiary;
+  static const Color onInfoContainer = primary;
+  static const Color online = primary;
+  static const Color offline = text;
+  static const Color unread = primary;
 
-  // Premium product accents.
-  static const premium = secondary;
-  static const onPremium = surface;
-  static const premiumContainer = tertiary;
-  static const onPremiumContainer = primary;
+  // Premium product roles.
+  static const Color premium = secondary;
+  static const Color onPremium = surface;
+  static const Color premiumContainer = tertiary;
+  static const Color onPremiumContainer = primary;
 
-  // Compatibility aliases. Do not introduce new usages of these names.
-  static const textNeutral = text;
-  static const roseQuartz = tertiary;
-  static const blush = background;
-  static const mist = background;
-  static const plum = primary;
-  static const mauve = textNeutral;
-  static const champagneGold = secondary;
-  static const sage = primary;
-  static const amber = secondary;
-  static const coral = secondary;
-  static const gradientEnd = secondary;
-  static const primaryLight = tertiary;
-  static const tertiarySoft = background;
-  static const primaryPurple = primary;
-  static const deepWine = primary;
-  static const primaryRose = secondary;
-  static const roseRed = secondary;
-  static const softPink = tertiary;
-  static const lavenderBackground = background;
-  static const lightPinkBackground = background;
-  static const porcelain = surface;
-  static const warmIvory = surface;
-  static const blushMist = background;
-  static const mutedPlum = textNeutral;
-  static const deepNavy = primary;
-  static const charcoal = textNeutral;
-  static const ink = textNeutral;
-  static const champagne = tertiary;
-  static const white = surface;
-  static const black = textNeutral;
-  static const premiumGold = tertiary;
-  static const successGreen = secondary;
-  static const errorRed = secondary;
-  static const warningAmber = tertiary;
-  static const textDark = textNeutral;
-  static const textGray = textNeutral;
-  static const grey = textNeutral;
-  static const borderGray = tertiary;
-  static const lightGray = background;
+  // Compatibility aliases retained for existing feature code.
+  static const Color textNeutral = text;
+  static const Color roseQuartz = tertiary;
+  static const Color blush = background;
+  static const Color mist = background;
+  static const Color plum = primary;
+  static const Color mauve = text;
+  static const Color champagneGold = secondary;
+  static const Color sage = primary;
+  static const Color amber = secondary;
+  static const Color coral = secondary;
+  static const Color gradientEnd = primary;
+  static const Color primaryLight = tertiary;
+  static const Color tertiarySoft = background;
+  static const Color primaryPurple = primary;
+  static const Color deepWine = primary;
+  static const Color primaryRose = secondary;
+  static const Color roseRed = secondary;
+  static const Color softPink = tertiary;
+  static const Color lavenderBackground = background;
+  static const Color lightPinkBackground = background;
+  static const Color porcelain = surface;
+  static const Color warmIvory = surface;
+  static const Color blushMist = background;
+  static const Color mutedPlum = text;
+  static const Color deepNavy = primary;
+  static const Color charcoal = text;
+  static const Color ink = text;
+  static const Color champagne = tertiary;
+  static const Color white = surface;
+  static const Color black = text;
+  static const Color premiumGold = tertiary;
+  static const Color successGreen = primary;
+  static const Color errorRed = primary;
+  static const Color warningAmber = secondary;
+  static const Color textDark = text;
+  static const Color textGray = text;
+  static const Color grey = text;
+  static const Color borderGray = tertiary;
+  static const Color lightGray = background;
 }

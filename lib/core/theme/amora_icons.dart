@@ -28,7 +28,6 @@ class AmoraIcons {
   static const IconData pause = Icons.pause_rounded;
   static const IconData photo = Icons.photo_rounded;
   static const IconData video = Icons.videocam_rounded;
-  static const IconData mic = Icons.mic_rounded;
   static const IconData shield = Icons.shield_rounded;
   static const IconData location = Icons.location_on_rounded;
   static const IconData copy = Icons.content_copy_rounded;

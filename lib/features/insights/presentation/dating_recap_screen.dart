@@ -159,10 +159,7 @@ class _TrendCard extends StatelessWidget {
                     margin: const EdgeInsets.symmetric(horizontal: 4),
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
-                        colors: [
-                          AppColors.primaryRose,
-                          AppColors.primaryPurple,
-                        ],
+                        colors: [AppColors.secondary, AppColors.primary],
                         begin: Alignment.bottomCenter,
                         end: Alignment.topCenter,
                       ),

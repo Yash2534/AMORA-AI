@@ -77,50 +77,18 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                               ),
                             ),
                         ],
-                        const SizedBox(height: 28),
-                        const _SectionTitle(
-                          title: 'A membership built around intention',
-                          subtitle:
-                              'Better discovery, stronger signals, and ways to meet offline.',
-                        ),
-                        const SizedBox(height: 12),
-                        const MembershipBenefitGroup(
-                          icon: Icons.favorite_rounded,
-                          title: 'Connect Better',
-                          benefits: [
-                            'Advanced intent filters',
-                            'Enhanced AI match context',
-                            'Deeper compatibility signals',
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        const MembershipBenefitGroup(
-                          icon: Icons.auto_awesome_rounded,
-                          title: 'Stand Out',
-                          benefits: [
-                            'Priority profile visibility',
-                            'More likes and Super Likes',
-                            'Premium profile controls',
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        const MembershipBenefitGroup(
-                          icon: Icons.groups_2_rounded,
-                          title: 'Meet Offline',
-                          benefits: [
-                            'Curated member Events',
-                            'Small interest-led gatherings',
-                            'Joined Events management',
-                          ],
-                        ),
-                        const SizedBox(height: 28),
-                        const _SectionTitle(
-                          title: 'Free and Member',
-                          subtitle:
-                              'A concise look at what membership changes.',
-                        ),
-                        const SizedBox(height: 12),
-                        const MembershipComparison(),
+                        if (!membershipTestMode && !memberActive) ...[
+                          const SizedBox(height: 12),
+                          const Text(
+                            'Monthly billing is the only duration currently '
+                            'configured for these plans.',
+                            style: TextStyle(
+                              color: AppColors.text,
+                              fontSize: 13,
+                              height: 1.35,
+                            ),
+                          ),
+                        ],
                         const SizedBox(height: 18),
                         const _BillingTrustCard(),
                         const SizedBox(height: 20),
@@ -197,7 +165,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       );
       return;
     }
-    showPremiumSnack(context, 'Restore purchase placeholder ready');
+    showPremiumSnack(context, 'No previous purchase was found');
   }
 
   void _manageMembership() {
@@ -411,7 +379,10 @@ class SubscriptionPlanCard extends StatelessWidget {
        _duration = plan.durationLabel,
        _amount = plan.amount,
        _monthly = plan.monthlyEquivalent,
-       _bestValue = plan.bestValue;
+       _bestValue = plan.bestValue,
+       _tagline = '',
+       _features = const [],
+       _billingTerms = plan.intervalLabel;
 
   SubscriptionPlanCard.production({
     super.key,
@@ -422,13 +393,19 @@ class SubscriptionPlanCard extends StatelessWidget {
        _duration = 'Monthly',
        _amount = plan.monthlyPrice,
        _monthly = plan.monthlyPrice,
-       _bestValue = plan.highlight;
+       _bestValue = plan.highlight,
+       _tagline = plan.tagline,
+       _features = plan.features,
+       _billingTerms = 'Billed monthly';
 
   final String _title;
   final String _duration;
   final int _amount;
   final int _monthly;
   final bool _bestValue;
+  final String _tagline;
+  final List<String> _features;
+  final String _billingTerms;
   final bool selected;
   final VoidCallback onTap;
 
@@ -455,67 +432,111 @@ class SubscriptionPlanCard extends StatelessWidget {
             onTap: onTap,
             child: Padding(
               padding: const EdgeInsets.all(16),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  AnimatedContainer(
-                    duration: AmoraMotion.selection,
-                    width: 28,
-                    height: 28,
-                    decoration: BoxDecoration(
-                      color: selected ? AppColors.primary : AppColors.surface,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: AppColors.primary),
-                    ),
-                    child: selected
-                        ? const Icon(
-                            Icons.check_rounded,
-                            color: AppColors.surface,
-                            size: 18,
-                          )
-                        : null,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
+                  Row(
+                    children: [
+                      AnimatedContainer(
+                        duration: AmoraMotion.selection,
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: selected
+                              ? AppColors.primary
+                              : AppColors.surface,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: AppColors.primary),
+                        ),
+                        child: selected
+                            ? const Icon(
+                                Icons.check_rounded,
+                                color: AppColors.surface,
+                                size: 18,
+                              )
+                            : null,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Flexible(
-                              child: Text(
-                                _title,
-                                style: const TextStyle(
-                                  color: AppColors.primary,
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.w700,
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 6,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: [
+                                Text(
+                                  _title,
+                                  style: const TextStyle(
+                                    color: AppColors.primary,
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w700,
+                                  ),
                                 ),
+                                if (_bestValue) const _BestValueBadge(),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '$_duration · '
+                              '${formatMembershipAmount(_monthly)}/month',
+                              style: const TextStyle(
+                                color: AppColors.text,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
-                            if (_bestValue) ...[
-                              const SizedBox(width: 8),
-                              const _BestValueBadge(),
-                            ],
                           ],
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '$_duration · ${formatMembershipAmount(_monthly)}/month',
-                          style: const TextStyle(
-                            color: AppColors.text,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        formatMembershipAmount(_amount),
+                        style: const TextStyle(
+                          color: AppColors.primary,
+                          fontSize: 19,
+                          fontWeight: FontWeight.w700,
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 10),
+                  if (_tagline.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      _tagline,
+                      style: const TextStyle(
+                        color: AppColors.text,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                  if (_features.isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    for (final feature in _features)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(
+                              Icons.check_circle_outline_rounded,
+                              color: AppColors.primary,
+                              size: 18,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(child: Text(feature)),
+                          ],
+                        ),
+                      ),
+                  ],
+                  const SizedBox(height: 6),
                   Text(
-                    formatMembershipAmount(_amount),
+                    _billingTerms,
                     style: const TextStyle(
-                      color: AppColors.primary,
-                      fontSize: 19,
-                      fontWeight: FontWeight.w700,
+                      color: AppColors.text,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ],

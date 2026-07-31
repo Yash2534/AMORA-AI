@@ -1,3 +1,4 @@
+import 'package:amora_ai/core/media/amora_media_picker.dart';
 import 'package:amora_ai/core/theme/amora_icons.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
@@ -10,9 +11,14 @@ import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:flutter/material.dart';
 
 class PostEventFeedbackScreen extends StatefulWidget {
-  const PostEventFeedbackScreen({super.key});
+  const PostEventFeedbackScreen({
+    super.key,
+    this.mediaPicker = const DeviceAmoraMediaPicker(),
+  });
 
   static const routeName = '/post-event-feedback';
+
+  final AmoraMediaPicker mediaPicker;
 
   @override
   State<PostEventFeedbackScreen> createState() =>
@@ -30,7 +36,8 @@ class _PostEventFeedbackScreenState extends State<PostEventFeedbackScreen> {
     'Experience Rating': 4,
   };
   bool _recommend = true;
-  bool _photo = false;
+  AmoraPickedMedia? _photo;
+  bool _pickingPhoto = false;
 
   @override
   void dispose() {
@@ -88,11 +95,30 @@ class _PostEventFeedbackScreenState extends State<PostEventFeedbackScreen> {
                         maxLines: 6,
                       ),
                       const SizedBox(height: AmoraSpacing.space12),
-                      SwitchListTile(
+                      ListTile(
                         contentPadding: EdgeInsets.zero,
-                        value: _photo,
-                        onChanged: (value) => setState(() => _photo = value),
-                        title: const Text('Upload photo placeholder'),
+                        leading: const Icon(Icons.add_photo_alternate_rounded),
+                        title: const Text('Upload a photo'),
+                        subtitle: Text(
+                          _photo == null
+                              ? 'Optional · choose an event photo'
+                              : '${_photo!.name} attached',
+                        ),
+                        trailing: _pickingPhoto
+                            ? const SizedBox.square(
+                                dimension: 24,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : _photo == null
+                            ? const Icon(Icons.chevron_right_rounded)
+                            : IconButton(
+                                tooltip: 'Remove photo',
+                                onPressed: () => setState(() => _photo = null),
+                                icon: const Icon(Icons.delete_outline_rounded),
+                              ),
+                        onTap: _pickingPhoto ? null : _pickPhoto,
                       ),
                       SwitchListTile(
                         contentPadding: EdgeInsets.zero,
@@ -127,6 +153,25 @@ class _PostEventFeedbackScreenState extends State<PostEventFeedbackScreen> {
       primaryLabel: 'Done',
       onPrimary: () => Navigator.pop(context),
     );
+  }
+
+  Future<void> _pickPhoto() async {
+    setState(() => _pickingPhoto = true);
+    final result = await widget.mediaPicker.pickImage(
+      source: AmoraMediaSource.gallery,
+    );
+    if (!mounted) return;
+    setState(() => _pickingPhoto = false);
+    if (!result.succeeded) {
+      showAmoraMediaResult(
+        context,
+        result: result,
+        picker: widget.mediaPicker,
+        onRetry: _pickPhoto,
+      );
+      return;
+    }
+    setState(() => _photo = result.media);
   }
 }
 

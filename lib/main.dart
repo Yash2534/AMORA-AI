@@ -1,6 +1,7 @@
 import 'package:amora_ai/core/constants/app_images.dart';
 import 'package:amora_ai/core/access/amora_access.dart';
 import 'package:amora_ai/core/theme/amora_theme.dart';
+import 'package:amora_ai/core/theme/amora_theme_controller.dart';
 import 'package:amora_ai/core/navigation/main_shell.dart';
 import 'package:amora_ai/core/widgets/floating_bottom_nav.dart';
 import 'package:amora_ai/features/auth/presentation/compatibility_onboarding_screen.dart';
@@ -9,11 +10,12 @@ import 'package:amora_ai/features/auth/presentation/account_verification_screen.
 import 'package:amora_ai/features/auth/presentation/login_screen.dart';
 import 'package:amora_ai/features/auth/presentation/phone_otp_screen.dart';
 import 'package:amora_ai/features/auth/presentation/signup_screen.dart';
+import 'package:amora_ai/features/auth/presentation/forgot_password_screen.dart';
+import 'package:amora_ai/features/auth/presentation/reset_password_screen.dart';
 import 'package:amora_ai/features/ai_coach/presentation/ai_icebreakers_screen.dart';
 import 'package:amora_ai/features/chat/presentation/chat_detail_screen.dart';
 import 'package:amora_ai/features/chat/presentation/chat_list_screen.dart';
-import 'package:amora_ai/features/commerce/presentation/gift_catalog_screen.dart';
-import 'package:amora_ai/features/commerce/presentation/send_gift_screen.dart';
+import 'package:amora_ai/features/chat/data/local_chat_repository.dart';
 import 'package:amora_ai/features/discover/presentation/discover_screen.dart';
 import 'package:amora_ai/features/discover/presentation/advanced_filters_screen.dart';
 import 'package:amora_ai/features/discover/presentation/browse_grid_screen.dart';
@@ -30,6 +32,7 @@ import 'package:amora_ai/features/messaging/presentation/match_screen.dart';
 import 'package:amora_ai/features/notifications/presentation/notifications_hub_screen.dart';
 import 'package:amora_ai/features/onboarding/presentation/onboarding_screen.dart';
 import 'package:amora_ai/features/onboarding/presentation/profile_onboarding_flow.dart';
+import 'package:amora_ai/features/onboarding/data/local_onboarding_repository.dart';
 import 'package:amora_ai/features/payment/presentation/payment_screen.dart';
 import 'package:amora_ai/features/preferences/presentation/dealbreakers_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_detail_screen.dart';
@@ -42,9 +45,8 @@ import 'package:amora_ai/features/profile/presentation/photo_manager_screen.dart
 import 'package:amora_ai/features/profile/presentation/profile_edit_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_setup_screen.dart';
+import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
 import 'package:amora_ai/features/referral/presentation/referral_leaderboard_screen.dart';
-import 'package:amora_ai/features/roadmap/presentation/phase23_premium_screens.dart';
-import 'package:amora_ai/features/roadmap/presentation/roadmap_feature_screens.dart';
 import 'package:amora_ai/features/match/presentation/why_we_matched_screen.dart';
 import 'package:amora_ai/features/monetization/presentation/liked_you_paywall_screen.dart';
 import 'package:amora_ai/features/monetization/presentation/profile_boost_screen.dart';
@@ -54,13 +56,18 @@ import 'package:amora_ai/features/settings/presentation/profile_settings_screen.
 import 'package:amora_ai/features/settings/presentation/safety_privacy_screen.dart';
 import 'package:amora_ai/features/settings/presentation/settings_screen.dart';
 import 'package:amora_ai/features/social_proof/presentation/success_stories_screen.dart';
+import 'package:amora_ai/features/splash/presentation/amora_splash_screen.dart';
 import 'package:amora_ai/features/subscription/presentation/subscription_screen.dart';
 import 'package:amora_ai/features/support/presentation/faq_support_screen.dart';
 import 'package:amora_ai/features/theme/presentation/dark_mode_settings_screen.dart';
 import 'package:flutter/material.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await LocalProfileRepository.instance.initialize();
+  await LocalOnboardingRepository.instance.initialize();
+  LocalOnboardingRepository.instance.hydrateFromUserProfile();
+  await LocalChatRepository.instance.initialize();
   runApp(const MyApp());
 }
 
@@ -84,127 +91,99 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'AMORA AI',
-      debugShowCheckedModeBanner: false,
-      theme: AmoraTheme.light(),
-      initialRoute: AmoraSession.isLoggedIn.value
-          ? MainShell.routeName
-          : AmoraAuthScreen.routeName,
-      routes: {
-        // First-launch workflow.
-        AmoraLandingScreen.routeName: (_) => const AmoraLandingScreen(),
-        OnboardingScreen.routeName: (_) => const OnboardingScreen(),
-        AmoraAuthScreen.routeName: (_) => const AmoraAuthScreen(),
-        LoginScreen.routeName: (_) => const LoginScreen(),
-        SignupScreen.routeName: (_) => const SignupScreen(),
-        PhoneOtpScreen.routeName: (_) => const PhoneOtpScreen(),
-        AccountVerificationScreen.routeName: (_) =>
-            const AccountVerificationScreen(),
-        ProfileOnboardingFlow.routeName: (_) => const ProfileOnboardingFlow(),
-        ProfileCompletionScreen.routeName: (_) =>
-            const ProfileCompletionScreen(),
-        ProfilePreviewScreen.routeName: (_) => const ProfilePreviewScreen(),
-        ProfileBasicDetailsScreen.routeName: (_) =>
-            const ProfileBasicDetailsScreen(),
-        CompatibilityOnboardingScreen.routeName: (_) =>
-            const CompatibilityOnboardingScreen(),
-        ProfileSetupScreen.routeName: (_) => const ProfileSetupScreen(),
-        KycVerificationScreen.routeName: (_) => const KycVerificationScreen(),
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: AmoraThemeController.instance.mode,
+      builder: (context, themeMode, _) => MaterialApp(
+        title: 'AMORA AI',
+        debugShowCheckedModeBanner: false,
+        theme: AmoraTheme.light(),
+        themeMode: themeMode,
+        initialRoute: AmoraSplashScreen.routeName,
+        routes: {
+          AmoraSplashScreen.routeName: (_) => AmoraSplashScreen(
+            resolveInitialRoute: () => AmoraSession.isLoggedIn.value
+                ? MainShell.routeName
+                : AmoraAuthScreen.routeName,
+          ),
+          // First-launch workflow.
+          AmoraLandingScreen.routeName: (_) => const AmoraLandingScreen(),
+          OnboardingScreen.routeName: (_) => const OnboardingScreen(),
+          AmoraAuthScreen.routeName: (_) => const AmoraAuthScreen(),
+          LoginScreen.routeName: (_) => const LoginScreen(),
+          SignupScreen.routeName: (_) => const SignupScreen(),
+          PhoneOtpScreen.routeName: (_) => const PhoneOtpScreen(),
+          ForgotPasswordScreen.routeName: (_) => const ForgotPasswordScreen(),
+          ResetPasswordScreen.routeName: (_) => const ResetPasswordScreen(),
+          AccountVerificationScreen.routeName: (_) =>
+              const AccountVerificationScreen(),
+          ProfileOnboardingFlow.routeName: (_) => const ProfileOnboardingFlow(),
+          ProfileCompletionScreen.routeName: (_) =>
+              const ProfileCompletionScreen(),
+          ProfilePreviewScreen.routeName: (_) => const ProfilePreviewScreen(),
+          ProfileBasicDetailsScreen.routeName: (_) =>
+              const ProfileBasicDetailsScreen(),
+          CompatibilityOnboardingScreen.routeName: (_) =>
+              const CompatibilityOnboardingScreen(),
+          ProfileSetupScreen.routeName: (_) => const ProfileSetupScreen(),
+          KycVerificationScreen.routeName: (_) => const KycVerificationScreen(),
 
-        // Primary app tabs and product flows.
-        MainShell.routeName: (_) => const MainShell(),
-        BrowseGridScreen.routeName: (_) => const BrowseGridScreen(),
-        AdvancedFiltersScreen.routeName: (_) => const AdvancedFiltersScreen(),
-        DiscoverScreen.routeName: (_) => const MainShell(),
-        ProfileScreen.routeName: (_) =>
-            const MainShell(initialTab: AmoraNavTab.profile),
-        ProfileDetailScreen.routeName: (_) => const ProfileDetailScreen(),
-        MatchesScreen.routeName: (_) =>
-            const MainShell(initialTab: AmoraNavTab.matches),
-        MatchScreen.routeName: (_) => const MatchScreen(),
-        SendGiftScreen.routeName: (_) => const SendGiftScreen(),
-        ChatListScreen.routeName: (_) =>
-            const MainShell(initialTab: AmoraNavTab.chats),
-        ChatDetailScreen.routeName: (_) => const ChatDetailScreen(),
-        NotificationsHubScreen.routeName: (_) => const NotificationsHubScreen(),
-        EventsScreen.routeName: (_) =>
-            const MainShell(initialTab: AmoraNavTab.events),
-        EventDetailScreen.routeName: (_) => const EventDetailScreen(),
-        MyEventsScreen.routeName: (_) => const MyEventsScreen(),
-        AiIcebreakersScreen.routeName: (_) => const AiIcebreakersScreen(),
-        SubscriptionScreen.routeName: (_) => const SubscriptionScreen(),
-        PaymentScreen.routeName: (_) => const PaymentScreen(),
-        ProfileSettingsScreen.routeName: (_) => const ProfileSettingsScreen(),
-        SafetyPrivacyScreen.routeName: (_) => const SafetyPrivacyScreen(),
-        FaqSupportScreen.routeName: (_) => const FaqSupportScreen(),
-        SettingsScreen.routeName: (_) => const SettingsScreen(),
-        ReportFlowScreen.routeName: (_) => const ReportFlowScreen(),
-        PhotoManagerScreen.routeName: (_) => const PhotoManagerScreen(),
-        ProfileEditScreen.routeName: (_) => const ProfileEditScreen(),
-        StoriesScreen.routeName: (_) => const StoriesScreen(),
-        TwentyQuestionsScreen.routeName: (_) => const TwentyQuestionsScreen(),
-        PostEventFeedbackScreen.routeName: (_) =>
-            const PostEventFeedbackScreen(),
-        EventGroupChatScreen.routeName: (_) => const EventGroupChatScreen(),
-        EventWaitlistScreen.routeName: (_) => const EventWaitlistScreen(),
-        WhyWeMatchedScreen.routeName: (_) => const WhyWeMatchedScreen(),
-        ProfileBoostScreen.routeName: (_) => const ProfileBoostScreen(),
-        LikedYouPaywallScreen.routeName: (_) => const LikedYouPaywallScreen(),
-        LikedYouPaywallScreen.aliasRouteName: (_) =>
-            const LikedYouPaywallScreen(),
-        BioBuilderScreen.routeName: (_) => const BioBuilderScreen(),
-        DealbreakersScreen.routeName: (_) => const DealbreakersScreen(),
-        DatingRecapScreen.routeName: (_) => const DatingRecapScreen(),
-        NotificationPreferencesScreen.routeName: (_) =>
-            const NotificationPreferencesScreen(),
-        SuccessStoriesScreen.routeName: (_) => const SuccessStoriesScreen(),
-        DarkModeSettingsScreen.routeName: (_) => const DarkModeSettingsScreen(),
-        VideoSpeedDatingRoomScreen.routeName: (_) =>
-            const VideoSpeedDatingRoomScreen(),
-        PollPromptsScreen.routeName: (_) => const PollPromptsScreen(),
-        '/shared-media-gallery': (_) => const ChatDetailScreen(),
-        GiftShopCatalogScreen.routeName: (_) => const GiftShopCatalogScreen(),
-        ReferralLeaderboardScreen.routeName: (_) =>
-            const ReferralLeaderboardScreen(),
-        RelationshipEcosystemHubScreen.routeName: (_) =>
-            const RelationshipEcosystemHubScreen(),
-        AiLearningDashboardScreen.routeName: (_) =>
-            const AiLearningDashboardScreen(),
-        CameraRollScanScreen.routeName: (_) => const CameraRollScanScreen(),
-        AiDeepfakeDetectionScreen.routeName: (_) =>
-            const AiDeepfakeDetectionScreen(),
-        FirstDateQuestionDeckScreen.routeName: (_) =>
-            const FirstDateQuestionDeckScreen(),
-        RelationshipPredictionScreen.routeName: (_) =>
-            const RelationshipPredictionScreen(),
-        VirtualSpeedDatingScreen.routeName: (_) =>
-            const VirtualSpeedDatingScreen(),
-        GroupMeetupsScreen.routeName: (_) => const GroupMeetupsScreen(),
-        EventPlanningDashboardScreen.routeName: (_) =>
-            const EventPlanningDashboardScreen(),
-        HumanMatchmakerScreen.routeName: (_) => const HumanMatchmakerScreen(),
-        TravelModeScreen.routeName: (_) => const TravelModeScreen(),
-        AdvancedAiDiscoveryScreen.routeName: (_) =>
-            const AdvancedAiDiscoveryScreen(),
-        AstrologyMatchingScreen.routeName: (_) =>
-            const AstrologyMatchingScreen(),
-        FriendshipModeScreen.routeName: (_) => const FriendshipModeScreen(),
-        ProfessionalNetworkingScreen.routeName: (_) =>
-            const ProfessionalNetworkingScreen(),
-        CommunityFiltersScreen.routeName: (_) => const CommunityFiltersScreen(),
-        BusinessNetworkingScreen.routeName: (_) =>
-            const BusinessNetworkingScreen(),
-        AiGroupDatingRoomsScreen.routeName: (_) =>
-            const AiGroupDatingRoomsScreen(),
-        CommunityEventsScreen.routeName: (_) => const CommunityEventsScreen(),
-      },
-      onUnknownRoute: (_) {
-        return MaterialPageRoute<void>(
-          builder: (_) => const BrowseGridScreen(),
-          settings: const RouteSettings(name: BrowseGridScreen.routeName),
-        );
-      },
+          // Primary app tabs and product flows.
+          MainShell.routeName: (_) => const MainShell(),
+          BrowseGridScreen.routeName: (_) => const BrowseGridScreen(),
+          AdvancedFiltersScreen.routeName: (_) => const AdvancedFiltersScreen(),
+          DiscoverScreen.routeName: (_) => const MainShell(),
+          ProfileScreen.routeName: (_) =>
+              const MainShell(initialTab: AmoraNavTab.profile),
+          ProfileDetailScreen.routeName: (_) => const ProfileDetailScreen(),
+          MatchesScreen.routeName: (_) =>
+              const MainShell(initialTab: AmoraNavTab.matches),
+          MatchScreen.routeName: (_) => const MatchScreen(),
+          ChatListScreen.routeName: (_) =>
+              const MainShell(initialTab: AmoraNavTab.chats),
+          ChatDetailScreen.routeName: (_) => const ChatDetailScreen(),
+          NotificationsHubScreen.routeName: (_) =>
+              const NotificationsHubScreen(),
+          EventsScreen.routeName: (_) =>
+              const MainShell(initialTab: AmoraNavTab.events),
+          EventDetailScreen.routeName: (_) => const EventDetailScreen(),
+          MyEventsScreen.routeName: (_) => const MyEventsScreen(),
+          AiIcebreakersScreen.routeName: (_) => const AiIcebreakersScreen(),
+          SubscriptionScreen.routeName: (_) => const SubscriptionScreen(),
+          PaymentScreen.routeName: (_) => const PaymentScreen(),
+          ProfileSettingsScreen.routeName: (_) => const ProfileSettingsScreen(),
+          SafetyPrivacyScreen.routeName: (_) => const SafetyPrivacyScreen(),
+          FaqSupportScreen.routeName: (_) => const FaqSupportScreen(),
+          SettingsScreen.routeName: (_) => const SettingsScreen(),
+          ReportFlowScreen.routeName: (_) => const ReportFlowScreen(),
+          PhotoManagerScreen.routeName: (_) => const PhotoManagerScreen(),
+          ProfileEditScreen.routeName: (_) => const ProfileEditScreen(),
+          PostEventFeedbackScreen.routeName: (_) =>
+              const PostEventFeedbackScreen(),
+          EventGroupChatScreen.routeName: (_) => const EventGroupChatScreen(),
+          EventWaitlistScreen.routeName: (_) => const EventWaitlistScreen(),
+          WhyWeMatchedScreen.routeName: (_) => const WhyWeMatchedScreen(),
+          ProfileBoostScreen.routeName: (_) => const ProfileBoostScreen(),
+          LikedYouPaywallScreen.routeName: (_) => const LikedYouPaywallScreen(),
+          LikedYouPaywallScreen.aliasRouteName: (_) =>
+              const LikedYouPaywallScreen(),
+          BioBuilderScreen.routeName: (_) => const BioBuilderScreen(),
+          DealbreakersScreen.routeName: (_) => const DealbreakersScreen(),
+          DatingRecapScreen.routeName: (_) => const DatingRecapScreen(),
+          NotificationPreferencesScreen.routeName: (_) =>
+              const NotificationPreferencesScreen(),
+          SuccessStoriesScreen.routeName: (_) => const SuccessStoriesScreen(),
+          DarkModeSettingsScreen.routeName: (_) =>
+              const DarkModeSettingsScreen(),
+          ReferralLeaderboardScreen.routeName: (_) =>
+              const ReferralLeaderboardScreen(),
+        },
+        onUnknownRoute: (_) {
+          return MaterialPageRoute<void>(
+            builder: (_) => const BrowseGridScreen(),
+            settings: const RouteSettings(name: BrowseGridScreen.routeName),
+          );
+        },
+      ),
     );
   }
 }

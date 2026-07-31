@@ -1,21 +1,27 @@
 import 'dart:async';
-import 'dart:math';
 
 import 'package:amora_ai/core/access/amora_access.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
-import 'package:amora_ai/core/widgets/amora_snackbar.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/premium_motion.dart';
 import 'package:amora_ai/features/auth/presentation/widgets/auth_presentation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+typedef PhoneOtpRequester =
+    Future<void> Function(String countryCode, String phoneNumber);
+typedef PhoneOtpVerifier =
+    Future<void> Function(String countryCode, String phoneNumber, String code);
+
 class PhoneOtpScreen extends StatefulWidget {
-  const PhoneOtpScreen({super.key});
+  const PhoneOtpScreen({super.key, this.requestOtp, this.verifyOtp});
 
   static const routeName = '/phone-login';
+
+  final PhoneOtpRequester? requestOtp;
+  final PhoneOtpVerifier? verifyOtp;
 
   @override
   State<PhoneOtpScreen> createState() => _PhoneOtpScreenState();
@@ -31,14 +37,15 @@ class _PhoneOtpScreenState extends State<PhoneOtpScreen> {
   );
   final _otpNodes = List.generate(_otpLength, (_) => FocusNode());
   String _countryCode = '+91';
-  String? _generatedOtp;
+  bool _codeRequested = false;
+  String? _phoneError;
   String? _otpError;
   int _secondsLeft = 0;
   bool _loading = false;
   Timer? _timer;
 
   bool get _canVerify =>
-      _generatedOtp != null &&
+      _codeRequested &&
       _otpControllers.every((controller) => controller.text.length == 1) &&
       !_loading;
 
@@ -65,9 +72,9 @@ class _PhoneOtpScreenState extends State<PhoneOtpScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final verifying = _generatedOtp != null;
+    final verifying = _codeRequested;
     return AmoraAuthShell(
-      title: verifying ? 'Enter your verification code' : 'What’s your number?',
+      title: verifying ? 'Enter verification code' : 'Continue with your phone',
       subtitle: verifying
           ? 'We sent a $_otpLength-digit code to $_maskedPhone.'
           : 'We’ll send a one-time verification code.',
@@ -114,6 +121,10 @@ class _PhoneOtpScreenState extends State<PhoneOtpScreen> {
           },
           onSubmitted: (_) => _sendOtp(),
         ),
+        if (_phoneError != null) ...[
+          const SizedBox(height: AmoraSpacing.space12),
+          AuthInlineAlert(message: _phoneError!),
+        ],
         const SizedBox(height: AmoraSpacing.space20),
         AuthPrimaryButton(
           label: _loading ? 'Sending code…' : 'Send verification code',
@@ -175,7 +186,7 @@ class _PhoneOtpScreenState extends State<PhoneOtpScreen> {
           ],
         ),
         const SizedBox(height: AmoraSpacing.space20),
-        ResponsiveOtpInput(
+        AmoraOtpInput(
           key: const ValueKey('responsive-otp-input'),
           controllers: _otpControllers,
           nodes: _otpNodes,
@@ -228,48 +239,79 @@ class _PhoneOtpScreenState extends State<PhoneOtpScreen> {
 
   Future<void> _sendOtp() async {
     final phone = _phoneController.text.trim();
-    if (!RegExp(r'^[6-9]\d{9}$').hasMatch(phone)) {
-      _snack('Enter a valid Indian mobile number');
+    if (!_validPhone(phone)) {
+      setState(() {
+        _phoneError = _countryCode == '+91'
+            ? 'Enter a valid Indian mobile number'
+            : 'Enter a valid phone number';
+      });
+      return;
+    }
+    final request = widget.requestOtp;
+    if (request == null) {
+      setState(() {
+        _phoneError =
+            'Phone verification is not connected to an authentication service in this build.';
+      });
       return;
     }
     setState(() => _loading = true);
-    await Future<void>.delayed(const Duration(milliseconds: 520));
-    if (!mounted) return;
-    final otp = (100000 + Random().nextInt(900000)).toString();
-    setState(() {
-      _generatedOtp = otp;
-      _otpError = null;
-      _secondsLeft = 45;
-      _loading = false;
-      for (final controller in _otpControllers) {
-        controller.clear();
-      }
-    });
-    _otpNodes.first.requestFocus();
-    _timer?.cancel();
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+    try {
+      await request(_countryCode, phone);
       if (!mounted) return;
-      if (_secondsLeft <= 1) {
-        timer.cancel();
-        setState(() => _secondsLeft = 0);
-      } else {
-        setState(() => _secondsLeft--);
-      }
-    });
-    _snack('Demo OTP: $otp');
+      setState(() {
+        _codeRequested = true;
+        _phoneError = null;
+        _otpError = null;
+        _secondsLeft = 45;
+        _loading = false;
+        for (final controller in _otpControllers) {
+          controller.clear();
+        }
+      });
+      _otpNodes.first.requestFocus();
+      _startResendTimer();
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _phoneError =
+            'We could not send a code. Check your connection and retry.';
+      });
+    }
+  }
+
+  bool _validPhone(String phone) {
+    return switch (_countryCode) {
+      '+91' => RegExp(r'^[6-9]\d{9}$').hasMatch(phone),
+      '+61' => RegExp(r'^\d{9}$').hasMatch(phone),
+      '+1' || '+44' => RegExp(r'^\d{10}$').hasMatch(phone),
+      _ => RegExp(r'^\d{7,10}$').hasMatch(phone),
+    };
   }
 
   Future<void> _verifyOtp() async {
     final entered = _otpControllers.map((controller) => controller.text).join();
-    if (entered != _generatedOtp) {
-      setState(() => _otpError = 'Incorrect code. Please try again.');
-      _snack('Invalid OTP');
+    final verify = widget.verifyOtp;
+    if (verify == null) {
+      setState(() {
+        _otpError =
+            'Code verification is not connected to an authentication service in this build.';
+      });
       return;
     }
     setState(() => _loading = true);
-    await Future<void>.delayed(const Duration(milliseconds: 520));
-    if (!mounted) return;
-    await AmoraSession.completeAuthentication(context);
+    try {
+      await verify(_countryCode, _phoneController.text.trim(), entered);
+      if (!mounted) return;
+      await AmoraSession.completeAuthentication(context);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _otpError = 'That code is invalid or expired. Request a new code.';
+      });
+    }
   }
 
   void _applyPastedOtp(String value) {
@@ -286,8 +328,9 @@ class _PhoneOtpScreenState extends State<PhoneOtpScreen> {
     _timer?.cancel();
     FocusManager.instance.primaryFocus?.unfocus();
     setState(() {
-      _generatedOtp = null;
+      _codeRequested = false;
       _otpError = null;
+      _phoneError = null;
       _secondsLeft = 0;
       for (final controller in _otpControllers) {
         controller.clear();
@@ -295,8 +338,17 @@ class _PhoneOtpScreenState extends State<PhoneOtpScreen> {
     });
   }
 
-  void _snack(String message) {
-    showAmoraSnackBar(context, message: message);
+  void _startResendTimer() {
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) return;
+      if (_secondsLeft <= 1) {
+        timer.cancel();
+        setState(() => _secondsLeft = 0);
+      } else {
+        setState(() => _secondsLeft--);
+      }
+    });
   }
 }
 

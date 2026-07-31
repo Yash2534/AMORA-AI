@@ -4,13 +4,16 @@ import 'package:amora_ai/core/access/amora_access.dart';
 import 'package:amora_ai/core/constants/app_images.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
+import 'package:amora_ai/core/widgets/amora_profile_image.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/floating_bottom_nav.dart';
-import 'package:amora_ai/core/widgets/premium_asset_image.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/premium_motion.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
+import 'package:amora_ai/features/auth/presentation/amora_auth_screen.dart';
+import 'package:amora_ai/features/chat/data/local_chat_repository.dart';
 import 'package:amora_ai/features/notifications/presentation/notifications_hub_screen.dart';
+import 'package:amora_ai/features/onboarding/data/local_onboarding_repository.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
 import 'package:amora_ai/features/profile/presentation/kyc_verification_screen.dart';
 import 'package:amora_ai/features/profile/presentation/photo_manager_screen.dart';
@@ -283,18 +286,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 24),
-                    SessionActionButton(
-                      icon: Icons.logout_rounded,
-                      label: 'Log out',
-                      onPressed: _confirmLogout,
+                    const SizedBox(height: 30),
+                    const ProfileSectionHeading(
+                      icon: Icons.admin_panel_settings_rounded,
+                      title: 'Account actions',
+                      subtitle:
+                          'Sign out or permanently remove your Amora account.',
                     ),
                     const SizedBox(height: 12),
-                    SessionActionButton(
-                      icon: Icons.delete_outline_rounded,
-                      label: 'Delete account',
-                      destructive: true,
-                      onPressed: _confirmDeleteAccount,
+                    ProfileLinkGroup(
+                      items: [
+                        ProfileLinkItem(
+                          icon: Icons.logout_rounded,
+                          title: 'Log out',
+                          subtitle:
+                              'Sign out of this device without deleting your profile.',
+                          onTap: _confirmLogout,
+                        ),
+                        ProfileLinkItem(
+                          icon: Icons.delete_outline_rounded,
+                          title: 'Delete account',
+                          subtitle:
+                              'Permanently delete your Amora account and associated data.',
+                          onTap: _confirmDeleteAccount,
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -343,7 +359,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
     if (confirmed != true || !mounted) return;
     AmoraSession.logOut();
-    Navigator.of(context).pushNamedAndRemoveUntil('/browse', (route) => false);
+    Navigator.of(
+      context,
+    ).pushNamedAndRemoveUntil(AmoraAuthScreen.routeName, (route) => false);
   }
 
   Future<void> _confirmDeleteAccount() async {
@@ -353,14 +371,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
       isDismissible: false,
       enableDrag: false,
       useSafeArea: true,
-      backgroundColor: Colors.transparent,
+      backgroundColor: AppColors.transparent,
       barrierColor: AppColors.primary.withValues(alpha: .24),
       builder: (sheetContext) =>
           _AccountDeletionFlowSheet(onDeleteAccount: widget.onDeleteAccount),
     );
     if (deleted != true || !mounted) return;
+    await _clearDeletedAccountState();
+    if (!mounted) return;
     AmoraSession.logOut();
-    Navigator.of(context).pushNamedAndRemoveUntil('/browse', (route) => false);
+    Navigator.of(
+      context,
+    ).pushNamedAndRemoveUntil(AmoraAuthScreen.routeName, (route) => false);
+  }
+
+  Future<void> _clearDeletedAccountState() async {
+    for (final clear in <Future<void> Function()>[
+      LocalChatRepository.instance.clearForAccountDeletion,
+      LocalProfileRepository.instance.clearForAccountDeletion,
+      LocalOnboardingRepository.instance.clearForAccountDeletion,
+    ]) {
+      try {
+        await clear();
+      } catch (_) {
+        // A backend-confirmed deletion still requires the local session to end.
+      }
+    }
   }
 
   void _showLegalNotice(String title) {
@@ -511,7 +547,7 @@ class _ProfileHeaderActionButton extends StatelessWidget {
                 ],
               ),
               child: Material(
-                color: Colors.transparent,
+                color: AppColors.transparent,
                 shape: const CircleBorder(),
                 clipBehavior: Clip.antiAlias,
                 child: InkWell(
@@ -533,36 +569,69 @@ class _ProfileHeaderActionButton extends StatelessWidget {
   }
 }
 
-enum _AccountDeletionStep { reason, confirmation }
+enum _AccountDeletionState {
+  collectingReason,
+  reviewingConsequences,
+  confirmingIdentity,
+  submitting,
+  failure,
+}
 
 class _AccountDeletionReason {
-  const _AccountDeletionReason(this.label, this.icon);
+  const _AccountDeletionReason(this.code, this.label, this.icon);
 
+  final String code;
   final String label;
   final IconData icon;
 }
 
 const _accountDeletionReasons = <_AccountDeletionReason>[
-  _AccountDeletionReason('I found someone', Icons.favorite_rounded),
-  _AccountDeletionReason('I need a break', Icons.pause_circle_rounded),
   _AccountDeletionReason(
-    'I’m not finding the right matches',
+    'found_partner',
+    'I found a partner',
+    Icons.favorite_rounded,
+  ),
+  _AccountDeletionReason(
+    'taking_break',
+    'I am taking a break from dating',
+    Icons.pause_circle_rounded,
+  ),
+  _AccountDeletionReason(
+    'not_enough_matches',
+    'I am not getting enough matches',
     Icons.person_search_rounded,
   ),
-  _AccountDeletionReason('I have privacy concerns', Icons.shield_rounded),
   _AccountDeletionReason(
-    'I receive too many notifications',
-    Icons.notifications_off_rounded,
+    'poor_experience',
+    'I had a poor experience',
+    Icons.sentiment_dissatisfied_rounded,
   ),
   _AccountDeletionReason(
+    'privacy_safety',
+    'I have privacy or safety concerns',
+    Icons.shield_rounded,
+  ),
+  _AccountDeletionReason(
+    'difficult_to_use',
     'The app is difficult to use',
     Icons.touch_app_rounded,
   ),
   _AccountDeletionReason(
+    'too_many_notifications',
+    'I receive too many notifications',
+    Icons.notifications_off_rounded,
+  ),
+  _AccountDeletionReason(
+    'subscription_expensive',
+    'The subscription is too expensive',
+    Icons.workspace_premium_rounded,
+  ),
+  _AccountDeletionReason(
+    'duplicate_account',
     'I created another account',
     Icons.switch_account_rounded,
   ),
-  _AccountDeletionReason('Other', Icons.more_horiz_rounded),
+  _AccountDeletionReason('other', 'Other', Icons.more_horiz_rounded),
 ];
 
 class _AccountDeletionFlowSheet extends StatefulWidget {
@@ -577,15 +646,38 @@ class _AccountDeletionFlowSheet extends StatefulWidget {
 
 class _AccountDeletionFlowSheetState extends State<_AccountDeletionFlowSheet> {
   final _detailsController = TextEditingController();
-  _AccountDeletionStep _step = _AccountDeletionStep.reason;
+  final _confirmationController = TextEditingController();
+  _AccountDeletionState _state = _AccountDeletionState.collectingReason;
   _AccountDeletionReason? _selectedReason;
-  bool _isDeleting = false;
   String? _errorMessage;
 
   @override
+  void initState() {
+    super.initState();
+    _detailsController.addListener(_refreshValidation);
+    _confirmationController.addListener(_refreshValidation);
+  }
+
+  @override
   void dispose() {
-    _detailsController.dispose();
+    _detailsController
+      ..removeListener(_refreshValidation)
+      ..dispose();
+    _confirmationController
+      ..removeListener(_refreshValidation)
+      ..dispose();
     super.dispose();
+  }
+
+  bool get _isOther => _selectedReason?.code == 'other';
+  bool get _otherReasonIsValid =>
+      !_isOther || _detailsController.text.trim().length >= 10;
+  bool get _identityConfirmed =>
+      _confirmationController.text.trim() == 'DELETE';
+  bool get _isDeleting => _state == _AccountDeletionState.submitting;
+
+  void _refreshValidation() {
+    if (mounted) setState(() => _errorMessage = null);
   }
 
   @override
@@ -632,9 +724,18 @@ class _AccountDeletionFlowSheetState extends State<_AccountDeletionFlowSheet> {
                       child: child,
                     ),
                   ),
-                  child: _step == _AccountDeletionStep.reason
-                      ? _buildReasonStep(mediaQuery)
-                      : _buildConfirmationStep(mediaQuery),
+                  child: switch (_state) {
+                    _AccountDeletionState.collectingReason => _buildReasonStep(
+                      mediaQuery,
+                    ),
+                    _AccountDeletionState.reviewingConsequences =>
+                      _buildConsequencesStep(mediaQuery),
+                    _AccountDeletionState.confirmingIdentity ||
+                    _AccountDeletionState.submitting ||
+                    _AccountDeletionState.failure => _buildConfirmationStep(
+                      mediaQuery,
+                    ),
+                  },
                 ),
               ),
             ),
@@ -684,6 +785,7 @@ class _AccountDeletionFlowSheetState extends State<_AccountDeletionFlowSheet> {
               children: [
                 for (final reason in _accountDeletionReasons) ...[
                   _DeletionReasonOption(
+                    key: ValueKey('delete-reason-${reason.code}'),
                     reason: reason,
                     selected: identical(reason, _selectedReason),
                     onTap: () {
@@ -699,16 +801,24 @@ class _AccountDeletionFlowSheetState extends State<_AccountDeletionFlowSheet> {
                 AnimatedSize(
                   duration: const Duration(milliseconds: 220),
                   curve: Curves.easeOutCubic,
-                  child: _selectedReason == _accountDeletionReasons.last
+                  child: _isOther
                       ? Padding(
                           padding: const EdgeInsets.only(top: 12),
                           child: TextField(
+                            key: const ValueKey('delete-other-reason-field'),
                             controller: _detailsController,
                             textInputAction: TextInputAction.done,
                             minLines: 2,
                             maxLines: 4,
+                            maxLength: 240,
                             decoration: InputDecoration(
                               labelText: 'Tell us more',
+                              helperText: 'Enter at least 10 characters.',
+                              errorText:
+                                  _detailsController.text.isNotEmpty &&
+                                      !_otherReasonIsValid
+                                  ? 'Please enter a meaningful reason.'
+                                  : null,
                               alignLabelWithHint: true,
                               filled: true,
                               fillColor: AppColors.background,
@@ -741,15 +851,112 @@ class _AccountDeletionFlowSheetState extends State<_AccountDeletionFlowSheet> {
           secondaryLabel: 'Cancel',
           onSecondary: () => Navigator.of(context).pop(false),
           primaryLabel: 'Continue',
-          onPrimary: _selectedReason == null
+          onPrimary: _selectedReason == null || !_otherReasonIsValid
               ? null
               : () {
                   FocusScope.of(context).unfocus();
                   setState(() {
-                    _step = _AccountDeletionStep.confirmation;
+                    _state = _AccountDeletionState.reviewingConsequences;
                     _errorMessage = null;
                   });
                 },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildConsequencesStep(MediaQueryData mediaQuery) {
+    const consequences = <(IconData, String)>[
+      (
+        Icons.person_off_rounded,
+        'Your profile, photos, matches, and chat access may be removed after the server confirms deletion.',
+      ),
+      (
+        Icons.payments_outlined,
+        'This app does not claim that subscriptions or event bookings are cancelled automatically.',
+      ),
+      (
+        Icons.schedule_rounded,
+        'Whether deletion is immediate or scheduled is controlled by the connected account service.',
+      ),
+      (
+        Icons.policy_outlined,
+        'Data retention follows the backend policy; this app does not define a separate retention period.',
+      ),
+    ];
+    return Column(
+      key: const ValueKey('account-deletion-consequences-step'),
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const _DeletionSheetHandle(),
+        Flexible(
+          fit: FlexFit.loose,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(24, 8, 24, 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Understand what happens next',
+                  style: AmoraTextStyles.headlineSmall.copyWith(
+                    fontSize: 23,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Account deletion cannot be undone after the account service confirms it.',
+                  style: AmoraTextStyles.bodyMedium.copyWith(
+                    color: AppColors.text.withValues(alpha: .7),
+                    height: 1.45,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                for (final consequence in consequences)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 14),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: AppColors.tertiary.withValues(alpha: .3),
+                            borderRadius: BorderRadius.circular(13),
+                          ),
+                          child: Icon(
+                            consequence.$1,
+                            color: AppColors.primary,
+                            size: 20,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            consequence.$2,
+                            style: AmoraTextStyles.bodyMedium.copyWith(
+                              height: 1.45,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        _DeletionSheetActions(
+          bottomPadding: math.max(20, mediaQuery.viewPadding.bottom + 12),
+          secondaryLabel: 'Keep my account',
+          onSecondary: () => Navigator.of(context).pop(false),
+          primaryLabel: 'Continue',
+          onPrimary: () => setState(() {
+            _state = _AccountDeletionState.confirmingIdentity;
+            _errorMessage = null;
+          }),
         ),
       ],
     );
@@ -791,7 +998,7 @@ class _AccountDeletionFlowSheetState extends State<_AccountDeletionFlowSheet> {
                 const SizedBox(height: 18),
                 Center(
                   child: Text(
-                    'Delete your account permanently?',
+                    'Confirm account deletion',
                     textAlign: TextAlign.center,
                     style: AmoraTextStyles.headlineSmall.copyWith(
                       fontSize: 23,
@@ -801,7 +1008,7 @@ class _AccountDeletionFlowSheetState extends State<_AccountDeletionFlowSheet> {
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  'This will permanently remove your Amora account according to the current account-deletion policy.',
+                  'For protection against accidental deletion, type DELETE exactly below.',
                   textAlign: TextAlign.center,
                   style: AmoraTextStyles.bodyMedium.copyWith(
                     fontSize: 15,
@@ -848,8 +1055,7 @@ class _AccountDeletionFlowSheetState extends State<_AccountDeletionFlowSheet> {
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
-                              if (selectedReason ==
-                                      _accountDeletionReasons.last &&
+                              if (selectedReason.code == 'other' &&
                                   _detailsController.text
                                       .trim()
                                       .isNotEmpty) ...[
@@ -868,6 +1074,58 @@ class _AccountDeletionFlowSheetState extends State<_AccountDeletionFlowSheet> {
                           ),
                         ),
                       ],
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 16),
+                TextField(
+                  key: const ValueKey('delete-account-confirmation-field'),
+                  controller: _confirmationController,
+                  enabled: !_isDeleting,
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  maxLength: 6,
+                  textCapitalization: TextCapitalization.characters,
+                  decoration: InputDecoration(
+                    labelText: 'Type DELETE to confirm',
+                    helperText: _identityConfirmed
+                        ? 'Identity confirmation complete.'
+                        : 'This confirmation is case-sensitive.',
+                  ),
+                ),
+                if (widget.onDeleteAccount == null) ...[
+                  const SizedBox(height: 4),
+                  Semantics(
+                    liveRegion: true,
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: AppColors.tertiary.withValues(alpha: .24),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: AppColors.tertiary),
+                      ),
+                      child: const Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            Icons.link_off_rounded,
+                            color: AppColors.primary,
+                            size: 20,
+                          ),
+                          SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'Account deletion is unavailable because this build has no account-deletion endpoint. Your account has not been changed.',
+                              style: TextStyle(
+                                color: AppColors.text,
+                                height: 1.4,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ],
@@ -920,11 +1178,11 @@ class _AccountDeletionFlowSheetState extends State<_AccountDeletionFlowSheet> {
         ),
         _DeletionSheetActions(
           bottomPadding: math.max(20, mediaQuery.viewPadding.bottom + 12),
-          secondaryLabel: 'Cancel',
+          secondaryLabel: 'Keep my account',
           onSecondary: _isDeleting
               ? null
               : () => Navigator.of(context).pop(false),
-          primaryLabel: _isDeleting ? 'Deleting account…' : 'Delete My Account',
+          primaryLabel: _isDeleting ? 'Deleting account…' : 'Delete my account',
           primaryIcon: _isDeleting
               ? const SizedBox.square(
                   dimension: 18,
@@ -935,7 +1193,12 @@ class _AccountDeletionFlowSheetState extends State<_AccountDeletionFlowSheet> {
                 )
               : const Icon(Icons.person_remove_rounded, size: 20),
           destructive: true,
-          onPrimary: _isDeleting ? null : _deleteAccount,
+          onPrimary:
+              _isDeleting ||
+                  !_identityConfirmed ||
+                  widget.onDeleteAccount == null
+              ? null
+              : _deleteAccount,
         ),
       ],
     );
@@ -943,18 +1206,24 @@ class _AccountDeletionFlowSheetState extends State<_AccountDeletionFlowSheet> {
 
   Future<void> _deleteAccount() async {
     final selectedReason = _selectedReason;
-    if (_isDeleting || selectedReason == null) return;
+    if (_isDeleting ||
+        selectedReason == null ||
+        !_otherReasonIsValid ||
+        !_identityConfirmed) {
+      return;
+    }
 
     final deletionCallback = widget.onDeleteAccount;
     if (deletionCallback == null) {
       setState(() {
-        _errorMessage = 'We couldn’t delete your account. Please try again.';
+        _errorMessage =
+            'Account deletion is unavailable because no account-deletion endpoint is connected.';
       });
       return;
     }
 
     setState(() {
-      _isDeleting = true;
+      _state = _AccountDeletionState.submitting;
       _errorMessage = null;
     });
 
@@ -964,7 +1233,7 @@ class _AccountDeletionFlowSheetState extends State<_AccountDeletionFlowSheet> {
           ? _detailsController.text.trim()
           : '';
       deleted = await deletionCallback(
-        selectedReason.label,
+        selectedReason.code,
         details.isEmpty ? null : details,
       );
     } catch (_) {
@@ -978,7 +1247,7 @@ class _AccountDeletionFlowSheetState extends State<_AccountDeletionFlowSheet> {
     }
 
     setState(() {
-      _isDeleting = false;
+      _state = _AccountDeletionState.failure;
       _errorMessage = 'We couldn’t delete your account. Please try again.';
     });
   }
@@ -1007,6 +1276,7 @@ class _DeletionSheetHandle extends StatelessWidget {
 
 class _DeletionReasonOption extends StatelessWidget {
   const _DeletionReasonOption({
+    super.key,
     required this.reason,
     required this.selected,
     required this.onTap,
@@ -1039,7 +1309,7 @@ class _DeletionReasonOption extends StatelessWidget {
           ),
         ),
         child: Material(
-          color: Colors.transparent,
+          color: AppColors.transparent,
           borderRadius: BorderRadius.circular(18),
           clipBehavior: Clip.antiAlias,
           child: InkWell(
@@ -1154,6 +1424,7 @@ class _DeletionSheetActions extends StatelessWidget {
             child: SizedBox(
               height: 52,
               child: FilledButton(
+                key: const ValueKey('delete-primary-action'),
                 style: FilledButton.styleFrom(
                   backgroundColor: primaryColor,
                   foregroundColor: AppColors.surface,
@@ -1220,25 +1491,18 @@ class ProfileHero extends StatelessWidget {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                PremiumAssetImage(
+                AmoraProfileImage(
                   imageUrl: profile.primaryPhoto,
-                  fallbackAsset: profile.primaryPhoto,
+                  assetPath: profile.primaryPhoto,
                   initials: AppImages.initialsForName(profile.name),
                   fit: BoxFit.cover,
                   borderRadius: BorderRadius.circular(30),
+                  semanticLabel: 'Primary profile photo for ${profile.name}',
                 ),
                 DecoratedBox(
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(30),
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        AppColors.primary.withValues(alpha: 0),
-                        AppColors.primary.withValues(alpha: .78),
-                      ],
-                      stops: const [.42, 1],
-                    ),
+                    color: AppColors.primary.withValues(alpha: .40),
                   ),
                 ),
                 Positioned(
@@ -1534,7 +1798,6 @@ class ProfileCompletionCard extends StatelessWidget {
       if (profile.interests.length < 5) 'Add more interests',
       if (profile.completedPromptCount < 3) 'Complete three prompts',
       if (profile.lifestyle.isEmpty) 'Share a lifestyle detail',
-      if (profile.voicePrompt == null) 'Add a voice introduction',
     ];
     final quality = profile.completionPercent >= 90
         ? 'Excellent profile'
@@ -1813,12 +2076,13 @@ class ProfilePhotoGallery extends StatelessWidget {
         final hero = Stack(
           children: [
             Positioned.fill(
-              child: PremiumAssetImage(
+              child: AmoraProfileImage(
                 imageUrl: profile.primaryPhoto,
-                fallbackAsset: profile.primaryPhoto,
+                assetPath: profile.primaryPhoto,
                 initials: 'AM',
                 fit: BoxFit.cover,
                 borderRadius: BorderRadius.circular(26),
+                semanticLabel: 'Primary profile photo',
               ),
             ),
             Positioned(
@@ -1892,12 +2156,13 @@ class _SecondaryPhotoGrid extends StatelessWidget {
               SizedBox(
                 width: itemWidth,
                 height: itemHeight,
-                child: PremiumAssetImage(
+                child: AmoraProfileImage(
                   imageUrl: photos[index],
-                  fallbackAsset: photos[index],
+                  assetPath: photos[index],
                   initials: 'AM',
                   fit: BoxFit.cover,
                   borderRadius: BorderRadius.circular(20),
+                  semanticLabel: 'Profile photo ${index + 1}',
                 ),
               ),
           ],

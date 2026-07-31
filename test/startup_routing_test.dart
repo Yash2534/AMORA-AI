@@ -13,11 +13,13 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(const MyApp());
-    await tester.pump(const Duration(milliseconds: 450));
+    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(find.byType(AmoraAuthScreen), findsOneWidget);
     expect(find.byKey(const ValueKey('auth-create-account')), findsOneWidget);
-    expect(find.byKey(const ValueKey('auth-sign-in')), findsOneWidget);
+    expect(find.byKey(const ValueKey('auth-email')), findsOneWidget);
     expect(find.text('Preparing your compatibility engine'), findsNothing);
   });
 
@@ -27,7 +29,9 @@ void main() {
     AmoraSession.logIn();
 
     await tester.pumpWidget(const MyApp());
-    await tester.pump(const Duration(milliseconds: 450));
+    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(find.byType(MainShell), findsOneWidget);
     expect(find.byType(AmoraAuthScreen), findsNothing);

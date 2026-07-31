@@ -47,7 +47,6 @@ void main() {
     for (final section in [
       'Photo gallery',
       'Profile prompts',
-      'Voice introduction',
       'About me',
       'Dating intentions',
       'Interests',
@@ -114,6 +113,14 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    final existingVoicePrompt = original.voicePrompt;
+    expect(
+      find.textContaining(RegExp('voice introduction', caseSensitive: false)),
+      findsNothing,
+    );
+    expect(find.byIcon(Icons.mic_none_rounded), findsNothing);
+    expect(find.byIcon(Icons.graphic_eq_rounded), findsNothing);
+
     final nameField = find.byType(TextFormField).first;
     await tester.enterText(nameField, 'Updated Amora Member');
     await tester.tap(find.byKey(const ValueKey('profile-save-button')));
@@ -122,6 +129,10 @@ void main() {
     expect(
       LocalProfileRepository.instance.profile.name,
       'Updated Amora Member',
+    );
+    expect(
+      LocalProfileRepository.instance.profile.voicePrompt,
+      existingVoicePrompt,
     );
     expect(find.text('Profile changes saved'), findsOneWidget);
   });

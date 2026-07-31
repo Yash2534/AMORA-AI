@@ -85,7 +85,7 @@ void main() {
     expect(find.text('Saved question opened'), findsNothing);
   });
 
-  testWidgets('authentication entry exposes Sign In and Create Account', (
+  testWidgets('authentication entry exposes email sign in and Create Account', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -93,7 +93,7 @@ void main() {
     );
     await tester.pump(const Duration(milliseconds: 450));
 
-    expect(find.byKey(const Key('auth-sign-in')), findsOneWidget);
+    expect(find.byKey(const Key('auth-email')), findsOneWidget);
     expect(find.byKey(const Key('auth-create-account')), findsOneWidget);
     expect(find.text('Explore AMORA AI'), findsNothing);
   });
@@ -102,6 +102,7 @@ void main() {
     tester,
   ) async {
     profiles.startNewProfile('New Member');
+    profiles.updatePhotos(originalProfile.photos.take(2).toList(), 0);
     await tester.pumpWidget(
       MaterialApp(
         theme: AmoraTheme.light(),
@@ -113,7 +114,7 @@ void main() {
       ),
     );
 
-    expect(find.text('Step 1 of 5'), findsOneWidget);
+    expect(find.text('Step 1 of 6'), findsOneWidget);
     expect(find.text("When's your birthday?"), findsOneWidget);
     expect(find.byKey(const Key('birthdate-day-wheel')), findsOneWidget);
     await tester.drag(
@@ -126,27 +127,27 @@ void main() {
     await tester.tap(find.byKey(const Key('onboarding-continue')));
     await tester.pumpAndSettle();
 
-    expect(find.text('Step 2 of 5'), findsOneWidget);
+    expect(find.text('Step 2 of 6'), findsOneWidget);
     expect(find.text('How do you identify?'), findsOneWidget);
     await tester.tap(find.text('Non-binary'));
     await tester.pump();
     await tester.tap(find.byKey(const Key('onboarding-continue')));
     await tester.pumpAndSettle();
 
-    expect(find.text('Step 3 of 5'), findsOneWidget);
+    expect(find.text('Step 3 of 6'), findsOneWidget);
     await tester.ensureVisible(find.text('Everyone'));
     await tester.tap(find.text('Everyone'));
     await tester.pump();
     await tester.tap(find.byKey(const Key('onboarding-continue')));
     await tester.pumpAndSettle();
 
-    expect(find.text('Step 4 of 5'), findsOneWidget);
+    expect(find.text('Step 4 of 6'), findsOneWidget);
     await tester.tap(find.text('Long-term relationship'));
     await tester.pump();
     await tester.tap(find.byKey(const Key('onboarding-continue')));
     await tester.pumpAndSettle();
 
-    expect(find.text('Step 5 of 5'), findsOneWidget);
+    expect(find.text('Step 5 of 6'), findsOneWidget);
     await tester.ensureVisible(find.byKey(const Key('onboarding-city')));
     await tester.tap(find.byKey(const Key('onboarding-city')));
     await tester.pumpAndSettle();
@@ -159,6 +160,11 @@ void main() {
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.byKey(const Key('onboarding-continue')));
     await tester.pump();
+    await tester.tap(find.byKey(const Key('onboarding-continue')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Step 6 of 6'), findsOneWidget);
+    expect(find.text('2 of 6 photos added'), findsOneWidget);
     await tester.tap(find.byKey(const Key('onboarding-continue')));
     await tester.pumpAndSettle();
 
@@ -198,6 +204,49 @@ void main() {
     expect(continueButton.onPressed, isNull);
   });
 
+  testWidgets('photo step blocks completion until two photos exist', (
+    tester,
+  ) async {
+    profiles.startNewProfile('New Member');
+    onboarding.resetForTesting(
+      const LocalOnboardingState(stage: OnboardingStage.photos),
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AmoraTheme.light(),
+        home: const ProfileOnboardingFlow(),
+      ),
+    );
+
+    expect(find.text('Step 6 of 6'), findsOneWidget);
+    expect(find.text('0 of 6 photos added'), findsOneWidget);
+    final continueButton = tester.widget<FilledButton>(
+      find.descendant(
+        of: find.byKey(const Key('onboarding-continue')),
+        matching: find.byType(FilledButton),
+      ),
+    );
+    expect(continueButton.onPressed, isNull);
+    expect(find.text('Start discovering'), findsOneWidget);
+  });
+
+  testWidgets('birthday step hides back action when there is no route to pop', (
+    tester,
+  ) async {
+    onboarding.resetForTesting(
+      const LocalOnboardingState(stage: OnboardingStage.age),
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AmoraTheme.light(),
+        home: const ProfileOnboardingFlow(),
+      ),
+    );
+
+    expect(find.byTooltip('Go back'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('birth date wheels support keyboard selection', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
@@ -229,7 +278,7 @@ void main() {
       ),
     );
 
-    expect(find.text('Step 4 of 5'), findsOneWidget);
+    expect(find.text('Step 4 of 6'), findsOneWidget);
     expect(find.text('What are you looking for?'), findsOneWidget);
     expect(onboarding.state.gender, 'Woman');
     expect(onboarding.state.interestedIn, contains('Everyone'));

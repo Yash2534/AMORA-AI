@@ -17,7 +17,7 @@ class AiDatingCoachScreen extends StatelessWidget {
       body: DecoratedBox(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [AppColors.background, AppColors.lavenderBackground],
+            colors: [AppColors.background, AppColors.surface],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
@@ -238,7 +238,7 @@ class _DateIdeaCarousel extends StatelessWidget {
                     height: 62,
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
-                        colors: [AppColors.roseQuartz, AppColors.champagne],
+                        colors: [AppColors.secondary, AppColors.primary],
                       ),
                       borderRadius: BorderRadius.circular(18),
                     ),
@@ -387,7 +387,7 @@ class _ConversationScoreCard extends StatelessWidget {
                 ),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
-                    colors: [AppColors.primaryRose, AppColors.primaryPurple],
+                    colors: [AppColors.secondary, AppColors.primary],
                   ),
                   borderRadius: BorderRadius.circular(999),
                 ),

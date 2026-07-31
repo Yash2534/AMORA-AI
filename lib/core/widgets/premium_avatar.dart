@@ -1,7 +1,7 @@
 import 'package:amora_ai/core/theme/amora_icon_sizes.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
-import 'package:amora_ai/core/widgets/premium_asset_image.dart';
+import 'package:amora_ai/core/widgets/amora_profile_image.dart';
 import 'package:flutter/material.dart';
 
 enum AmoraAvatarSize { small, medium, large, extraLarge }
@@ -58,13 +58,15 @@ class PremiumAvatar extends StatelessWidget {
               shape: BoxShape.circle,
               color: goldRing ? AppColors.premium : AppColors.transparent,
             ),
-            child: PremiumAssetImage(
-              imageUrl: imageUrl,
-              fallbackAsset: fallbackAsset,
-              initials: initials,
-              width: dimension,
-              height: dimension,
-              borderRadius: BorderRadius.circular(AmoraRadius.full),
+            child: ExcludeSemantics(
+              child: AmoraProfileImage(
+                imageUrl: imageUrl,
+                assetPath: fallbackAsset,
+                initials: initials,
+                width: dimension,
+                height: dimension,
+                borderRadius: BorderRadius.circular(AmoraRadius.full),
+              ),
             ),
           ),
           if (online)

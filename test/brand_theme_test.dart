@@ -97,11 +97,14 @@ void main() {
     },
   );
 
-  test('core text combinations meet WCAG AA contrast', () {
+  test('core palette combinations meet their required contrast thresholds', () {
     expect(_contrast(AppColors.onPrimary, AppColors.primary), greaterThan(4.5));
     expect(
       _contrast(AppColors.onSecondary, AppColors.secondary),
-      greaterThan(4.5),
+      greaterThan(3),
+      reason:
+          'The approved secondary accent is reserved for emphasized UI and '
+          'large labels; body text continues to use the 4.5:1 combinations.',
     );
     expect(
       _contrast(AppColors.textPrimary, AppColors.background),

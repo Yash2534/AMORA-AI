@@ -1,3 +1,4 @@
+import 'package:amora_ai/core/branding/amora_brand_assets.dart';
 import 'package:amora_ai/core/constants/app_images.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/theme/amora_icon_sizes.dart';
@@ -193,15 +194,7 @@ class _OnboardingPage extends StatelessWidget {
                       ),
                       DecoratedBox(
                         decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              AppColors.transparent,
-                              AppColors.text.withValues(alpha: .10),
-                              AppColors.text.withValues(alpha: .70),
-                            ],
-                          ),
+                          color: AppColors.primary.withValues(alpha: .40),
                         ),
                       ),
                       Positioned(
@@ -318,30 +311,20 @@ class _MiniBrand extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        ClipOval(
-          child: Image.asset(
-            AppImages.logo,
-            width: 36,
-            height: 36,
-            fit: BoxFit.cover,
-            errorBuilder: (_, _, _) => CircleAvatar(
-              backgroundColor: AppColors.primaryPurple,
-              child: Text(
-                'a',
-                style: AmoraTextStyles.titleMedium.copyWith(
-                  color: AppColors.surface,
-                ),
-              ),
-            ),
-          ),
+        Image.asset(
+          AppImages.logo,
+          width: 36,
+          height: 36,
+          fit: BoxFit.contain,
+          semanticLabel: 'Amora',
         ),
         const SizedBox(width: AmoraSpacing.space8),
-        const Flexible(
-          child: Text(
-            'AMORA AI',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: AmoraTextStyles.titleMedium,
+        Flexible(
+          child: Image.asset(
+            AmoraBrandAssets.wordmark,
+            height: 19,
+            fit: BoxFit.contain,
+            semanticLabel: 'AMORAA',
           ),
         ),
       ],

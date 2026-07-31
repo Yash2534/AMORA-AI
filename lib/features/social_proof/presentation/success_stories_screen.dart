@@ -74,7 +74,7 @@ class _SuccessStoriesScreenState extends State<SuccessStoriesScreen> {
                     if (mounted) setState(() => _loading = false);
                   },
                   icon: const Icon(Icons.refresh_rounded),
-                  label: const Text('Show loading placeholder'),
+                  label: const Text('Refresh stories'),
                 ),
               ],
             ),

@@ -12,6 +12,7 @@ import 'package:amora_ai/features/settings/presentation/profile_settings_screen.
 import 'package:amora_ai/features/settings/presentation/safety_privacy_screen.dart';
 import 'package:amora_ai/features/subscription/presentation/subscription_screen.dart';
 import 'package:amora_ai/features/support/presentation/faq_support_screen.dart';
+import 'package:amora_ai/features/theme/presentation/dark_mode_settings_screen.dart';
 import 'package:flutter/material.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -23,15 +24,11 @@ class SettingsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: DecoratedBox(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              AppColors.lightPinkBackground,
-              AppColors.champagne,
-              AppColors.lavenderBackground,
-            ],
+            colors: const [AppColors.background, AppColors.surface],
           ),
         ),
         child: SafeArea(
@@ -167,6 +164,12 @@ const _settingsGroups = [
     ),
   ]),
   _SettingsGroup('Experience', 'Notifications and events.', [
+    _SettingsItem(
+      'Appearance',
+      'Light, dark, or system theme',
+      DarkModeSettingsScreen.routeName,
+      Icons.dark_mode_rounded,
+    ),
     _SettingsItem(
       'Notification Preferences',
       'Matches, messages, and events',

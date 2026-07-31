@@ -140,14 +140,7 @@ Future<void> showLoginRequiredSheet(BuildContext context) {
                         ),
                         DecoratedBox(
                           decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                AppColors.transparent,
-                                AppColors.text.withValues(alpha: .70),
-                              ],
-                            ),
+                            color: AppColors.primary.withValues(alpha: .46),
                           ),
                         ),
                         Positioned(

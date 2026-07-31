@@ -3,7 +3,6 @@ import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/features/ai_coach/presentation/ai_coach_screen.dart';
-import 'package:amora_ai/features/roadmap/presentation/phase23_premium_screens.dart';
 import 'package:flutter/material.dart';
 
 class FloatingAiAssistant extends StatelessWidget {
@@ -169,12 +168,6 @@ class FloatingAiAssistant extends StatelessWidget {
                             label: 'Confidence Boost',
                             onTap: () => _openCoach(sheetContext, context),
                           ),
-                          _AssistantAction(
-                            width: tileWidth,
-                            icon: Icons.style_rounded,
-                            label: 'Question Deck',
-                            onTap: () => _openDeck(sheetContext, context),
-                          ),
                         ],
                       );
                     },
@@ -196,11 +189,6 @@ class FloatingAiAssistant extends StatelessWidget {
   static void _openCoach(BuildContext sheetContext, BuildContext context) {
     Navigator.of(sheetContext).pop();
     Navigator.of(context).pushNamed(AiCoachScreen.routeName);
-  }
-
-  static void _openDeck(BuildContext sheetContext, BuildContext context) {
-    Navigator.of(sheetContext).pop();
-    Navigator.of(context).pushNamed(FirstDateQuestionDeckScreen.routeName);
   }
 }
 

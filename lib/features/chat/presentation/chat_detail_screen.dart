@@ -1,4 +1,5 @@
-import 'package:amora_ai/core/data/amora_dummy_data.dart';
+import 'dart:async';
+
 import 'package:amora_ai/core/data/image_repository.dart';
 import 'package:amora_ai/core/theme/amora_icon_sizes.dart';
 import 'package:amora_ai/core/theme/amora_icons.dart';
@@ -9,16 +10,30 @@ import 'package:amora_ai/core/widgets/premium_avatar.dart';
 import 'package:amora_ai/core/widgets/premium_motion.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/chat/presentation/chat_list_screen.dart';
+import 'package:amora_ai/features/chat/data/local_chat_repository.dart';
 import 'package:amora_ai/features/chat/presentation/widgets/chat_presence_avatar.dart';
+import 'package:amora_ai/features/chat/presentation/widgets/amora_chat_composer.dart';
 import 'package:amora_ai/features/profile/presentation/profile_detail_screen.dart';
 import 'package:amora_ai/features/safety/presentation/blocked_user_success_sheet.dart';
 import 'package:amora_ai/features/safety/presentation/report_flow_screen.dart';
 import 'package:amora_ai/features/safety/widgets/block_confirmation_dialog.dart';
 import 'package:flutter/material.dart';
 
-class ChatDetailSeed {
-  const ChatDetailSeed({this.prefillText});
+class ChatDetailArgs {
+  const ChatDetailArgs({
+    required this.conversationId,
+    this.recipientId,
+    this.recipientName,
+    this.recipientImage,
+    this.recipientStatus,
+    this.prefillText,
+  });
 
+  final String conversationId;
+  final String? recipientId;
+  final String? recipientName;
+  final String? recipientImage;
+  final String? recipientStatus;
   final String? prefillText;
 }
 
@@ -34,37 +49,22 @@ class ChatDetailScreen extends StatefulWidget {
 class _ChatDetailScreenState extends State<ChatDetailScreen> {
   final _controller = TextEditingController();
   final _scrollController = ScrollController();
+  final _repository = LocalChatRepository.instance;
+  StreamSubscription<ChatConversation>? _conversationSubscription;
+  Timer? _draftTimer;
   bool _seedApplied = false;
   bool _readReceipts = true;
-  bool _blocked = false;
+  bool _loading = true;
+  bool _sending = false;
+  bool _emojiPickerVisible = false;
+  Object? _error;
+  String? _conversationId;
+  ChatConversation? _conversation;
 
-  DummyProfile get _profile => _chatProfile;
-  bool get _online {
-    for (final chat in AmoraDummyData.chats) {
-      if (chat.user.id == _profile.id) return chat.online;
-    }
-    return false;
-  }
-
-  final List<ChatMessage> _messages = [
-    const ChatMessage(
-      text:
-          "Your poetry prompt caught my eye. I didn't expect to find another old-city person here.",
-      mine: false,
-      time: '10:18',
-    ),
-    const ChatMessage(
-      text: 'Then we already have a plan: heritage walk first, coffee after.',
-      mine: true,
-      time: '10:20',
-      read: true,
-    ),
-    const ChatMessage(
-      text: 'That Gujarati thali line made me laugh',
-      mine: false,
-      time: '10:21',
-    ),
-  ];
+  DummyProfile get _profile => _conversation!.user;
+  bool get _online => _conversation?.online ?? false;
+  List<ChatMessage> get _messages =>
+      _conversation?.messages ?? const <ChatMessage>[];
 
   @override
   void didChangeDependencies() {
@@ -72,16 +72,27 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     if (_seedApplied) return;
     _seedApplied = true;
     final args = ModalRoute.of(context)?.settings.arguments;
-    if (args is ChatDetailSeed && args.prefillText?.isNotEmpty == true) {
-      _controller.text = args.prefillText!;
+    if (args is ChatDetailArgs) {
+      _conversationId = args.conversationId;
+      final initialDraft = args.prefillText?.trim().isNotEmpty == true
+          ? args.prefillText!
+          : _repository.draftForConversation(args.conversationId);
+      _controller.text = initialDraft;
       _controller.selection = TextSelection.collapsed(
         offset: _controller.text.length,
       );
     }
+    _loadConversation();
   }
 
   @override
   void dispose() {
+    _draftTimer?.cancel();
+    final conversationId = _conversationId;
+    if (conversationId != null) {
+      unawaited(_repository.saveDraft(conversationId, _controller.text));
+    }
+    unawaited(_conversationSubscription?.cancel());
     _controller.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -95,35 +106,104 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       body: SafeArea(
         child: ResponsiveMobileFrame(
           maxWidth: 760,
-          child: Column(
-            children: [
-              ChatHeader(
-                profile: _profile,
-                online: _online,
-                onBack: _goBack,
-                onMore: _showMoreSheet,
-                onProfileTap: () => Navigator.of(
-                  context,
-                ).pushNamed(ProfileDetailScreen.routeName),
-              ),
-              Expanded(
-                child: _ChatTimeline(
-                  messages: _messages,
-                  profile: _profile,
-                  scrollController: _scrollController,
-                  showReadReceipts: _readReceipts,
-                ),
-              ),
-              ChatInputBar(
-                controller: _controller,
-                onEmoji: _insertEmoji,
-                onSend: _send,
-              ),
-            ],
-          ),
+          child: _buildConversation(),
         ),
       ),
     );
+  }
+
+  Widget _buildConversation() {
+    if (_loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_error != null || _conversation == null) {
+      return _ConversationLoadError(
+        onBack: _goBack,
+        onRetry: _loadConversation,
+      );
+    }
+    final compactHeight = MediaQuery.sizeOf(context).height < 500;
+    return Column(
+      children: [
+        if (!(compactHeight && _emojiPickerVisible))
+          ChatHeader(
+            profile: _profile,
+            online: _online,
+            onBack: _goBack,
+            onMore: _showMoreSheet,
+            onProfileTap: () => Navigator.of(
+              context,
+            ).pushNamed(ProfileDetailScreen.routeName, arguments: _profile),
+          ),
+        if (!(compactHeight && _emojiPickerVisible))
+          _LocalMessagingBanner(compact: compactHeight),
+        Expanded(
+          child: _ChatTimeline(
+            messages: _messages,
+            profile: _profile,
+            scrollController: _scrollController,
+            showReadReceipts: _readReceipts,
+            onRetry: _retryMessage,
+          ),
+        ),
+        AmoraChatComposer(
+          controller: _controller,
+          sending: _sending,
+          onSend: _send,
+          onDraftChanged: _saveDraft,
+          enabled: _conversation!.canMessage,
+          disabledReason:
+              _conversation!.unavailableReason ??
+              'This conversation is no longer available.',
+          onEmojiPickerVisibilityChanged: (visible) {
+            if (mounted && _emojiPickerVisible != visible) {
+              setState(() => _emojiPickerVisible = visible);
+            }
+          },
+        ),
+      ],
+    );
+  }
+
+  Future<void> _loadConversation() async {
+    final conversationId = _conversationId;
+    if (conversationId == null || conversationId.isEmpty) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _error = StateError('Missing conversation id');
+        });
+      }
+      return;
+    }
+    if (mounted) {
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
+    }
+    try {
+      await _conversationSubscription?.cancel();
+      _conversationSubscription = null;
+      final conversation = await _repository.loadConversation(conversationId);
+      if (conversation == null) throw StateError('Conversation not found');
+      await _repository.markRead(conversationId);
+      if (!mounted) return;
+      setState(() {
+        _conversation = _repository.conversation(conversationId);
+        _loading = false;
+      });
+      _conversationSubscription = _repository
+          .watchConversation(conversationId)
+          .listen(_handleConversationUpdate);
+      _scrollToNewest(jump: true);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _error = error;
+        _loading = false;
+      });
+    }
   }
 
   Future<void> _goBack() async {
@@ -132,38 +212,75 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     Navigator.of(context).pushReplacementNamed(ChatListScreen.routeName);
   }
 
-  void _insertEmoji() {
-    final selection = _controller.selection;
-    const emoji = '\u{1F60A}';
-    final text = _controller.text;
-    final start = selection.start < 0 ? text.length : selection.start;
-    final end = selection.end < 0 ? text.length : selection.end;
-    final next = text.replaceRange(start, end, emoji);
-    _controller.text = next;
-    _controller.selection = TextSelection.collapsed(
-      offset: start + emoji.length,
+  Future<void> _send() async {
+    final text = _controller.text.trim();
+    final conversationId = _conversationId;
+    if (text.isEmpty || conversationId == null || _sending) return;
+    if (text.length > AmoraChatComposer.maximumMessageLength) return;
+    setState(() => _sending = true);
+    try {
+      final updated = await _repository.sendMessage(conversationId, text);
+      if (updated == null) throw StateError('Conversation not found');
+      if (!mounted) return;
+      setState(() {
+        _conversation = updated;
+        _controller.clear();
+      });
+      await _repository.clearDraft(conversationId);
+    } catch (_) {
+      if (mounted) _snack('Message could not be sent. Try again.');
+      return;
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+    _scrollToNewest();
+  }
+
+  Future<void> _retryMessage(ChatMessage message) async {
+    final conversationId = _conversationId;
+    if (conversationId == null || message.status != ChatMessageStatus.failed) {
+      return;
+    }
+    try {
+      await _repository.retryMessage(conversationId, message.id);
+    } catch (_) {
+      if (mounted) _snack('Message is still queued. Try again when connected.');
+    }
+  }
+
+  void _saveDraft(String value) {
+    final conversationId = _conversationId;
+    if (conversationId == null) return;
+    _draftTimer?.cancel();
+    _draftTimer = Timer(
+      const Duration(milliseconds: 300),
+      () => unawaited(_repository.saveDraft(conversationId, value)),
     );
   }
 
-  void _send() {
-    final text = _controller.text.trim();
-    if (text.isEmpty) {
-      _snack('Type a message first');
-      return;
+  void _handleConversationUpdate(ChatConversation conversation) {
+    if (!mounted || conversation.id != _conversationId) return;
+    final previousCount = _conversation?.messages.length ?? 0;
+    setState(() => _conversation = conversation);
+    if (conversation.unread > 0) {
+      unawaited(_repository.markRead(conversation.id));
     }
-    setState(() {
-      _messages.add(
-        ChatMessage(text: text, mine: true, time: 'Now', read: true),
-      );
-      _controller.clear();
-    });
+    if (conversation.messages.length > previousCount) _scrollToNewest();
+  }
+
+  void _scrollToNewest({bool jump = false}) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_scrollController.hasClients) return;
-      _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 240),
-        curve: Curves.easeOutCubic,
-      );
+      final offset = _scrollController.position.maxScrollExtent;
+      if (jump) {
+        _scrollController.jumpTo(offset);
+      } else {
+        _scrollController.animateTo(
+          offset,
+          duration: const Duration(milliseconds: 240),
+          curve: Curves.easeOutCubic,
+        );
+      }
     });
   }
 
@@ -200,7 +317,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           ),
           _SheetAction(
             icon: AmoraIcons.block,
-            title: _blocked ? 'Blocked' : 'Block User',
+            title: _conversation?.canMessage == false
+                ? 'Blocked'
+                : 'Block User',
             danger: true,
             onTap: () {
               Navigator.pop(context);
@@ -239,7 +358,16 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     showBlockConfirmationDialog(context: context, userName: _profile.name).then(
       (blocked) {
         if (blocked != true || !mounted) return;
-        setState(() => _blocked = true);
+        final conversationId = _conversationId;
+        if (conversationId != null) {
+          unawaited(
+            _repository.setMessagingAvailability(
+              conversationId,
+              canMessage: false,
+              reason: 'You blocked this member. Messaging is disabled.',
+            ),
+          );
+        }
         showBlockedUserSuccessSheet(context: context, userName: _profile.name);
       },
     );
@@ -367,18 +495,22 @@ class _HeaderIconButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox.square(
       dimension: 48,
-      child: IconButton(
-        tooltip: tooltip,
-        onPressed: onPressed,
-        style: IconButton.styleFrom(
-          foregroundColor: AppColors.primary,
-          backgroundColor: AppColors.background,
-          hoverColor: AppColors.tertiary.withValues(alpha: .24),
-          focusColor: AppColors.tertiary.withValues(alpha: .28),
-          highlightColor: AppColors.tertiary.withValues(alpha: .2),
-          side: BorderSide(color: AppColors.secondary.withValues(alpha: .16)),
+      child: Center(
+        child: IconButton(
+          tooltip: tooltip,
+          onPressed: onPressed,
+          constraints: const BoxConstraints.tightFor(width: 44, height: 44),
+          padding: EdgeInsets.zero,
+          style: IconButton.styleFrom(
+            foregroundColor: AppColors.primary,
+            backgroundColor: AppColors.background,
+            hoverColor: AppColors.tertiary.withValues(alpha: .24),
+            focusColor: AppColors.tertiary.withValues(alpha: .28),
+            highlightColor: AppColors.tertiary.withValues(alpha: .2),
+            side: BorderSide(color: AppColors.secondary.withValues(alpha: .16)),
+          ),
+          icon: Icon(icon, size: 21),
         ),
-        icon: Icon(icon, size: 21),
       ),
     );
   }
@@ -390,12 +522,14 @@ class _ChatTimeline extends StatelessWidget {
     required this.profile,
     required this.scrollController,
     required this.showReadReceipts,
+    required this.onRetry,
   });
 
   final List<ChatMessage> messages;
   final DummyProfile profile;
   final ScrollController scrollController;
   final bool showReadReceipts;
+  final ValueChanged<ChatMessage> onRetry;
 
   @override
   Widget build(BuildContext context) {
@@ -427,14 +561,13 @@ class _ChatTimeline extends StatelessWidget {
             messageIndex < messages.length - 1 &&
             messages[messageIndex + 1].mine == message.mine;
         return MessageBubble(
-          key: ValueKey(
-            'message-$messageIndex-${message.time}-${message.mine}',
-          ),
+          key: ValueKey(message.id),
           message: message,
           profile: profile,
           groupedWithPrevious: groupedWithPrevious,
           groupedWithNext: groupedWithNext,
           showReadReceipt: showReadReceipts,
+          onRetry: () => onRetry(message),
         );
       },
     );
@@ -449,6 +582,7 @@ class MessageBubble extends StatelessWidget {
     this.groupedWithPrevious = false,
     this.groupedWithNext = false,
     this.showReadReceipt = true,
+    this.onRetry,
   });
 
   final ChatMessage message;
@@ -456,6 +590,7 @@ class MessageBubble extends StatelessWidget {
   final bool groupedWithPrevious;
   final bool groupedWithNext;
   final bool showReadReceipt;
+  final VoidCallback? onRetry;
 
   @override
   Widget build(BuildContext context) {
@@ -555,13 +690,9 @@ class MessageBubble extends StatelessWidget {
                             ),
                             if (message.mine && showReadReceipt) ...[
                               const SizedBox(width: 5),
-                              Icon(
-                                message.read
-                                    ? AmoraIcons.readReceipt
-                                    : AmoraIcons.check,
-                                size: AmoraIconSizes.small,
-                                color: AppColors.surface,
-                                semanticLabel: message.read ? 'Read' : 'Sent',
+                              _MessageDeliveryState(
+                                status: message.status,
+                                onRetry: onRetry,
                               ),
                             ],
                           ],
@@ -805,127 +936,54 @@ class _EmptyConversationState extends StatelessWidget {
   }
 }
 
-class ChatInputBar extends StatefulWidget {
-  const ChatInputBar({
-    super.key,
-    required this.controller,
-    required this.onEmoji,
-    required this.onSend,
-  });
+class _ConversationLoadError extends StatelessWidget {
+  const _ConversationLoadError({required this.onBack, required this.onRetry});
 
-  final TextEditingController controller;
-  final VoidCallback onEmoji;
-  final VoidCallback onSend;
-
-  @override
-  State<ChatInputBar> createState() => _ChatInputBarState();
-}
-
-class _ChatInputBarState extends State<ChatInputBar> {
-  late final FocusNode _focusNode;
-
-  @override
-  void initState() {
-    super.initState();
-    _focusNode = FocusNode()..addListener(_refresh);
-    widget.controller.addListener(_refresh);
-  }
-
-  @override
-  void didUpdateWidget(covariant ChatInputBar oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.controller == widget.controller) return;
-    oldWidget.controller.removeListener(_refresh);
-    widget.controller.addListener(_refresh);
-  }
-
-  @override
-  void dispose() {
-    widget.controller.removeListener(_refresh);
-    _focusNode
-      ..removeListener(_refresh)
-      ..dispose();
-    super.dispose();
-  }
-
-  void _refresh() {
-    if (mounted) setState(() {});
-  }
+  final VoidCallback onBack;
+  final VoidCallback onRetry;
 
   @override
   Widget build(BuildContext context) {
-    final focused = _focusNode.hasFocus;
-    final hasText = widget.controller.text.trim().isNotEmpty;
-    return Container(
-      padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        border: Border(
-          top: BorderSide(color: AppColors.tertiary.withValues(alpha: .38)),
-        ),
-      ),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 220),
-        curve: Curves.easeOutCubic,
-        constraints: const BoxConstraints(minHeight: 58),
-        padding: const EdgeInsets.fromLTRB(4, 4, 5, 4),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(25),
-          border: Border.all(
-            color: focused ? AppColors.secondary : AppColors.tertiary,
-            width: focused ? 1.5 : 1,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.primary.withValues(alpha: focused ? .14 : .09),
-              blurRadius: focused ? 22 : 16,
-              offset: const Offset(0, 7),
-            ),
-          ],
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            ChatAttachmentButton(
-              tooltip: 'Emoji',
-              icon: Icons.sentiment_satisfied_alt_rounded,
-              onPressed: widget.onEmoji,
+            const Icon(
+              Icons.chat_bubble_outline_rounded,
+              color: AppColors.primary,
+              size: 42,
             ),
-            Expanded(
-              child: TextFormField(
-                controller: widget.controller,
-                focusNode: _focusNode,
-                minLines: 1,
-                maxLines: 4,
-                keyboardType: TextInputType.multiline,
-                textCapitalization: TextCapitalization.sentences,
-                textInputAction: TextInputAction.newline,
-                style: const TextStyle(
-                  color: AppColors.text,
-                  fontSize: 16,
-                  height: 1.35,
-                  fontWeight: FontWeight.w400,
-                ),
-                decoration: const InputDecoration(
-                  hintText: 'Write a message...',
-                  hintStyle: TextStyle(
-                    color: AppColors.text,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w400,
-                  ),
-                  border: InputBorder.none,
-                  enabledBorder: InputBorder.none,
-                  focusedBorder: InputBorder.none,
-                  isDense: true,
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 12,
-                  ),
-                ),
+            const SizedBox(height: 16),
+            const Text(
+              'Conversation unavailable',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppColors.text,
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
               ),
             ),
-            ChatSendButton(emphasized: hasText, onPressed: widget.onSend),
+            const SizedBox(height: 8),
+            Text(
+              'We could not load this conversation. Try again or return to Chats.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppColors.text.withValues(alpha: .68),
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+                OutlinedButton(onPressed: onBack, child: const Text('Back')),
+                FilledButton(onPressed: onRetry, child: const Text('Retry')),
+              ],
+            ),
           ],
         ),
       ),
@@ -933,99 +991,108 @@ class _ChatInputBarState extends State<ChatInputBar> {
   }
 }
 
-class ChatAttachmentButton extends StatelessWidget {
-  const ChatAttachmentButton({
-    super.key,
-    required this.tooltip,
-    required this.icon,
-    required this.onPressed,
-  });
+class _LocalMessagingBanner extends StatelessWidget {
+  const _LocalMessagingBanner({this.compact = false});
 
-  final String tooltip;
-  final IconData icon;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox.square(
-      dimension: 48,
-      child: IconButton(
-        tooltip: tooltip,
-        onPressed: onPressed,
-        color: AppColors.primary,
-        icon: Icon(icon, size: 22),
-      ),
-    );
-  }
-}
-
-class ChatSendButton extends StatefulWidget {
-  const ChatSendButton({
-    super.key,
-    required this.emphasized,
-    required this.onPressed,
-  });
-
-  final bool emphasized;
-  final VoidCallback onPressed;
-
-  @override
-  State<ChatSendButton> createState() => _ChatSendButtonState();
-}
-
-class _ChatSendButtonState extends State<ChatSendButton> {
-  bool _pressed = false;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      button: true,
-      label: 'Send',
-      child: Listener(
-        onPointerDown: (_) => setState(() => _pressed = true),
-        onPointerUp: (_) => setState(() => _pressed = false),
-        onPointerCancel: (_) => setState(() => _pressed = false),
-        child: AnimatedScale(
-          scale: _pressed ? .92 : 1,
-          duration: const Duration(milliseconds: 180),
-          curve: Curves.easeOut,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 220),
-            curve: Curves.easeOutCubic,
-            width: 46,
-            height: 46,
-            decoration: BoxDecoration(
-              color: widget.emphasized ? AppColors.primary : AppColors.tertiary,
-              shape: BoxShape.circle,
+      liveRegion: true,
+      label:
+          'Offline messaging. Messages are queued on this device until a server connection is available.',
+      child: Container(
+        width: double.infinity,
+        color: AppColors.tertiary.withValues(alpha: .34),
+        padding: EdgeInsets.symmetric(
+          horizontal: compact ? 10 : 16,
+          vertical: compact ? 2 : 8,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.cloud_off_outlined,
+              color: AppColors.primary,
+              size: 17,
             ),
-            child: IconButton(
-              tooltip: 'Send',
-              onPressed: widget.onPressed,
-              color: widget.emphasized ? AppColors.surface : AppColors.primary,
-              icon: const Icon(Icons.arrow_upward_rounded, size: 22),
+            const SizedBox(width: 7),
+            Flexible(
+              child: Text(
+                compact
+                    ? 'Offline · queued on this device'
+                    : 'Offline: messages remain queued on this device.',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: AppColors.text,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );
   }
 }
 
-class ChatMessage {
-  const ChatMessage({
-    required this.text,
-    required this.mine,
-    required this.time,
-    this.read = false,
-  });
+class _MessageDeliveryState extends StatelessWidget {
+  const _MessageDeliveryState({required this.status, this.onRetry});
 
-  final String text;
-  final bool mine;
-  final String time;
-  final bool read;
+  final ChatMessageStatus status;
+  final VoidCallback? onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final (icon, label) = switch (status) {
+      ChatMessageStatus.sending => (null, 'Sending'),
+      ChatMessageStatus.queued => (Icons.cloud_off_outlined, 'Queued'),
+      ChatMessageStatus.sent => (AmoraIcons.check, 'Sent'),
+      ChatMessageStatus.delivered => (AmoraIcons.readReceipt, 'Delivered'),
+      ChatMessageStatus.read => (AmoraIcons.readReceipt, 'Read'),
+      ChatMessageStatus.failed => (Icons.error_outline_rounded, 'Failed'),
+    };
+    final state = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (status == ChatMessageStatus.sending)
+          const SizedBox.square(
+            dimension: 12,
+            child: CircularProgressIndicator(
+              strokeWidth: 1.5,
+              color: AppColors.surface,
+            ),
+          )
+        else
+          Icon(icon, size: AmoraIconSizes.small, color: AppColors.surface),
+        const SizedBox(width: 3),
+        Text(
+          label,
+          style: const TextStyle(
+            color: AppColors.surface,
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+    if (status != ChatMessageStatus.failed || onRetry == null) return state;
+    return Semantics(
+      button: true,
+      label: 'Message failed. Retry sending',
+      child: InkWell(
+        onTap: onRetry,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+          child: state,
+        ),
+      ),
+    );
+  }
 }
-
-final _chatProfile = ImageRepository.profileByName('Aadhya');
 
 class _SheetAction extends StatelessWidget {
   const _SheetAction({

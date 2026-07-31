@@ -113,7 +113,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Events locked state survives large text on narrow screen', (
+  testWidgets('Events direct state survives large text on narrow screen', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(320, 700));
@@ -128,8 +128,9 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Meet beyond the screen'), findsOneWidget);
-    expect(find.text('Unlock Events'), findsOneWidget);
+    expect(find.text('Featured experience'), findsOneWidget);
+    expect(find.text('Unlock Events'), findsNothing);
+    expect(find.text('View Membership'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 

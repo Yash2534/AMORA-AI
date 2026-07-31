@@ -29,7 +29,7 @@ class _HostDashboardScreenState extends State<HostDashboardScreen> {
       body: DecoratedBox(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [AppColors.background, AppColors.lavenderBackground],
+            colors: [AppColors.background, AppColors.surface],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),

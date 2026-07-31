@@ -101,7 +101,7 @@ class _SosCheckinScreenState extends State<SosCheckinScreen>
                         ),
                       ),
                     OutlinedButton.icon(
-                      onPressed: () => _snack('Add contact placeholder opened'),
+                      onPressed: () => _snack('Choose a trusted contact'),
                       icon: const Icon(Icons.person_add_rounded),
                       label: const Text('Add trusted contact'),
                     ),
@@ -125,8 +125,10 @@ class _SosCheckinScreenState extends State<SosCheckinScreen>
                       contentPadding: EdgeInsets.zero,
                       value: _location,
                       onChanged: (value) => setState(() => _location = value),
-                      title: const Text('Live location sharing placeholder'),
-                      subtitle: const Text('Future permission-ready UI only.'),
+                      title: const Text('Live location sharing'),
+                      subtitle: const Text(
+                        'Share your location during an active safety check-in.',
+                      ),
                     ),
                     const SizedBox(height: 16),
                     Row(
@@ -194,7 +196,7 @@ class _Header extends StatelessWidget {
           height: 52,
           decoration: BoxDecoration(
             gradient: const LinearGradient(
-              colors: [AppColors.errorRed, AppColors.primaryPurple],
+              colors: [AppColors.secondary, AppColors.primary],
             ),
             borderRadius: BorderRadius.circular(20),
           ),

@@ -340,7 +340,7 @@ class _JoinedEventList extends StatelessWidget {
               crossAxisCount: 2,
               crossAxisSpacing: 14,
               mainAxisSpacing: 14,
-              mainAxisExtent: 430,
+              mainAxisExtent: 450,
             ),
             itemBuilder: (context, index) {
               final entry = visible[index];

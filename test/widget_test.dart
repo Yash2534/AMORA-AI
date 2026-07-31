@@ -2,43 +2,31 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:amora_ai/core/access/amora_access.dart';
+import 'package:amora_ai/core/theme/amora_theme_controller.dart';
 import 'package:amora_ai/features/discover/presentation/browse_grid_screen.dart';
 import 'package:amora_ai/main.dart';
 
 const _productionRoutes = [
-  '/advanced-ai-discovery',
-  '/ai-deepfake-detection',
-  '/ai-group-dating-rooms',
-  '/ai-learning-dashboard',
   '/ai-icebreakers',
-  '/astrology-matching',
   '/auth',
   '/account-verification',
   '/bio-builder',
   '/browse',
-  '/business-networking',
-  '/camera-roll-scan',
   '/chat-detail',
   '/chats',
   '/compatibility',
-  '/community-events',
-  '/community-filters',
   '/dark-mode-settings',
   '/dating-recap',
   '/dealbreakers',
   '/discover',
   '/event-detail',
   '/event-group-chat',
-  '/event-planning-dashboard',
   '/event-waitlist',
   '/events',
   '/faq-support',
   '/filters',
-  '/first-date-question-deck',
-  '/friendship-mode',
+  '/forgot-password',
   '/gift-shop-catalog',
-  '/group-meetups',
-  '/human-matchmaker',
   '/kyc',
   '/landing',
   '/liked-you',
@@ -54,9 +42,7 @@ const _productionRoutes = [
   '/payment',
   '/phone-login',
   '/photo-manager',
-  '/poll-prompts',
   '/post-event-feedback',
-  '/professional-networking',
   '/profile',
   '/profile-basic-details',
   '/profile-completion',
@@ -67,21 +53,14 @@ const _productionRoutes = [
   '/profile-settings',
   '/profile-setup',
   '/referral-leaderboard',
-  '/relationship-ecosystem',
-  '/relationship-prediction',
   '/report-flow',
+  '/reset-password',
   '/safety-privacy',
   '/send-gift',
   '/settings',
-  '/shared-media-gallery',
   '/signup',
-  '/stories',
   '/subscription',
   '/success-stories',
-  '/twenty-questions',
-  '/travel-mode',
-  '/video-speed-dating-room',
-  '/virtual-speed-dating',
   '/why-we-matched',
 ];
 
@@ -101,6 +80,29 @@ const _hiddenRoutes = [
   '/host-dashboard',
   '/voice-prompt',
   '/video-prompt',
+  '/stories',
+  '/twenty-questions',
+  '/video-speed-dating-room',
+  '/poll-prompts',
+  '/relationship-ecosystem',
+  '/ai-learning-dashboard',
+  '/camera-roll-scan',
+  '/ai-deepfake-detection',
+  '/first-date-question-deck',
+  '/relationship-prediction',
+  '/virtual-speed-dating',
+  '/group-meetups',
+  '/event-planning-dashboard',
+  '/human-matchmaker',
+  '/travel-mode',
+  '/advanced-ai-discovery',
+  '/astrology-matching',
+  '/friendship-mode',
+  '/professional-networking',
+  '/community-filters',
+  '/business-networking',
+  '/ai-group-dating-rooms',
+  '/community-events',
 ];
 
 const _visibilityAuditRoutes = [
@@ -139,18 +141,26 @@ const _hiddenLabels = [
   'Host Dashboard',
   'Voice Prompt',
   'Video Prompt',
+  'AI relationship ecosystem',
+  'Open Modules',
+  'Phase 2+3',
+  'Question Deck',
 ];
 
 void main() {
-  testWidgets('AMORA AI launches directly into authentication', (tester) async {
+  testWidgets('AMORA AI launches through its splash into authentication', (
+    tester,
+  ) async {
     AmoraSession.logOut();
     await tester.pumpWidget(const MyApp());
-    await tester.pump(const Duration(milliseconds: 450));
+    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(find.text('Preparing your compatibility engine'), findsNothing);
-    expect(find.text('Meaningful connections begin here.'), findsOneWidget);
+    expect(find.text('Meaningful connections start here.'), findsOneWidget);
     expect(find.byKey(const ValueKey('auth-create-account')), findsOneWidget);
-    expect(find.byKey(const ValueKey('auth-sign-in')), findsOneWidget);
+    expect(find.byKey(const ValueKey('auth-email')), findsOneWidget);
   });
 
   testWidgets('profile information keeps all questions on one page', (
@@ -204,9 +214,9 @@ void main() {
 
     await tester.enterText(find.byType(TextFormField).at(0), 'member@amora.ai');
     await tester.enterText(find.byType(TextFormField).at(1), 'Amora123!');
-    await tester.ensureVisible(find.text('Log in'));
+    await tester.ensureVisible(find.text('Sign in'));
     await tester.pump();
-    await tester.tap(find.text('Log in'));
+    await tester.tap(find.text('Sign in'));
     await tester.pump(const Duration(milliseconds: 700));
     await tester.pump(const Duration(milliseconds: 400));
 
@@ -345,6 +355,32 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 250));
       expect(tester.takeException(), isNull, reason: 'Route $route failed');
+      navigator.pop();
+      await tester.pump();
+    }
+  });
+
+  testWidgets('all registered production routes build in dark mode', (
+    tester,
+  ) async {
+    AmoraThemeController.instance.update(ThemeMode.dark);
+    addTearDown(() => AmoraThemeController.instance.update(ThemeMode.system));
+    await tester.binding.setSurfaceSize(const Size(430, 932));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(const MyApp());
+    await tester.pump();
+
+    final navigator = tester.state<NavigatorState>(find.byType(Navigator));
+    for (final route in _productionRoutes) {
+      navigator.pushNamed(route);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 250));
+      expect(
+        tester.takeException(),
+        isNull,
+        reason: 'Dark-mode route $route failed',
+      );
       navigator.pop();
       await tester.pump();
     }

@@ -5,6 +5,7 @@ import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/premium_asset_image.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/chat/presentation/chat_detail_screen.dart';
+import 'package:amora_ai/features/chat/data/local_chat_repository.dart';
 import 'package:amora_ai/features/events/presentation/event_detail_screen.dart';
 import 'package:amora_ai/features/profile/presentation/kyc_verification_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_detail_screen.dart';
@@ -934,9 +935,7 @@ class _NotificationTileState extends State<_NotificationTile> {
             scale: _pressed ? .99 : 1,
             duration: const Duration(milliseconds: 180),
             curve: Curves.easeOutBack,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 220),
-              curve: Curves.easeOutCubic,
+            child: Container(
               constraints: const BoxConstraints(minHeight: 88),
               decoration: BoxDecoration(
                 color: widget.selected
@@ -1635,6 +1634,12 @@ _NotificationItem _profileNotification({
   bool unread = true,
 }) {
   final profile = ImageRepository.profileByName(profileName);
+  final arguments = route == ChatDetailScreen.routeName
+      ? ChatDetailArgs(
+          conversationId: LocalChatRepository.instance
+              .ensureConversationForProfile(profile),
+        )
+      : profile;
   return _NotificationItem(
     id: id,
     title: title,
@@ -1647,7 +1652,7 @@ _NotificationItem _profileNotification({
     fallbackAsset: profile.fallbackAsset,
     initials: profile.initials,
     route: route,
-    arguments: profile,
+    arguments: arguments,
     unread: unread,
   );
 }

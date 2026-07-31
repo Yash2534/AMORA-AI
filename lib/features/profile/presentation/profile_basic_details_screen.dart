@@ -1,6 +1,7 @@
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/amora_inputs.dart';
+import 'package:amora_ai/core/widgets/amora_dob_field.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/app_text_field.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
@@ -20,19 +21,20 @@ class ProfileBasicDetailsScreen extends StatefulWidget {
 class _ProfileBasicDetailsScreenState extends State<ProfileBasicDetailsScreen> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _name;
-  late final TextEditingController _birthdate;
   late final TextEditingController _profession;
   late final TextEditingController _company;
   late final TextEditingController _education;
   late final TextEditingController _city;
   late String _gender;
+  DateTime? _birthDate;
+  bool _showDobError = false;
 
   @override
   void initState() {
     super.initState();
     final profile = LocalProfileRepository.instance.profile;
     _name = TextEditingController(text: profile.name);
-    _birthdate = TextEditingController(text: profile.birthdate);
+    _birthDate = profile.dateOfBirth;
     _profession = TextEditingController(text: profile.profession);
     _company = TextEditingController(text: profile.company);
     _education = TextEditingController(text: profile.education);
@@ -43,7 +45,6 @@ class _ProfileBasicDetailsScreenState extends State<ProfileBasicDetailsScreen> {
   @override
   void dispose() {
     _name.dispose();
-    _birthdate.dispose();
     _profession.dispose();
     _company.dispose();
     _education.dispose();
@@ -95,13 +96,17 @@ class _ProfileBasicDetailsScreenState extends State<ProfileBasicDetailsScreen> {
                         validator: _required,
                       ),
                       const SizedBox(height: 16),
-                      AppTextField(
-                        controller: _birthdate,
-                        label: 'Date of birth',
-                        hint: 'DD / MM / YYYY',
-                        icon: Icons.cake_outlined,
-                        textInputAction: TextInputAction.next,
-                        validator: _required,
+                      AmoraDobField(
+                        value: _birthDate,
+                        errorText: _showDobError
+                            ? AmoraDateOfBirth.validate(_birthDate)
+                            : null,
+                        onChanged: (value) {
+                          setState(() {
+                            _birthDate = value;
+                            _showDobError = true;
+                          });
+                        },
                       ),
                       const SizedBox(height: 16),
                       AmoraDropdownFormField<String>(
@@ -183,12 +188,16 @@ class _ProfileBasicDetailsScreenState extends State<ProfileBasicDetailsScreen> {
 
   void _save() {
     FocusScope.of(context).unfocus();
-    if (!(_formKey.currentState?.validate() ?? false)) return;
+    setState(() => _showDobError = true);
+    if (!(_formKey.currentState?.validate() ?? false) ||
+        AmoraDateOfBirth.validate(_birthDate) != null) {
+      return;
+    }
     final repository = LocalProfileRepository.instance;
     repository.save(
       repository.profile.copyWith(
         name: _name.text.trim(),
-        birthdate: _birthdate.text.trim(),
+        birthdate: AmoraDateOfBirth.format(_birthDate!),
         gender: _gender,
         profession: _profession.text.trim(),
         company: _company.text.trim(),

@@ -107,7 +107,6 @@ class DummyProfile {
     required this.interests,
     required this.imageUrl,
     required this.gallery,
-    required this.voiceIntro,
     required this.languages,
     required this.verification,
     required this.lifestyle,
@@ -148,7 +147,6 @@ class DummyProfile {
   final List<String> interests;
   final String imageUrl;
   final List<String> gallery;
-  final String voiceIntro;
   final List<String> languages;
   final String verification;
   final List<String> lifestyle;
@@ -283,8 +281,6 @@ DummyProfile _profile(int index, Gender gender) {
     interests: interests,
     imageUrl: primaryPhoto,
     gallery: [primaryPhoto, ...gallery],
-    voiceIntro:
-        'A warm 28 sec intro about ${interests.first.toLowerCase()}, $city weekends, and intentional dating.',
     languages: _languageSets[index % _languageSets.length],
     verification: index % 4 == 0
         ? 'Selfie + ID + workplace verified'

@@ -1,12 +1,12 @@
-import 'package:amora_ai/core/navigation/main_shell.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
+import 'package:amora_ai/core/widgets/amora_profile_image.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
-import 'package:amora_ai/core/widgets/premium_asset_image.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
 import 'package:amora_ai/features/profile/presentation/profile_edit_screen.dart';
+import 'package:amora_ai/features/discover/presentation/discover_screen.dart';
 import 'package:flutter/material.dart';
 
 class ProfilePreviewScreen extends StatelessWidget {
@@ -34,19 +34,20 @@ class ProfilePreviewScreen extends StatelessWidget {
             key: const Key('profile-preview-scroll'),
             slivers: [
               SliverPadding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 180),
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 96),
                 sliver: SliverList.list(
                   children: [
                     AspectRatio(
                       aspectRatio: 4 / 5,
-                      child: PremiumAssetImage(
+                      child: AmoraProfileImage(
                         imageUrl: profile.primaryPhoto,
-                        fallbackAsset: profile.primaryPhoto,
+                        assetPath: profile.primaryPhoto,
                         initials: profile.name.isEmpty
                             ? 'AM'
                             : profile.name.substring(0, 1),
                         fit: BoxFit.cover,
                         borderRadius: BorderRadius.circular(24),
+                        semanticLabel: 'Primary profile photo',
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -92,12 +93,13 @@ class ProfilePreviewScreen extends StatelessWidget {
                       if (index != profile.primaryPhotoIndex) ...[
                         AspectRatio(
                           aspectRatio: 4 / 5,
-                          child: PremiumAssetImage(
+                          child: AmoraProfileImage(
                             imageUrl: profile.photos[index],
-                            fallbackAsset: profile.photos[index],
+                            assetPath: profile.photos[index],
                             initials: 'AM',
                             fit: BoxFit.cover,
                             borderRadius: BorderRadius.circular(22),
+                            semanticLabel: 'Profile photo ${index + 1}',
                           ),
                         ),
                         const SizedBox(height: 20),
@@ -144,17 +146,11 @@ class ProfilePreviewScreen extends StatelessWidget {
               Expanded(
                 child: AppPrimaryButton(
                   label: 'Return to Discover',
-                  onPressed: () {
-                    final navigator = Navigator.of(context);
-                    if (navigator.canPop()) {
-                      navigator.pop();
-                    } else {
-                      navigator.pushNamedAndRemoveUntil(
-                        MainShell.routeName,
+                  onPressed: () =>
+                      Navigator.of(context).pushNamedAndRemoveUntil(
+                        DiscoverScreen.routeName,
                         (route) => false,
-                      );
-                    }
-                  },
+                      ),
                 ),
               ),
             ],

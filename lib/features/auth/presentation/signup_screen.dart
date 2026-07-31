@@ -1,3 +1,4 @@
+import 'package:amora_ai/core/access/amora_access.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
@@ -7,8 +8,9 @@ import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/features/onboarding/data/local_onboarding_repository.dart';
 import 'package:amora_ai/features/onboarding/presentation/profile_onboarding_flow.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
-import 'package:amora_ai/core/widgets/app_text_field.dart';
 import 'package:amora_ai/features/auth/presentation/login_screen.dart';
+import 'package:amora_ai/features/auth/presentation/phone_otp_screen.dart';
+import 'package:amora_ai/features/auth/domain/amora_password_policy.dart';
 import 'package:amora_ai/features/auth/presentation/widgets/auth_presentation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -33,6 +35,7 @@ class _SignupScreenState extends State<SignupScreen> {
   bool _privacy = false;
   bool _marketing = true;
   bool _loading = false;
+  bool _googleLoading = false;
   bool _obscurePassword = true;
   bool _obscureConfirmation = true;
 
@@ -45,16 +48,6 @@ class _SignupScreenState extends State<SignupScreen> {
     if (_confirmPasswordController.text.isNotEmpty) completed++;
     if (_terms && _privacy) completed++;
     return completed / 6;
-  }
-
-  int get _passwordScore {
-    final password = _passwordController.text;
-    var score = 0;
-    if (password.length >= 8) score++;
-    if (RegExp('[A-Z]').hasMatch(password)) score++;
-    if (RegExp('[0-9]').hasMatch(password)) score++;
-    if (RegExp(r'[!@#\$%^&*(),.?":{}|<>]').hasMatch(password)) score++;
-    return score;
   }
 
   @override
@@ -95,7 +88,7 @@ class _SignupScreenState extends State<SignupScreen> {
     return AmoraAuthShell(
       title: 'Create your Amora account',
       subtitle:
-          'Start with the essentials. You can personalize your profile next.',
+          'A few details, then we’ll help you build a profile that feels like you.',
       statement: 'Your story starts with a few essentials.',
       showComposition: false,
       stepLabel: 'Account setup',
@@ -110,7 +103,7 @@ class _SignupScreenState extends State<SignupScreen> {
             children: [
               _SignupProgress(progress: _progress),
               const SizedBox(height: AmoraSpacing.space20),
-              AppTextField(
+              AmoraAuthField(
                 key: const ValueKey('signup-name-field'),
                 controller: _nameController,
                 label: 'Full name',
@@ -120,7 +113,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 validator: _requiredName,
               ),
               const SizedBox(height: AmoraSpacing.space16),
-              AppTextField(
+              AmoraAuthField(
                 key: const ValueKey('signup-email-field'),
                 controller: _emailController,
                 label: 'Email address',
@@ -131,7 +124,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 validator: _validateEmail,
               ),
               const SizedBox(height: AmoraSpacing.space16),
-              AppTextField(
+              AmoraAuthField(
                 key: const ValueKey('signup-phone-field'),
                 controller: _phoneController,
                 label: 'Phone number',
@@ -147,7 +140,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 validator: _validatePhone,
               ),
               const SizedBox(height: AmoraSpacing.space16),
-              AppTextField(
+              AmoraAuthField(
                 key: const ValueKey('signup-password-field'),
                 controller: _passwordController,
                 label: 'Password',
@@ -169,10 +162,13 @@ class _SignupScreenState extends State<SignupScreen> {
               ),
               if (_passwordController.text.isNotEmpty) ...[
                 const SizedBox(height: AmoraSpacing.space12),
-                _PasswordGuidance(score: _passwordScore),
+                AmoraPasswordRules(
+                  password: _passwordController.text,
+                  requirement: AmoraPasswordPolicy.requirement,
+                ),
               ],
               const SizedBox(height: AmoraSpacing.space16),
-              AppTextField(
+              AmoraAuthField(
                 key: const ValueKey('signup-confirm-password-field'),
                 controller: _confirmPasswordController,
                 label: 'Confirm password',
@@ -219,13 +215,21 @@ class _SignupScreenState extends State<SignupScreen> {
                 isLoading: _loading,
                 onPressed: _loading ? null : _submit,
               ),
+              const SizedBox(height: AmoraSpacing.space20),
+              const AuthDivider(),
+              const SizedBox(height: AmoraSpacing.space20),
+              AmoraGoogleButton(
+                label: 'Sign up with Google',
+                isLoading: _googleLoading,
+                onPressed: _googleLoading ? null : _continueWithGoogle,
+              ),
               const SizedBox(height: AmoraSpacing.space12),
-              Text(
-                'By creating an account, you agree to Amora’s Terms and Privacy Policy.',
-                textAlign: TextAlign.center,
-                style: AmoraTextStyles.bodySmall.copyWith(
-                  color: AppColors.textNeutral.withValues(alpha: .68),
-                ),
+              AuthPrimaryButton(
+                label: 'Continue with phone',
+                icon: Icons.phone_iphone_rounded,
+                style: AuthButtonStyle.outlined,
+                onPressed: () =>
+                    Navigator.of(context).pushNamed(PhoneOtpScreen.routeName),
               ),
             ],
           ),
@@ -242,13 +246,23 @@ class _SignupScreenState extends State<SignupScreen> {
     }
     if (!(_formKey.currentState?.validate() ?? false)) return;
     setState(() => _loading = true);
-    await Future<void>.delayed(const Duration(milliseconds: 700));
-    if (!mounted) return;
     LocalOnboardingRepository.instance.resetForNewAccount();
     LocalProfileRepository.instance.startNewProfile(
       _nameController.text.trim(),
+      email: _emailController.text.trim(),
+      phoneNumber: '+91 ${_phoneController.text.trim()}',
     );
+    AmoraSession.logIn();
     Navigator.of(context).pushReplacementNamed(ProfileOnboardingFlow.routeName);
+  }
+
+  Future<void> _continueWithGoogle() async {
+    setState(() => _googleLoading = true);
+    try {
+      await AmoraSession.completeAuthentication(context);
+    } catch (_) {
+      if (mounted) setState(() => _googleLoading = false);
+    }
   }
 
   String? _requiredName(String? value) {
@@ -273,12 +287,8 @@ class _SignupScreenState extends State<SignupScreen> {
     return null;
   }
 
-  String? _validatePassword(String? value) {
-    final text = value ?? '';
-    if (text.length < 8) return 'Use at least 8 characters';
-    if (_passwordScore < 2) return 'Add numbers or symbols for strength';
-    return null;
-  }
+  String? _validatePassword(String? value) =>
+      AmoraPasswordPolicy.validateNewPassword(value);
 
   String? _validateConfirmPassword(String? value) {
     if (value == null || value.isEmpty) return 'Confirm your password';
@@ -330,55 +340,6 @@ class _SignupProgress extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _PasswordGuidance extends StatelessWidget {
-  const _PasswordGuidance({required this.score});
-
-  final int score;
-
-  @override
-  Widget build(BuildContext context) {
-    final label = switch (score) {
-      0 || 1 => 'Keep going',
-      2 || 3 => 'Good password',
-      _ => 'Strong password',
-    };
-    return Semantics(
-      label: label,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              for (var index = 0; index < 4; index++) ...[
-                Expanded(
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 180),
-                    height: 6,
-                    decoration: BoxDecoration(
-                      color: index < score
-                          ? AppColors.primary
-                          : AppColors.tertiary.withValues(alpha: .55),
-                      borderRadius: AmoraRadius.pillBorder,
-                    ),
-                  ),
-                ),
-                if (index != 3) const SizedBox(width: AmoraSpacing.space4),
-              ],
-            ],
-          ),
-          const SizedBox(height: AmoraSpacing.space8),
-          Text(
-            '$label · Use 8+ characters and add numbers or symbols.',
-            style: AmoraTextStyles.bodySmall.copyWith(
-              color: AppColors.textNeutral.withValues(alpha: .68),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

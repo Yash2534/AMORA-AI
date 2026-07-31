@@ -1,4 +1,5 @@
 import 'package:amora_ai/core/data/amora_image_data.dart';
+import 'package:amora_ai/core/media/amora_media_picker.dart';
 import 'package:amora_ai/core/theme/amora_icons.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
@@ -10,9 +11,14 @@ import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:flutter/material.dart';
 
 class ReportFlowScreen extends StatefulWidget {
-  const ReportFlowScreen({super.key});
+  const ReportFlowScreen({
+    super.key,
+    this.mediaPicker = const DeviceAmoraMediaPicker(),
+  });
 
   static const routeName = '/report-flow';
+
+  final AmoraMediaPicker mediaPicker;
 
   @override
   State<ReportFlowScreen> createState() => _ReportFlowScreenState();
@@ -21,7 +27,8 @@ class ReportFlowScreen extends StatefulWidget {
 class _ReportFlowScreenState extends State<ReportFlowScreen> {
   final _notes = TextEditingController();
   String _reason = 'Fake profile';
-  bool _screenshotAttached = false;
+  AmoraPickedMedia? _screenshot;
+  bool _pickingScreenshot = false;
   bool _submitted = false;
 
   @override
@@ -36,11 +43,7 @@ class _ReportFlowScreenState extends State<ReportFlowScreen> {
       body: DecoratedBox(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [
-              AppColors.lightPinkBackground,
-              AppColors.background,
-              AppColors.lavenderBackground,
-            ],
+            colors: [AppColors.background, AppColors.surface],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
@@ -110,17 +113,35 @@ class _ReportFlowScreenState extends State<ReportFlowScreen> {
                               ),
                             ),
                             const SizedBox(height: 12),
-                            SwitchListTile(
+                            ListTile(
                               contentPadding: EdgeInsets.zero,
-                              value: _screenshotAttached,
-                              onChanged: (value) =>
-                                  setState(() => _screenshotAttached = value),
-                              title: const Text(
-                                'Attach screenshot placeholder',
+                              leading: const Icon(Icons.image_outlined),
+                              title: const Text('Attach a screenshot'),
+                              subtitle: Text(
+                                _screenshot == null
+                                    ? 'Optional · JPEG, PNG, WebP, HEIC, or HEIF · up to 12 MB'
+                                    : '${_screenshot!.name} attached',
                               ),
-                              subtitle: const Text(
-                                'Future upload handoff, no files sent now.',
-                              ),
+                              trailing: _pickingScreenshot
+                                  ? const SizedBox.square(
+                                      dimension: 24,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : _screenshot == null
+                                  ? const Icon(Icons.chevron_right_rounded)
+                                  : IconButton(
+                                      tooltip: 'Remove screenshot',
+                                      onPressed: () =>
+                                          setState(() => _screenshot = null),
+                                      icon: const Icon(
+                                        Icons.delete_outline_rounded,
+                                      ),
+                                    ),
+                              onTap: _pickingScreenshot
+                                  ? null
+                                  : _pickScreenshot,
                             ),
                           ],
                         ),
@@ -155,6 +176,25 @@ class _ReportFlowScreenState extends State<ReportFlowScreen> {
       onPrimary: () => Navigator.pop(context),
     );
   }
+
+  Future<void> _pickScreenshot() async {
+    setState(() => _pickingScreenshot = true);
+    final result = await widget.mediaPicker.pickImage(
+      source: AmoraMediaSource.gallery,
+    );
+    if (!mounted) return;
+    setState(() => _pickingScreenshot = false);
+    if (!result.succeeded) {
+      showAmoraMediaResult(
+        context,
+        result: result,
+        picker: widget.mediaPicker,
+        onRetry: _pickScreenshot,
+      );
+      return;
+    }
+    setState(() => _screenshot = result.media);
+  }
 }
 
 class _Header extends StatelessWidget {
@@ -183,7 +223,7 @@ class _Header extends StatelessWidget {
           height: 52,
           decoration: BoxDecoration(
             gradient: const LinearGradient(
-              colors: [AppColors.primaryRose, AppColors.primaryPurple],
+              colors: [AppColors.secondary, AppColors.primary],
             ),
             borderRadius: BorderRadius.circular(20),
           ),

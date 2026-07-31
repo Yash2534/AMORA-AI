@@ -38,78 +38,113 @@ class AppPrimaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     final enabled = onPressed != null && !isLoading;
+    final foreground = switch (variant) {
+      AppPrimaryButtonVariant.primary => scheme.onPrimary,
+      AppPrimaryButtonVariant.tonal => AppColors.onSecondary,
+      AppPrimaryButtonVariant.outlined ||
+      AppPrimaryButtonVariant.text => scheme.primary,
+      AppPrimaryButtonVariant.destructive => scheme.onError,
+      AppPrimaryButtonVariant.dark => scheme.onInverseSurface,
+    };
+    final disabledForeground = AppColors.primary.withValues(alpha: .55);
     final height = size == AmoraButtonSize.compact
         ? AmoraSpacing.compactControlHeight
         : AmoraSpacing.controlHeight;
     final content = AnimatedSwitcher(
       duration: const Duration(milliseconds: 160),
-      child: isLoading
-          ? const SizedBox.square(
-              key: ValueKey('loading'),
+      child: Row(
+        key: ValueKey(isLoading ? 'loading' : 'content'),
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          if (isLoading) ...[
+            SizedBox.square(
               dimension: AmoraIconSizes.medium,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
-          : Row(
-              key: const ValueKey('content'),
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (icon != null) ...[
-                  Icon(icon, size: AmoraIconSizes.medium),
-                  const SizedBox(width: AmoraSpacing.space8),
-                ],
-                Flexible(
-                  child: Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: foreground,
+              ),
             ),
+            const SizedBox(width: AmoraSpacing.space8),
+          ] else if (icon != null) ...[
+            Icon(icon, size: AmoraIconSizes.medium),
+            const SizedBox(width: AmoraSpacing.space8),
+          ],
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: enabled || isLoading ? foreground : disabledForeground,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    final primaryStyle = FilledButton.styleFrom(
+      backgroundColor: scheme.primary,
+      foregroundColor: foreground,
+      disabledBackgroundColor: scheme.surfaceContainerHighest,
+      disabledForegroundColor: disabledForeground,
+    );
+    final outlinedStyle = OutlinedButton.styleFrom(
+      foregroundColor: foreground,
+      disabledForegroundColor: disabledForeground,
+      side: BorderSide(color: enabled ? scheme.primary : scheme.outlineVariant),
+    );
+    final textStyle = TextButton.styleFrom(
+      foregroundColor: foreground,
+      disabledForegroundColor: disabledForeground,
     );
 
     final button = switch (variant) {
       AppPrimaryButtonVariant.primary => FilledButton(
         onPressed: enabled ? onPressed : null,
+        style: primaryStyle,
         child: content,
       ),
       AppPrimaryButtonVariant.tonal => FilledButton.tonal(
         onPressed: enabled ? onPressed : null,
         style: FilledButton.styleFrom(
           backgroundColor: AppColors.secondary,
-          foregroundColor: AppColors.onSecondary,
-          disabledBackgroundColor: AppColors.disabled,
-          disabledForegroundColor: AppColors.textDisabled,
+          foregroundColor: foreground,
+          disabledBackgroundColor: scheme.surfaceContainerHighest,
+          disabledForegroundColor: disabledForeground,
         ),
         child: content,
       ),
       AppPrimaryButtonVariant.outlined => OutlinedButton(
         onPressed: enabled ? onPressed : null,
+        style: outlinedStyle,
         child: content,
       ),
       AppPrimaryButtonVariant.text => TextButton(
         onPressed: enabled ? onPressed : null,
+        style: textStyle,
         child: content,
       ),
       AppPrimaryButtonVariant.destructive => FilledButton(
         onPressed: enabled ? onPressed : null,
         style: FilledButton.styleFrom(
-          backgroundColor: AppColors.error,
-          foregroundColor: AppColors.onError,
-          disabledBackgroundColor: AppColors.surfaceContainerHighest,
-          disabledForegroundColor: AppColors.textDisabled,
+          backgroundColor: scheme.error,
+          foregroundColor: foreground,
+          disabledBackgroundColor: scheme.surfaceContainerHighest,
+          disabledForegroundColor: disabledForeground,
         ),
         child: content,
       ),
       AppPrimaryButtonVariant.dark => FilledButton(
         onPressed: enabled ? onPressed : null,
         style: FilledButton.styleFrom(
-          backgroundColor: AppColors.onSurface,
-          foregroundColor: AppColors.surface,
-          disabledBackgroundColor: AppColors.surfaceContainerHighest,
-          disabledForegroundColor: AppColors.textDisabled,
+          backgroundColor: scheme.inverseSurface,
+          foregroundColor: foreground,
+          disabledBackgroundColor: scheme.surfaceContainerHighest,
+          disabledForegroundColor: disabledForeground,
         ),
         child: content,
       ),

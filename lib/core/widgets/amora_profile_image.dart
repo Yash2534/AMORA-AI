@@ -8,10 +8,11 @@ class AmoraProfileImage extends StatelessWidget {
     required this.assetPath,
     required this.initials,
     this.fit = BoxFit.cover,
-    this.alignment = Alignment.center,
+    this.alignment = const Alignment(0, -0.12),
     this.borderRadius,
     this.width,
     this.height,
+    this.semanticLabel,
   });
 
   final String imageUrl;
@@ -22,6 +23,7 @@ class AmoraProfileImage extends StatelessWidget {
   final BorderRadius? borderRadius;
   final double? width;
   final double? height;
+  final String? semanticLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -33,18 +35,24 @@ class AmoraProfileImage extends StatelessWidget {
         ? null
         : (height! * devicePixelRatio).round();
 
-    return PremiumImage(
-      imageUrl: imageUrl,
-      assetPath: assetPath,
-      fallbackAsset: assetPath,
-      initials: initials,
-      width: width,
-      height: height,
-      fit: fit,
-      alignment: alignment,
-      borderRadius: borderRadius ?? BorderRadius.zero,
-      cacheWidth: cacheWidth,
-      cacheHeight: cacheHeight,
+    return Semantics(
+      image: true,
+      label: semanticLabel ?? 'Profile photo',
+      child: ExcludeSemantics(
+        child: PremiumImage(
+          imageUrl: imageUrl,
+          assetPath: assetPath,
+          fallbackAsset: assetPath,
+          initials: initials,
+          width: width,
+          height: height,
+          fit: fit,
+          alignment: alignment,
+          borderRadius: borderRadius ?? BorderRadius.zero,
+          cacheWidth: cacheWidth,
+          cacheHeight: cacheHeight,
+        ),
+      ),
     );
   }
 }

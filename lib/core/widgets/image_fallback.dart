@@ -104,11 +104,7 @@ class _ImageSkeletonState extends State<ImageSkeleton>
               gradient: LinearGradient(
                 begin: Alignment(start, -1),
                 end: Alignment(start + 1, 1),
-                colors: [
-                  AppColors.lightPinkBackground,
-                  AppColors.primary.withValues(alpha: .08),
-                  AppColors.lightPinkBackground,
-                ],
+                colors: const [AppColors.background, AppColors.surface],
               ),
             ),
           ),

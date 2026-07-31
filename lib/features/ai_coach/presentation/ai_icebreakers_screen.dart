@@ -1,4 +1,5 @@
 import 'package:amora_ai/core/data/amora_image_data.dart';
+import 'package:amora_ai/core/data/image_repository.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
@@ -6,6 +7,7 @@ import 'package:amora_ai/core/widgets/premium_avatar.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/chat/presentation/chat_detail_screen.dart';
+import 'package:amora_ai/features/chat/data/local_chat_repository.dart';
 import 'package:amora_ai/features/monetization/data/monetization_data.dart';
 import 'package:amora_ai/features/monetization/presentation/widgets/monetization_widgets.dart';
 import 'package:flutter/material.dart';
@@ -32,7 +34,7 @@ class _AiIcebreakersScreenState extends State<AiIcebreakersScreen> {
       body: DecoratedBox(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [AppColors.background, AppColors.lavenderBackground],
+            colors: [AppColors.background, AppColors.surface],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
@@ -179,10 +181,15 @@ class _AiIcebreakersScreenState extends State<AiIcebreakersScreen> {
     final profile = _IcebreakerProfile.fromArgs(
       ModalRoute.of(context)?.settings.arguments,
     );
-    showPremiumSnack(context, 'Icebreaker sent to ${profile.firstName}');
+    final participant = ImageRepository.profileByName(profile.name);
+    final conversationId = LocalChatRepository.instance
+        .ensureConversationForProfile(participant);
     Navigator.of(context).pushNamed(
       ChatDetailScreen.routeName,
-      arguments: ChatDetailSeed(prefillText: text),
+      arguments: ChatDetailArgs(
+        conversationId: conversationId,
+        prefillText: text,
+      ),
     );
   }
 }

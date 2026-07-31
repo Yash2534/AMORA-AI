@@ -75,18 +75,9 @@ class SendGiftScreen extends StatelessWidget {
                           initials: 'GF',
                           borderRadius: BorderRadius.zero,
                         ),
-                        const DecoratedBox(
+                        DecoratedBox(
                           decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                AppColors.transparent,
-                                AppColors.transparent,
-                                AppColors.text,
-                              ],
-                              stops: [0, .50, 1],
-                            ),
+                            color: AppColors.primary.withValues(alpha: .42),
                           ),
                         ),
                         const Positioned(
@@ -152,13 +143,7 @@ class SendGiftScreen extends StatelessWidget {
                 AppPrimaryButton(
                   label: 'Send Gift',
                   icon: Icons.card_giftcard_rounded,
-                  onPressed: () {
-                    ScaffoldMessenger.of(context)
-                      ..hideCurrentSnackBar()
-                      ..showSnackBar(
-                        const SnackBar(content: Text('Gift flow ready')),
-                      );
-                  },
+                  onPressed: null,
                 ),
               ],
             ),

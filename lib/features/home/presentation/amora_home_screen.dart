@@ -11,7 +11,6 @@ import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/widgets/amora_profile_image.dart';
 import 'package:amora_ai/core/widgets/amora_filter_chip.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
-import 'package:amora_ai/core/widgets/floating_ai_assistant.dart';
 import 'package:amora_ai/core/widgets/floating_bottom_nav.dart';
 import 'package:amora_ai/core/widgets/premium_banner_card.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
@@ -22,9 +21,9 @@ import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/core/widgets/section_header.dart';
 import 'package:amora_ai/features/ai_coach/presentation/ai_dating_coach_screen.dart';
 import 'package:amora_ai/features/auth/presentation/compatibility_onboarding_screen.dart';
+import 'package:amora_ai/features/chat/data/local_chat_repository.dart';
 import 'package:amora_ai/features/chat/presentation/chat_detail_screen.dart';
 import 'package:amora_ai/features/chat/presentation/chat_list_screen.dart';
-import 'package:amora_ai/features/commerce/presentation/send_gift_screen.dart';
 import 'package:amora_ai/features/date_spots/presentation/date_spots_map_screen.dart';
 import 'package:amora_ai/features/discover/presentation/advanced_filters_screen.dart';
 import 'package:amora_ai/features/events/presentation/events_screen.dart';
@@ -35,7 +34,6 @@ import 'package:amora_ai/features/profile/presentation/photo_manager_screen.dart
 import 'package:amora_ai/features/profile/presentation/profile_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_setup_screen.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
-import 'package:amora_ai/features/roadmap/presentation/phase23_premium_screens.dart';
 import 'package:amora_ai/features/subscription/presentation/subscription_screen.dart';
 import 'package:flutter/material.dart';
 
@@ -74,11 +72,7 @@ class _AmoraHomeScreenState extends State<AmoraHomeScreen> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              AppColors.lightPinkBackground,
-              AppColors.background,
-              AppColors.lightPinkBackground,
-            ],
+            colors: [AppColors.background, AppColors.surface],
           ),
         ),
         child: SafeArea(
@@ -179,24 +173,9 @@ class _AmoraHomeScreenState extends State<AmoraHomeScreen> {
                                         ),
                                   onPass: () =>
                                       _advanceHero('Showing another profile'),
-                                  onGift: () => isGuest
-                                      ? _requireAuth(
-                                          () => Navigator.of(
-                                            context,
-                                          ).pushNamed(SendGiftScreen.routeName),
-                                        )
-                                      : Navigator.of(
-                                          context,
-                                        ).pushNamed(SendGiftScreen.routeName),
                                   onChat: () => isGuest
-                                      ? _requireAuth(
-                                          () => Navigator.of(context).pushNamed(
-                                            ChatDetailScreen.routeName,
-                                          ),
-                                        )
-                                      : Navigator.of(
-                                          context,
-                                        ).pushNamed(ChatDetailScreen.routeName),
+                                      ? _requireAuth(_openHeroChat)
+                                      : _openHeroChat(),
                                   onMatch: () => isGuest
                                       ? _requireAuth(
                                           () => Navigator.of(context).pushNamed(
@@ -268,31 +247,6 @@ class _AmoraHomeScreenState extends State<AmoraHomeScreen> {
                               ),
                               const SizedBox(height: AmoraSpacing.space24),
                               PremiumBannerCard(
-                                title: 'AI relationship ecosystem',
-                                subtitle:
-                                    'Explore learning mode, travel, question decks, matchmaker, events, and relationship prediction.',
-                                cta: 'Open Modules',
-                                badge: 'Phase 2+3',
-                                icon: Icons.auto_awesome_rounded,
-                                gradient: const [
-                                  AppColors.primaryPurple,
-                                  AppColors.primaryPurple,
-                                  AppColors.primaryPurple,
-                                ],
-                                onTap: () => isGuest
-                                    ? _requireAuth(
-                                        () => Navigator.of(context).pushNamed(
-                                          RelationshipEcosystemHubScreen
-                                              .routeName,
-                                        ),
-                                      )
-                                    : Navigator.of(context).pushNamed(
-                                        RelationshipEcosystemHubScreen
-                                            .routeName,
-                                      ),
-                              ),
-                              const SizedBox(height: 26),
-                              PremiumBannerCard(
                                 title: 'Gold unlocks intent-first dating',
                                 subtitle:
                                     'See deeper compatibility, priority likes, and AI-crafted first messages.',
@@ -333,13 +287,6 @@ class _AmoraHomeScreenState extends State<AmoraHomeScreen> {
                         ),
                       ),
                     ),
-                    Positioned(
-                      right: 22,
-                      bottom:
-                          FloatingBottomNav.assistantBottomPadding +
-                          bottomInset,
-                      child: const FloatingAiAssistant(),
-                    ),
                   ],
                 );
               },
@@ -354,6 +301,16 @@ class _AmoraHomeScreenState extends State<AmoraHomeScreen> {
     Navigator.of(
       context,
     ).pushNamed(ProfileDetailScreen.routeName, arguments: profile);
+  }
+
+  void _openHeroChat() {
+    final profile = ImageRepository.profileByName(_heroProfile.name);
+    final conversationId = LocalChatRepository.instance
+        .ensureConversationForProfile(profile);
+    Navigator.of(context).pushNamed(
+      ChatDetailScreen.routeName,
+      arguments: ChatDetailArgs(conversationId: conversationId),
+    );
   }
 
   Future<void> _requireAuth(VoidCallback action) {
@@ -742,7 +699,6 @@ class _HeroMatchCard extends StatelessWidget {
     required this.onOpen,
     required this.onLike,
     required this.onPass,
-    required this.onGift,
     required this.onChat,
     required this.onMatch,
     required this.onUndo,
@@ -753,7 +709,6 @@ class _HeroMatchCard extends StatelessWidget {
   final VoidCallback onOpen;
   final VoidCallback onLike;
   final VoidCallback onPass;
-  final VoidCallback onGift;
   final VoidCallback onChat;
   final VoidCallback onMatch;
   final VoidCallback onUndo;
@@ -789,18 +744,9 @@ class _HeroMatchCard extends StatelessWidget {
                     alignment: Alignment.topCenter,
                     borderRadius: BorderRadius.circular(AmoraRadius.xxxl),
                   ),
-                  const DecoratedBox(
+                  DecoratedBox(
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          AppColors.transparent,
-                          AppColors.transparent,
-                          AppColors.text,
-                        ],
-                        stops: [0, .52, 1],
-                      ),
+                      color: AppColors.primary.withValues(alpha: .40),
                     ),
                   ),
                   Positioned(
@@ -907,11 +853,6 @@ class _HeroMatchCard extends StatelessWidget {
                                   label: 'Match',
                                   emphasis: true,
                                   onTap: onMatch,
-                                ),
-                                _CircleAction(
-                                  icon: Icons.card_giftcard_rounded,
-                                  label: 'Gift',
-                                  onTap: onGift,
                                 ),
                                 _CircleAction(
                                   icon: Icons.chat_bubble_rounded,
@@ -1463,18 +1404,9 @@ class _EventBanner extends StatelessWidget {
                 fit: BoxFit.cover,
                 borderRadius: BorderRadius.circular(28),
               ),
-              const DecoratedBox(
+              DecoratedBox(
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      AppColors.transparent,
-                      AppColors.transparent,
-                      AppColors.text,
-                    ],
-                    stops: [0, .48, 1],
-                  ),
+                  color: AppColors.primary.withValues(alpha: .40),
                 ),
               ),
               Positioned(

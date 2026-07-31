@@ -1,7 +1,5 @@
-import 'package:amora_ai/core/access/amora_access.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
-import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/premium_avatar.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
@@ -9,6 +7,7 @@ import 'package:amora_ai/features/settings/presentation/safety_privacy_screen.da
 import 'package:amora_ai/features/settings/presentation/widgets/settings_support_widgets.dart';
 import 'package:amora_ai/features/settings/presentation/notification_preferences_screen.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
+import 'package:amora_ai/features/profile/presentation/profile_edit_screen.dart';
 import 'package:amora_ai/features/subscription/presentation/subscription_screen.dart';
 import 'package:amora_ai/features/support/presentation/faq_support_screen.dart';
 import 'package:flutter/material.dart';
@@ -23,16 +22,6 @@ class ProfileSettingsScreen extends StatefulWidget {
 }
 
 class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
-  final Map<String, String> _info = {
-    'Full Name': 'Amora Member',
-    'Email': 'member@amora.ai',
-    'Phone Number': '+91 98765 43210',
-    'City': 'Ahmedabad',
-    'Gender': 'Man',
-    'Date of Birth': '18 Aug 1997',
-    'Relationship Intention': 'Long-term relationship',
-  };
-
   var _newMatches = true;
   var _newMessages = true;
   var _eventReminders = true;
@@ -44,17 +33,23 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final profile = LocalProfileRepository.instance.profile;
+    final personalInfo = <String, String>{
+      'Full Name': profile.name,
+      'Email': profile.email,
+      'Phone Number': profile.phoneNumber,
+      'City': profile.location,
+      'Gender': profile.gender,
+      'Date of Birth': profile.birthdate,
+      'Relationship Intention': profile.datingIntention,
+    };
     return Scaffold(
       body: DecoratedBox(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              AppColors.lightPinkBackground,
-              AppColors.background,
-              AppColors.lavenderBackground,
-            ],
+            colors: [AppColors.background, AppColors.surface],
           ),
         ),
         child: SafeArea(
@@ -106,33 +101,19 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                   SettingsSectionCard(
                     title: 'Personal Info',
                     children: [
-                      for (final entry in _info.entries)
+                      for (final entry in personalInfo.entries)
                         SettingsTile(
                           icon: _iconFor(entry.key),
                           title: entry.key,
-                          subtitle: entry.value,
-                          onTap: () => _showEditSheet(entry.key, entry.value),
+                          subtitle: entry.value.isEmpty
+                              ? 'Not provided'
+                              : entry.value,
+                          onTap:
+                              entry.key == 'Email' ||
+                                  entry.key == 'Phone Number'
+                              ? null
+                              : _openProfileEditor,
                         ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  SettingsSectionCard(
-                    title: 'Verification Status',
-                    subtitle: 'Trust badges shown across AMORA AI.',
-                    children: [
-                      const _VerificationRow('Selfie Verified'),
-                      const _VerificationRow('ID Verified'),
-                      const _VerificationRow('Blue Tick Active'),
-                      const SizedBox(height: 12),
-                      AppPrimaryButton(
-                        label: 'Review Verification',
-                        icon: Icons.verified_rounded,
-                        variant: AppPrimaryButtonVariant.outlined,
-                        onPressed: () => showSettingsSnack(
-                          context,
-                          'Verification details reviewed',
-                        ),
-                      ),
                     ],
                   ),
                   const SizedBox(height: 16),
@@ -220,28 +201,12 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                         ).pushNamed(NotificationPreferencesScreen.routeName),
                       ),
                       SettingsTile(
-                        icon: Icons.password_rounded,
-                        title: 'Change Password',
-                        subtitle: 'Update login credentials.',
-                        onTap: () => showSettingsSnack(
-                          context,
-                          'Password update requested',
-                        ),
-                      ),
-                      SettingsTile(
                         icon: Icons.workspace_premium_rounded,
                         title: 'Manage Subscription',
                         subtitle: 'View and upgrade your plan.',
                         onTap: () => Navigator.of(
                           context,
                         ).pushNamed(SubscriptionScreen.routeName),
-                      ),
-                      SettingsTile(
-                        icon: Icons.logout_rounded,
-                        title: 'Logout',
-                        subtitle: 'Sign out of this device.',
-                        danger: true,
-                        onTap: _showLogoutSheet,
                       ),
                     ],
                   ),
@@ -266,105 +231,9 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     };
   }
 
-  void _showEditSheet(String field, String value) {
-    final controller = TextEditingController(text: value);
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: AppColors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
-      ),
-      builder: (context) {
-        final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
-        return SafeArea(
-          child: Padding(
-            padding: EdgeInsets.fromLTRB(20, 18, 20, 20 + bottomInset),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Edit $field',
-                  style: const TextStyle(
-                    color: AppColors.deepWine,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                TextField(
-                  controller: controller,
-                  decoration: InputDecoration(labelText: field),
-                ),
-                const SizedBox(height: 16),
-                SheetPrimaryButton(
-                  label: 'Save Changes',
-                  icon: Icons.check_rounded,
-                  onPressed: () {
-                    setState(() => _info[field] = controller.text.trim());
-                    Navigator.pop(context);
-                    showSettingsSnack(context, '$field updated');
-                  },
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  void _showLogoutSheet() {
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: AppColors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
-      ),
-      builder: (context) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Text(
-                  'Logout from AMORA AI?',
-                  style: TextStyle(
-                    color: AppColors.deepWine,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'You can sign back in anytime with your registered phone or email.',
-                  style: TextStyle(
-                    color: AppColors.textGray,
-                    height: 1.35,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 18),
-                PremiumDangerButton(
-                  label: 'Logout',
-                  icon: Icons.logout_rounded,
-                  onPressed: () {
-                    Navigator.pop(context);
-                    AmoraSession.logOut();
-                    Navigator.of(
-                      this.context,
-                    ).pushNamedAndRemoveUntil('/browse', (route) => false);
-                  },
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
+  Future<void> _openProfileEditor() async {
+    await Navigator.of(context).pushNamed(ProfileEditScreen.routeName);
+    if (mounted) setState(() {});
   }
 }
 
@@ -383,9 +252,9 @@ class _UserSummaryCard extends StatelessWidget {
           decoration: BoxDecoration(
             gradient: const LinearGradient(
               colors: [
-                AppColors.deepWine,
-                AppColors.primaryPurple,
-                AppColors.primaryRose,
+                AppColors.secondary,
+                AppColors.tertiary,
+                AppColors.primary,
               ],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
@@ -526,34 +395,6 @@ class _MiniNavButton extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _VerificationRow extends StatelessWidget {
-  const _VerificationRow(this.label);
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Row(
-        children: [
-          const Icon(Icons.check_circle_rounded, color: AppColors.successGreen),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(
-                color: AppColors.deepWine,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }

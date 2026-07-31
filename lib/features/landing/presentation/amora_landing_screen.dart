@@ -1,3 +1,4 @@
+import 'package:amora_ai/core/branding/amora_brand_assets.dart';
 import 'package:amora_ai/core/constants/app_images.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/theme/amora_icon_sizes.dart';
@@ -129,31 +130,24 @@ class _LandingHeader extends StatelessWidget {
       children: [
         Hero(
           tag: 'amora-logo',
-          child: ClipOval(
-            child: Image.asset(
-              AppImages.logo,
-              width: 42,
-              height: 42,
-              fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => CircleAvatar(
-                backgroundColor: AppColors.primaryPurple,
-                child: Text(
-                  'a',
-                  style: AmoraTextStyles.titleMedium.copyWith(
-                    color: AppColors.surface,
-                  ),
-                ),
-              ),
-            ),
+          child: Image.asset(
+            AppImages.logo,
+            width: 42,
+            height: 42,
+            fit: BoxFit.contain,
+            semanticLabel: 'Amora',
           ),
         ),
         const SizedBox(width: AmoraSpacing.space8),
         Expanded(
-          child: Text(
-            'AMORA AI',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: AmoraTextStyles.titleMedium,
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Image.asset(
+              AmoraBrandAssets.wordmark,
+              height: 21,
+              fit: BoxFit.contain,
+              semanticLabel: 'AMORAA',
+            ),
           ),
         ),
         AppPrimaryButton(
@@ -219,15 +213,7 @@ class _HeroSection extends StatelessWidget {
                 child: DecoratedBox(
                   decoration: BoxDecoration(
                     borderRadius: AmoraRadius.card,
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        AppColors.transparent,
-                        AppColors.text.withValues(alpha: .18),
-                        AppColors.text.withValues(alpha: .76),
-                      ],
-                    ),
+                    color: AppColors.primary.withValues(alpha: .38),
                   ),
                 ),
               ),
@@ -481,15 +467,7 @@ class _ImageStoryCard extends StatelessWidget {
             ),
             DecoratedBox(
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    AppColors.transparent,
-                    AppColors.text.withValues(alpha: .12),
-                    AppColors.text.withValues(alpha: .76),
-                  ],
-                ),
+                color: AppColors.primary.withValues(alpha: .38),
               ),
             ),
             Positioned(

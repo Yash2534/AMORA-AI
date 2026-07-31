@@ -15,7 +15,6 @@ class PremiumImageCard extends StatelessWidget {
     this.height,
     this.fit = BoxFit.cover,
     this.borderRadius = AmoraRadius.card,
-    this.gradientColors,
     this.overlayChild,
     this.onTap,
   });
@@ -28,7 +27,6 @@ class PremiumImageCard extends StatelessWidget {
   final double? height;
   final BoxFit fit;
   final BorderRadius borderRadius;
-  final List<Color>? gradientColors;
   final Widget? overlayChild;
   final VoidCallback? onTap;
 
@@ -53,19 +51,7 @@ class PremiumImageCard extends StatelessWidget {
             child: DecoratedBox(
               decoration: BoxDecoration(
                 borderRadius: borderRadius,
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors:
-                      gradientColors ??
-                      [
-                        AppColors.transparent,
-                        AppColors.transparent,
-                        AppColors.text.withValues(alpha: 0.08),
-                        AppColors.text.withValues(alpha: 0.72),
-                      ],
-                  stops: const [0.0, 0.4, 0.7, 1.0],
-                ),
+                color: AppColors.primary.withValues(alpha: .34),
               ),
             ),
           ),

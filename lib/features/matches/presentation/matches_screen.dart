@@ -5,6 +5,7 @@ import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/amora_profile_image.dart';
 import 'package:amora_ai/core/widgets/floating_bottom_nav.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
+import 'package:amora_ai/features/chat/data/local_chat_repository.dart';
 import 'package:amora_ai/features/chat/presentation/chat_detail_screen.dart';
 import 'package:amora_ai/features/discover/presentation/discover_action_controller.dart';
 import 'package:amora_ai/features/profile/presentation/profile_detail_screen.dart';
@@ -549,7 +550,12 @@ class _MatchesScreenState extends State<MatchesScreen> {
   }
 
   void _openConversation(DummyProfile profile) {
-    Navigator.of(context).pushNamed(ChatDetailScreen.routeName);
+    final conversationId = LocalChatRepository.instance
+        .ensureConversationForProfile(profile);
+    Navigator.of(context).pushNamed(
+      ChatDetailScreen.routeName,
+      arguments: ChatDetailArgs(conversationId: conversationId),
+    );
   }
 
   void _showWhyThisMatch(DummyProfile profile) {

@@ -26,6 +26,10 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Amora uses the camera when you choose to take a profile photo or verification selfie.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Amora accesses selected photos when you choose profile, event, document, or report images.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

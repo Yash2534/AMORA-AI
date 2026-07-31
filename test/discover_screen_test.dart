@@ -187,9 +187,12 @@ void main() {
     );
     expect(scrollable.scrollDirection, Axis.horizontal);
 
-    final onlineFilter = find.byKey(const ValueKey('discover-filter-Online'));
-    await tester.ensureVisible(onlineFilter);
+    await tester.drag(
+      find.descendant(of: rail, matching: find.byType(ListView)),
+      const Offset(-180, 0),
+    );
     await tester.pumpAndSettle();
+    final onlineFilter = find.byKey(const ValueKey('discover-filter-Online'));
     await tester.tap(onlineFilter);
     await tester.pumpAndSettle();
     final firstOnline = ImageRepository.profiles.firstWhere(

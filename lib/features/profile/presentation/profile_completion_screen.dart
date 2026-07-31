@@ -1,4 +1,3 @@
-import 'package:amora_ai/core/navigation/main_shell.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
@@ -11,6 +10,7 @@ import 'package:amora_ai/features/profile/presentation/photo_manager_screen.dart
 import 'package:amora_ai/features/profile/presentation/profile_preview_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_basic_details_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_section_editor_screen.dart';
+import 'package:amora_ai/features/discover/presentation/discover_screen.dart';
 import 'package:flutter/material.dart';
 
 class ProfileCompletionScreen extends StatefulWidget {
@@ -206,12 +206,9 @@ class _ProfileCompletionScreenState extends State<ProfileCompletionScreen> {
   }
 
   void _returnToDiscover() {
-    final navigator = Navigator.of(context);
-    if (navigator.canPop()) {
-      navigator.pop();
-    } else {
-      navigator.pushNamedAndRemoveUntil(MainShell.routeName, (route) => false);
-    }
+    Navigator.of(
+      context,
+    ).pushNamedAndRemoveUntil(DiscoverScreen.routeName, (route) => false);
   }
 }
 

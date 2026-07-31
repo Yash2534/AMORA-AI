@@ -1,4 +1,5 @@
 import 'package:amora_ai/core/access/amora_access.dart';
+import 'package:amora_ai/core/media/amora_media_picker.dart';
 import 'package:amora_ai/core/theme/amora_icons.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
@@ -10,9 +11,14 @@ import 'package:amora_ai/features/discover/presentation/browse_grid_screen.dart'
 import 'package:flutter/material.dart';
 
 class KycVerificationScreen extends StatefulWidget {
-  const KycVerificationScreen({super.key});
+  const KycVerificationScreen({
+    super.key,
+    this.mediaPicker = const DeviceAmoraMediaPicker(),
+  });
 
   static const routeName = '/kyc';
+
+  final AmoraMediaPicker mediaPicker;
 
   @override
   State<KycVerificationScreen> createState() => _KycVerificationScreenState();
@@ -26,10 +32,12 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
   String _selfieStatus = 'Pending';
   bool _showResult = false;
   bool _failed = false;
+  bool _pickingDocument = false;
+  bool _pickingSelfie = false;
 
   double get _progress {
     var score = 0.0;
-    if (_docStatus == 'Submitted') score += .38;
+    if (_docStatus == 'Selected') score += .38;
     if (_selfieStatus == 'Captured') score += .38;
     if (_showResult && !_failed) score += .24;
     return score.clamp(0, 1);
@@ -98,30 +106,24 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
                         _PrivacyNotice(document: _document),
                         const SizedBox(height: AmoraSpacing.space20),
                         AppPrimaryButton(
-                          label: 'Upload $_document Placeholder',
+                          label: _pickingDocument
+                              ? 'Loading…'
+                              : 'Choose $_document image',
                           icon: Icons.upload_file_rounded,
-                          onPressed: () =>
-                              setState(() => _docStatus = 'Submitted'),
+                          onPressed: _pickingDocument ? null : _pickDocument,
                         ),
                         const SizedBox(height: AmoraSpacing.space12),
                         AppPrimaryButton(
-                          label: 'Capture Selfie Placeholder',
+                          label: _pickingSelfie ? 'Loading…' : 'Take a selfie',
                           icon: Icons.camera_alt_rounded,
                           variant: AppPrimaryButtonVariant.outlined,
-                          onPressed: () =>
-                              setState(() => _selfieStatus = 'Captured'),
+                          onPressed: _pickingSelfie ? null : _captureSelfie,
                         ),
                         const SizedBox(height: AmoraSpacing.space12),
                         AppPrimaryButton(
                           label: 'Run Face Verification',
                           icon: Icons.face_retouching_natural_rounded,
                           onPressed: _progress >= .76 ? _verify : null,
-                        ),
-                        const SizedBox(height: AmoraSpacing.space8),
-                        AppPrimaryButton(
-                          label: 'Preview failure state',
-                          variant: AppPrimaryButtonVariant.text,
-                          onPressed: _simulateFailure,
                         ),
                       ],
                       const SizedBox(height: AmoraSpacing.space12),
@@ -148,11 +150,42 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
     });
   }
 
-  void _simulateFailure() {
-    setState(() {
-      _showResult = true;
-      _failed = true;
-    });
+  Future<void> _pickDocument() async {
+    setState(() => _pickingDocument = true);
+    final result = await widget.mediaPicker.pickImage(
+      source: AmoraMediaSource.gallery,
+    );
+    if (!mounted) return;
+    setState(() => _pickingDocument = false);
+    if (!result.succeeded) {
+      showAmoraMediaResult(
+        context,
+        result: result,
+        picker: widget.mediaPicker,
+        onRetry: _pickDocument,
+      );
+      return;
+    }
+    setState(() => _docStatus = 'Selected');
+  }
+
+  Future<void> _captureSelfie() async {
+    setState(() => _pickingSelfie = true);
+    final result = await widget.mediaPicker.pickImage(
+      source: AmoraMediaSource.camera,
+    );
+    if (!mounted) return;
+    setState(() => _pickingSelfie = false);
+    if (!result.succeeded) {
+      showAmoraMediaResult(
+        context,
+        result: result,
+        picker: widget.mediaPicker,
+        onRetry: _captureSelfie,
+      );
+      return;
+    }
+    setState(() => _selfieStatus = 'Captured');
   }
 
   void _retry() {
@@ -277,7 +310,7 @@ class _DocumentPicker extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Choose document placeholder',
+            'Choose a document',
             style: AmoraTextStyles.titleLarge.copyWith(
               color: AppColors.deepWine,
             ),
@@ -421,7 +454,7 @@ class _PrivacyNotice extends StatelessWidget {
           const SizedBox(width: AmoraSpacing.space12),
           Expanded(
             child: Text(
-              '$document is represented as a frontend placeholder only. No document is uploaded, stored, or sent to a backend in this demo.',
+              'Your $document image and selfie remain on this device during this verification step.',
               style: AmoraTextStyles.bodyMedium.copyWith(
                 color: AppColors.deepWine,
               ),
@@ -468,8 +501,8 @@ class _ResultCard extends StatelessWidget {
           const SizedBox(height: AmoraSpacing.space8),
           Text(
             failed
-                ? 'Face clarity was too low in this frontend simulation.'
-                : 'Your blue-tick trust layer is ready for the demo flow.',
+                ? 'Face clarity was too low. Use even lighting and keep your full face in frame.'
+                : 'Your document and selfie checks are complete.',
             textAlign: TextAlign.center,
             style: AmoraTextStyles.bodyMedium.copyWith(
               color: AppColors.textGray,

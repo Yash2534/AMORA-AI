@@ -59,7 +59,7 @@ class DashboardHeader extends StatelessWidget {
           height: AmoraSpacing.controlHeight,
           decoration: BoxDecoration(
             gradient: const LinearGradient(
-              colors: [AppColors.primaryRose, AppColors.primaryPurple],
+              colors: [AppColors.secondary, AppColors.primary],
             ),
             borderRadius: AmoraRadius.card,
           ),
@@ -568,14 +568,7 @@ class DateSpotCard extends StatelessWidget {
                     ),
                     DecoratedBox(
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            AppColors.transparent,
-                            AppColors.text.withValues(alpha: .64),
-                          ],
-                        ),
+                        color: AppColors.primary.withValues(alpha: .40),
                       ),
                     ),
                     Positioned(
@@ -728,14 +721,7 @@ class VenueMapPreviewCard extends StatelessWidget {
             ),
             DecoratedBox(
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    AppColors.transparent,
-                    AppColors.text.withValues(alpha: .62),
-                  ],
-                ),
+                color: AppColors.primary.withValues(alpha: .38),
               ),
             ),
             const _MapPin(left: 42, top: 52, label: 'Mocha'),

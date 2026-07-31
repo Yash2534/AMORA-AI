@@ -182,7 +182,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
   void _runExistingProductionPresentation(_PaymentReviewData review) {
     if (_selectedMethod == 'Razorpay Gateway' && !_productionFailed) {
       setState(() => _productionFailed = true);
-      showPremiumSnack(context, 'Razorpay placeholder failure simulated');
+      showPremiumSnack(context, 'Payment could not be completed. Try again.');
       return;
     }
     showAmoraDialog<void>(

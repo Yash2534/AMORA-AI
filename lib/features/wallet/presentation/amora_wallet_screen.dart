@@ -33,7 +33,7 @@ class _AmoraWalletScreenState extends State<AmoraWalletScreen> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [AppColors.background, AppColors.lavenderBackground],
+            colors: [AppColors.background, AppColors.surface],
           ),
         ),
         child: SafeArea(
