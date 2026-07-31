@@ -40,6 +40,7 @@ class AmoraaProfilePhotoSection extends StatelessWidget {
           SizedBox(
             height: 128,
             child: ListView.separated(
+              key: const PageStorageKey<String>('profile-form-photo-list'),
               scrollDirection: Axis.horizontal,
               physics: const ClampingScrollPhysics(),
               itemCount: profile.photos.length,

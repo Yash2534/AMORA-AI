@@ -96,7 +96,6 @@ class _ProfileCompletionScreenState extends State<ProfileCompletionScreen> {
           child: Form(
             key: _formKey,
             child: CustomScrollView(
-              key: const PageStorageKey<String>('profile-completion-scroll'),
               controller: _scrollController,
               keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
               slivers: [
@@ -108,59 +107,62 @@ class _ProfileCompletionScreenState extends State<ProfileCompletionScreen> {
                     AmoraSpacing.space40 +
                         MediaQuery.viewInsetsOf(context).bottom,
                   ),
-                  sliver: SliverList.list(
-                    children: [
-                      _CompletionHeader(profile: profile, result: result),
-                      const SizedBox(height: AmoraSpacing.space16),
-                      if (result.isComplete)
-                        _CompletionReadyCard(
-                          onViewProfile: () =>
-                              _saveAndOpen(ProfileScreen.routeName),
-                          onDiscover: () =>
-                              _saveAndOpen(DiscoverScreen.routeName),
-                        )
-                      else
-                        _NextStepCard(
-                          section: result.recommendedNext!,
-                          onContinue: () =>
-                              _focusSection(result.recommendedNext!.id),
+                  sliver: SliverToBoxAdapter(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _CompletionHeader(profile: profile, result: result),
+                        const SizedBox(height: AmoraSpacing.space16),
+                        if (result.isComplete)
+                          _CompletionReadyCard(
+                            onViewProfile: () =>
+                                _saveAndOpen(ProfileScreen.routeName),
+                            onDiscover: () =>
+                                _saveAndOpen(DiscoverScreen.routeName),
+                          )
+                        else
+                          _NextStepCard(
+                            section: result.recommendedNext!,
+                            onContinue: () =>
+                                _focusSection(result.recommendedNext!.id),
+                          ),
+                        const SizedBox(height: AmoraSpacing.space24),
+                        Text(
+                          'Build your profile',
+                          style: AmoraTextStyles.headlineSmall.copyWith(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
-                      const SizedBox(height: AmoraSpacing.space24),
-                      Text(
-                        'Build your profile',
-                        style: AmoraTextStyles.headlineSmall.copyWith(
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.w800,
+                        const SizedBox(height: AmoraSpacing.space4),
+                        Text(
+                          'Open a section, add what’s missing, and watch your progress update.',
+                          style: AmoraTextStyles.bodyMedium.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: AmoraSpacing.space4),
-                      Text(
-                        'Open a section, add what’s missing, and watch your progress update.',
-                        style: AmoraTextStyles.bodyMedium.copyWith(
-                          color: AppColors.textSecondary,
+                        const SizedBox(height: AmoraSpacing.space16),
+                        for (final section in result.sections)
+                          _GuidedSectionCard(
+                            key: _sectionKeys[section.id],
+                            section: section,
+                            expanded: _expanded.contains(section.id),
+                            showValidation: _showValidation,
+                            onExpansionChanged: (expanded) {
+                              setState(() {
+                                expanded
+                                    ? _expanded.add(section.id)
+                                    : _expanded.remove(section.id);
+                              });
+                            },
+                            child: _sectionContent(section.id, profile),
+                          ),
+                        _GuidedVerificationCard(
+                          onOpen: () =>
+                              _openNamed(KycVerificationScreen.routeName),
                         ),
-                      ),
-                      const SizedBox(height: AmoraSpacing.space16),
-                      for (final section in result.sections)
-                        _GuidedSectionCard(
-                          key: _sectionKeys[section.id],
-                          section: section,
-                          expanded: _expanded.contains(section.id),
-                          showValidation: _showValidation,
-                          onExpansionChanged: (expanded) {
-                            setState(() {
-                              expanded
-                                  ? _expanded.add(section.id)
-                                  : _expanded.remove(section.id);
-                            });
-                          },
-                          child: _sectionContent(section.id, profile),
-                        ),
-                      _GuidedVerificationCard(
-                        onOpen: () =>
-                            _openNamed(KycVerificationScreen.routeName),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -461,7 +463,7 @@ class _GuidedSectionCard extends StatelessWidget {
           radius: 20,
           padding: EdgeInsets.zero,
           child: ExpansionTile(
-            key: ValueKey('completion-section-${section.id.name}-$expanded'),
+            key: ValueKey('completion-section-${section.id.name}'),
             initiallyExpanded: expanded,
             onExpansionChanged: onExpansionChanged,
             tilePadding: const EdgeInsets.symmetric(

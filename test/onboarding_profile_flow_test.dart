@@ -288,6 +288,7 @@ void main() {
 
   test('completion percentage uses transparent weighted sections', () {
     final blank = originalProfile.copyWith(
+      name: '',
       photos: const [],
       birthdate: '',
       gender: '',
@@ -331,6 +332,8 @@ void main() {
       find.byKey(const ValueKey('profile-completion-primary-button')),
       findsOneWidget,
     );
+    await tester.ensureVisible(find.text('Basic Details'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Basic Details'));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('profile-name-field')), findsOneWidget);

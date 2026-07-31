@@ -177,6 +177,13 @@ void main() {
       );
       await tester.pumpAndSettle();
 
+      if (screen is ProfileCompletionScreen) {
+        await tester.ensureVisible(find.text('Interests'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Interests'));
+        await tester.pumpAndSettle();
+      }
+
       final interestsHeading = screen is ProfilePreviewScreen
           ? find.text('Interests')
           : find.textContaining('Interests');

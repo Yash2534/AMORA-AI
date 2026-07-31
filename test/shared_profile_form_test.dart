@@ -103,12 +103,22 @@ void main() {
 
   Future<void> expandAllCompletionSections(WidgetTester tester) async {
     for (final section in ProfileCompletionSectionId.values) {
-      final title = repository.profile.completionResult.sections
-          .firstWhere((item) => item.id == section)
-          .title;
-      await tester.tap(find.text(title).first);
+      final sectionCard = find.byKey(
+        ValueKey<String>('completion-section-${section.name}'),
+      );
+      await tester.ensureVisible(sectionCard);
+      await tester.pumpAndSettle();
+      await tester.tap(sectionCard);
       await tester.pumpAndSettle();
     }
+  }
+
+  Future<void> openCompletionSection(WidgetTester tester, String title) async {
+    final sectionTitle = find.text(title).first;
+    await tester.ensureVisible(sectionTitle);
+    await tester.pumpAndSettle();
+    await tester.tap(sectionTitle);
+    await tester.pumpAndSettle();
   }
 
   testWidgets('Completion and Edit are independent screen implementations', (
@@ -130,8 +140,7 @@ void main() {
       findsOneWidget,
     );
 
-    await tester.tap(find.text('Basic Details'));
-    await tester.pumpAndSettle();
+    await openCompletionSection(tester, 'Basic Details');
     expect(find.text('Edit destination'), findsNothing);
     expect(find.text('Complete your profile'), findsOneWidget);
 
@@ -165,9 +174,17 @@ void main() {
       const ProfileEditScreen(),
       size: const Size(430, 5000),
     );
-    for (final section in approvedSections) {
-      expect(find.text(section), findsOneWidget, reason: 'Edit: $section');
+    for (final section in ProfileCompletionSectionId.values) {
+      expect(
+        find.byKey(ValueKey<String>('edit-section-${section.name}')),
+        findsOneWidget,
+        reason: 'Edit: ${section.name}',
+      );
     }
+    expect(
+      find.byKey(const ValueKey<String>('edit-section-verification')),
+      findsOneWidget,
+    );
   });
 
   testWidgets('both screens reuse every approved shared field component', (
@@ -213,8 +230,7 @@ void main() {
     await pumpFlow(tester, const ProfileCompletionScreen());
 
     expect(find.text('0%'), findsOneWidget);
-    await tester.tap(find.text('Basic Details'));
-    await tester.pumpAndSettle();
+    await openCompletionSection(tester, 'Basic Details');
     await tester.enterText(
       find.byKey(const ValueKey('profile-name-field')),
       'Guided Member',
@@ -230,8 +246,7 @@ void main() {
   ) async {
     await repository.resetForTesting(blankProfile());
     await pumpFlow(tester, const ProfileCompletionScreen());
-    await tester.tap(find.text('Basic Details'));
-    await tester.pumpAndSettle();
+    await openCompletionSection(tester, 'Basic Details');
     await tester.enterText(
       find.byKey(const ValueKey('profile-name-field')),
       'Persisted Guided Member',

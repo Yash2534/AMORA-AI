@@ -81,6 +81,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(AmoraaProfileForm), findsNothing);
     expect(find.text('Complete your profile'), findsOneWidget);
+    await tester.ensureVisible(find.text('Profile Photos'));
+    await tester.pumpAndSettle();
     expect(find.text('Profile Photos'), findsOneWidget);
     expect(find.text('Continue profile'), findsOneWidget);
     expect(find.text('Preview profile'), findsNothing);

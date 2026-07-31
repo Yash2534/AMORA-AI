@@ -62,7 +62,12 @@ void main() {
   ) async {
     await pumpScreen(tester, const ProfileCompletionScreen());
 
-    await tester.tap(find.text('Height, Languages & Religion'));
+    final identitySection = find.byKey(
+      const ValueKey('completion-section-identityDetails'),
+    );
+    await tester.ensureVisible(identitySection);
+    await tester.pumpAndSettle();
+    await tester.tap(identitySection);
     await tester.pumpAndSettle();
     for (final field in const ['Height', 'Languages', 'Religion']) {
       expect(find.text(field), findsOneWidget);
