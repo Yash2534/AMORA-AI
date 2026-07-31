@@ -715,7 +715,7 @@ class LegalSupportLinks extends StatelessWidget {
       children: [
         const _SectionHeading(
           title: 'Safety and community',
-          subtitle: 'Helpful resources already available in Amora',
+          subtitle: 'Helpful resources already available in AMORAA',
         ),
         const SizedBox(height: 10),
         Wrap(

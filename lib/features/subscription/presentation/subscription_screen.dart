@@ -197,7 +197,7 @@ class MembershipAppBar extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Amora Membership',
+                'AMORAA Membership',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(

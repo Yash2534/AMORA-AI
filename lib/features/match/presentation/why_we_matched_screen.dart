@@ -202,7 +202,7 @@ class _CompatibilityOverview extends StatelessWidget {
           ),
           const SizedBox(height: AmoraSpacing.space12),
           Text(
-            'AMORA weighs emotional rhythm, communication ease, lifestyle, values, love language, goals, interests, future plans, and conversation chemistry.',
+            'AMORAA weighs emotional rhythm, communication ease, lifestyle, values, love language, goals, interests, future plans, and conversation chemistry.',
             style: AmoraTextStyles.bodyMedium.copyWith(
               color: AppColors.textDark,
             ),

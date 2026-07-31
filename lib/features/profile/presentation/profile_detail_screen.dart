@@ -359,7 +359,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
                 ),
                 const SizedBox(height: AmoraSpacing.space8),
                 Text(
-                  'Report or block if something feels off. Amora keeps respectful conversations first.',
+                  'Report or block if something feels off. AMORAA keeps respectful conversations first.',
                   style: AmoraTextStyles.bodyMedium.copyWith(
                     color: AppColors.textNeutral.withValues(alpha: .70),
                   ),
@@ -890,7 +890,6 @@ class ProfileQuickFacts extends StatelessWidget {
       ),
       _SymbolicFact(Icons.smoke_free_rounded, 'Smoking', profile.smoking),
       _SymbolicFact(Icons.local_bar_outlined, 'Drinking', profile.drinking),
-      _SymbolicFact(Icons.child_care_rounded, 'Children', profile.children),
     ].where((fact) => fact.value.trim().isNotEmpty).toList(growable: false);
 
     return SizedBox(
@@ -1415,7 +1414,7 @@ class CompatibilitySection extends StatelessWidget {
               const SizedBox(width: AmoraSpacing.space16),
               Expanded(
                 child: Text(
-                  'Amora’s supplied match score reflects the profile signals already available for this connection.',
+                  'AMORAA supplied match score reflects the profile signals already available for this connection.',
                   style: AmoraTextStyles.bodyMedium.copyWith(
                     color: AppColors.surface.withValues(alpha: .82),
                     height: 1.45,

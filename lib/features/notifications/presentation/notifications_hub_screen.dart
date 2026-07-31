@@ -1567,7 +1567,7 @@ List<_NotificationItem> _buildSeedNotifications() => <_NotificationItem>[
   _systemNotification(
     id: 'verification-approved',
     title: 'Identity verification approved',
-    description: 'Your verified badge is now visible across Amora.',
+    description: 'Your verified badge is now visible across AMORAA.',
     relativeTime: 'Yesterday, 3:18 PM',
     group: 'Yesterday',
     category: 'Verification',
@@ -1611,7 +1611,7 @@ List<_NotificationItem> _buildSeedNotifications() => <_NotificationItem>[
   _systemNotification(
     id: 'subscription-renewed',
     title: 'Subscription renewed',
-    description: 'Your Amora Gold membership renewed successfully.',
+    description: 'Your AMORAA Gold membership renewed successfully.',
     relativeTime: 'Jun 12',
     group: 'Earlier',
     category: 'Payments',
@@ -1708,7 +1708,7 @@ _NotificationItem _offerNotification() {
   return _NotificationItem(
     id: 'premium-offer',
     title: 'A premium offer is available',
-    description: 'Save on Amora Gold when you upgrade before Friday.',
+    description: 'Save on AMORAA Gold when you upgrade before Friday.',
     relativeTime: 'Saturday',
     group: 'This Week',
     category: 'Offers',

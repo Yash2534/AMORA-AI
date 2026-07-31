@@ -2,6 +2,7 @@ import 'package:amora_ai/core/access/amora_access.dart';
 import 'package:amora_ai/core/theme/amora_theme.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/amora_filter_chip.dart';
+import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/floating_ai_assistant.dart';
 import 'package:amora_ai/features/discover/presentation/advanced_filters_screen.dart';
 import 'package:amora_ai/features/events/presentation/events_screen.dart';
@@ -9,7 +10,6 @@ import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
 import 'package:amora_ai/features/profile/presentation/profile_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_completion_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_edit_screen.dart';
-import 'package:amora_ai/features/profile/presentation/profile_preview_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_setup_screen.dart';
 import 'package:amora_ai/features/subscription/presentation/subscription_screen.dart';
 import 'package:flutter/material.dart';
@@ -46,7 +46,7 @@ void main() {
     expect(find.byType(TextFormField), findsWidgets);
   });
 
-  testWidgets('Profile completion and preview actions open real screens', (
+  testWidgets('Profile completion opens without a duplicate preview card', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(390, 844));
@@ -57,7 +57,6 @@ void main() {
         routes: {
           ProfileCompletionScreen.routeName: (_) =>
               const ProfileCompletionScreen(),
-          ProfilePreviewScreen.routeName: (_) => const ProfilePreviewScreen(),
           ProfileSetupScreen.routeName: (_) => const ProfileSetupScreen(),
         },
         home: const ProfileScreen(),
@@ -65,28 +64,23 @@ void main() {
     );
     await tester.pump();
 
-    for (
-      var attempt = 0;
-      attempt < 6 && find.text('Complete profile').evaluate().isEmpty;
-      attempt++
-    ) {
-      await tester.drag(find.byType(Scrollable).first, const Offset(0, -260));
-      await tester.pumpAndSettle();
-    }
-    await tester.ensureVisible(find.text('Complete profile'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Complete profile'));
+    final completionCard = find.byKey(
+      const ValueKey('profile-completion-card'),
+    );
+    await tester.scrollUntilVisible(
+      completionCard,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    final completeAction = find.descendant(
+      of: completionCard,
+      matching: find.byType(AppPrimaryButton),
+    );
+    tester.widget<AppPrimaryButton>(completeAction).onPressed?.call();
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('profile-completion-hub')), findsOneWidget);
     expect(find.text('Required'), findsOneWidget);
-    await tester.scrollUntilVisible(
-      find.text('Preview profile'),
-      500,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.tap(find.text('Preview profile'));
-    await tester.pumpAndSettle();
-    expect(find.byKey(const Key('profile-preview-scroll')), findsOneWidget);
+    expect(find.text('Preview profile'), findsNothing);
   });
 
   testWidgets('AI assistant sheet scrolls at compact phone height', (
@@ -103,7 +97,7 @@ void main() {
 
     await tester.tap(find.byType(FloatingActionButton));
     await tester.pumpAndSettle();
-    expect(find.text('AMORA AI Assistant'), findsOneWidget);
+    expect(find.text('AMORAA Assistant'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('Conversation Analysis'),
       260,

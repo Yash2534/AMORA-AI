@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('all active Dart UI uses only the approved Amora palette', () {
+  test('all active Dart UI uses only the approved AMORAA palette', () {
     const appColorsPath = 'lib/core/theme/app_colors.dart';
     const approvedHexValues = {
       '0xFF3D0B3F',
@@ -90,7 +90,7 @@ void main() {
           lineNumber,
           line,
           RegExp(r'\bMaterialColor\b'),
-          'Use the explicit Amora ColorScheme and AppColors roles.',
+          'Use the explicit AMORAA ColorScheme and AppColors roles.',
         );
         _checkPattern(
           violations,
@@ -163,7 +163,7 @@ void main() {
       violations,
       isEmpty,
       reason:
-          'Unauthorized Amora palette usage found:\n${violations.join('\n')}',
+          'Unauthorized AMORAA palette usage found:\n${violations.join('\n')}',
     );
   });
 }

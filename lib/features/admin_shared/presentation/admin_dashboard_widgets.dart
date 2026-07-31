@@ -575,7 +575,7 @@ class DateSpotCard extends StatelessWidget {
                       top: 14,
                       left: 14,
                       child: StatusChip(
-                        label: 'AMORA $score',
+                        label: 'AMORAA $score',
                         color: AppColors.premiumGold,
                       ),
                     ),

@@ -57,7 +57,7 @@ class SafetyPrivacyScreen extends StatelessWidget {
                           ),
                           const SizedBox(height: AmoraSpacing.space4),
                           Text(
-                            'Open Amora Support for safety guidance and the '
+                            'Open AMORAA Support for safety guidance and the '
                             'available contact channel.',
                             style: AmoraTextStyles.bodyMedium.copyWith(
                               color: colors.onSurfaceVariant,
@@ -76,7 +76,7 @@ class SafetyPrivacyScreen extends StatelessWidget {
                   SettingsTile(
                     icon: Icons.support_agent_rounded,
                     title: 'Safety help and support',
-                    subtitle: 'Read guidance or contact Amora Support.',
+                    subtitle: 'Read guidance or contact AMORAA Support.',
                     onTap: () => Navigator.of(
                       context,
                     ).pushNamed(FaqSupportScreen.routeName),
@@ -84,7 +84,8 @@ class SafetyPrivacyScreen extends StatelessWidget {
                   SettingsTile(
                     icon: Icons.manage_accounts_outlined,
                     title: 'Correct profile details',
-                    subtitle: 'Update the profile information stored by Amora.',
+                    subtitle:
+                        'Update the profile information stored by AMORAA.',
                     onTap: () => Navigator.of(
                       context,
                     ).pushNamed(ProfileBasicDetailsScreen.routeName),
@@ -110,7 +111,7 @@ class SafetyPrivacyScreen extends StatelessWidget {
                       Expanded(
                         child: Text(
                           'Account deletion and personal-data requests are not '
-                          'shown here until Amora can submit and track them '
+                          'shown here until AMORAA can submit and track them '
                           'through a secure service.',
                           style: AmoraTextStyles.bodySmall.copyWith(
                             color: colors.onSurfaceVariant,

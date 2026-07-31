@@ -172,7 +172,7 @@ const _stories = [
     'Kavya',
     'Kavya & Dev',
     'Vadodara',
-    'They met at an AMORA event and kept choosing thoughtful conversations.',
+    'They met at an AMORAA event and kept choosing thoughtful conversations.',
   ),
   (
     'Riya',

@@ -8,8 +8,10 @@ import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
 import 'package:amora_ai/features/profile/presentation/kyc_verification_screen.dart';
 import 'package:amora_ai/features/profile/presentation/photo_manager_screen.dart';
+import 'package:amora_ai/features/profile/presentation/profile_completion_metrics.dart';
 import 'package:amora_ai/features/profile/presentation/profile_preview_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_section_editor_screen.dart';
+import 'package:amora_ai/features/onboarding/data/gujarat_cities.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -23,6 +25,35 @@ class ProfileEditScreen extends StatefulWidget {
 }
 
 class _ProfileEditScreenState extends State<ProfileEditScreen> {
+  static const _occupations = <String>[
+    'Software Engineer',
+    'Product Designer',
+    'Doctor',
+    'Entrepreneur',
+    'Consultant',
+    'Teacher',
+    'Chartered Accountant',
+    'Architect',
+    'Marketing Professional',
+    'Government Professional',
+    'Lawyer',
+    'Creative Professional',
+  ];
+  static const _educationOptions = <String>[
+    'High School',
+    'Diploma',
+    'Bachelor’s Degree',
+    'Master’s Degree',
+    'MBA',
+    'Doctorate',
+    'Professional Qualification',
+  ];
+  static const _datingIntentions = <String>[
+    'Long-Term Relationship',
+    'Marriage',
+    'Intentional Dating',
+    'Life Partner',
+  ];
   final _formKey = GlobalKey<FormState>();
   final _repository = LocalProfileRepository.instance;
 
@@ -50,7 +81,10 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     _city = TextEditingController(text: profile.location);
     _bio = TextEditingController(text: profile.bio);
     _datingIntention = TextEditingController(text: profile.datingIntention);
-    _gender = profile.gender.isEmpty ? 'Prefer not to say' : profile.gender;
+    _gender = switch (profile.gender.toLowerCase()) {
+      'woman' || 'female' => 'Female',
+      _ => 'Male',
+    };
     _repository.addListener(_refresh);
   }
 
@@ -185,20 +219,14 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                                 labelText: 'Gender',
                                 prefixIcon: Icon(Icons.person_outline_rounded),
                               ),
-                              items:
-                                  const [
-                                        'Woman',
-                                        'Man',
-                                        'Non-binary',
-                                        'Prefer not to say',
-                                      ]
-                                      .map((value) {
-                                        return DropdownMenuItem(
-                                          value: value,
-                                          child: Text(value),
-                                        );
-                                      })
-                                      .toList(growable: false),
+                              items: const ['Male', 'Female']
+                                  .map((value) {
+                                    return DropdownMenuItem(
+                                      value: value,
+                                      child: Text(value),
+                                    );
+                                  })
+                                  .toList(growable: false),
                               onChanged: (value) {
                                 if (value != null) {
                                   setState(() => _gender = value);
@@ -206,12 +234,11 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                               },
                             ),
                             const SizedBox(height: 12),
-                            _PremiumField(
+                            _SearchableDropdownField(
                               controller: _profession,
                               label: 'Occupation',
                               icon: Icons.work_rounded,
-                              validator: _required,
-                              textInputAction: TextInputAction.next,
+                              options: _occupations,
                             ),
                             const SizedBox(height: 12),
                             _PremiumField(
@@ -221,20 +248,18 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                               textInputAction: TextInputAction.next,
                             ),
                             const SizedBox(height: 12),
-                            _PremiumField(
+                            _SearchableDropdownField(
                               controller: _education,
                               label: 'Education',
                               icon: Icons.school_rounded,
-                              validator: _required,
-                              textInputAction: TextInputAction.next,
+                              options: _educationOptions,
                             ),
                             const SizedBox(height: 12),
-                            _PremiumField(
+                            _SearchableDropdownField(
                               controller: _city,
                               label: 'City',
                               icon: Icons.location_on_rounded,
-                              validator: _required,
-                              textInputAction: TextInputAction.next,
+                              options: gujaratCities,
                             ),
                           ],
                         ),
@@ -268,7 +293,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                         icon: Icons.forum_rounded,
                         title: 'Profile prompts',
                         subtitle:
-                            '${profile.completedPromptCount} of 3 conversation starters completed.',
+                            '${profile.completedPromptCount} of 1 required conversation starter completed.',
                         trailingLabel: 'Edit',
                         onTrailing: () => _openSection(ProfileSection.prompts),
                         child: _PromptSummary(profile: profile),
@@ -295,12 +320,29 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                         title: 'Dating intentions',
                         subtitle:
                             'Be clear about the kind of connection you want.',
-                        child: _PremiumField(
-                          controller: _datingIntention,
-                          label: 'Looking for',
-                          icon: Icons.favorite_outline_rounded,
-                          validator: _required,
-                          textInputAction: TextInputAction.done,
+                        child: DropdownButtonFormField<String>(
+                          initialValue:
+                              _datingIntentions.contains(_datingIntention.text)
+                              ? _datingIntention.text
+                              : _datingIntentions.first,
+                          isExpanded: true,
+                          decoration: const InputDecoration(
+                            labelText: 'Looking for',
+                            prefixIcon: Icon(Icons.favorite_outline_rounded),
+                          ),
+                          items: _datingIntentions
+                              .map(
+                                (value) => DropdownMenuItem(
+                                  value: value,
+                                  child: Text(value),
+                                ),
+                              )
+                              .toList(growable: false),
+                          onChanged: (value) {
+                            if (value != null) {
+                              _datingIntention.text = value;
+                            }
+                          },
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -326,7 +368,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                         icon: Icons.verified_user_rounded,
                         title: 'Verification',
                         subtitle:
-                            'Review the verification flow already supported by Amora.',
+                            'Review the verification flow already supported by AMORAA.',
                         trailingLabel: 'Review',
                         onTrailing: () =>
                             _openNamed(KycVerificationScreen.routeName),
@@ -426,7 +468,7 @@ class _EditorIntro extends StatelessWidget {
               ),
               const SizedBox(height: 6),
               Text(
-                '${profile.completionPercent}% complete · changes stay in your existing profile draft.',
+                '${profile.presentationCompletionPercent}% complete · changes stay in your existing profile draft.',
                 style: AmoraTextStyles.bodyMedium.copyWith(
                   color: AppColors.text.withValues(alpha: .7),
                 ),
@@ -508,6 +550,57 @@ class _EditorSection extends StatelessWidget {
           child,
         ],
       ),
+    );
+  }
+}
+
+class _SearchableDropdownField extends StatelessWidget {
+  const _SearchableDropdownField({
+    required this.controller,
+    required this.label,
+    required this.icon,
+    required this.options,
+  });
+
+  final TextEditingController controller;
+  final String label;
+  final IconData icon;
+  final List<String> options;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return DropdownMenu<String>(
+          controller: controller,
+          width: constraints.maxWidth,
+          enableFilter: true,
+          enableSearch: true,
+          requestFocusOnTap: true,
+          leadingIcon: Icon(icon),
+          label: Text(label),
+          hintText: 'Search $label',
+          inputDecorationTheme: const InputDecorationTheme(
+            filled: true,
+            fillColor: AppColors.surface,
+          ),
+          menuStyle: MenuStyle(
+            maximumSize: const WidgetStatePropertyAll(Size.fromHeight(320)),
+            shape: WidgetStatePropertyAll(
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+            ),
+          ),
+          dropdownMenuEntries: options
+              .map(
+                (value) =>
+                    DropdownMenuEntry<String>(value: value, label: value),
+              )
+              .toList(growable: false),
+          onSelected: (value) {
+            if (value != null) controller.text = value;
+          },
+        );
+      },
     );
   }
 }

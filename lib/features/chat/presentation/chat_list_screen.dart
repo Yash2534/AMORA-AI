@@ -56,9 +56,6 @@ class _ChatListScreenState extends State<ChatListScreen> {
         .toList(growable: false);
   }
 
-  int get _unreadTotal =>
-      _allChats.fold<int>(0, (total, chat) => total + chat.unread);
-
   @override
   void initState() {
     super.initState();
@@ -96,10 +93,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                 ),
                 child: Column(
                   children: [
-                    ChatsAppBar(
-                      unreadCount: _unreadTotal,
-                      onCompose: _showComposeSheet,
-                    ),
+                    ChatsAppBar(onCompose: _showComposeSheet),
                     const SizedBox(height: AmoraSpacing.space12),
                     ChatSearchField(
                       controller: _searchController,
@@ -316,13 +310,8 @@ String _filterLabel(ChatInboxFilter filter) => switch (filter) {
 };
 
 class ChatsAppBar extends StatelessWidget {
-  const ChatsAppBar({
-    super.key,
-    required this.unreadCount,
-    required this.onCompose,
-  });
+  const ChatsAppBar({super.key, required this.onCompose});
 
-  final int unreadCount;
   final VoidCallback onCompose;
 
   @override
@@ -358,29 +347,6 @@ class ChatsAppBar extends StatelessWidget {
               ),
             ),
           ),
-          if (unreadCount > 0)
-            Semantics(
-              label: '$unreadCount unread messages',
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: AppColors.secondary,
-                  borderRadius: AmoraRadius.pillBorder,
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AmoraSpacing.space12,
-                    vertical: AmoraSpacing.space4,
-                  ),
-                  child: Text(
-                    unreadCount > 99 ? '99+' : '$unreadCount',
-                    style: AmoraTextStyles.labelSmall.copyWith(
-                      color: AppColors.surface,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-              ),
-            ),
           const SizedBox(width: 4),
           _InboxIconButton(
             tooltip: 'Compose message',

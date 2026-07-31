@@ -99,7 +99,7 @@ class _DateSpotsMapScreenState extends State<DateSpotsMapScreen> {
                   PremiumEditorialPanel(
                     title: 'Rooftop, coffee, or quiet gallery?',
                     subtitle:
-                        'AMORA ranks venues by comfort, safety, conversation quality, and date intent.',
+                        'AMORAA ranks venues by comfort, safety, conversation quality, and date intent.',
                     badge: 'AI Venue Match',
                     cta: 'Explore',
                     assetPath: ImageRepository.venues.first.imageUrl,

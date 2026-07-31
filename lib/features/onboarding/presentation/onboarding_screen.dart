@@ -9,7 +9,7 @@ import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/premium_asset_image.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/core/widgets/premium_motion.dart';
-import 'package:amora_ai/features/auth/presentation/amora_auth_screen.dart';
+import 'package:amora_ai/features/auth/presentation/login_screen.dart';
 import 'package:flutter/material.dart';
 
 class OnboardingScreen extends StatefulWidget {
@@ -154,7 +154,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   }
 
   void _goToAuth() {
-    Navigator.of(context).pushReplacementNamed(AmoraAuthScreen.routeName);
+    Navigator.of(context).pushReplacementNamed(LoginScreen.routeName);
   }
 }
 
@@ -316,7 +316,7 @@ class _MiniBrand extends StatelessWidget {
           width: 36,
           height: 36,
           fit: BoxFit.contain,
-          semanticLabel: 'Amora',
+          semanticLabel: 'AMORAA',
         ),
         const SizedBox(width: AmoraSpacing.space8),
         Flexible(

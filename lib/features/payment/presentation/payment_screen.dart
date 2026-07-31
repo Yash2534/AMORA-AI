@@ -79,7 +79,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
               _PaymentViewState.success => PaymentStateView(
                 key: const ValueKey('payment-success'),
                 icon: Icons.favorite_rounded,
-                title: 'Welcome to Amora Membership',
+                title: 'Welcome to AMORAA Membership',
                 subtitle: 'Your premium experience is ready.',
                 benefits: const [
                   'Premium Events',
@@ -400,7 +400,7 @@ class _PaymentReviewCard extends StatelessWidget {
               const SizedBox(width: 8),
               const Expanded(
                 child: Text(
-                  'Amora Membership',
+                  'AMORAA Membership',
                   style: TextStyle(
                     color: AppColors.surface,
                     fontWeight: FontWeight.w700,

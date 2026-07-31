@@ -3,7 +3,7 @@
     <uses-feature android:name="android.hardware.camera.any" android:required="false" />
 
     <application
-        android:label="Amora"
+        android:label="AMORAA"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

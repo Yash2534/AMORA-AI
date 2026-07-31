@@ -1,4 +1,5 @@
 import 'package:amora_ai/core/access/amora_access.dart';
+import 'package:amora_ai/core/branding/amora_brand_assets.dart';
 import 'package:amora_ai/core/data/image_repository.dart';
 import 'package:amora_ai/core/widgets/premium_image.dart';
 import 'package:amora_ai/features/discover/presentation/browse_grid_screen.dart';
@@ -158,21 +159,36 @@ void main() {
     expect(find.text('/matches destination'), findsOneWidget);
   });
 
-  testWidgets('search and notification controls are absent from Discover', (
-    tester,
-  ) async {
-    await tester.binding.setSurfaceSize(const Size(430, 900));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
+  testWidgets(
+    'Discover header uses official branding and a clean notification action',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(430, 900));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    await pumpDiscover(tester);
-    expect(find.byKey(const ValueKey('discover-search-field')), findsNothing);
-    expect(
-      find.byKey(const ValueKey('discover-notifications-button')),
-      findsNothing,
-    );
-    expect(find.byKey(const ValueKey('discover-filter-rail')), findsOneWidget);
-    expect(tester.takeException(), isNull);
-  });
+      await pumpDiscover(tester);
+      expect(find.byKey(const ValueKey('discover-search-field')), findsNothing);
+      expect(
+        find.byKey(const ValueKey('discover-notifications')),
+        findsOneWidget,
+      );
+      expect(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is Image &&
+              widget.image is AssetImage &&
+              (widget.image as AssetImage).assetName ==
+                  AmoraBrandAssets.wordmark,
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('7'), findsNothing);
+      expect(
+        find.byKey(const ValueKey('discover-filter-rail')),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('filter rail is horizontal and selection filters local data', (
     tester,

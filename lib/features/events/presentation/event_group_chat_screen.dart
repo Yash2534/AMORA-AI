@@ -24,7 +24,7 @@ class _EventGroupChatScreenState extends State<EventGroupChatScreen> {
   final _controller = TextEditingController();
   final _search = TextEditingController();
   final List<String> _messages = [
-    'AMORA Host: Welcome to Coffee Match Meetup. Keep it warm and respectful.',
+    'AMORAA Host: Welcome to Coffee Match Meetup. Keep it warm and respectful.',
     'Kavya: Looking forward to meeting everyone.',
     'Aarav: Is parking available near the venue?',
   ];

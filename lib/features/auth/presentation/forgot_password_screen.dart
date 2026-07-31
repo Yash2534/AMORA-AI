@@ -75,9 +75,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           ? 'We sent a code to $_maskedDestination.'
           : 'Enter your registered email and we’ll send a verification code.',
       stepLabel: enteringCode ? 'Step 2 of 3' : 'Step 1 of 3',
-      onBack: enteringCode
-          ? _changeDestination
-          : () => Navigator.of(context).maybePop(),
       child: AnimatedSwitcher(
         duration: MediaQuery.disableAnimationsOf(context)
             ? Duration.zero
@@ -209,8 +206,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     final request = widget.requestCode;
     if (request == null) {
       setState(() {
-        _error =
-            'Password recovery is not connected to an authentication service in this build.';
+        _error = 'Password recovery is unavailable right now. Try again later.';
       });
       return;
     }
@@ -240,8 +236,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     final verify = widget.verifyCode;
     if (verify == null) {
       setState(() {
-        _error =
-            'Code verification is not connected to an authentication service in this build.';
+        _error = 'Code verification is unavailable right now. Try again later.';
       });
       return;
     }

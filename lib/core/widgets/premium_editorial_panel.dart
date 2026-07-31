@@ -67,7 +67,7 @@ class PremiumEditorialPanel extends StatelessWidget {
                     children: [
                       Row(
                         children: [
-                          _SolidBadge(icon: icon, label: badge ?? 'AMORA AI'),
+                          _SolidBadge(icon: icon, label: badge ?? 'AMORAA'),
                           const Spacer(),
                           if (cta != null)
                             _SolidAction(label: cta!, onTap: onTap),

@@ -773,7 +773,7 @@ const _eventVenues = [
   'Cocoa Date House',
 ];
 const _eventHosts = [
-  'AMORA Curated',
+  'AMORAA Curated',
   'Velvet Circle',
   'Sangam Socials',
   'Founders Circle',

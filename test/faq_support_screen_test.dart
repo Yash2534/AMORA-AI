@@ -75,7 +75,7 @@ void main() {
       'waitlist',
     );
     await tester.pumpAndSettle();
-    expect(find.text('How do I join an Amora event?'), findsOneWidget);
+    expect(find.text('How do I join an AMORAA event?'), findsOneWidget);
 
     await tester.enterText(
       find.byKey(const ValueKey('faq-search-field')),
@@ -104,7 +104,7 @@ void main() {
       'compatibility',
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('How does Amora compatibility work?'));
+    await tester.tap(find.text('How does AMORAA compatibility work?'));
     await tester.pumpAndSettle();
     expect(
       find.textContaining('Compatibility combines profile intent'),

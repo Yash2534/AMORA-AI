@@ -5,10 +5,8 @@ import 'package:amora_ai/core/theme/amora_theme_controller.dart';
 import 'package:amora_ai/core/navigation/main_shell.dart';
 import 'package:amora_ai/core/widgets/floating_bottom_nav.dart';
 import 'package:amora_ai/features/auth/presentation/compatibility_onboarding_screen.dart';
-import 'package:amora_ai/features/auth/presentation/amora_auth_screen.dart';
 import 'package:amora_ai/features/auth/presentation/account_verification_screen.dart';
 import 'package:amora_ai/features/auth/presentation/login_screen.dart';
-import 'package:amora_ai/features/auth/presentation/phone_otp_screen.dart';
 import 'package:amora_ai/features/auth/presentation/signup_screen.dart';
 import 'package:amora_ai/features/auth/presentation/forgot_password_screen.dart';
 import 'package:amora_ai/features/auth/presentation/reset_password_screen.dart';
@@ -26,7 +24,7 @@ import 'package:amora_ai/features/events/presentation/event_waitlist_screen.dart
 import 'package:amora_ai/features/events/presentation/my_events_screen.dart';
 import 'package:amora_ai/features/events/presentation/post_event_feedback_screen.dart';
 import 'package:amora_ai/features/insights/presentation/dating_recap_screen.dart';
-import 'package:amora_ai/features/landing/presentation/amora_landing_screen.dart';
+import 'package:amora_ai/features/legal/presentation/legal_document_screen.dart';
 import 'package:amora_ai/features/matches/presentation/matches_screen.dart';
 import 'package:amora_ai/features/messaging/presentation/match_screen.dart';
 import 'package:amora_ai/features/notifications/presentation/notifications_hub_screen.dart';
@@ -52,6 +50,7 @@ import 'package:amora_ai/features/monetization/presentation/liked_you_paywall_sc
 import 'package:amora_ai/features/monetization/presentation/profile_boost_screen.dart';
 import 'package:amora_ai/features/safety/presentation/report_flow_screen.dart';
 import 'package:amora_ai/features/settings/presentation/notification_preferences_screen.dart';
+import 'package:amora_ai/features/settings/presentation/managed_profiles_screen.dart';
 import 'package:amora_ai/features/settings/presentation/profile_settings_screen.dart';
 import 'package:amora_ai/features/settings/presentation/safety_privacy_screen.dart';
 import 'package:amora_ai/features/settings/presentation/settings_screen.dart';
@@ -94,7 +93,7 @@ class _MyAppState extends State<MyApp> {
     return ValueListenableBuilder<ThemeMode>(
       valueListenable: AmoraThemeController.instance.mode,
       builder: (context, themeMode, _) => MaterialApp(
-        title: 'AMORA AI',
+        title: 'AMORAA',
         debugShowCheckedModeBanner: false,
         theme: AmoraTheme.light(),
         themeMode: themeMode,
@@ -103,15 +102,11 @@ class _MyAppState extends State<MyApp> {
           AmoraSplashScreen.routeName: (_) => AmoraSplashScreen(
             resolveInitialRoute: () => AmoraSession.isLoggedIn.value
                 ? MainShell.routeName
-                : AmoraAuthScreen.routeName,
+                : LoginScreen.routeName,
           ),
-          // First-launch workflow.
-          AmoraLandingScreen.routeName: (_) => const AmoraLandingScreen(),
           OnboardingScreen.routeName: (_) => const OnboardingScreen(),
-          AmoraAuthScreen.routeName: (_) => const AmoraAuthScreen(),
           LoginScreen.routeName: (_) => const LoginScreen(),
           SignupScreen.routeName: (_) => const SignupScreen(),
-          PhoneOtpScreen.routeName: (_) => const PhoneOtpScreen(),
           ForgotPasswordScreen.routeName: (_) => const ForgotPasswordScreen(),
           ResetPasswordScreen.routeName: (_) => const ResetPasswordScreen(),
           AccountVerificationScreen.routeName: (_) =>
@@ -151,6 +146,8 @@ class _MyAppState extends State<MyApp> {
           SubscriptionScreen.routeName: (_) => const SubscriptionScreen(),
           PaymentScreen.routeName: (_) => const PaymentScreen(),
           ProfileSettingsScreen.routeName: (_) => const ProfileSettingsScreen(),
+          SavedProfilesScreen.routeName: (_) => const SavedProfilesScreen(),
+          BlockedProfilesScreen.routeName: (_) => const BlockedProfilesScreen(),
           SafetyPrivacyScreen.routeName: (_) => const SafetyPrivacyScreen(),
           FaqSupportScreen.routeName: (_) => const FaqSupportScreen(),
           SettingsScreen.routeName: (_) => const SettingsScreen(),
@@ -176,6 +173,8 @@ class _MyAppState extends State<MyApp> {
               const DarkModeSettingsScreen(),
           ReferralLeaderboardScreen.routeName: (_) =>
               const ReferralLeaderboardScreen(),
+          TermsConditionsScreen.routeName: (_) => const TermsConditionsScreen(),
+          PrivacyPolicyScreen.routeName: (_) => const PrivacyPolicyScreen(),
         },
         onUnknownRoute: (_) {
           return MaterialPageRoute<void>(

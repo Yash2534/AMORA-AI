@@ -10,7 +10,6 @@ import 'package:amora_ai/features/settings/presentation/widgets/settings_support
 import 'package:amora_ai/features/settings/presentation/notification_preferences_screen.dart';
 import 'package:amora_ai/features/settings/presentation/profile_settings_screen.dart';
 import 'package:amora_ai/features/settings/presentation/safety_privacy_screen.dart';
-import 'package:amora_ai/features/subscription/presentation/subscription_screen.dart';
 import 'package:amora_ai/features/support/presentation/faq_support_screen.dart';
 import 'package:amora_ai/features/theme/presentation/dark_mode_settings_screen.dart';
 import 'package:flutter/material.dart';
@@ -183,13 +182,7 @@ const _settingsGroups = [
       Icons.celebration_rounded,
     ),
   ]),
-  _SettingsGroup('Premium', 'Membership and support.', [
-    _SettingsItem(
-      'AMORA Premium',
-      'Plans and locked benefits',
-      SubscriptionScreen.routeName,
-      Icons.workspace_premium_rounded,
-    ),
+  _SettingsGroup('Support', 'Help and account guidance.', [
     _SettingsItem(
       'FAQ & Support',
       'Help center and email support',

@@ -49,7 +49,7 @@ class _AmoraWalletScreenState extends State<AmoraWalletScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   MonetizationHeader(
-                    title: 'Amora Wallet',
+                    title: 'AMORAA Wallet',
                     subtitle: 'Coins for boosts, roses, events, and AI perks.',
                     icon: AmoraIcons.wallet,
                     onBack: () => Navigator.of(context).maybePop(),
@@ -159,8 +159,8 @@ class _AmoraWalletScreenState extends State<AmoraWalletScreen> {
     Navigator.of(context).pushNamed(
       PaymentScreen.routeName,
       arguments: PaymentArgs(
-        title: '${_selectedPackage.coins} Amora Coins',
-        subtitle: 'Amora Wallet Top Up',
+        title: '${_selectedPackage.coins} AMORAA Coins',
+        subtitle: 'AMORAA Wallet Top Up',
         billingCycle: 'One-time wallet recharge',
         amount: _selectedPackage.price,
       ),

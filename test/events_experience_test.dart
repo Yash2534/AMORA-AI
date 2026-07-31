@@ -84,11 +84,11 @@ void main() {
     );
     expect(find.text('This Week'), findsOneWidget);
     await tester.scrollUntilVisible(
-      find.text('Amora Circles'),
+      find.text('AMORAA Circles'),
       420,
       scrollable: find.byType(Scrollable).first,
     );
-    expect(find.text('Amora Circles'), findsOneWidget);
+    expect(find.text('AMORAA Circles'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('My Events'),
       420,
@@ -147,7 +147,7 @@ void main() {
 
     expect(find.text(events.first.title), findsOneWidget);
     expect(find.text('Leave Event'), findsOneWidget);
-    expect(find.text('Events are for Amora members'), findsNothing);
+    expect(find.text('Events are for AMORAA members'), findsNothing);
     expect(find.text('Explore Membership'), findsNothing);
     expect(find.textContaining('ticket', findRichText: true), findsNothing);
     expect(tester.takeException(), isNull);

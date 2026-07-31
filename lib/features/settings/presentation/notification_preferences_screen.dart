@@ -1,4 +1,5 @@
 import 'package:amora_ai/core/theme/amora_spacing.dart';
+import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
@@ -18,142 +19,134 @@ class NotificationPreferencesScreen extends StatefulWidget {
 class _NotificationPreferencesScreenState
     extends State<NotificationPreferencesScreen> {
   final Map<String, bool> _categories = {
-    'New Match': true,
-    'New Message': true,
-    'Event Reminder': true,
-    'Payment Alerts': true,
-    'Offers': false,
-    'Safety': true,
+    'New matches': true,
+    'Messages': true,
+    'Event reminders': true,
+    'Payments & membership': true,
+    'Offers from AMORAA': false,
+    'Safety updates': true,
   };
-  bool _push = true;
-  bool _email = true;
-  bool _sms = false;
+  final Map<String, bool> _channels = {
+    'Push notifications': true,
+    'Email': true,
+    'SMS': false,
+  };
   bool _quiet = true;
   TimeOfDay _from = const TimeOfDay(hour: 22, minute: 0);
   TimeOfDay _to = const TimeOfDay(hour: 7, minute: 0);
 
+  static const _categoryMeta = {
+    'New matches': (
+      Icons.favorite_rounded,
+      'When a new compatible connection is ready.',
+    ),
+    'Messages': (
+      Icons.chat_bubble_rounded,
+      'Replies and new conversations from your matches.',
+    ),
+    'Event reminders': (
+      Icons.event_rounded,
+      'Booking updates and reminders before an event.',
+    ),
+    'Payments & membership': (
+      Icons.receipt_long_rounded,
+      'Receipts, renewals, and important plan updates.',
+    ),
+    'Offers from AMORAA': (
+      Icons.local_offer_rounded,
+      'Occasional membership and event offers.',
+    ),
+    'Safety updates': (
+      Icons.shield_rounded,
+      'Critical account and community safety notices.',
+    ),
+  };
+
+  static const _channelMeta = {
+    'Push notifications': (
+      Icons.notifications_active_rounded,
+      'Fast updates on this device.',
+    ),
+    'Email': (Icons.alternate_email_rounded, 'A useful record in your inbox.'),
+    'SMS': (Icons.sms_rounded, 'Only essential updates by text message.'),
+  };
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: ResponsiveMobileFrame(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(
-              AmoraSpacing.space20,
-              AmoraSpacing.space20,
-              AmoraSpacing.space20,
-              AmoraSpacing.navigationContentInset,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
+          maxWidth: 720,
+          child: CustomScrollView(
+            slivers: [
+              SliverPadding(
+                padding: EdgeInsets.fromLTRB(
+                  AmoraSpacing.space20,
+                  AmoraSpacing.space12,
+                  AmoraSpacing.space20,
+                  AmoraSpacing.space32 +
+                      MediaQuery.viewPaddingOf(context).bottom,
+                ),
+                sliver: SliverList.list(
                   children: [
-                    IconButton.filledTonal(
-                      onPressed: () => Navigator.of(context).maybePop(),
-                      icon: const Icon(Icons.arrow_back_rounded),
+                    _Header(onBack: () => Navigator.of(context).maybePop()),
+                    const SizedBox(height: AmoraSpacing.space20),
+                    const _NotificationHero(),
+                    const SizedBox(height: AmoraSpacing.space16),
+                    _PreferenceGroup(
+                      title: 'What you hear about',
+                      subtitle:
+                          'Choose the updates that deserve your attention.',
+                      children: [
+                        for (final entry in _categories.entries)
+                          _PreferenceToggle(
+                            icon: _categoryMeta[entry.key]!.$1,
+                            title: entry.key,
+                            description: _categoryMeta[entry.key]!.$2,
+                            value: entry.value,
+                            locked: entry.key == 'Safety updates',
+                            onChanged: (value) =>
+                                setState(() => _categories[entry.key] = value),
+                          ),
+                      ],
                     ),
-                    const SizedBox(width: 10),
-                    const Expanded(
-                      child: Text(
-                        'Notification Preferences',
-                        style: TextStyle(
-                          color: AppColors.deepWine,
-                          fontSize: 24,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
+                    const SizedBox(height: AmoraSpacing.space16),
+                    _PreferenceGroup(
+                      title: 'Delivery channels',
+                      subtitle:
+                          'Control where each enabled update can reach you.',
+                      children: [
+                        for (final entry in _channels.entries)
+                          _PreferenceToggle(
+                            icon: _channelMeta[entry.key]!.$1,
+                            title: entry.key,
+                            description: _channelMeta[entry.key]!.$2,
+                            value: entry.value,
+                            onChanged: (value) =>
+                                setState(() => _channels[entry.key] = value),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: AmoraSpacing.space16),
+                    _QuietHoursCard(
+                      enabled: _quiet,
+                      from: _from,
+                      to: _to,
+                      onEnabled: (value) => setState(() => _quiet = value),
+                      onFrom: () => _pickTime(true),
+                      onTo: () => _pickTime(false),
+                    ),
+                    const SizedBox(height: AmoraSpacing.space20),
+                    AppPrimaryButton(
+                      label: 'Save preferences',
+                      icon: Icons.check_rounded,
+                      onPressed: _save,
                     ),
                   ],
                 ),
-                const SizedBox(height: 18),
-                for (final entry in _categories.entries)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: PremiumCard(
-                      padding: const EdgeInsets.all(4),
-                      child: SwitchListTile(
-                        value: entry.value,
-                        onChanged: (value) =>
-                            setState(() => _categories[entry.key] = value),
-                        title: Text(
-                          entry.key,
-                          style: const TextStyle(fontWeight: FontWeight.w900),
-                        ),
-                      ),
-                    ),
-                  ),
-                const SizedBox(height: 12),
-                PremiumCard(
-                  child: Column(
-                    children: [
-                      SwitchListTile(
-                        value: _push,
-                        onChanged: (value) => setState(() => _push = value),
-                        title: const Text('Push'),
-                      ),
-                      SwitchListTile(
-                        value: _email,
-                        onChanged: (value) => setState(() => _email = value),
-                        title: const Text('Email'),
-                      ),
-                      SwitchListTile(
-                        value: _sms,
-                        onChanged: (value) => setState(() => _sms = value),
-                        title: const Text('SMS'),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 12),
-                PremiumCard(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SwitchListTile(
-                        contentPadding: EdgeInsets.zero,
-                        value: _quiet,
-                        onChanged: (value) => setState(() => _quiet = value),
-                        title: const Text('Quiet hours'),
-                      ),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: AppPrimaryButton(
-                              label: 'From ${_from.format(context)}',
-                              size: AmoraButtonSize.compact,
-                              variant: AppPrimaryButtonVariant.outlined,
-                              onPressed: () => _pickTime(true),
-                            ),
-                          ),
-                          const SizedBox(width: AmoraSpacing.space8),
-                          Expanded(
-                            child: AppPrimaryButton(
-                              label: 'To ${_to.format(context)}',
-                              size: AmoraButtonSize.compact,
-                              variant: AppPrimaryButtonVariant.outlined,
-                              onPressed: () => _pickTime(false),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                AppPrimaryButton(
-                  label: 'Save Preferences',
-                  icon: Icons.check_rounded,
-                  onPressed: () => ScaffoldMessenger.of(context)
-                    ..hideCurrentSnackBar()
-                    ..showSnackBar(
-                      const SnackBar(
-                        content: Text('Notification preferences saved'),
-                      ),
-                    ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -166,12 +159,339 @@ class _NotificationPreferencesScreenState
       initialTime: from ? _from : _to,
     );
     if (next == null) return;
-    setState(() {
-      if (from) {
-        _from = next;
-      } else {
-        _to = next;
-      }
-    });
+    setState(() => from ? _from = next : _to = next);
+  }
+
+  void _save() {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        const SnackBar(
+          content: Text('Notification preferences saved'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+  }
+}
+
+class _Header extends StatelessWidget {
+  const _Header({required this.onBack});
+
+  final VoidCallback onBack;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        IconButton.filledTonal(
+          tooltip: 'Back',
+          onPressed: onBack,
+          icon: const Icon(Icons.arrow_back_rounded),
+        ),
+        const SizedBox(width: AmoraSpacing.space12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Notification Preferences',
+                style: AmoraTextStyles.headlineSmall,
+              ),
+              Text(
+                'Stay informed without the noise.',
+                style: AmoraTextStyles.bodySmall.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _NotificationHero extends StatelessWidget {
+  const _NotificationHero();
+
+  @override
+  Widget build(BuildContext context) {
+    return PremiumCard(
+      radius: AmoraRadius.extraLarge,
+      padding: const EdgeInsets.all(AmoraSpacing.space20),
+      child: Row(
+        children: [
+          Container(
+            width: 64,
+            height: 64,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [AppColors.secondary, AppColors.primary],
+              ),
+              borderRadius: BorderRadius.circular(22),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: .22),
+                  blurRadius: 20,
+                  spreadRadius: -5,
+                ),
+              ],
+            ),
+            child: const Icon(
+              Icons.notifications_none_rounded,
+              color: AppColors.surface,
+              size: 32,
+            ),
+          ),
+          const SizedBox(width: AmoraSpacing.space16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Your attention, your rules',
+                  style: AmoraTextStyles.titleLarge,
+                ),
+                const SizedBox(height: AmoraSpacing.space4),
+                Text(
+                  'Safety-critical alerts always remain enabled.',
+                  style: AmoraTextStyles.bodyMedium.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PreferenceGroup extends StatelessWidget {
+  const _PreferenceGroup({
+    required this.title,
+    required this.subtitle,
+    required this.children,
+  });
+
+  final String title;
+  final String subtitle;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return PremiumCard(
+      radius: AmoraRadius.extraLarge,
+      padding: const EdgeInsets.all(AmoraSpacing.space16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AmoraSpacing.space4,
+              vertical: AmoraSpacing.space4,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: AmoraTextStyles.titleLarge),
+                const SizedBox(height: AmoraSpacing.space4),
+                Text(
+                  subtitle,
+                  style: AmoraTextStyles.bodySmall.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AmoraSpacing.space8),
+          for (var index = 0; index < children.length; index++) ...[
+            children[index],
+            if (index != children.length - 1)
+              const Divider(height: 1, indent: 60),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _PreferenceToggle extends StatelessWidget {
+  const _PreferenceToggle({
+    required this.icon,
+    required this.title,
+    required this.description,
+    required this.value,
+    required this.onChanged,
+    this.locked = false,
+  });
+
+  final IconData icon;
+  final String title;
+  final String description;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+  final bool locked;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      toggled: value,
+      enabled: !locked,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 80),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: AmoraSpacing.space8),
+          child: Row(
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 220),
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: value ? AppColors.tertiary : AppColors.background,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Icon(
+                  icon,
+                  color: value ? AppColors.primary : AppColors.textMuted,
+                ),
+              ),
+              const SizedBox(width: AmoraSpacing.space12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            title,
+                            style: AmoraTextStyles.titleMedium,
+                          ),
+                        ),
+                        if (locked) ...[
+                          const SizedBox(width: AmoraSpacing.space8),
+                          const Icon(
+                            Icons.lock_rounded,
+                            size: 15,
+                            color: AppColors.primary,
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: AmoraSpacing.space4),
+                    Text(
+                      description,
+                      style: AmoraTextStyles.bodySmall.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: AmoraSpacing.space8),
+              Switch(value: value, onChanged: locked ? null : onChanged),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _QuietHoursCard extends StatelessWidget {
+  const _QuietHoursCard({
+    required this.enabled,
+    required this.from,
+    required this.to,
+    required this.onEnabled,
+    required this.onFrom,
+    required this.onTo,
+  });
+
+  final bool enabled;
+  final TimeOfDay from;
+  final TimeOfDay to;
+  final ValueChanged<bool> onEnabled;
+  final VoidCallback onFrom;
+  final VoidCallback onTo;
+
+  @override
+  Widget build(BuildContext context) {
+    return PremiumCard(
+      radius: AmoraRadius.extraLarge,
+      padding: const EdgeInsets.all(AmoraSpacing.space16),
+      child: Column(
+        children: [
+          _PreferenceToggle(
+            icon: Icons.bedtime_rounded,
+            title: 'Quiet hours',
+            description: 'Pause non-critical notifications while you rest.',
+            value: enabled,
+            onChanged: onEnabled,
+          ),
+          AnimatedSize(
+            duration: const Duration(milliseconds: 240),
+            curve: Curves.easeOutCubic,
+            child: enabled
+                ? Padding(
+                    padding: const EdgeInsets.only(top: AmoraSpacing.space12),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: _TimeButton(
+                            label: 'From',
+                            value: from.format(context),
+                            onTap: onFrom,
+                          ),
+                        ),
+                        const SizedBox(width: AmoraSpacing.space12),
+                        Expanded(
+                          child: _TimeButton(
+                            label: 'Until',
+                            value: to.format(context),
+                            onTap: onTo,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : const SizedBox.shrink(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TimeButton extends StatelessWidget {
+  const _TimeButton({
+    required this.label,
+    required this.value,
+    required this.onTap,
+  });
+
+  final String label;
+  final String value;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton(
+      onPressed: onTap,
+      style: OutlinedButton.styleFrom(
+        minimumSize: const Size.fromHeight(56),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      ),
+      child: Column(
+        children: [
+          Text(label, style: AmoraTextStyles.labelSmall),
+          Text(value, style: AmoraTextStyles.titleMedium),
+        ],
+      ),
+    );
   }
 }

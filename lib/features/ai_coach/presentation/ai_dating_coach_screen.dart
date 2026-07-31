@@ -181,7 +181,7 @@ class _AssistantQuickActions extends StatelessWidget {
               SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  'AMORA assistant',
+                  'AMORAA assistant',
                   style: TextStyle(
                     color: AppColors.deepWine,
                     fontSize: 20,

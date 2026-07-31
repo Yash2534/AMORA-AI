@@ -50,7 +50,7 @@ void main() {
       await _pumpPayment(tester);
       await _completePayment(tester, TestPaymentOutcome.success);
 
-      expect(find.text('Welcome to Amora Membership'), findsOneWidget);
+      expect(find.text('Welcome to AMORAA Membership'), findsOneWidget);
       expect(MembershipTestFlowController.instance.membershipActive, isTrue);
 
       await tester.pumpWidget(

@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Amora Ai</string>
+	<string>AMORAA</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -27,9 +27,9 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>Amora uses the camera when you choose to take a profile photo or verification selfie.</string>
+	<string>AMORAA uses the camera when you choose to take a profile photo or verification selfie.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Amora accesses selected photos when you choose profile, event, document, or report images.</string>
+	<string>AMORAA accesses selected photos when you choose profile, event, document, or report images.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

@@ -59,7 +59,7 @@ class _EventsMemberExperienceState extends State<EventsMemberExperience> {
     'Culture',
     'Outdoors',
     'Speed Dating',
-    'Amora Circles',
+    'AMORAA Circles',
   ];
 
   Timer? _loadingTimer;
@@ -327,7 +327,7 @@ class _EventsMemberExperienceState extends State<EventsMemberExperience> {
             sliver: SliverList.list(
               children: [
                 const _SectionHeading(
-                  title: 'Amora Circles',
+                  title: 'AMORAA Circles',
                   subtitle:
                       'Small interest-led gatherings for easier conversation',
                 ),
@@ -408,7 +408,7 @@ class _EventsMemberExperienceState extends State<EventsMemberExperience> {
         'outdoor',
       ]),
       'Speed Dating' => searchable.contains('speed dating'),
-      'Amora Circles' => _matchesAny(searchable, const [
+      'AMORAA Circles' => _matchesAny(searchable, const [
         'coffee',
         'book',
         'founder',

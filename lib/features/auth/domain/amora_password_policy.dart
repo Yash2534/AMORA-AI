@@ -10,7 +10,7 @@ abstract final class AmoraPasswordPolicy {
   }
 
   static String? validateLoginPassword(String? value) {
-    if (value == null || value.isEmpty) return 'Password is required';
+    if ((value ?? '').isEmpty) return 'Password is required';
     return null;
   }
 }

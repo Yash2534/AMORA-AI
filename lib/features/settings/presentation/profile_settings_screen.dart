@@ -6,7 +6,9 @@ import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/settings/presentation/safety_privacy_screen.dart';
 import 'package:amora_ai/features/settings/presentation/widgets/settings_support_widgets.dart';
 import 'package:amora_ai/features/settings/presentation/notification_preferences_screen.dart';
+import 'package:amora_ai/features/settings/presentation/managed_profiles_screen.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
+import 'package:amora_ai/features/profile/presentation/profile_completion_metrics.dart';
 import 'package:amora_ai/features/profile/presentation/profile_edit_screen.dart';
 import 'package:amora_ai/features/subscription/presentation/subscription_screen.dart';
 import 'package:amora_ai/features/support/presentation/faq_support_screen.dart';
@@ -30,6 +32,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   var _showOnline = true;
   var _incognito = false;
   var _hideContacts = false;
+  String _visibility = 'Everyone';
 
   @override
   Widget build(BuildContext context) {
@@ -118,6 +121,36 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                   ),
                   const SizedBox(height: 16),
                   SettingsSectionCard(
+                    title: 'Profile & Membership',
+                    children: [
+                      SettingsTile(
+                        icon: Icons.bookmark_rounded,
+                        title: 'Saved Profiles',
+                        subtitle: 'Revisit people you saved.',
+                        onTap: () => Navigator.of(
+                          context,
+                        ).pushNamed(SavedProfilesScreen.routeName),
+                      ),
+                      SettingsTile(
+                        icon: Icons.block_rounded,
+                        title: 'Blocked Profiles',
+                        subtitle: 'Review private blocking controls.',
+                        onTap: () => Navigator.of(
+                          context,
+                        ).pushNamed(BlockedProfilesScreen.routeName),
+                      ),
+                      SettingsTile(
+                        icon: Icons.workspace_premium_rounded,
+                        title: 'Membership',
+                        subtitle: 'View, upgrade, or manage your plan.',
+                        onTap: () => Navigator.of(
+                          context,
+                        ).pushNamed(SubscriptionScreen.routeName),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  SettingsSectionCard(
                     title: 'Notification Preferences',
                     children: [
                       PrivacyToggleTile(
@@ -153,6 +186,32 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                             setState(() => _promotions = value),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 16),
+                  RadioGroup<String>(
+                    groupValue: _visibility,
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() => _visibility = value);
+                      }
+                    },
+                    child: SettingsSectionCard(
+                      title: 'Who can discover me',
+                      children: [
+                        for (final option in const [
+                          ('Everyone', 'Show me to compatible members'),
+                          ('People I like', 'Only people I like can find me'),
+                          ('Paused', 'Temporarily hide my profile'),
+                        ])
+                          _VisibilityChoice(
+                            title: option.$1,
+                            subtitle: option.$2,
+                            selected: _visibility == option.$1,
+                            onTap: () =>
+                                setState(() => _visibility = option.$1),
+                          ),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 16),
                   SettingsSectionCard(
@@ -200,14 +259,6 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                           context,
                         ).pushNamed(NotificationPreferencesScreen.routeName),
                       ),
-                      SettingsTile(
-                        icon: Icons.workspace_premium_rounded,
-                        title: 'Manage Subscription',
-                        subtitle: 'View and upgrade your plan.',
-                        onTap: () => Navigator.of(
-                          context,
-                        ).pushNamed(SubscriptionScreen.routeName),
-                      ),
                     ],
                   ),
                 ],
@@ -234,6 +285,62 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   Future<void> _openProfileEditor() async {
     await Navigator.of(context).pushNamed(ProfileEditScreen.routeName);
     if (mounted) setState(() {});
+  }
+}
+
+class _VisibilityChoice extends StatelessWidget {
+  const _VisibilityChoice({
+    required this.title,
+    required this.subtitle,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String title;
+  final String subtitle;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      checked: selected,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AmoraSpacing.space12,
+            vertical: AmoraSpacing.space8,
+          ),
+          child: Row(
+            children: [
+              Radio<String>(value: title),
+              const SizedBox(width: AmoraSpacing.space4),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                    const SizedBox(height: AmoraSpacing.space4),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        color: AppColors.text.withValues(alpha: .64),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -333,7 +440,7 @@ class _UserSummaryCard extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    '${profile.completionPercent}%',
+                    '${profile.presentationCompletionPercent}%',
                     style: const TextStyle(
                       color: AppColors.surface,
                       fontWeight: FontWeight.w900,
@@ -345,7 +452,7 @@ class _UserSummaryCard extends StatelessWidget {
               ClipRRect(
                 borderRadius: BorderRadius.circular(99),
                 child: LinearProgressIndicator(
-                  value: profile.completionPercent / 100,
+                  value: profile.presentationCompletionPercent / 100,
                   minHeight: 9,
                   color: AppColors.active,
                   backgroundColor: AppColors.surface,

@@ -294,7 +294,7 @@ const _gifts = [
     'Flowers',
     'Rose Ritual',
     299,
-    'A romantic rose note with AMORA styling.',
+    'A romantic rose note with AMORAA styling.',
     92,
   ),
   _Gift(

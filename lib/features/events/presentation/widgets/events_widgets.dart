@@ -171,7 +171,7 @@ class EventsMemberBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      label: 'Curated by Amora',
+      label: 'Curated by AMORAA',
       child: Container(
         padding: EdgeInsets.symmetric(
           horizontal: compact ? 9 : 11,
@@ -194,7 +194,7 @@ class EventsMemberBadge extends StatelessWidget {
               const SizedBox(width: 5),
               const Flexible(
                 child: Text(
-                  'Curated by Amora',
+                  'Curated by AMORAA',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -1016,7 +1016,7 @@ class AmoraCircleCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Semantics(
       container: true,
-      label: 'Amora Circle, ${event.title}',
+      label: 'AMORAA Circle, ${event.title}',
       child: Material(
         color: AppColors.surface,
         elevation: 2,
@@ -1063,7 +1063,7 @@ class AmoraCircleCard extends StatelessWidget {
                         ),
                         const Spacer(),
                         const Text(
-                          'Amora Circle',
+                          'AMORAA Circle',
                           style: TextStyle(
                             color: AppColors.surface,
                             fontSize: 12,
@@ -1834,7 +1834,7 @@ class EventSafetySection extends StatelessWidget {
           ),
           const SizedBox(height: 9),
           const Text(
-            'Meet thoughtfully, respect boundaries, and use Amora’s existing '
+            'Meet thoughtfully, respect boundaries, and use AMORAA existing '
             'safety tools whenever you need support.',
             style: TextStyle(
               color: AppColors.text,

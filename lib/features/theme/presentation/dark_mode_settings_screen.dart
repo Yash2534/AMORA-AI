@@ -29,7 +29,7 @@ class DarkModeSettingsScreen extends StatelessWidget {
               Text('Theme', style: Theme.of(context).textTheme.headlineSmall),
               const SizedBox(height: AmoraSpacing.space8),
               Text(
-                'Amora uses its approved light brand palette on every device.',
+                'AMORAA uses its approved light brand palette on every device.',
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
               const SizedBox(height: AmoraSpacing.space20),
@@ -44,7 +44,7 @@ class DarkModeSettingsScreen extends StatelessWidget {
                     color: scheme.primary,
                   ),
                   title: const Text(
-                    'Amora light',
+                    'AMORAA light',
                     style: AmoraTextStyles.cardTitle,
                   ),
                   subtitle: const Text(

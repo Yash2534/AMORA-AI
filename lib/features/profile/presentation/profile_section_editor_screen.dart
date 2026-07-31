@@ -36,6 +36,23 @@ class _ProfileSectionEditorScreenState
     'My ideal first date would be…',
   ];
   static const _lifestyleOptions = <String, List<String>>{
+    'Height': ['Under 5′4″', '5′4″–5′7″', '5′8″–5′11″', '6′0″ and above'],
+    'Languages': [
+      'English',
+      'Hindi',
+      'Gujarati',
+      'English & Hindi',
+      'English, Hindi & Gujarati',
+    ],
+    'Religion': [
+      'Hindu',
+      'Muslim',
+      'Christian',
+      'Sikh',
+      'Jain',
+      'Spiritual',
+      'Prefer not to say',
+    ],
     'Drinking': ['Never', 'Sometimes', 'Socially'],
     'Smoking': ['No', 'Sometimes', 'Prefer not to say'],
     'Exercise': ['Daily', 'A few times a week', 'Occasionally'],
@@ -59,12 +76,13 @@ class _ProfileSectionEditorScreenState
     final profile = LocalProfileRepository.instance.profile;
     _interests = Set<String>.of(profile.interests);
     _lifestyle = Map<String, String>.of(profile.lifestyle);
-    final promptTitles = <String>[
-      ...profile.prompts.keys.take(3),
-      for (final title in _curatedPromptTitles)
-        if (!profile.prompts.containsKey(title)) title,
-      ..._promptTitles,
-    ].take(3);
+    final existingPrompts = profile.prompts.entries
+        .where((entry) => entry.value.trim().isNotEmpty)
+        .take(3)
+        .toList(growable: false);
+    final promptTitles = existingPrompts.isEmpty
+        ? <String>[_curatedPromptTitles.first]
+        : existingPrompts.map((entry) => entry.key);
     _promptControllers = {
       for (final title in promptTitles)
         title: TextEditingController(text: profile.prompts[title] ?? ''),
@@ -88,11 +106,9 @@ class _ProfileSectionEditorScreenState
   bool get _canSave => switch (widget.section) {
     ProfileSection.interests =>
       _interests.length >= 5 && _interests.length <= 10,
-    ProfileSection.prompts =>
-      _promptControllers.values
-              .where((controller) => controller.text.trim().isNotEmpty)
-              .length >=
-          3,
+    ProfileSection.prompts => _promptControllers.values.any(
+      (controller) => controller.text.trim().isNotEmpty,
+    ),
     ProfileSection.lifestyle => true,
   };
 
@@ -161,7 +177,7 @@ class _ProfileSectionEditorScreenState
     ProfileSection.interests =>
       'Choose 5–10 interests. Selected items include a check mark for accessible feedback.',
     ProfileSection.prompts =>
-      'Complete three original prompts so your profile has natural conversation starters.',
+      'Complete at least one original prompt so your profile has a natural conversation starter.',
     ProfileSection.lifestyle =>
       'Every answer is optional. Share only what feels comfortable.',
   };
@@ -214,7 +230,32 @@ class _ProfileSectionEditorScreenState
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(entry.key, style: AmoraTextStyles.titleMedium),
+                DropdownButtonFormField<String>(
+                  key: ValueKey('profile-prompt-selector-${entry.key}'),
+                  initialValue: entry.key,
+                  decoration: const InputDecoration(labelText: 'Prompt'),
+                  items:
+                      <String>{
+                            ..._curatedPromptTitles,
+                            ..._promptTitles,
+                            ..._promptControllers.keys,
+                          }
+                          .map(
+                            (title) => DropdownMenuItem(
+                              value: title,
+                              child: Text(
+                                title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          )
+                          .toList(growable: false),
+                  onChanged: (value) {
+                    if (value == null || value == entry.key) return;
+                    _changePromptTitle(entry.key, value);
+                  },
+                ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: entry.value,
@@ -241,29 +282,97 @@ class _ProfileSectionEditorScreenState
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         for (final entry in _lifestyleOptions.entries) ...[
-          Text(entry.key, style: AmoraTextStyles.titleMedium),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final option in entry.value)
-                ChoiceChip(
-                  label: Text(option),
-                  selected: _lifestyle[entry.key] == option,
-                  onSelected: (selected) => setState(() {
-                    selected
-                        ? _lifestyle[entry.key] = option
-                        : _lifestyle.remove(entry.key);
-                  }),
+          PremiumCard(
+            radius: 24,
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: AppColors.tertiary,
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                      child: Icon(
+                        _lifestyleIcon(entry.key),
+                        color: AppColors.primary,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(entry.key, style: AmoraTextStyles.titleMedium),
+                          const SizedBox(height: 2),
+                          Text(
+                            _lifestyle[entry.key] ?? 'Tap one to share',
+                            style: AmoraTextStyles.bodySmall.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 220),
+                      child: _lifestyle.containsKey(entry.key)
+                          ? const Icon(
+                              Icons.check_circle_rounded,
+                              key: ValueKey('selected'),
+                              color: AppColors.success,
+                            )
+                          : const Icon(
+                              Icons.add_circle_outline_rounded,
+                              key: ValueKey('empty'),
+                              color: AppColors.textMuted,
+                            ),
+                    ),
+                  ],
                 ),
-            ],
+                const SizedBox(height: 14),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final option in entry.value)
+                      _LifestyleOption(
+                        label: option,
+                        selected: _lifestyle[entry.key] == option,
+                        onTap: () => setState(() {
+                          if (_lifestyle[entry.key] == option) {
+                            _lifestyle.remove(entry.key);
+                          } else {
+                            _lifestyle[entry.key] = option;
+                          }
+                        }),
+                      ),
+                  ],
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 12),
         ],
       ],
     );
   }
+
+  IconData _lifestyleIcon(String key) => switch (key) {
+    'Height' => Icons.height_rounded,
+    'Languages' => Icons.translate_rounded,
+    'Religion' => Icons.diversity_3_rounded,
+    'Drinking' => Icons.local_bar_outlined,
+    'Smoking' => Icons.smoke_free_rounded,
+    'Exercise' => Icons.fitness_center_rounded,
+    'Food preference' => Icons.restaurant_rounded,
+    'Pets' => Icons.pets_rounded,
+    _ => Icons.bedtime_outlined,
+  };
 
   void _save() {
     final repository = LocalProfileRepository.instance;
@@ -273,11 +382,99 @@ class _ProfileSectionEditorScreenState
         interests: _interests.toList(growable: false),
         prompts: {
           for (final entry in _promptControllers.entries)
-            entry.key: entry.value.text.trim(),
+            if (entry.value.text.trim().isNotEmpty)
+              entry.key: entry.value.text.trim(),
         },
         lifestyle: _lifestyle,
       ),
     );
     Navigator.of(context).pop();
+  }
+
+  void _changePromptTitle(String previous, String next) {
+    if (_promptControllers.containsKey(next)) return;
+    final controller = _promptControllers[previous];
+    if (controller == null) return;
+    setState(() {
+      final entries = _promptControllers.entries
+          .map(
+            (entry) =>
+                MapEntry(entry.key == previous ? next : entry.key, entry.value),
+          )
+          .toList(growable: false);
+      _promptControllers = Map<String, TextEditingController>.fromEntries(
+        entries,
+      );
+    });
+  }
+}
+
+class _LifestyleOption extends StatelessWidget {
+  const _LifestyleOption({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      selected: selected,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(99),
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+          constraints: const BoxConstraints(minHeight: 48),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: selected ? AppColors.primary : AppColors.background,
+            borderRadius: BorderRadius.circular(99),
+            border: Border.all(
+              color: selected ? AppColors.primary : AppColors.divider,
+            ),
+            boxShadow: selected
+                ? [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: .18),
+                      blurRadius: 14,
+                      spreadRadius: -6,
+                    ),
+                  ]
+                : null,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 180),
+                child: selected
+                    ? const Icon(
+                        Icons.check_rounded,
+                        key: ValueKey(true),
+                        size: 18,
+                        color: AppColors.surface,
+                      )
+                    : const SizedBox.shrink(key: ValueKey(false)),
+              ),
+              if (selected) const SizedBox(width: 6),
+              Text(
+                label,
+                style: AmoraTextStyles.labelMedium.copyWith(
+                  color: selected ? AppColors.surface : AppColors.text,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

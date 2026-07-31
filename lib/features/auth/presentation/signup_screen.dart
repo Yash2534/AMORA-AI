@@ -2,16 +2,15 @@ import 'package:amora_ai/core/access/amora_access.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
-import 'package:amora_ai/core/widgets/amora_inputs.dart';
 import 'package:amora_ai/core/widgets/amora_snackbar.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/features/onboarding/data/local_onboarding_repository.dart';
 import 'package:amora_ai/features/onboarding/presentation/profile_onboarding_flow.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
 import 'package:amora_ai/features/auth/presentation/login_screen.dart';
-import 'package:amora_ai/features/auth/presentation/phone_otp_screen.dart';
 import 'package:amora_ai/features/auth/domain/amora_password_policy.dart';
 import 'package:amora_ai/features/auth/presentation/widgets/auth_presentation.dart';
+import 'package:amora_ai/features/legal/presentation/legal_document_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -33,7 +32,6 @@ class _SignupScreenState extends State<SignupScreen> {
   final _confirmPasswordController = TextEditingController();
   bool _terms = false;
   bool _privacy = false;
-  bool _marketing = true;
   bool _loading = false;
   bool _googleLoading = false;
   bool _obscurePassword = true;
@@ -86,13 +84,12 @@ class _SignupScreenState extends State<SignupScreen> {
   @override
   Widget build(BuildContext context) {
     return AmoraAuthShell(
-      title: 'Create your Amora account',
+      title: 'Create your AMORAA account',
       subtitle:
           'A few details, then we’ll help you build a profile that feels like you.',
       statement: 'Your story starts with a few essentials.',
       showComposition: false,
       stepLabel: 'Account setup',
-      onBack: () => Navigator.of(context).maybePop(),
       footer: const _SignupFooter(),
       child: AutofillGroup(
         child: Form(
@@ -193,20 +190,12 @@ class _SignupScreenState extends State<SignupScreen> {
                 ),
               ),
               const SizedBox(height: AmoraSpacing.space20),
-              _ConsentTile(
-                value: _terms,
-                label: 'I accept the Terms of Service.',
-                onChanged: (value) => setState(() => _terms = value),
-              ),
-              _ConsentTile(
-                value: _privacy,
-                label: 'I accept the Privacy Policy.',
-                onChanged: (value) => setState(() => _privacy = value),
-              ),
-              _ConsentTile(
-                value: _marketing,
-                label: 'Send me premium events and dating tips.',
-                onChanged: (value) => setState(() => _marketing = value),
+              _LegalConsentTile(
+                accepted: _terms && _privacy,
+                onChanged: (value) => setState(() {
+                  _terms = value;
+                  _privacy = value;
+                }),
               ),
               const SizedBox(height: AmoraSpacing.space16),
               AuthPrimaryButton(
@@ -222,14 +211,6 @@ class _SignupScreenState extends State<SignupScreen> {
                 label: 'Sign up with Google',
                 isLoading: _googleLoading,
                 onPressed: _googleLoading ? null : _continueWithGoogle,
-              ),
-              const SizedBox(height: AmoraSpacing.space12),
-              AuthPrimaryButton(
-                label: 'Continue with phone',
-                icon: Icons.phone_iphone_rounded,
-                style: AuthButtonStyle.outlined,
-                onPressed: () =>
-                    Navigator.of(context).pushNamed(PhoneOtpScreen.routeName),
               ),
             ],
           ),
@@ -344,20 +325,74 @@ class _SignupProgress extends StatelessWidget {
   }
 }
 
-class _ConsentTile extends StatelessWidget {
-  const _ConsentTile({
-    required this.value,
-    required this.label,
-    required this.onChanged,
-  });
+class _LegalConsentTile extends StatelessWidget {
+  const _LegalConsentTile({required this.accepted, required this.onChanged});
 
-  final bool value;
-  final String label;
+  final bool accepted;
   final ValueChanged<bool> onChanged;
 
   @override
   Widget build(BuildContext context) {
-    return AmoraCheckboxTile(value: value, label: label, onChanged: onChanged);
+    return Semantics(
+      checked: accepted,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Checkbox(
+            value: accepted,
+            onChanged: (value) => onChanged(value ?? false),
+          ),
+          const SizedBox(width: AmoraSpacing.space4),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(top: AmoraSpacing.space12),
+              child: Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Text('I accept the ', style: AmoraTextStyles.bodyMedium),
+                  const _LegalLink(
+                    label: 'Terms & Conditions',
+                    routeName: TermsConditionsScreen.routeName,
+                  ),
+                  Text(' and ', style: AmoraTextStyles.bodyMedium),
+                  const _LegalLink(
+                    label: 'Privacy Policy',
+                    routeName: PrivacyPolicyScreen.routeName,
+                  ),
+                  Text('.', style: AmoraTextStyles.bodyMedium),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LegalLink extends StatelessWidget {
+  const _LegalLink({required this.label, required this.routeName});
+
+  final String label;
+  final String routeName;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(8),
+      onTap: () => Navigator.of(context).pushNamed(routeName),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: AmoraSpacing.space4),
+        child: Text(
+          label,
+          style: AmoraTextStyles.bodyMedium.copyWith(
+            color: AppColors.primary,
+            fontWeight: FontWeight.w700,
+            decoration: TextDecoration.underline,
+          ),
+        ),
+      ),
+    );
   }
 }
 

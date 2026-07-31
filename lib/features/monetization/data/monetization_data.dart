@@ -23,7 +23,7 @@ class PaymentArgs {
     required this.title,
     required this.billingCycle,
     required this.amount,
-    this.subtitle = 'AMORA Premium',
+    this.subtitle = 'AMORAA Premium',
   });
 
   final String title;
@@ -81,7 +81,7 @@ class ReferralStat {
 
 const subscriptionPlans = [
   SubscriptionPlan(
-    name: 'Amora Plus',
+    name: 'AMORAA Plus',
     monthlyPrice: 1199,
     tagline: 'A calmer way to meet more compatible people.',
     features: [
@@ -92,7 +92,7 @@ const subscriptionPlans = [
     ],
   ),
   SubscriptionPlan(
-    name: 'Amora Gold',
+    name: 'AMORAA Gold',
     monthlyPrice: 1999,
     tagline: 'Premium visibility for more intentional conversations.',
     highlight: true,
@@ -104,9 +104,9 @@ const subscriptionPlans = [
     ],
   ),
   SubscriptionPlan(
-    name: 'Amora Platinum',
+    name: 'AMORAA Platinum',
     monthlyPrice: 3499,
-    tagline: 'The most complete AMORA experience for intentional dating.',
+    tagline: 'The most complete AMORAA experience for intentional dating.',
     features: [
       'Top visibility',
       'Unlimited Super Likes',

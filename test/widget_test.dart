@@ -8,7 +8,6 @@ import 'package:amora_ai/main.dart';
 
 const _productionRoutes = [
   '/ai-icebreakers',
-  '/auth',
   '/account-verification',
   '/bio-builder',
   '/browse',
@@ -28,7 +27,6 @@ const _productionRoutes = [
   '/forgot-password',
   '/gift-shop-catalog',
   '/kyc',
-  '/landing',
   '/liked-you',
   '/liked-you-paywall',
   '/login',
@@ -40,7 +38,6 @@ const _productionRoutes = [
   '/notification-preferences',
   '/onboarding',
   '/payment',
-  '/phone-login',
   '/photo-manager',
   '/post-event-feedback',
   '/profile',
@@ -65,6 +62,9 @@ const _productionRoutes = [
 ];
 
 const _hiddenRoutes = [
+  '/auth',
+  '/landing',
+  '/phone-login',
   '/accessibility-settings',
   '/sos-checkin',
   '/ai-coach',
@@ -148,9 +148,7 @@ const _hiddenLabels = [
 ];
 
 void main() {
-  testWidgets('AMORA AI launches through its splash into authentication', (
-    tester,
-  ) async {
+  testWidgets('AMORAA launches through its splash into Login', (tester) async {
     AmoraSession.logOut();
     await tester.pumpWidget(const MyApp());
     await tester.pumpAndSettle();
@@ -158,9 +156,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Preparing your compatibility engine'), findsNothing);
-    expect(find.text('Meaningful connections start here.'), findsOneWidget);
-    expect(find.byKey(const ValueKey('auth-create-account')), findsOneWidget);
-    expect(find.byKey(const ValueKey('auth-email')), findsOneWidget);
+    expect(find.text('Welcome back'), findsOneWidget);
+    expect(find.byKey(const ValueKey('login-email-field')), findsOneWidget);
+    expect(find.text('Create account'), findsOneWidget);
   });
 
   testWidgets('profile information keeps all questions on one page', (
@@ -197,7 +195,7 @@ void main() {
     expect(find.text('City is required'), findsOneWidget);
   });
 
-  testWidgets('login continues through profile information to Discover', (
+  testWidgets('login continues to the existing profile onboarding flow', (
     tester,
   ) async {
     AmoraSession.logOut();
@@ -220,39 +218,11 @@ void main() {
     await tester.pump(const Duration(milliseconds: 700));
     await tester.pump(const Duration(milliseconds: 400));
 
-    expect(find.text('Tell us about yourself'), findsOneWidget);
-
-    await tester.tap(find.text('Man'));
-    await tester.ensureVisible(find.byIcon(Icons.calendar_month_rounded));
-    await tester.pump();
-    await tester.tap(find.byIcon(Icons.calendar_month_rounded));
-    await tester.pump(const Duration(milliseconds: 300));
-    await tester.tap(find.text('${DateTime.now().year - 24}').last);
-    await tester.pump(const Duration(milliseconds: 300));
-    await tester.tap(find.text('OK'));
-    await tester.pump(const Duration(milliseconds: 300));
-
-    await tester.ensureVisible(find.text('Women'));
-    await tester.pump();
-    await tester.tap(find.text('Women'));
-    await tester.ensureVisible(find.byType(TextFormField).last);
-    await tester.enterText(find.byType(TextFormField).last, '  Ahmedabad  ');
-    await tester.ensureVisible(find.text('Continue'));
-    await tester.pump();
-
-    final continueButton = tester.widget<FilledButton>(
-      find.byType(FilledButton),
-    );
-    expect(continueButton.onPressed, isNotNull);
-    await tester.tap(find.text('Continue'));
-    await tester.pump(const Duration(milliseconds: 400));
-    await tester.pump(const Duration(milliseconds: 400));
-
-    expect(find.byType(BrowseGridScreen), findsOneWidget);
-    expect(find.byKey(const ValueKey('discover-search-field')), findsNothing);
+    expect(find.text("When's your birthday?"), findsOneWidget);
+    expect(find.text('Step 1 of 6'), findsOneWidget);
   });
 
-  testWidgets('signup continues to the four-question profile screen', (
+  testWidgets('signup continues to the existing profile onboarding flow', (
     tester,
   ) async {
     AmoraSession.logOut();
@@ -268,7 +238,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
 
     final fields = find.byType(TextFormField);
-    await tester.enterText(fields.at(0), 'Amora Member');
+    await tester.enterText(fields.at(0), 'AMORAA Member');
     await tester.enterText(fields.at(1), 'new.member@amora.ai');
     await tester.enterText(fields.at(2), '9876543210');
     await tester.enterText(fields.at(3), 'Amora123!');
@@ -277,16 +247,14 @@ void main() {
     final checkboxes = find.byType(Checkbox);
     await tester.ensureVisible(checkboxes.at(0));
     await tester.tap(checkboxes.at(0));
-    await tester.ensureVisible(checkboxes.at(1));
-    await tester.tap(checkboxes.at(1));
     await tester.ensureVisible(find.text('Create account'));
     await tester.pump();
     await tester.tap(find.text('Create account'));
     await tester.pump(const Duration(milliseconds: 750));
     await tester.pump(const Duration(milliseconds: 400));
 
-    expect(find.text('Tell us about yourself'), findsOneWidget);
-    expect(find.text('Preferred gender'), findsOneWidget);
+    expect(find.text("When's your birthday?"), findsOneWidget);
+    expect(find.text('Step 1 of 6'), findsOneWidget);
   });
 
   testWidgets('hidden routes fall through to the Discover screen', (

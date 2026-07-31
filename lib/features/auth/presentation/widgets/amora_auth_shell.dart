@@ -209,7 +209,7 @@ class AuthBrandHeader extends StatelessWidget {
           width: 34,
           height: 34,
           fit: BoxFit.contain,
-          semanticLabel: 'Amora icon',
+          semanticLabel: 'AMORAA icon',
         ),
         const SizedBox(width: AmoraSpacing.space8),
         Expanded(

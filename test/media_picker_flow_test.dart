@@ -12,6 +12,7 @@ void main() {
     tester,
   ) async {
     final picker = _FakeMediaPicker([
+      _success,
       const AmoraMediaPickResult.failure(
         AmoraMediaIssue.permissionDenied,
         'Camera access is needed to take a photo.',
@@ -26,11 +27,11 @@ void main() {
     await tester.pump();
 
     expect(picker.sources, isEmpty);
-    await tester.ensureVisible(find.text('Take a selfie'));
-    await tester.tap(find.text('Take a selfie'));
-    await tester.pump();
+    await _tapKycAction(tester, 'Choose Aadhaar image');
+    expect(picker.sources, [AmoraMediaSource.gallery]);
+    await _tapKycAction(tester, 'Take verification selfie');
 
-    expect(picker.sources, [AmoraMediaSource.camera]);
+    expect(picker.sources, [AmoraMediaSource.gallery, AmoraMediaSource.camera]);
     expect(
       find.text('Camera access is needed to take a photo.'),
       findsOneWidget,
@@ -42,6 +43,7 @@ void main() {
     tester,
   ) async {
     final picker = _FakeMediaPicker([
+      _success,
       const AmoraMediaPickResult.failure(
         AmoraMediaIssue.permissionPermanentlyDenied,
         'Access is disabled in system settings. Open settings to allow it.',
@@ -55,9 +57,8 @@ void main() {
     );
     await tester.pump();
 
-    await tester.ensureVisible(find.text('Take a selfie'));
-    await tester.tap(find.text('Take a selfie'));
-    await tester.pump();
+    await _tapKycAction(tester, 'Choose Aadhaar image');
+    await _tapKycAction(tester, 'Take verification selfie');
     final action = tester.widget<SnackBarAction>(find.byType(SnackBarAction));
     action.onPressed();
     await tester.pump();
@@ -65,10 +66,38 @@ void main() {
     expect(picker.openSettingsCalls, 1);
   });
 
-  testWidgets('accepted camera capture completes the selfie check', (
+  testWidgets('successful verification callback is required for completion', (
     tester,
   ) async {
-    final picker = _FakeMediaPicker([_success]);
+    final picker = _FakeMediaPicker([_success, _success]);
+    var verificationCalls = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AmoraTheme.light(),
+        home: KycVerificationScreen(
+          mediaPicker: picker,
+          verifyIdentity: ({required aadhaar, required selfie}) async {
+            verificationCalls++;
+            return true;
+          },
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await _tapKycAction(tester, 'Choose Aadhaar image');
+    await _tapKycAction(tester, 'Take verification selfie');
+    await _tapKycAction(tester, 'Start verification');
+    await tester.pumpAndSettle();
+
+    expect(verificationCalls, 1);
+    expect(find.text('Verification complete'), findsOneWidget);
+  });
+
+  testWidgets('missing KYC backend never shows a verified state', (
+    tester,
+  ) async {
+    final picker = _FakeMediaPicker([_success, _success]);
     await tester.pumpWidget(
       MaterialApp(
         theme: AmoraTheme.light(),
@@ -77,12 +106,15 @@ void main() {
     );
     await tester.pump();
 
-    await tester.ensureVisible(find.text('Take a selfie'));
-    await tester.tap(find.text('Take a selfie'));
-    await tester.pump();
+    await _tapKycAction(tester, 'Choose Aadhaar image');
+    await _tapKycAction(tester, 'Take verification selfie');
+    await _tapKycAction(tester, 'Start verification');
 
-    expect(picker.sources, [AmoraMediaSource.camera]);
-    expect(find.text('Captured'), findsOneWidget);
+    expect(find.text('Verification complete'), findsNothing);
+    expect(
+      find.textContaining('Secure verification is temporarily unavailable'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('photo manager uses gallery picker and renders selected image', (
@@ -176,6 +208,14 @@ void main() {
     expect(find.text('qa-image.png attached'), findsOneWidget);
     expect(picker.sources, [AmoraMediaSource.gallery]);
   });
+}
+
+Future<void> _tapKycAction(WidgetTester tester, String label) async {
+  final action = find.text(label);
+  await tester.ensureVisible(action);
+  await tester.pumpAndSettle();
+  await tester.tap(action);
+  await tester.pump();
 }
 
 const _success = AmoraMediaPickResult.success(

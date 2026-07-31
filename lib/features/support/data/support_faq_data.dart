@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 
 abstract final class SupportContact {
   static const email = 'support@amora.ai';
-  static const subject = 'Amora Support Request';
-  static const body = '''Hi Amora Support,
+  static const subject = 'AMORAA Support Request';
+  static const body = '''Hi AMORAA Support,
 
 I need help with:
 
@@ -59,7 +59,7 @@ const supportFaqs = <SupportFaqItem>[
   SupportFaqItem(
     id: 'compatibility-score',
     category: FaqCategory.matching,
-    question: 'How does Amora compatibility work?',
+    question: 'How does AMORAA compatibility work?',
     answer:
         'Compatibility combines profile intent, interests, lifestyle '
         'preferences, and conversation signals to help surface relevant '
@@ -89,7 +89,7 @@ const supportFaqs = <SupportFaqItem>[
   SupportFaqItem(
     id: 'join-event',
     category: FaqCategory.events,
-    question: 'How do I join an Amora event?',
+    question: 'How do I join an AMORAA event?',
     answer:
         'Open Events, choose a gathering, and use its current Join, Request, '
         'or Waitlist action. Joined gatherings appear in My Events.',
@@ -149,7 +149,7 @@ const supportFaqs = <SupportFaqItem>[
     question: 'Where are my visibility controls?',
     answer:
         'Profile Settings contains the visibility controls currently '
-        'supported by Amora, including online status and profile visibility.',
+        'supported by AMORAA, including online status and profile visibility.',
   ),
   SupportFaqItem(
     id: 'match-preferences',

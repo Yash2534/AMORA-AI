@@ -4,7 +4,6 @@ import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/features/auth/domain/amora_password_policy.dart';
 import 'package:amora_ai/features/auth/presentation/forgot_password_screen.dart';
-import 'package:amora_ai/features/auth/presentation/phone_otp_screen.dart';
 import 'package:amora_ai/features/auth/presentation/signup_screen.dart';
 import 'package:amora_ai/features/auth/presentation/widgets/auth_presentation.dart';
 import 'package:flutter/material.dart';
@@ -51,8 +50,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return AmoraAuthShell(
       title: 'Welcome back',
-      subtitle: 'Continue your Amora journey.',
-      onBack: () => Navigator.of(context).maybePop(),
+      subtitle: 'Continue your AMORAA journey.',
       footer: const _LoginFooter(),
       child: AutofillGroup(
         child: Form(
@@ -66,7 +64,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 controller: _emailController,
                 label: 'Email address',
                 hint: 'you@example.com',
-                icon: Icons.mail_outline_rounded,
+                icon: Icons.person_outline_rounded,
                 keyboardType: TextInputType.emailAddress,
                 textInputAction: TextInputAction.next,
                 autofillHints: const [
@@ -132,14 +130,6 @@ class _LoginScreenState extends State<LoginScreen> {
               AmoraGoogleButton(
                 isLoading: _googleLoading,
                 onPressed: _googleLoading ? null : _continueWithGoogle,
-              ),
-              const SizedBox(height: AmoraSpacing.space12),
-              AuthPrimaryButton(
-                label: 'Continue with phone',
-                icon: Icons.phone_iphone_rounded,
-                style: AuthButtonStyle.outlined,
-                onPressed: () =>
-                    Navigator.of(context).pushNamed(PhoneOtpScreen.routeName),
               ),
             ],
           ),
@@ -207,7 +197,7 @@ class _LoginFooter extends StatelessWidget {
       alignment: WrapAlignment.center,
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
-        Text('New to Amora?', style: AmoraTextStyles.bodyMedium),
+        Text('New to AMORAA?', style: AmoraTextStyles.bodyMedium),
         AppPrimaryButton(
           label: 'Create account',
           variant: AppPrimaryButtonVariant.text,

@@ -466,7 +466,7 @@ class TravelModeScreen extends StatelessWidget {
           _Metric('Companion Fit', '83%', .83, Icons.explore_rounded),
         ],
         insights: [
-          'Mumbai, Dubai, Singapore, and London are trending for AMORA members.',
+          'Mumbai, Dubai, Singapore, and London are trending for AMORAA members.',
           'Vacation Mode keeps local discovery intentional while you travel.',
           'Travel companion suggestions emphasize safety and shared itinerary style.',
         ],
@@ -764,7 +764,7 @@ class CommunityEventsScreen extends StatelessWidget {
           _Metric('Travel Socials', '7', .55, Icons.luggage_rounded),
         ],
         insights: [
-          'Community events broaden AMORA beyond swipe-based dating.',
+          'Community events broaden AMORAA beyond swipe-based dating.',
           'Local culture, food, and volunteer events support safer first meetings.',
           'AI suggestions adapt by city, interests, and attendance history.',
         ],

@@ -39,7 +39,7 @@ class ReferEarnScreen extends StatelessWidget {
                 children: [
                   MonetizationHeader(
                     title: 'Refer & Earn',
-                    subtitle: 'Invite serious singles and earn Amora Coins.',
+                    subtitle: 'Invite serious singles and earn AMORAA Coins.',
                     icon: Icons.card_giftcard_rounded,
                     onBack: () => Navigator.of(context).maybePop(),
                   ),
@@ -121,7 +121,7 @@ class ReferEarnScreen extends StatelessWidget {
   }
 
   Future<void> _copyCode(BuildContext context) async {
-    await Clipboard.setData(const ClipboardData(text: 'AMORA-LOVE25'));
+    await Clipboard.setData(const ClipboardData(text: 'AMORAA-LOVE25'));
     if (context.mounted) showPremiumSnack(context, 'Referral code copied');
   }
 }
@@ -156,7 +156,7 @@ class _ReferralHero extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           const Text(
-            'AMORA-LOVE25',
+            'AMORAA-LOVE25',
             style: TextStyle(
               color: AppColors.surface,
               fontSize: 30,
@@ -165,7 +165,7 @@ class _ReferralHero extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           const Text(
-            'Earn Rs 100 Amora Coins when your friend subscribes. Friend gets Rs 150 off first subscription.',
+            'Earn Rs 100 AMORAA Coins when your friend subscribes. Friend gets Rs 150 off first subscription.',
             style: TextStyle(
               color: AppColors.surface,
               height: 1.35,

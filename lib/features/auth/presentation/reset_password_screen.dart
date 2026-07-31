@@ -65,9 +65,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       title: _success ? 'Password updated' : 'Create a new password',
       subtitle: _success
           ? 'You can now sign in with your new password.'
-          : 'Use a secure password you have not used for Amora before.',
+          : 'Use a secure password you have not used for AMORAA before.',
       stepLabel: _success ? null : 'Step 3 of 3',
-      onBack: _loading ? null : () => Navigator.of(context).maybePop(),
       child: AnimatedSwitcher(
         duration: MediaQuery.disableAnimationsOf(context)
             ? Duration.zero
@@ -201,8 +200,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     final args = _args;
     if (submit == null || args == null) {
       setState(() {
-        _error =
-            'Password reset is not connected to an authentication service in this build.';
+        _error = 'Password reset is unavailable right now. Start again later.';
       });
       return;
     }

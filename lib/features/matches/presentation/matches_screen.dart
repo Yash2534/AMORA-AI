@@ -8,6 +8,7 @@ import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/chat/data/local_chat_repository.dart';
 import 'package:amora_ai/features/chat/presentation/chat_detail_screen.dart';
 import 'package:amora_ai/features/discover/presentation/discover_action_controller.dart';
+import 'package:amora_ai/features/matches/presentation/widgets/amora_compatibility_slider.dart';
 import 'package:amora_ai/features/profile/presentation/profile_detail_screen.dart';
 import 'package:flutter/material.dart';
 
@@ -23,6 +24,7 @@ class MatchesScreen extends StatefulWidget {
 
 class _MatchesScreenState extends State<MatchesScreen> {
   AiMatchFilter _filter = AiMatchFilter.all;
+  int _compatibilityThreshold = defaultCompatibilityThreshold;
   final Set<String> _selectedProfileIds = <String>{};
   final Set<String> _likedProfileIds = <String>{};
   final Set<String> _processingProfileIds = <String>{};
@@ -32,10 +34,19 @@ class _MatchesScreenState extends State<MatchesScreen> {
   int _bulkTotal = 0;
   int? _successCount;
 
-  List<DummyProfile> get _recommendations => _uniqueRecommendations;
+  List<DummyProfile> get _recommendations {
+    return List<DummyProfile>.of(_uniqueRecommendations)
+      ..sort((a, b) => b.score.compareTo(a.score));
+  }
+
+  List<DummyProfile> get _thresholdRecommendations => _recommendations
+      .where(
+        (profile) => profile.score.clamp(0, 100) >= _compatibilityThreshold,
+      )
+      .toList(growable: false);
 
   List<DummyProfile> get _visibleRecommendations {
-    final profiles = _recommendations;
+    final profiles = _thresholdRecommendations;
     if (profiles.isEmpty) return const [];
     final best = _highestScoring(profiles);
     return profiles
@@ -131,23 +142,35 @@ class _MatchesScreenState extends State<MatchesScreen> {
                           ),
                           slivers: [
                             SliverPadding(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: desktop
+                              padding: EdgeInsets.fromLTRB(
+                                desktop
                                     ? AmoraSpacing.space24
                                     : AmoraSpacing.space16,
+                                AmoraSpacing.space8,
+                                desktop
+                                    ? AmoraSpacing.space24
+                                    : AmoraSpacing.space16,
+                                AmoraSpacing.space12,
                               ),
                               sliver: SliverToBoxAdapter(
-                                child: AiMatchSummary(
-                                  recommendationCount: _recommendations.length,
+                                child: AmoraCompatibilitySlider(
+                                  value: _compatibilityThreshold,
+                                  onChanged: (value) => setState(
+                                    () => _compatibilityThreshold = value,
+                                  ),
                                 ),
                               ),
                             ),
                             SliverToBoxAdapter(
                               child: Padding(
-                                padding: const EdgeInsets.fromLTRB(
-                                  AmoraSpacing.space16,
-                                  AmoraSpacing.space16,
-                                  AmoraSpacing.space16,
+                                padding: EdgeInsets.fromLTRB(
+                                  desktop
+                                      ? AmoraSpacing.space24
+                                      : AmoraSpacing.space16,
+                                  AmoraSpacing.space8,
+                                  desktop
+                                      ? AmoraSpacing.space24
+                                      : AmoraSpacing.space16,
                                   AmoraSpacing.space20,
                                 ),
                                 child: AiMatchFilterBar(
@@ -164,6 +187,17 @@ class _MatchesScreenState extends State<MatchesScreen> {
                                   onDiscover: () => Navigator.of(
                                     context,
                                   ).pushReplacementNamed('/browse'),
+                                ),
+                              )
+                            else if (_thresholdRecommendations.isEmpty)
+                              SliverFillRemaining(
+                                hasScrollBody: false,
+                                child: AiMatchesThresholdEmptyState(
+                                  threshold: _compatibilityThreshold,
+                                  onLowerFilter: () => setState(
+                                    () => _compatibilityThreshold =
+                                        defaultCompatibilityThreshold,
+                                  ),
                                 ),
                               )
                             else if (featured == null)
@@ -194,32 +228,39 @@ class _MatchesScreenState extends State<MatchesScreen> {
                                       const SizedBox(
                                         height: AmoraSpacing.space12,
                                       ),
-                                      SelectableAiMatchCard(
-                                        profile: featured,
-                                        selectionMode: _selectionMode,
-                                        selected: _selectedProfileIds.contains(
-                                          featured.id,
+                                      _MatchReveal(
+                                        key: ValueKey(
+                                          'featured-reveal-'
+                                          '$_compatibilityThreshold-'
+                                          '${featured.id}',
                                         ),
-                                        enabled: _canLike(featured),
-                                        processing: _processingProfileIds
-                                            .contains(featured.id),
-                                        radius: 30,
-                                        onToggle: () =>
-                                            _toggleProfileSelection(featured),
-                                        onLongPress: () =>
-                                            _enterSelectionMode(featured),
-                                        child: FeaturedAiMatchCard(
-                                          key: ValueKey(
-                                            'featured-match-${featured.id}',
-                                          ),
+                                        delay: Duration.zero,
+                                        child: SelectableAiMatchCard(
                                           profile: featured,
-                                          horizontal: desktop,
-                                          onOpenProfile: () =>
-                                              _openProfile(featured),
-                                          onMessage: () =>
-                                              _openConversation(featured),
-                                          onWhyMatch: () =>
-                                              _showWhyThisMatch(featured),
+                                          selectionMode: _selectionMode,
+                                          selected: _selectedProfileIds
+                                              .contains(featured.id),
+                                          enabled: _canLike(featured),
+                                          processing: _processingProfileIds
+                                              .contains(featured.id),
+                                          radius: 30,
+                                          onToggle: () =>
+                                              _toggleProfileSelection(featured),
+                                          onLongPress: () =>
+                                              _enterSelectionMode(featured),
+                                          child: FeaturedAiMatchCard(
+                                            key: ValueKey(
+                                              'featured-match-${featured.id}',
+                                            ),
+                                            profile: featured,
+                                            horizontal: desktop,
+                                            onOpenProfile: () =>
+                                                _openProfile(featured),
+                                            onMessage: () =>
+                                                _openConversation(featured),
+                                            onWhyMatch: () =>
+                                                _showWhyThisMatch(featured),
+                                          ),
                                         ),
                                       ),
                                       if (feed.isNotEmpty) ...[
@@ -363,6 +404,7 @@ class _MatchesScreenState extends State<MatchesScreen> {
 
   Widget _buildFeedCard(DummyProfile profile, int index) {
     return _MatchReveal(
+      key: ValueKey('match-reveal-$_compatibilityThreshold-${profile.id}'),
       delay: Duration(milliseconds: (index % 4) * 45),
       child: SelectableAiMatchCard(
         profile: profile,
@@ -598,7 +640,7 @@ class _MatchesScreenState extends State<MatchesScreen> {
               ),
               const SizedBox(height: AmoraSpacing.space12),
               Text(
-                'Amora presents the compatibility scores and profile information already available for this recommendation set. Scores are guidance, not a guarantee of chemistry.',
+                'AMORAA presents the compatibility scores and profile information already available for this recommendation set. Scores are guidance, not a guarantee of chemistry.',
                 style: AmoraTextStyles.bodyMedium.copyWith(
                   color: AppColors.textNeutral.withValues(alpha: .72),
                 ),
@@ -798,64 +840,6 @@ class AiMatchesSelectionToolbar extends StatelessWidget {
               ],
             );
           },
-        ),
-      ),
-    );
-  }
-}
-
-class AiMatchSummary extends StatelessWidget {
-  const AiMatchSummary({super.key, required this.recommendationCount});
-
-  final int recommendationCount;
-
-  @override
-  Widget build(BuildContext context) {
-    final copy = recommendationCount == 1
-        ? '1 recommendation selected from the compatibility and profile signals available in Amora.'
-        : '$recommendationCount recommendations selected from the compatibility and profile signals available in Amora.';
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.tertiary.withValues(alpha: .72)),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withValues(alpha: .07),
-            blurRadius: 24,
-            spreadRadius: -12,
-            offset: const Offset(0, 12),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(AmoraSpacing.space16),
-        child: Row(
-          children: [
-            DecoratedBox(
-              decoration: BoxDecoration(
-                color: AppColors.tertiary.withValues(alpha: .42),
-                shape: BoxShape.circle,
-              ),
-              child: const SizedBox.square(
-                dimension: 48,
-                child: Icon(
-                  Icons.auto_awesome_rounded,
-                  color: AppColors.primary,
-                ),
-              ),
-            ),
-            const SizedBox(width: AmoraSpacing.space12),
-            Expanded(
-              child: Text(
-                copy,
-                style: AmoraTextStyles.bodyMedium.copyWith(
-                  color: AppColors.textNeutral,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
         ),
       ),
     );
@@ -1345,25 +1329,55 @@ class AiCompatibilityBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final safeScore = score.clamp(0, 100);
+    final label = compatibilityLabel(safeScore);
     return Semantics(
-      label: '$score percent compatibility supplied by Amora',
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: AppColors.primary.withValues(alpha: .94),
-          borderRadius: AmoraRadius.pillBorder,
+      label: '$safeScore percent compatibility, $label',
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 48, maxWidth: 116),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AmoraSpacing.space8,
+          vertical: AmoraSpacing.space4,
         ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AmoraSpacing.space12,
-            vertical: AmoraSpacing.space8,
-          ),
-          child: Text(
-            '$score% Match',
-            style: AmoraTextStyles.labelSmall.copyWith(
-              color: AppColors.surface,
-              fontWeight: FontWeight.w800,
+        decoration: BoxDecoration(
+          color: AppColors.surface.withValues(alpha: .94),
+          borderRadius: BorderRadius.circular(AmoraRadius.large),
+          border: Border.all(color: AppColors.tertiary),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primary.withValues(alpha: .12),
+              blurRadius: 14,
+              spreadRadius: -8,
+              offset: const Offset(0, 6),
             ),
-          ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '$safeScore%',
+              style: AmoraTextStyles.titleMedium.copyWith(
+                color: AppColors.primary,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -.4,
+              ),
+            ),
+            const SizedBox(width: AmoraSpacing.space8),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: AmoraTextStyles.labelSmall.copyWith(
+                  color: AppColors.textSecondary,
+                  fontSize: 9,
+                  fontWeight: FontWeight.w800,
+                  height: 1.08,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -2137,7 +2151,7 @@ class WhyThisMatchSheet extends StatelessWidget {
       _RecommendationFactor(
         Icons.auto_awesome_rounded,
         'Compatibility score',
-        '${profile.score}% supplied by Amora',
+        '${profile.score}% supplied by AMORAA',
       ),
       _RecommendationFactor(
         Icons.favorite_outline_rounded,
@@ -2187,7 +2201,7 @@ class WhyThisMatchSheet extends StatelessWidget {
             ),
             const SizedBox(height: AmoraSpacing.space8),
             Text(
-              'These are profile and recommendation details already available in Amora.',
+              'These are profile and recommendation details already available in AMORAA.',
               style: AmoraTextStyles.bodyMedium.copyWith(
                 color: AppColors.textNeutral.withValues(alpha: .66),
               ),
@@ -2207,7 +2221,7 @@ class WhyThisMatchSheet extends StatelessWidget {
               child: Padding(
                 padding: const EdgeInsets.all(AmoraSpacing.space12),
                 child: Text(
-                  'Recommendations are based on the preferences and profile information available in Amora. They do not guarantee compatibility.',
+                  'Recommendations are based on the preferences and profile information available in AMORAA. They do not guarantee compatibility.',
                   style: AmoraTextStyles.bodySmall.copyWith(
                     color: AppColors.textNeutral.withValues(alpha: .68),
                   ),
@@ -2252,6 +2266,29 @@ class AiMatchesFilteredEmptyState extends StatelessWidget {
       description: 'Try another filter or broaden your preferences.',
       actionLabel: 'Show all matches',
       onAction: onShowAll,
+    );
+  }
+}
+
+class AiMatchesThresholdEmptyState extends StatelessWidget {
+  const AiMatchesThresholdEmptyState({
+    super.key,
+    required this.threshold,
+    required this.onLowerFilter,
+  });
+
+  final int threshold;
+  final VoidCallback onLowerFilter;
+
+  @override
+  Widget build(BuildContext context) {
+    return _AiMatchesStateLayout(
+      icon: Icons.tune_rounded,
+      title: 'No matches above $threshold% yet',
+      description:
+          'Try lowering the compatibility filter to discover more people.',
+      actionLabel: 'Lower filter',
+      onAction: onLowerFilter,
     );
   }
 }
@@ -2560,7 +2597,7 @@ class _SheetHandle extends StatelessWidget {
 }
 
 class _MatchReveal extends StatefulWidget {
-  const _MatchReveal({required this.child, required this.delay});
+  const _MatchReveal({super.key, required this.child, required this.delay});
 
   final Widget child;
   final Duration delay;

@@ -114,7 +114,7 @@ class _ProfileBoostScreenState extends State<ProfileBoostScreen> {
                     PaymentScreen.routeName,
                     arguments: PaymentArgs(
                       title: _packages[_selected].$1,
-                      subtitle: 'AMORA Boost',
+                      subtitle: 'AMORAA Boost',
                       billingCycle: 'One-time profile visibility boost',
                       amount: _packages[_selected].$3,
                     ),

@@ -112,7 +112,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                         ),
                         const SizedBox(height: AmoraSpacing.space8),
                         Text(
-                          'A few essentials help AMORA create more meaningful matches for you.',
+                          'A few essentials help AMORAA create more meaningful matches for you.',
                           textAlign: TextAlign.center,
                           style: AmoraTextStyles.bodyLarge.copyWith(
                             color: AppColors.textNeutral,
@@ -147,7 +147,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                                 number: '2',
                                 title: 'Date of birth',
                                 description:
-                                    'You must be at least 18 to use AMORA.',
+                                    'You must be at least 18 to use AMORAA.',
                               ),
                               const SizedBox(height: AmoraSpacing.space12),
                               AmoraDobField(
@@ -224,7 +224,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                         ),
                         const SizedBox(height: AmoraSpacing.space12),
                         Text(
-                          'Your answers are saved to your Amora profile.',
+                          'Your answers are saved to your AMORAA profile.',
                           textAlign: TextAlign.center,
                           style: AmoraTextStyles.bodySmall.copyWith(
                             color: AppColors.textNeutral,
@@ -347,7 +347,7 @@ class _BrandMark extends StatelessWidget {
         const SizedBox(width: AmoraSpacing.space8),
         Flexible(
           child: Text(
-            'AMORA AI',
+            'AMORAA',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: AmoraTextStyles.titleLarge.copyWith(

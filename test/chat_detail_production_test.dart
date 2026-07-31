@@ -148,6 +148,12 @@ void main() {
         findsOneWidget,
         reason: 'Emoji picker should fit at ${size.width}×${size.height}.',
       );
+      if (size.height < 500) {
+        expect(
+          find.byKey(const ValueKey('chat-compact-emoji-tray')),
+          findsOneWidget,
+        );
+      }
       final layoutException = tester.takeException();
       expect(
         layoutException,

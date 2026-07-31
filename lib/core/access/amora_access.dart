@@ -205,18 +205,8 @@ Future<void> showLoginRequiredSheet(BuildContext context) {
                 ),
                 const SizedBox(height: 20),
                 AppPrimaryButton(
-                  label: 'Continue with Phone Number',
-                  icon: Icons.phone_iphone_rounded,
-                  onPressed: () {
-                    Navigator.of(sheetContext).pop();
-                    Navigator.of(context).pushNamed('/phone-login');
-                  },
-                ),
-                const SizedBox(height: 10),
-                AppPrimaryButton(
                   label: 'Continue with Email',
-                  icon: Icons.mail_outline_rounded,
-                  variant: AppPrimaryButtonVariant.outlined,
+                  icon: Icons.person_outline_rounded,
                   onPressed: () {
                     Navigator.of(sheetContext).pop();
                     Navigator.of(context).pushNamed('/login');

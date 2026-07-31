@@ -60,31 +60,89 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
                 children: [
                   const _Header(),
                   const SizedBox(height: 18),
-                  GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: 6,
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: constraints.maxWidth > 560 ? 3 : 2,
-                      mainAxisSpacing: AmoraSpacing.space12,
-                      crossAxisSpacing: AmoraSpacing.space12,
-                      childAspectRatio: .78,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          '${_photos.length} of 6 photos',
+                          style: AmoraTextStyles.titleMedium,
+                        ),
+                      ),
+                      const Icon(
+                        Icons.drag_indicator_rounded,
+                        color: AppColors.primary,
+                      ),
+                      const SizedBox(width: AmoraSpacing.space4),
+                      Text(
+                        'Drag to reorder',
+                        style: AmoraTextStyles.labelMedium.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AmoraSpacing.space12),
+                  SizedBox(
+                    key: const ValueKey('horizontal-photo-gallery'),
+                    height: 206,
+                    child: Row(
+                      children: [
+                        if (_photos.length < 6) ...[
+                          SizedBox(
+                            key: const ValueKey('add-photo-card'),
+                            width: 112,
+                            child: _AddPhotoTile(
+                              onTap: _picking ? null : _addPhoto,
+                              loading: _picking,
+                            ),
+                          ),
+                          const SizedBox(width: AmoraSpacing.space12),
+                        ],
+                        Expanded(
+                          child: ReorderableListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            buildDefaultDragHandles: false,
+                            physics: const BouncingScrollPhysics(),
+                            itemCount: _photos.length,
+                            onReorderItem: _reorder,
+                            proxyDecorator: (child, index, animation) {
+                              return AnimatedBuilder(
+                                animation: animation,
+                                builder: (context, _) => Transform.scale(
+                                  scale: 1 + animation.value * .04,
+                                  child: Material(
+                                    color: AppColors.transparent,
+                                    elevation: animation.value * 8,
+                                    borderRadius: AmoraRadius.card,
+                                    child: child,
+                                  ),
+                                ),
+                              );
+                            },
+                            itemBuilder: (context, index) {
+                              final photo = _photos[index];
+                              return Padding(
+                                key: ValueKey('photo-$photo'),
+                                padding: const EdgeInsets.only(
+                                  right: AmoraSpacing.space12,
+                                ),
+                                child: SizedBox(
+                                  width: 144,
+                                  child: _PhotoTile(
+                                    index: index,
+                                    photo: photo,
+                                    primary: _primary == index,
+                                    onPrimary: () =>
+                                        setState(() => _primary = index),
+                                    onDelete: () => _delete(index),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
                     ),
-                    itemBuilder: (context, index) {
-                      if (index >= _photos.length) {
-                        return _AddPhotoTile(
-                          onTap: _picking ? null : _addPhoto,
-                          loading: _picking,
-                        );
-                      }
-                      return _PhotoTile(
-                        photo: _photos[index],
-                        primary: _primary == index,
-                        onPrimary: () => setState(() => _primary = index),
-                        onDelete: () => _delete(index),
-                        onMove: () => _moveEarlier(index),
-                      );
-                    },
                   ),
                   const SizedBox(height: AmoraSpacing.space16),
                   const PremiumCard(
@@ -220,18 +278,20 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
     _snack('Photo removed');
   }
 
-  void _moveEarlier(int index) {
-    if (index == 0) return _snack('Already first');
+  void _reorder(int oldIndex, int newIndex) {
+    if (oldIndex >= _photos.length) return;
+    if (newIndex > _photos.length) newIndex = _photos.length;
+    if (oldIndex == newIndex) return;
     setState(() {
-      final item = _photos.removeAt(index);
-      _photos.insert(index - 1, item);
-      if (_primary == index) {
-        _primary = index - 1;
-      } else if (_primary == index - 1) {
-        _primary = index;
+      final primaryPhoto = _photos[_primary];
+      final item = _photos.removeAt(oldIndex);
+      _photos.insert(newIndex, item);
+      _primary = _photos.indexOf(primaryPhoto);
+      if (_primary < 0) {
+        _primary = 0;
       }
     });
-    _snack('Photo moved earlier');
+    _snack('Photo order updated');
   }
 
   Future<void> _saveChanges() async {
@@ -306,18 +366,18 @@ class _Header extends StatelessWidget {
 
 class _PhotoTile extends StatelessWidget {
   const _PhotoTile({
+    required this.index,
     required this.photo,
     required this.primary,
     required this.onPrimary,
     required this.onDelete,
-    required this.onMove,
   });
 
+  final int index;
   final String photo;
   final bool primary;
   final VoidCallback onPrimary;
   final VoidCallback onDelete;
-  final VoidCallback onMove;
 
   @override
   Widget build(BuildContext context) {
@@ -345,10 +405,12 @@ class _PhotoTile extends StatelessWidget {
           bottom: 4,
           child: Row(
             children: [
-              IconButton.filledTonal(
-                tooltip: 'Move earlier',
-                onPressed: onMove,
-                icon: const Icon(Icons.swap_vert_rounded, size: 18),
+              ReorderableDragStartListener(
+                index: index,
+                child: const SizedBox.square(
+                  dimension: 42,
+                  child: Icon(Icons.drag_indicator_rounded, size: 20),
+                ),
               ),
               IconButton.filledTonal(
                 tooltip: 'Delete',

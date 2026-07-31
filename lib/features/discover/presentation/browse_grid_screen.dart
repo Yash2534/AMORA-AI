@@ -15,6 +15,7 @@ import 'package:amora_ai/core/widgets/premium_motion.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/discover/presentation/advanced_filters_screen.dart';
 import 'package:amora_ai/features/discover/presentation/discover_action_controller.dart';
+import 'package:amora_ai/features/notifications/presentation/notifications_hub_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_detail_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
@@ -230,6 +231,12 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      _DiscoverHeader(
+                        onNotifications: () => Navigator.of(
+                          context,
+                        ).pushNamed(NotificationsHubScreen.routeName),
+                      ),
+                      const SizedBox(height: 12),
                       _DiscoverFilterRail(
                         filters: _quickFilters,
                         selected: _selectedQuickFilters,
@@ -276,7 +283,10 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
           builder: (context, constraints) {
             final width = math.min(512.0, constraints.maxWidth);
             final desiredHeight = (width * 1.72).clamp(420.0, 760.0);
-            final height = math.min(constraints.maxHeight, desiredHeight);
+            // Keep the floating action rail clear of the bottom navigation's
+            // shadow and hit-test area on compact-height phones.
+            final availableHeight = math.max(0.0, constraints.maxHeight - 16);
+            final height = math.min(availableHeight, desiredHeight);
             return Center(
               child: SizedBox(
                 width: width,
@@ -581,45 +591,75 @@ class _DiscoverFilterRail extends StatelessWidget {
     return SizedBox(
       key: const ValueKey('discover-filter-rail'),
       height: 46,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        children: [
+          _DiscoverFilterChip(
+            key: const ValueKey('discover-filters-button'),
+            label: 'Filters',
+            icon: Icons.tune_rounded,
+            selected: false,
+            onTap: onFilters,
+          ),
+          for (final filter in filters) ...[
+            const SizedBox(width: 5),
+            _DiscoverFilterChip(
+              key: ValueKey('discover-filter-${filter.label}'),
+              label: filter.label,
+              icon: filter.icon,
+              selected: selected.contains(filter.label),
+              onTap: () => onToggle(filter.label),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _DiscoverHeader extends StatelessWidget {
+  const _DiscoverHeader({required this.onNotifications});
+
+  final VoidCallback onNotifications;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 52,
       child: Row(
         children: [
           Semantics(
             image: true,
-            label: 'Amora Discover',
-            child: SizedBox(
-              width: 72,
-              child: Image.asset(
-                AmoraBrandAssets.wordmark,
-                height: 17,
-                fit: BoxFit.contain,
-                alignment: Alignment.centerLeft,
-              ),
+            label: 'AMORAA',
+            child: Image.asset(
+              AmoraBrandAssets.wordmark,
+              width: 128,
+              height: 24,
+              fit: BoxFit.contain,
+              alignment: Alignment.centerLeft,
+              filterQuality: FilterQuality.high,
             ),
           ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              physics: const BouncingScrollPhysics(),
-              children: [
-                _DiscoverFilterChip(
-                  key: const ValueKey('discover-filters-button'),
-                  label: 'Filters',
-                  icon: Icons.tune_rounded,
-                  selected: false,
-                  onTap: onFilters,
-                ),
-                for (final filter in filters) ...[
-                  const SizedBox(width: 5),
-                  _DiscoverFilterChip(
-                    key: ValueKey('discover-filter-${filter.label}'),
-                    label: filter.label,
-                    icon: filter.icon,
-                    selected: selected.contains(filter.label),
-                    onTap: () => onToggle(filter.label),
+          const Spacer(),
+          Semantics(
+            button: true,
+            label: 'Open notifications',
+            child: SizedBox.square(
+              dimension: 48,
+              child: IconButton(
+                key: const ValueKey('discover-notifications'),
+                tooltip: 'Notifications',
+                onPressed: onNotifications,
+                style: IconButton.styleFrom(
+                  foregroundColor: AppColors.primary,
+                  backgroundColor: AppColors.surface,
+                  side: BorderSide(
+                    color: AppColors.tertiary.withValues(alpha: .8),
                   ),
-                ],
-              ],
+                ),
+                icon: const Icon(Icons.notifications_none_rounded),
+              ),
             ),
           ),
         ],

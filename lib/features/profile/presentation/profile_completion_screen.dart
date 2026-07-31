@@ -7,8 +7,8 @@ import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
 import 'package:amora_ai/features/profile/presentation/bio_builder_screen.dart';
 import 'package:amora_ai/features/profile/presentation/photo_manager_screen.dart';
-import 'package:amora_ai/features/profile/presentation/profile_preview_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_basic_details_screen.dart';
+import 'package:amora_ai/features/profile/presentation/profile_completion_metrics.dart';
 import 'package:amora_ai/features/profile/presentation/profile_section_editor_screen.dart';
 import 'package:amora_ai/features/discover/presentation/discover_screen.dart';
 import 'package:flutter/material.dart';
@@ -104,11 +104,15 @@ class _ProfileCompletionScreenState extends State<ProfileCompletionScreen> {
                                 ),
                                 const SizedBox(height: 8),
                                 LinearProgressIndicator(
-                                  value: profile.completionPercent / 100,
+                                  value:
+                                      profile.presentationCompletionPercent /
+                                      100,
                                   borderRadius: BorderRadius.circular(99),
                                 ),
                                 const SizedBox(height: 6),
-                                Text('${profile.completionPercent}% complete'),
+                                Text(
+                                  '${profile.presentationCompletionPercent}% complete',
+                                ),
                               ],
                             ),
                           ),
@@ -151,9 +155,37 @@ class _ProfileCompletionScreenState extends State<ProfileCompletionScreen> {
                       icon: Icons.chat_rounded,
                       title: 'Prompts',
                       description:
-                          '${profile.completedPromptCount} of 3 minimum',
-                      complete: profile.completedPromptCount >= 3,
+                          '${profile.completedPromptCount} of 1 minimum',
+                      complete: profile.completedPromptCount >= 1,
                       onTap: () => _openSection(ProfileSection.prompts),
+                    ),
+                    _SectionTile(
+                      icon: Icons.height_rounded,
+                      title: 'Height',
+                      description: profile.lifestyle['Height'] ?? 'Not added',
+                      complete: (profile.lifestyle['Height'] ?? '')
+                          .trim()
+                          .isNotEmpty,
+                      onTap: () => _openSection(ProfileSection.lifestyle),
+                    ),
+                    _SectionTile(
+                      icon: Icons.translate_rounded,
+                      title: 'Languages',
+                      description:
+                          profile.lifestyle['Languages'] ?? 'Not added',
+                      complete: (profile.lifestyle['Languages'] ?? '')
+                          .trim()
+                          .isNotEmpty,
+                      onTap: () => _openSection(ProfileSection.lifestyle),
+                    ),
+                    _SectionTile(
+                      icon: Icons.diversity_3_rounded,
+                      title: 'Religion',
+                      description: profile.lifestyle['Religion'] ?? 'Not added',
+                      complete: (profile.lifestyle['Religion'] ?? '')
+                          .trim()
+                          .isNotEmpty,
+                      onTap: () => _openSection(ProfileSection.lifestyle),
                     ),
                     const SizedBox(height: 20),
                     Text('Optional', style: AmoraTextStyles.titleLarge),
@@ -167,14 +199,6 @@ class _ProfileCompletionScreenState extends State<ProfileCompletionScreen> {
                       onTap: () => _openSection(ProfileSection.lifestyle),
                     ),
                     const SizedBox(height: 20),
-                    AppPrimaryButton(
-                      label: 'Preview profile',
-                      icon: Icons.visibility_rounded,
-                      variant: AppPrimaryButtonVariant.outlined,
-                      onPressed: () =>
-                          _openNamed(ProfilePreviewScreen.routeName),
-                    ),
-                    const SizedBox(height: 12),
                     AppPrimaryButton(
                       key: const Key('start-discovering-button'),
                       label: 'Return to Discover',

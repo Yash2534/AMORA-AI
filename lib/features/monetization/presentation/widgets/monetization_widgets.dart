@@ -472,7 +472,7 @@ class WalletBalanceCard extends StatelessWidget {
           Icon(Icons.savings_rounded, color: AppColors.premiumGold, size: 34),
           SizedBox(height: 18),
           Text(
-            '1,250 Amora Coins',
+            '1,250 AMORAA Coins',
             style: TextStyle(
               color: AppColors.surface,
               fontSize: 28,

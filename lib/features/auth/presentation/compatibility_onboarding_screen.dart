@@ -337,7 +337,7 @@ class _ResultPreview extends StatelessWidget {
               ),
               const SizedBox(height: AmoraSpacing.space12),
               Text(
-                'AMORA AI will prioritize values-led introductions, safer first conversations, and matches who fit your daily rhythm.',
+                'AMORAA will prioritize values-led introductions, safer first conversations, and matches who fit your daily rhythm.',
                 style: AmoraTextStyles.bodyMedium.copyWith(
                   color: AppColors.background,
                 ),
@@ -457,7 +457,7 @@ const _questions = [
   _QuizQuestion(
     category: 'Personality',
     title: 'What kind of energy feels most like you?',
-    helper: 'This helps AMORA AI understand your everyday personality rhythm.',
+    helper: 'This helps AMORAA understand your everyday personality rhythm.',
     icon: Icons.self_improvement_rounded,
     options: [
       'Quiet routines and meaningful one-on-one time',
@@ -493,7 +493,7 @@ const _questions = [
   _QuizQuestion(
     category: 'Lifestyle',
     title: 'What does a balanced week look like for you?',
-    helper: 'This helps AMORA AI understand your everyday rhythm.',
+    helper: 'This helps AMORAA understand your everyday rhythm.',
     icon: Icons.self_improvement_rounded,
     options: [
       'Traditions are a meaningful part of life',
@@ -517,7 +517,7 @@ const _questions = [
   _QuizQuestion(
     category: 'Future Goals',
     title: 'What are you hoping to build over the next few years?',
-    helper: 'Long-term direction helps AMORA identify relationship potential.',
+    helper: 'Long-term direction helps AMORAA identify relationship potential.',
     icon: Icons.route_rounded,
     options: [
       'Rom-coms and feel-good stories',
@@ -569,10 +569,10 @@ const _questions = [
     helper: 'Financial comfort and planning styles affect future alignment.',
     icon: Icons.account_balance_wallet_rounded,
     options: [
-      'I want children in the future',
-      'I am open, depending on the relationship',
-      'I do not see children in my future',
-      'I prefer to discuss this later',
+      'I plan carefully and save consistently',
+      'I balance saving with enjoying the present',
+      'I prefer shared goals with personal independence',
+      'I value open conversations before big decisions',
     ],
   ),
   _QuizQuestion(
@@ -590,7 +590,7 @@ const _questions = [
   _QuizQuestion(
     category: 'Relationship Expectations',
     title: 'What are you hoping to build?',
-    helper: 'This gives AMORA AI the clearest intent signal.',
+    helper: 'This gives AMORAA the clearest intent signal.',
     icon: Icons.favorite_rounded,
     options: [
       'A serious long-term relationship',

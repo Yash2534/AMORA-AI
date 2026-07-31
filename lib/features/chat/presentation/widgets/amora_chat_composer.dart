@@ -16,6 +16,7 @@ class AmoraChatComposer extends StatefulWidget {
     this.enabled = true,
     this.disabledReason,
     this.onEmojiPickerVisibilityChanged,
+    this.compactHeight,
   });
 
   static const maximumMessageLength = 2000;
@@ -27,6 +28,7 @@ class AmoraChatComposer extends StatefulWidget {
   final bool enabled;
   final String? disabledReason;
   final ValueChanged<bool>? onEmojiPickerVisibilityChanged;
+  final bool? compactHeight;
 
   @override
   State<AmoraChatComposer> createState() => _AmoraChatComposerState();
@@ -97,9 +99,9 @@ class _AmoraChatComposerState extends State<AmoraChatComposer> {
     final hasText = widget.controller.text.trim().isNotEmpty;
     final canSend = widget.enabled && hasText && !widget.sending;
     final mediaSize = MediaQuery.sizeOf(context);
-    final compactHeight = mediaSize.height < 500;
+    final compactHeight = widget.compactHeight ?? mediaSize.height < 500;
     final pickerHeight = compactHeight
-        ? 160.0
+        ? 72.0
         : math.min(330.0, math.max(240.0, mediaSize.height * .34));
     final width = mediaSize.width;
     final columns = width < 360
@@ -287,71 +289,148 @@ class _AmoraChatComposerState extends State<AmoraChatComposer> {
                 ? SizedBox(
                     key: const ValueKey('chat-emoji-picker'),
                     height: pickerHeight,
-                    child: EmojiPicker(
-                      textEditingController: widget.controller,
-                      onEmojiSelected: (_, _) {
-                        widget.onDraftChanged(widget.controller.text);
-                      },
-                      onBackspacePressed: () {
-                        widget.onDraftChanged(widget.controller.text);
-                      },
-                      config: Config(
-                        height: pickerHeight,
-                        emojiViewConfig: EmojiViewConfig(
-                          columns: columns,
-                          emojiSizeMax: 30,
-                          backgroundColor: AppColors.surface,
-                          gridPadding: const EdgeInsets.symmetric(vertical: 8),
-                          noRecents: const Center(
-                            child: Text(
-                              'Recently used emoji will appear here.',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(color: AppColors.text),
+                    child: compactHeight
+                        ? _CompactEmojiTray(
+                            controller: widget.controller,
+                            onChanged: widget.onDraftChanged,
+                          )
+                        : EmojiPicker(
+                            textEditingController: widget.controller,
+                            onEmojiSelected: (_, _) {
+                              widget.onDraftChanged(widget.controller.text);
+                            },
+                            onBackspacePressed: () {
+                              widget.onDraftChanged(widget.controller.text);
+                            },
+                            config: Config(
+                              height: pickerHeight,
+                              emojiViewConfig: EmojiViewConfig(
+                                columns: columns,
+                                emojiSizeMax: 30,
+                                backgroundColor: AppColors.surface,
+                                gridPadding: const EdgeInsets.symmetric(
+                                  vertical: 8,
+                                ),
+                                noRecents: const Center(
+                                  child: Text(
+                                    'Recently used emoji will appear here.',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(color: AppColors.text),
+                                  ),
+                                ),
+                                loadingIndicator: const Center(
+                                  child: CircularProgressIndicator(),
+                                ),
+                              ),
+                              categoryViewConfig: CategoryViewConfig(
+                                initCategory: Category.SMILEYS,
+                                tabBarHeight: compactHeight ? 40 : 46,
+                                extraTab: compactHeight
+                                    ? CategoryExtraTab.BACKSPACE
+                                    : CategoryExtraTab.NONE,
+                                backgroundColor: AppColors.surface,
+                                indicatorColor: AppColors.secondary,
+                                iconColor: AppColors.text,
+                                iconColorSelected: AppColors.primary,
+                                backspaceColor: AppColors.primary,
+                                dividerColor: AppColors.tertiary,
+                              ),
+                              bottomActionBarConfig: BottomActionBarConfig(
+                                enabled: !compactHeight,
+                                backgroundColor: AppColors.surface,
+                                buttonColor: AppColors.primary,
+                                buttonIconColor: AppColors.surface,
+                                showBackspaceButton: true,
+                                showSearchViewButton: true,
+                              ),
+                              searchViewConfig: const SearchViewConfig(
+                                backgroundColor: AppColors.surface,
+                                buttonIconColor: AppColors.primary,
+                                inputTextStyle: TextStyle(
+                                  color: AppColors.text,
+                                ),
+                                hintTextStyle: TextStyle(color: AppColors.text),
+                              ),
+                              skinToneConfig: const SkinToneConfig(
+                                dialogBackgroundColor: AppColors.surface,
+                                indicatorColor: AppColors.primary,
+                                rememberSkinTone: true,
+                              ),
                             ),
                           ),
-                          loadingIndicator: const Center(
-                            child: CircularProgressIndicator(),
-                          ),
-                        ),
-                        categoryViewConfig: CategoryViewConfig(
-                          initCategory: Category.SMILEYS,
-                          tabBarHeight: compactHeight ? 40 : 46,
-                          extraTab: compactHeight
-                              ? CategoryExtraTab.BACKSPACE
-                              : CategoryExtraTab.NONE,
-                          backgroundColor: AppColors.surface,
-                          indicatorColor: AppColors.secondary,
-                          iconColor: AppColors.text,
-                          iconColorSelected: AppColors.primary,
-                          backspaceColor: AppColors.primary,
-                          dividerColor: AppColors.tertiary,
-                        ),
-                        bottomActionBarConfig: BottomActionBarConfig(
-                          enabled: !compactHeight,
-                          backgroundColor: AppColors.surface,
-                          buttonColor: AppColors.primary,
-                          buttonIconColor: AppColors.surface,
-                          showBackspaceButton: true,
-                          showSearchViewButton: true,
-                        ),
-                        searchViewConfig: const SearchViewConfig(
-                          backgroundColor: AppColors.surface,
-                          buttonIconColor: AppColors.primary,
-                          inputTextStyle: TextStyle(color: AppColors.text),
-                          hintTextStyle: TextStyle(color: AppColors.text),
-                        ),
-                        skinToneConfig: const SkinToneConfig(
-                          dialogBackgroundColor: AppColors.surface,
-                          indicatorColor: AppColors.primary,
-                          rememberSkinTone: true,
-                        ),
-                      ),
-                    ),
                   )
                 : const SizedBox.shrink(),
           ),
         ],
       ),
     );
+  }
+}
+
+class _CompactEmojiTray extends StatelessWidget {
+  const _CompactEmojiTray({required this.controller, required this.onChanged});
+
+  static const _emoji = ['😀', '😂', '🥰', '😍', '😊', '😉', '❤️', '👍', '✨'];
+
+  final TextEditingController controller;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      key: const ValueKey('chat-compact-emoji-tray'),
+      color: AppColors.surface,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        children: [
+          for (final emoji in _emoji)
+            SizedBox.square(
+              dimension: 52,
+              child: IconButton(
+                tooltip: 'Insert $emoji',
+                onPressed: () => _insert(emoji),
+                icon: Text(emoji, style: const TextStyle(fontSize: 26)),
+              ),
+            ),
+          SizedBox.square(
+            dimension: 52,
+            child: IconButton(
+              tooltip: 'Backspace',
+              onPressed: _backspace,
+              icon: const Icon(
+                Icons.backspace_outlined,
+                color: AppColors.primary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _insert(String emoji) {
+    final text = controller.text;
+    final selection = controller.selection;
+    final start = selection.isValid ? selection.start : text.length;
+    final end = selection.isValid ? selection.end : text.length;
+    controller.value = TextEditingValue(
+      text: text.replaceRange(start, end, emoji),
+      selection: TextSelection.collapsed(offset: start + emoji.length),
+    );
+    onChanged(controller.text);
+  }
+
+  void _backspace() {
+    final runes = controller.text.runes.toList(growable: true);
+    if (runes.isEmpty) return;
+    runes.removeLast();
+    controller.value = TextEditingValue(
+      text: String.fromCharCodes(runes),
+      selection: TextSelection.collapsed(
+        offset: String.fromCharCodes(runes).length,
+      ),
+    );
+    onChanged(controller.text);
   }
 }

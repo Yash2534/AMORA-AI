@@ -42,9 +42,8 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
   Widget build(BuildContext context) {
     return AmoraAuthShell(
       title: 'Enter verification code',
-      subtitle: 'Enter the six-digit code for your Amora account.',
+      subtitle: 'Enter the six-digit code for your AMORAA account.',
       stepLabel: 'Account verification',
-      onBack: () => Navigator.of(context).maybePop(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -66,7 +65,8 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
           const SizedBox(height: AmoraSpacing.space16),
           const AuthInlineAlert(
             message:
-                'This repository currently provides local verification only; no message delivery service is configured.',
+                'Use the verification code provided for this account. Codes '
+                'are never requested by AMORAA support.',
           ),
           const SizedBox(height: AmoraSpacing.space20),
           AuthPrimaryButton(
@@ -80,7 +80,7 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
           ),
           const SizedBox(height: AmoraSpacing.space8),
           AppPrimaryButton(
-            label: 'Change email or phone',
+            label: 'Change email',
             variant: AppPrimaryButtonVariant.text,
             onPressed: _loading ? null : () => Navigator.of(context).maybePop(),
           ),

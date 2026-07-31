@@ -66,7 +66,7 @@ class _ReportFlowScreenState extends State<ReportFlowScreen> {
                       _Header(
                         title: 'Report a Concern',
                         subtitle:
-                            'AMORA reviews every report with safety-first moderation.',
+                            'AMORAA reviews every report with safety-first moderation.',
                         icon: Icons.flag_rounded,
                       ),
                       const SizedBox(height: 18),
@@ -170,7 +170,7 @@ class _ReportFlowScreenState extends State<ReportFlowScreen> {
     showAmoraDialog<void>(
       context: context,
       title: 'Report submitted',
-      message: 'Thanks for helping keep AMORA respectful. Reason: $_reason.',
+      message: 'Thanks for helping keep AMORAA respectful. Reason: $_reason.',
       icon: AmoraIcons.check,
       primaryLabel: 'Done',
       onPrimary: () => Navigator.pop(context),

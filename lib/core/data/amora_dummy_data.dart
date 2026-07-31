@@ -40,21 +40,21 @@ class AmoraDummyData {
   static const subscriptionPlans = [
     DummySubscriptionPlan(
       id: 'gold-monthly',
-      name: 'AMORA Gold',
+      name: 'AMORAA Gold',
       price: 'Rs 699',
       period: 'monthly',
       benefits: ['See intent first', 'Priority profiles', 'AI openers'],
     ),
     DummySubscriptionPlan(
       id: 'platinum-quarterly',
-      name: 'AMORA Platinum',
+      name: 'AMORAA Platinum',
       price: 'Rs 1,799',
       period: 'quarterly',
       benefits: ['Advanced filters', 'Profile boost', 'Read receipts'],
     ),
     DummySubscriptionPlan(
       id: 'concierge',
-      name: 'AMORA Concierge',
+      name: 'AMORAA Concierge',
       price: 'Rs 4,999',
       period: 'monthly',
       benefits: ['Curated matches', 'Date planning', 'Profile review'],

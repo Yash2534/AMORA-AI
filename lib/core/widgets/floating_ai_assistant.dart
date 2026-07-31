@@ -11,7 +11,7 @@ class FloatingAiAssistant extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Tooltip(
-      message: 'AMORA AI assistant',
+      message: 'AMORAA assistant',
       child: FloatingActionButton(
         heroTag: 'amora-ai-assistant',
         onPressed: () => _openAssistant(context),
@@ -87,7 +87,7 @@ class FloatingAiAssistant extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'AMORA AI Assistant',
+                              'AMORAA Assistant',
                               style: AmoraTextStyles.titleLarge,
                             ),
                             SizedBox(height: AmoraSpacing.space4),

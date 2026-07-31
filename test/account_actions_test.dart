@@ -36,9 +36,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: AmoraTheme.light(),
-        routes: {
-          '/auth': (_) => const Scaffold(body: Text('Authentication landing')),
-        },
+        routes: {'/login': (_) => const Scaffold(body: Text('Login'))},
         home: ProfileScreen(
           showNavigation: false,
           onDeleteAccount: onDeleteAccount,
@@ -115,7 +113,7 @@ void main() {
     expect(find.text('Log out'), findsOneWidget);
     expect(find.text('Delete account'), findsOneWidget);
     expect(
-      find.text('Permanently delete your Amora account and associated data.'),
+      find.text('Permanently delete your AMORAA account and associated data.'),
       findsOneWidget,
     );
   });
@@ -217,7 +215,7 @@ void main() {
     expect(AmoraSession.isLoggedIn.value, isFalse);
     expect(profiles.profile.name, isEmpty);
     expect(chats.conversations, isEmpty);
-    expect(find.text('Authentication landing'), findsOneWidget);
+    expect(find.text('Login'), findsOneWidget);
     expect(find.byType(ProfileScreen), findsNothing);
   });
 }

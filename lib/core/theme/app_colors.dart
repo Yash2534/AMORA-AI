@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// The complete approved Amora colour palette.
+/// The complete approved AMORAA colour palette.
 ///
 /// Every semantic role and compatibility alias below resolves to one of these
 /// six colours. Do not add raw colour values outside this file.

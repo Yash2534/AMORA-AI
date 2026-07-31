@@ -33,7 +33,6 @@ void main() {
     await pumpNotifications(tester);
 
     expect(find.text('Notifications'), findsOneWidget);
-    expect(find.text('Back'), findsOneWidget);
     expect(
       find.byKey(const ValueKey('notifications-back-button')),
       findsOneWidget,

@@ -10,21 +10,20 @@ import 'package:amora_ai/core/widgets/floating_bottom_nav.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/premium_motion.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
-import 'package:amora_ai/features/auth/presentation/amora_auth_screen.dart';
+import 'package:amora_ai/features/auth/presentation/login_screen.dart';
 import 'package:amora_ai/features/chat/data/local_chat_repository.dart';
 import 'package:amora_ai/features/notifications/presentation/notifications_hub_screen.dart';
 import 'package:amora_ai/features/onboarding/data/local_onboarding_repository.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
 import 'package:amora_ai/features/profile/presentation/kyc_verification_screen.dart';
 import 'package:amora_ai/features/profile/presentation/photo_manager_screen.dart';
+import 'package:amora_ai/features/profile/presentation/profile_completion_metrics.dart';
 import 'package:amora_ai/features/profile/presentation/profile_completion_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_edit_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_preview_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_section_editor_screen.dart';
-import 'package:amora_ai/features/settings/presentation/notification_preferences_screen.dart';
-import 'package:amora_ai/features/settings/presentation/profile_settings_screen.dart';
 import 'package:amora_ai/features/settings/presentation/safety_privacy_screen.dart';
-import 'package:amora_ai/features/subscription/presentation/subscription_screen.dart';
+import 'package:amora_ai/features/legal/presentation/legal_document_screen.dart';
 import 'package:amora_ai/features/support/data/support_faq_data.dart';
 import 'package:amora_ai/features/support/presentation/faq_support_screen.dart';
 import 'package:flutter/material.dart';
@@ -87,7 +86,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 delegate: _ProfileHeaderDelegate(
                   onNotifications: () =>
                       _open(NotificationsHubScreen.routeName),
-                  onSettings: () => _open(ProfileSettingsScreen.routeName),
                 ),
               ),
               SliverPadding(
@@ -111,10 +109,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             _open(ProfileCompletionScreen.routeName),
                       ),
                     ),
-                    const SizedBox(height: 18),
-                    ProfilePreviewCard(
-                      onPreview: () => _open(ProfilePreviewScreen.routeName),
-                    ),
                     const SizedBox(height: 30),
                     ProfileSectionHeading(
                       icon: Icons.photo_camera_rounded,
@@ -133,25 +127,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       icon: Icons.forum_rounded,
                       title: 'Profile prompts',
                       subtitle:
-                          'Three glimpses into how you think, laugh, and connect.',
+                          'One thoughtful glimpse into how you think and connect.',
                       actionLabel: 'Edit',
                       onAction: () => _openSection(ProfileSection.prompts),
                     ),
                     const SizedBox(height: 12),
                     ProfilePromptsCard(profile: profile),
-                    const SizedBox(height: 30),
-                    ProfileSectionHeading(
-                      icon: Icons.person_rounded,
-                      title: 'About me',
-                      subtitle: 'The details that shape everyday life.',
-                      actionLabel: 'Edit',
-                      onAction: () => _open(ProfileEditScreen.routeName),
-                    ),
-                    const SizedBox(height: 12),
-                    ProfileAboutCard(
-                      profile: profile,
-                      zodiac: _zodiacFor(profile.birthdate),
-                    ),
                     const SizedBox(height: 30),
                     ProfileSectionHeading(
                       icon: Icons.favorite_rounded,
@@ -195,53 +176,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     const SizedBox(height: 30),
                     const ProfileSectionHeading(
-                      icon: Icons.workspace_premium_rounded,
-                      title: 'Premium membership',
-                      subtitle: 'A quieter invitation to get more from Amora.',
-                    ),
-                    const SizedBox(height: 12),
-                    MembershipCard(
-                      onView: () => _open(SubscriptionScreen.routeName),
-                      onManage: () => _open(SubscriptionScreen.routeName),
-                    ),
-                    const SizedBox(height: 30),
-                    const ProfileSectionHeading(
-                      icon: Icons.tune_rounded,
-                      title: 'Settings',
-                      subtitle: 'Account controls, kept out of your story.',
-                    ),
-                    const SizedBox(height: 12),
-                    ProfileLinkGroup(
-                      items: [
-                        ProfileLinkItem(
-                          icon: Icons.manage_accounts_rounded,
-                          title: 'Account',
-                          subtitle: 'Personal information and account details',
-                          onTap: () => _open(ProfileSettingsScreen.routeName),
-                        ),
-                        ProfileLinkItem(
-                          icon: Icons.privacy_tip_rounded,
-                          title: 'Privacy',
-                          subtitle: 'Visibility, consent and safety controls',
-                          onTap: () => _open(SafetyPrivacyScreen.routeName),
-                        ),
-                        ProfileLinkItem(
-                          icon: Icons.notifications_rounded,
-                          title: 'Notifications',
-                          subtitle: 'Choose the updates that matter',
-                          onTap: () =>
-                              _open(NotificationPreferencesScreen.routeName),
-                        ),
-                        ProfileLinkItem(
-                          icon: Icons.block_rounded,
-                          title: 'Blocked users',
-                          subtitle: 'Review existing privacy controls',
-                          onTap: () => _open(SafetyPrivacyScreen.routeName),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 30),
-                    const ProfileSectionHeading(
                       icon: Icons.mail_rounded,
                       title: 'Support',
                       subtitle: 'Private, straightforward help by email.',
@@ -262,20 +196,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       items: [
                         ProfileLinkItem(
                           icon: Icons.description_rounded,
-                          title: 'Terms',
-                          subtitle: 'Review Amora’s account terms',
-                          onTap: () => _showLegalNotice('Terms'),
+                          title: 'Terms & Conditions',
+                          subtitle: 'Review AMORAA account terms',
+                          onTap: () => _open(TermsConditionsScreen.routeName),
                         ),
                         ProfileLinkItem(
                           icon: Icons.policy_rounded,
                           title: 'Privacy policy',
                           subtitle: 'How personal information is handled',
-                          onTap: () => _showLegalNotice('Privacy policy'),
+                          onTap: () => _open(PrivacyPolicyScreen.routeName),
                         ),
                         ProfileLinkItem(
                           icon: Icons.people_alt_rounded,
                           title: 'Community guidelines',
-                          subtitle: 'Respectful behavior across Amora',
+                          subtitle: 'Respectful behavior across AMORAA',
                           onTap: () => _open(SafetyPrivacyScreen.routeName),
                         ),
                         ProfileLinkItem(
@@ -291,7 +225,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       icon: Icons.admin_panel_settings_rounded,
                       title: 'Account actions',
                       subtitle:
-                          'Sign out or permanently remove your Amora account.',
+                          'Sign out or permanently remove your AMORAA account.',
                     ),
                     const SizedBox(height: 12),
                     ProfileLinkGroup(
@@ -307,7 +241,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           icon: Icons.delete_outline_rounded,
                           title: 'Delete account',
                           subtitle:
-                              'Permanently delete your Amora account and associated data.',
+                              'Permanently delete your AMORAA account and associated data.',
                           onTap: _confirmDeleteAccount,
                         ),
                       ],
@@ -341,7 +275,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         icon: const Icon(Icons.logout_rounded, color: AppColors.primary),
-        title: const Text('Log out of Amora?'),
+        title: const Text('Log out of AMORAA?'),
         content: const Text(
           'Your profile stays saved. You can sign back in with your registered account.',
         ),
@@ -361,7 +295,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     AmoraSession.logOut();
     Navigator.of(
       context,
-    ).pushNamedAndRemoveUntil(AmoraAuthScreen.routeName, (route) => false);
+    ).pushNamedAndRemoveUntil(LoginScreen.routeName, (route) => false);
   }
 
   Future<void> _confirmDeleteAccount() async {
@@ -382,7 +316,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     AmoraSession.logOut();
     Navigator.of(
       context,
-    ).pushNamedAndRemoveUntil(AmoraAuthScreen.routeName, (route) => false);
+    ).pushNamedAndRemoveUntil(LoginScreen.routeName, (route) => false);
   }
 
   Future<void> _clearDeletedAccountState() async {
@@ -398,43 +332,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
     }
   }
-
-  void _showLegalNotice(String title) {
-    showModalBottomSheet<void>(
-      context: context,
-      useSafeArea: true,
-      showDragHandle: true,
-      builder: (sheetContext) => Padding(
-        padding: const EdgeInsets.fromLTRB(24, 4, 24, 28),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(title, style: AmoraTextStyles.headlineSmall),
-            const SizedBox(height: 10),
-            const Text(
-              'This build does not register a separate document route. The existing legal agreement remains unchanged.',
-            ),
-            const SizedBox(height: 18),
-            AppPrimaryButton(
-              label: 'Close',
-              onPressed: () => Navigator.of(sheetContext).pop(),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 class _ProfileHeaderDelegate extends SliverPersistentHeaderDelegate {
-  const _ProfileHeaderDelegate({
-    required this.onNotifications,
-    required this.onSettings,
-  });
+  const _ProfileHeaderDelegate({required this.onNotifications});
 
   final VoidCallback onNotifications;
-  final VoidCallback onSettings;
 
   @override
   double get minExtent => 64;
@@ -486,14 +389,6 @@ class _ProfileHeaderDelegate extends SliverPersistentHeaderDelegate {
               onPressed: onNotifications,
               icon: Icons.notifications_none_rounded,
             ),
-            const SizedBox(width: 8),
-            _ProfileHeaderActionButton(
-              key: const ValueKey('profile-settings-button'),
-              tooltip: 'Profile settings',
-              semanticLabel: 'Open profile settings',
-              onPressed: onSettings,
-              icon: Icons.settings_rounded,
-            ),
           ],
         ),
       ),
@@ -502,8 +397,7 @@ class _ProfileHeaderDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   bool shouldRebuild(covariant _ProfileHeaderDelegate oldDelegate) {
-    return oldDelegate.onNotifications != onNotifications ||
-        oldDelegate.onSettings != onSettings;
+    return oldDelegate.onNotifications != onNotifications;
   }
 }
 
@@ -758,7 +652,7 @@ class _AccountDeletionFlowSheetState extends State<_AccountDeletionFlowSheet> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Why are you leaving Amora?',
+                'Why are you leaving AMORAA?',
                 style: AmoraTextStyles.headlineSmall.copyWith(
                   fontSize: 23,
                   fontWeight: FontWeight.w700,
@@ -1505,16 +1399,17 @@ class ProfileHero extends StatelessWidget {
                     color: AppColors.primary.withValues(alpha: .40),
                   ),
                 ),
-                Positioned(
-                  left: 20,
-                  right: 20,
-                  bottom: 20,
-                  child: _HeroIdentity(
-                    profile: profile,
-                    zodiac: zodiac,
-                    light: true,
+                if (!wide)
+                  Positioned(
+                    left: 20,
+                    right: 20,
+                    bottom: 20,
+                    child: _HeroIdentity(
+                      profile: profile,
+                      zodiac: zodiac,
+                      light: true,
+                    ),
                   ),
-                ),
               ],
             ),
           ),
@@ -1527,8 +1422,6 @@ class ProfileHero extends StatelessWidget {
               media,
               const SizedBox(height: 14),
               _HeroActions(onEdit: onEdit, onPreview: onPreview),
-              const SizedBox(height: 12),
-              _QuickInfo(profile: profile, zodiac: zodiac),
             ],
           );
         }
@@ -1555,7 +1448,15 @@ class ProfileHero extends StatelessWidget {
                         light: false,
                       ),
                       const SizedBox(height: 20),
-                      _QuickInfo(profile: profile, zodiac: zodiac),
+                      Text(
+                        profile.bio,
+                        maxLines: 5,
+                        overflow: TextOverflow.ellipsis,
+                        style: AmoraTextStyles.bodyLarge.copyWith(
+                          color: AppColors.textSecondary,
+                          height: 1.5,
+                        ),
+                      ),
                       const SizedBox(height: 24),
                       _HeroActions(onEdit: onEdit, onPreview: onPreview),
                     ],
@@ -1625,13 +1526,6 @@ class _HeroIdentity extends StatelessWidget {
           style: AmoraTextStyles.bodyLarge.copyWith(
             color: color.withValues(alpha: light ? .88 : .72),
             fontWeight: FontWeight.w500,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          '${profile.completionPercent}% complete',
-          style: AmoraTextStyles.labelLarge.copyWith(
-            color: light ? AppColors.tertiary : AppColors.secondary,
           ),
         ),
       ],
@@ -1725,61 +1619,6 @@ class _HeroActions extends StatelessWidget {
   }
 }
 
-class _QuickInfo extends StatelessWidget {
-  const _QuickInfo({required this.profile, required this.zodiac});
-
-  final LocalProfileDraft profile;
-  final String? zodiac;
-
-  @override
-  Widget build(BuildContext context) {
-    final items = <(IconData, String)>[
-      (Icons.location_on_rounded, profile.location),
-      (Icons.work_rounded, profile.profession),
-      if (zodiac != null) (Icons.brightness_2_rounded, zodiac!),
-      (Icons.favorite_rounded, profile.datingIntention),
-    ];
-    return LayoutBuilder(
-      builder: (context, constraints) => Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: [
-          for (final item in items)
-            Container(
-              constraints: BoxConstraints(
-                minHeight: 40,
-                maxWidth: constraints.maxWidth,
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(99),
-                border: Border.all(
-                  color: AppColors.secondary.withValues(alpha: .26),
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(item.$1, size: 17, color: AppColors.secondary),
-                  const SizedBox(width: 6),
-                  Flexible(
-                    child: Text(
-                      item.$2,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AmoraTextStyles.labelMedium,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
 class ProfileCompletionCard extends StatelessWidget {
   const ProfileCompletionCard({
     super.key,
@@ -1796,12 +1635,17 @@ class ProfileCompletionCard extends StatelessWidget {
       if (profile.photos.length < 2) 'Add another photo',
       if (profile.bio.trim().length < 40) 'Write a fuller introduction',
       if (profile.interests.length < 5) 'Add more interests',
-      if (profile.completedPromptCount < 3) 'Complete three prompts',
+      if (profile.completedPromptCount < 1) 'Complete a profile prompt',
+      if ((profile.lifestyle['Height'] ?? '').trim().isEmpty) 'Add your height',
+      if ((profile.lifestyle['Languages'] ?? '').trim().isEmpty)
+        'Add languages',
+      if ((profile.lifestyle['Religion'] ?? '').trim().isEmpty) 'Add religion',
       if (profile.lifestyle.isEmpty) 'Share a lifestyle detail',
     ];
-    final quality = profile.completionPercent >= 90
+    final completionPercent = profile.presentationCompletionPercent;
+    final quality = completionPercent >= 90
         ? 'Excellent profile'
-        : profile.completionPercent >= 70
+        : completionPercent >= 70
         ? 'Strong foundation'
         : 'Building your story';
 
@@ -1812,9 +1656,7 @@ class ProfileCompletionCard extends StatelessWidget {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final compact = constraints.maxWidth < 390;
-          final progress = _AnimatedProfileProgress(
-            percent: profile.completionPercent,
-          );
+          final progress = _AnimatedProfileProgress(percent: completionPercent);
           final copy = Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1934,63 +1776,6 @@ class _ProgressRingPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _ProgressRingPainter oldDelegate) {
     return oldDelegate.value != value;
-  }
-}
-
-class ProfilePreviewCard extends StatelessWidget {
-  const ProfilePreviewCard({super.key, required this.onPreview});
-
-  final VoidCallback onPreview;
-
-  @override
-  Widget build(BuildContext context) {
-    return PremiumCard(
-      radius: 24,
-      padding: const EdgeInsets.all(18),
-      child: Row(
-        children: [
-          Container(
-            width: 50,
-            height: 50,
-            decoration: BoxDecoration(
-              color: AppColors.tertiary.withValues(alpha: .55),
-              borderRadius: BorderRadius.circular(17),
-            ),
-            child: const Icon(
-              Icons.visibility_rounded,
-              color: AppColors.primary,
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Preview your profile',
-                  style: AmoraTextStyles.titleMedium.copyWith(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'See your profile exactly how other members see it.',
-                  style: AmoraTextStyles.bodyMedium.copyWith(
-                    color: AppColors.text.withValues(alpha: .65),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          IconButton(
-            tooltip: 'Preview profile',
-            onPressed: onPreview,
-            icon: const Icon(Icons.arrow_forward_rounded),
-          ),
-        ],
-      ),
-    );
   }
 }
 
@@ -2559,156 +2344,6 @@ class _TrustStatusRow extends StatelessWidget {
           style: AmoraTextStyles.labelMedium.copyWith(color: AppColors.primary),
         ),
       ],
-    );
-  }
-}
-
-class MembershipCard extends StatelessWidget {
-  const MembershipCard({
-    super.key,
-    required this.onView,
-    required this.onManage,
-  });
-
-  final VoidCallback onView;
-  final VoidCallback onManage;
-
-  @override
-  Widget build(BuildContext context) {
-    return PremiumCard(
-      radius: 26,
-      color: AppColors.primary,
-      padding: const EdgeInsets.all(22),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: AppColors.surface.withValues(alpha: .12),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: const Icon(
-                  Icons.workspace_premium_rounded,
-                  color: AppColors.tertiary,
-                ),
-              ),
-              const SizedBox(width: 13),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Amora Premium',
-                      style: AmoraTextStyles.titleLarge.copyWith(
-                        color: AppColors.surface,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    Text(
-                      'Explore the membership options already available.',
-                      style: AmoraTextStyles.bodyMedium.copyWith(
-                        color: AppColors.surface.withValues(alpha: .76),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final itemWidth = constraints.maxWidth < 360
-                  ? constraints.maxWidth
-                  : (constraints.maxWidth - 8) / 2;
-              return Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (final label in const [
-                    'See likes',
-                    'Advanced filters',
-                    'Priority visibility',
-                    'Exclusive features',
-                  ])
-                    SizedBox(
-                      width: itemWidth,
-                      child: _PremiumBenefit(label: label),
-                    ),
-                ],
-              );
-            },
-          ),
-          const SizedBox(height: 18),
-          Row(
-            children: [
-              Expanded(
-                child: FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.surface,
-                    foregroundColor: AppColors.primary,
-                    minimumSize: const Size.fromHeight(50),
-                  ),
-                  onPressed: onView,
-                  child: const Text('View premium'),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: OutlinedButton(
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.surface,
-                    side: BorderSide(
-                      color: AppColors.surface.withValues(alpha: .55),
-                    ),
-                    minimumSize: const Size.fromHeight(50),
-                  ),
-                  onPressed: onManage,
-                  child: const Text('Manage'),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PremiumBenefit extends StatelessWidget {
-  const _PremiumBenefit({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-      decoration: BoxDecoration(
-        color: AppColors.surface.withValues(alpha: .1),
-        borderRadius: BorderRadius.circular(99),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.check_rounded, size: 15, color: AppColors.tertiary),
-          const SizedBox(width: 5),
-          Expanded(
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AmoraTextStyles.labelMedium.copyWith(
-                color: AppColors.surface,
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

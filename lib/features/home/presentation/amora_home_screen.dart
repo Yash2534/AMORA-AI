@@ -30,6 +30,7 @@ import 'package:amora_ai/features/events/presentation/events_screen.dart';
 import 'package:amora_ai/features/messaging/presentation/match_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_detail_screen.dart';
 import 'package:amora_ai/features/profile/presentation/kyc_verification_screen.dart';
+import 'package:amora_ai/features/profile/presentation/profile_completion_metrics.dart';
 import 'package:amora_ai/features/profile/presentation/photo_manager_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_setup_screen.dart';
@@ -169,7 +170,7 @@ class _AmoraHomeScreenState extends State<AmoraHomeScreen> {
                                           ),
                                         )
                                       : _advanceHero(
-                                          'AMORA noted the spark with ${_heroProfile.name.split(' ').first}',
+                                          'AMORAA noted the spark with ${_heroProfile.name.split(' ').first}',
                                         ),
                                   onPass: () =>
                                       _advanceHero('Showing another profile'),
@@ -502,7 +503,7 @@ class _ProfileCompletionCard extends StatelessWidget {
     return AnimatedBuilder(
       animation: repository,
       builder: (context, _) {
-        final strength = repository.profile.completionPercent;
+        final strength = repository.profile.presentationCompletionPercent;
         final tasks = [
           _CompletionTask(
             'Add Photos',

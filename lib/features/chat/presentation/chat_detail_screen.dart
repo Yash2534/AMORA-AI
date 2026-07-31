@@ -106,13 +106,16 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       body: SafeArea(
         child: ResponsiveMobileFrame(
           maxWidth: 760,
-          child: _buildConversation(),
+          child: LayoutBuilder(
+            builder: (context, constraints) =>
+                _buildConversation(compactHeight: constraints.maxHeight < 500),
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildConversation() {
+  Widget _buildConversation({required bool compactHeight}) {
     if (_loading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -122,7 +125,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         onRetry: _loadConversation,
       );
     }
-    final compactHeight = MediaQuery.sizeOf(context).height < 500;
     return Column(
       children: [
         if (!(compactHeight && _emojiPickerVisible))
@@ -155,6 +157,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           disabledReason:
               _conversation!.unavailableReason ??
               'This conversation is no longer available.',
+          compactHeight: compactHeight,
           onEmojiPickerVisibilityChanged: (visible) {
             if (mounted && _emojiPickerVisible != visible) {
               setState(() => _emojiPickerVisible = visible);

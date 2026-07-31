@@ -32,7 +32,7 @@ void main() {
     }
   });
 
-  test('Amora semantic icons use the bundled Material icon font', () {
+  test('AMORAA semantic icons use the bundled Material icon font', () {
     const icons = <IconData>[
       AmoraIcons.discover,
       AmoraIcons.events,

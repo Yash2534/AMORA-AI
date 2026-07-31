@@ -41,19 +41,17 @@ void main() {
     expect(find.text('Aquarius'), findsWidgets);
     expect(find.text('Edit profile'), findsOneWidget);
     expect(find.text('Preview'), findsOneWidget);
+    expect(find.byKey(const ValueKey('profile-settings-button')), findsNothing);
     // Overflow assertions are checked after the responsive scroll pass below.
 
     final scrollable = find.byType(Scrollable).first;
     for (final section in [
       'Photo gallery',
       'Profile prompts',
-      'About me',
       'Dating intentions',
       'Interests',
       'Personality',
       'Verification & trust',
-      'Premium membership',
-      'Settings',
       'Support',
       'Legal',
       'Log out',
@@ -68,10 +66,6 @@ void main() {
         await tester.pumpAndSettle();
       }
       expect(find.text(section), findsWidgets);
-      if (section == 'Support') {
-        expect(find.text('Email support'), findsOneWidget);
-        expect(find.textContaining('support@amora.ai'), findsOneWidget);
-      }
     }
 
     expect(find.textContaining('WhatsApp'), findsNothing);
@@ -122,13 +116,13 @@ void main() {
     expect(find.byIcon(Icons.graphic_eq_rounded), findsNothing);
 
     final nameField = find.byType(TextFormField).first;
-    await tester.enterText(nameField, 'Updated Amora Member');
+    await tester.enterText(nameField, 'Updated AMORAA Member');
     await tester.tap(find.byKey(const ValueKey('profile-save-button')));
     await tester.pump(const Duration(milliseconds: 260));
 
     expect(
       LocalProfileRepository.instance.profile.name,
-      'Updated Amora Member',
+      'Updated AMORAA Member',
     );
     expect(
       LocalProfileRepository.instance.profile.voicePrompt,

@@ -605,7 +605,7 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
               _FilterSwitchTile(
                 icon: Icons.event_outlined,
                 title: 'Has event interest',
-                description: 'People open to Amora experiences',
+                description: 'People open to AMORAA experiences',
                 value: _eventInterest,
                 onChanged: (value) => setState(() => _eventInterest = value),
               ),

@@ -1,10 +1,11 @@
 import 'dart:io';
 
 import 'package:amora_ai/core/theme/amora_theme.dart';
-import 'package:amora_ai/features/auth/presentation/amora_auth_screen.dart';
+import 'package:amora_ai/features/auth/presentation/login_screen.dart';
 import 'package:amora_ai/features/discover/presentation/browse_grid_screen.dart';
 import 'package:amora_ai/features/events/presentation/event_detail_screen.dart';
 import 'package:amora_ai/features/events/presentation/events_browse_screen.dart';
+import 'package:amora_ai/features/matches/presentation/matches_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_screen.dart';
 import 'package:amora_ai/features/support/presentation/faq_support_screen.dart';
 import 'package:flutter/material.dart';
@@ -71,7 +72,7 @@ void main() {
   testWidgets('capture authentication mobile evidence', (tester) async {
     await capture(
       tester,
-      screen: const AmoraAuthScreen(),
+      screen: const LoginScreen(),
       size: const Size(390, 844),
       fileName: 'EV-UI-001_auth_mobile.png',
     );
@@ -110,6 +111,15 @@ void main() {
       screen: const ProfileScreen(showNavigation: false),
       size: const Size(390, 844),
       fileName: 'EV-UI-005_profile_mobile.png',
+    );
+  });
+
+  testWidgets('capture AI Matches selector evidence', (tester) async {
+    await capture(
+      tester,
+      screen: const MatchesScreen(showNavigation: false),
+      size: const Size(390, 844),
+      fileName: 'EV-UI-008_ai_matches_mobile.png',
     );
   });
 

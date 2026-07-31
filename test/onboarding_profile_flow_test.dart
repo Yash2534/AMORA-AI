@@ -1,7 +1,7 @@
 import 'package:amora_ai/core/navigation/main_shell.dart';
 import 'package:amora_ai/core/access/amora_access.dart';
 import 'package:amora_ai/core/theme/amora_theme.dart';
-import 'package:amora_ai/features/auth/presentation/amora_auth_screen.dart';
+import 'package:amora_ai/features/auth/presentation/login_screen.dart';
 import 'package:amora_ai/features/onboarding/data/local_onboarding_repository.dart';
 import 'package:amora_ai/features/onboarding/data/gujarat_cities.dart';
 import 'package:amora_ai/features/onboarding/presentation/profile_onboarding_flow.dart';
@@ -85,17 +85,16 @@ void main() {
     expect(find.text('Saved question opened'), findsNothing);
   });
 
-  testWidgets('authentication entry exposes email sign in and Create Account', (
-    tester,
-  ) async {
+  testWidgets('authentication entry is the email Login screen', (tester) async {
     await tester.pumpWidget(
-      MaterialApp(theme: AmoraTheme.light(), home: const AmoraAuthScreen()),
+      MaterialApp(theme: AmoraTheme.light(), home: const LoginScreen()),
     );
     await tester.pump(const Duration(milliseconds: 450));
 
-    expect(find.byKey(const Key('auth-email')), findsOneWidget);
-    expect(find.byKey(const Key('auth-create-account')), findsOneWidget);
-    expect(find.text('Explore AMORA AI'), findsNothing);
+    expect(find.byKey(const Key('login-email-field')), findsOneWidget);
+    expect(find.text('Create account'), findsOneWidget);
+    expect(find.textContaining('phone'), findsNothing);
+    expect(find.text('Explore AMORAA AI'), findsNothing);
   });
 
   testWidgets('quick onboarding includes birth date and opens Discover', (
@@ -103,6 +102,12 @@ void main() {
   ) async {
     profiles.startNewProfile('New Member');
     profiles.updatePhotos(originalProfile.photos.take(2).toList(), 0);
+    onboarding.resetForTesting(
+      LocalOnboardingState(
+        stage: OnboardingStage.age,
+        birthDate: DateTime(DateTime.now().year - 25, 1, 15),
+      ),
+    );
     await tester.pumpWidget(
       MaterialApp(
         theme: AmoraTheme.light(),
@@ -117,10 +122,6 @@ void main() {
     expect(find.text('Step 1 of 6'), findsOneWidget);
     expect(find.text("When's your birthday?"), findsOneWidget);
     expect(find.byKey(const Key('birthdate-day-wheel')), findsOneWidget);
-    await tester.drag(
-      find.byKey(const Key('birthdate-day-wheel')),
-      const Offset(0, -60),
-    );
     await tester.pumpAndSettle();
     expect(onboarding.state.birthDate, isNotNull);
     expect(find.textContaining('Age:'), findsOneWidget);
