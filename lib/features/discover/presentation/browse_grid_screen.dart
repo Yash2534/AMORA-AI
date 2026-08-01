@@ -280,22 +280,55 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
             onRefresh: _resetFiltersAndDeck,
           );
         }
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            final width = math.min(512.0, constraints.maxWidth);
-            final desiredHeight = (width * 1.72).clamp(420.0, 760.0);
-            // Keep the floating action rail clear of the bottom navigation's
-            // shadow and hit-test area on compact-height phones.
-            final availableHeight = math.max(0.0, constraints.maxHeight - 16);
-            final height = math.min(availableHeight, desiredHeight);
-            return Center(
-              child: SizedBox(
-                width: width,
-                height: height,
-                child: _buildDraggableCard(profile, width),
+        final reduceMotion = MediaQuery.disableAnimationsOf(context);
+        return AnimatedSwitcher(
+          duration: reduceMotion
+              ? Duration.zero
+              : const Duration(milliseconds: 260),
+          reverseDuration: reduceMotion
+              ? Duration.zero
+              : const Duration(milliseconds: 220),
+          switchInCurve: Curves.easeOutCubic,
+          switchOutCurve: Curves.easeInCubic,
+          layoutBuilder: (currentChild, previousChildren) => Stack(
+            alignment: Alignment.center,
+            children: [...previousChildren, ?currentChild],
+          ),
+          transitionBuilder: (child, animation) {
+            final fade = CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeOutCubic,
+            );
+            return FadeTransition(
+              opacity: fade,
+              child: SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0, .025),
+                  end: Offset.zero,
+                ).animate(fade),
+                child: ScaleTransition(
+                  scale: Tween(begin: .985, end: 1.0).animate(fade),
+                  child: child,
+                ),
               ),
             );
           },
+          child: LayoutBuilder(
+            key: ValueKey('discover-deck-${profile.id}'),
+            builder: (context, constraints) {
+              final width = math.min(512.0, constraints.maxWidth);
+              final desiredHeight = (width * 1.72).clamp(420.0, 760.0);
+              final availableHeight = math.max(0.0, constraints.maxHeight - 16);
+              final height = math.min(availableHeight, desiredHeight);
+              return Center(
+                child: SizedBox(
+                  width: width,
+                  height: height,
+                  child: _buildDraggableCard(profile, width),
+                ),
+              );
+            },
+          ),
         );
       },
     );
@@ -357,11 +390,11 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
             key: const ValueKey('discover-card-slide'),
             offset: Offset(progress * 1.5, 0),
             duration: duration,
-            curve: Curves.easeOutBack,
+            curve: Curves.easeOutCubic,
             child: AnimatedRotation(
               turns: progress * (7 / 360),
               duration: duration,
-              curve: Curves.easeOutBack,
+              curve: Curves.easeOutCubic,
               child: _DiscoverProfileCard(
                 profile: profile,
                 dragProgress: progress,

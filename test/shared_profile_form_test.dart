@@ -117,10 +117,14 @@ void main() {
   }
 
   Future<void> openCompletionSection(WidgetTester tester, String title) async {
-    final sectionTitle = find.text(title).first;
-    await tester.ensureVisible(sectionTitle);
+    final sectionTitle = find.text(title);
+    await tester.scrollUntilVisible(
+      sectionTitle,
+      280,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.pumpAndSettle();
-    await tester.tap(sectionTitle);
+    await tester.tap(sectionTitle.first);
     await tester.pumpAndSettle();
   }
 
@@ -137,7 +141,7 @@ void main() {
     await repository.resetForTesting(blankProfile());
     await pumpFlow(tester, const ProfileCompletionScreen());
     expect(find.byType(AmoraaProfileForm), findsNothing);
-    expect(find.text('Complete your profile'), findsOneWidget);
+    expect(find.text('Profile Completion'), findsOneWidget);
     expect(
       find.byKey(const ValueKey('completion-progress-header')),
       findsOneWidget,
@@ -145,7 +149,7 @@ void main() {
 
     await openCompletionSection(tester, 'Basic Details');
     expect(find.text('Edit destination'), findsNothing);
-    expect(find.text('Complete your profile'), findsOneWidget);
+    expect(find.text('Profile Completion'), findsOneWidget);
 
     await repository.resetForTesting(completeProfile());
     await pumpFlow(tester, const ProfileEditScreen());
@@ -190,7 +194,7 @@ void main() {
     );
   });
 
-  testWidgets('both screens reuse every approved shared field component', (
+  testWidgets('Completion is a dashboard while Edit owns shared fields', (
     tester,
   ) async {
     await repository.resetForTesting(completeProfile());
@@ -216,7 +220,7 @@ void main() {
       AmoraaDatingIntentionSelector,
     ];
     for (final type in sharedTypes) {
-      expect(find.byType(type), findsOneWidget, reason: 'Completion: $type');
+      expect(find.byType(type), findsNothing, reason: 'Dashboard: $type');
     }
 
     await pumpFlow(
@@ -229,42 +233,29 @@ void main() {
     }
   });
 
-  testWidgets('Completion progress updates while editing directly', (
+  testWidgets('Completion progress follows the profile source of truth', (
     tester,
   ) async {
     await repository.resetForTesting(blankProfile());
     await pumpFlow(tester, const ProfileCompletionScreen());
 
     expect(find.text('0%'), findsOneWidget);
-    await openCompletionSection(tester, 'Basic Details');
-    await tester.enterText(
-      find.byKey(const ValueKey('profile-name-field')),
-      'Guided Member',
-    );
+    repository.save(blankProfile().copyWith(name: 'Guided Member'));
     await tester.pumpAndSettle();
 
     expect(find.text('5%'), findsOneWidget);
+    expect(find.byKey(const ValueKey('profile-name-field')), findsNothing);
     expect(find.text('Edit destination'), findsNothing);
   });
 
-  testWidgets('Completion saves partial progress without opening Edit', (
+  testWidgets('Completion never writes profile fields or opens Edit', (
     tester,
   ) async {
     await repository.resetForTesting(blankProfile());
     await pumpFlow(tester, const ProfileCompletionScreen());
     await openCompletionSection(tester, 'Basic Details');
-    await tester.enterText(
-      find.byKey(const ValueKey('profile-name-field')),
-      'Persisted Guided Member',
-    );
-
-    await tester.tap(
-      find.byKey(const ValueKey('profile-completion-primary-button')),
-    );
-    await tester.pumpAndSettle();
-
-    expect(repository.profile.name, 'Persisted Guided Member');
-    expect(find.text('Profile progress saved'), findsOneWidget);
+    expect(find.byKey(const ValueKey('profile-name-field')), findsNothing);
+    expect(repository.profile.name, isEmpty);
     expect(find.text('Edit destination'), findsNothing);
   });
 
@@ -339,6 +330,14 @@ void main() {
           screen,
           size: Size(width, width >= 600 ? 900 : 700),
         );
+        if (screen is ProfileCompletionScreen) {
+          await tester.scrollUntilVisible(
+            find.byKey(const ValueKey('profile-completion-primary-button')),
+            420,
+            scrollable: find.byType(Scrollable).first,
+          );
+          await tester.pumpAndSettle();
+        }
         expect(
           screen is ProfileCompletionScreen
               ? find.byKey(const ValueKey('profile-completion-primary-button'))

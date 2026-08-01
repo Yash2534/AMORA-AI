@@ -20,6 +20,9 @@ class SafetyPrivacyScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     void open(String route) => Navigator.of(context).pushNamed(route);
+    void openPage(Widget page) => Navigator.of(
+      context,
+    ).push(MaterialPageRoute<void>(builder: (_) => page));
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -96,7 +99,8 @@ class SafetyPrivacyScreen extends StatelessWidget {
                           icon: Icons.verified_user_outlined,
                           title: 'Verified Profile',
                           subtitle: 'Review your identity verification status.',
-                          onTap: () => open(KycVerificationScreen.routeName),
+                          onTap: () =>
+                              openPage(const VerificationStatusScreen()),
                         ),
                         ProfileSettingsHubRow(
                           key: const ValueKey('safety-photo-verification'),
@@ -110,7 +114,9 @@ class SafetyPrivacyScreen extends StatelessWidget {
                           icon: Icons.face_retouching_natural_rounded,
                           title: 'Face Verification',
                           subtitle: 'Use the secure selfie verification flow.',
-                          onTap: () => open(KycVerificationScreen.routeName),
+                          onTap: () => openPage(
+                            const SelfieVerificationOverviewScreen(),
+                          ),
                         ),
                       ],
                     ),
@@ -148,6 +154,110 @@ class SafetyPrivacyScreen extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class VerificationStatusScreen extends StatelessWidget {
+  const VerificationStatusScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return _VerificationOverviewScaffold(
+      title: 'Verification Status',
+      icon: Icons.verified_user_rounded,
+      heading: 'Your verification status',
+      description:
+          'Review the identity checks available for your profile. AMORAA only marks a profile verified after the existing secure flow is completed.',
+      actionLabel: 'Review Verification Steps',
+      onAction: () =>
+          Navigator.of(context).pushNamed(KycVerificationScreen.routeName),
+    );
+  }
+}
+
+class SelfieVerificationOverviewScreen extends StatelessWidget {
+  const SelfieVerificationOverviewScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return _VerificationOverviewScaffold(
+      title: 'Selfie Verification',
+      icon: Icons.face_retouching_natural_rounded,
+      heading: 'Prepare for your selfie check',
+      description:
+          'Use even lighting, remove face coverings, and look directly at the camera. The secure identity flow will guide you through the required checks.',
+      actionLabel: 'Start Selfie Verification',
+      onAction: () =>
+          Navigator.of(context).pushNamed(KycVerificationScreen.routeName),
+    );
+  }
+}
+
+class _VerificationOverviewScaffold extends StatelessWidget {
+  const _VerificationOverviewScaffold({
+    required this.title,
+    required this.icon,
+    required this.heading,
+    required this.description,
+    required this.actionLabel,
+    required this.onAction,
+  });
+
+  final String title;
+  final IconData icon;
+  final String heading;
+  final String description;
+  final String actionLabel;
+  final VoidCallback onAction;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(title: Text(title)),
+      body: SafeArea(
+        top: false,
+        child: ResponsiveMobileFrame(
+          maxWidth: 640,
+          child: Padding(
+            padding: const EdgeInsets.all(AmoraSpacing.space20),
+            child: PremiumCard(
+              radius: AmoraRadius.extraLarge,
+              padding: const EdgeInsets.all(AmoraSpacing.space20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Container(
+                      width: 56,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        color: AppColors.tertiary,
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      child: Icon(icon, color: AppColors.primary, size: 28),
+                    ),
+                  ),
+                  const SizedBox(height: AmoraSpacing.space16),
+                  Text(heading, style: AmoraTextStyles.sectionTitle),
+                  const SizedBox(height: AmoraSpacing.space8),
+                  Text(
+                    description,
+                    style: AmoraTextStyles.bodyMedium.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: AmoraSpacing.space20),
+                  FilledButton(onPressed: onAction, child: Text(actionLabel)),
+                ],
+              ),
+            ),
           ),
         ),
       ),

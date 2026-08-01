@@ -3,6 +3,7 @@ import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/amora_bottom_sheet.dart';
+import 'package:amora_ai/core/widgets/amora_screen_title.dart';
 import 'package:amora_ai/core/widgets/floating_bottom_nav.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/chat/presentation/chat_detail_screen.dart';
@@ -335,16 +336,10 @@ class ChatsAppBar extends StatelessWidget {
       child: Row(
         children: [
           const SizedBox(width: 6),
-          Expanded(
-            child: Text(
-              'Chats',
-              maxLines: 1,
-              style: AmoraTextStyles.titleLarge.copyWith(
-                color: AppColors.primary,
-                fontSize: 26,
-                fontWeight: FontWeight.w800,
-                letterSpacing: -.5,
-              ),
+          const Expanded(
+            child: AmoraScreenTitle(
+              title: 'Chats',
+              subtitle: 'Your conversations',
             ),
           ),
           const SizedBox(width: 4),

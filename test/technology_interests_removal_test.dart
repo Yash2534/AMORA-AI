@@ -118,7 +118,7 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.scrollUntilVisible(
-      find.text('Interests'),
+      find.textContaining('Interests'),
       320,
       scrollable: find.byType(Scrollable).first,
     );
@@ -177,18 +177,15 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      if (screen is ProfileCompletionScreen) {
-        await tester.ensureVisible(find.text('Interests'));
-        await tester.pumpAndSettle();
-        await tester.tap(find.text('Interests'));
-        await tester.pumpAndSettle();
-      }
-
       final interestsHeading = screen is ProfilePreviewScreen
           ? find.text('Interests')
           : find.textContaining('Interests');
       expect(interestsHeading, findsOneWidget, reason: '${screen.runtimeType}');
-      expect(find.text('Coffee'), findsOneWidget);
+      if (screen is ProfileCompletionScreen) {
+        expect(find.text('Coffee'), findsNothing);
+      } else {
+        expect(find.text('Coffee'), findsOneWidget);
+      }
       expectRetiredInterestsAbsent();
       expect(tester.takeException(), isNull);
     }

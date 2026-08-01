@@ -57,7 +57,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Profile Completion includes the required added fields', (
+  testWidgets('Profile Completion summarizes required identity details', (
     tester,
   ) async {
     await pumpScreen(tester, const ProfileCompletionScreen());
@@ -65,13 +65,17 @@ void main() {
     final identitySection = find.byKey(
       const ValueKey('completion-section-identityDetails'),
     );
-    await tester.ensureVisible(identitySection);
+    await tester.scrollUntilVisible(
+      identitySection,
+      280,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.pumpAndSettle();
     await tester.tap(identitySection);
     await tester.pumpAndSettle();
-    for (final field in const ['Height', 'Languages', 'Religion']) {
-      expect(find.text(field), findsOneWidget);
-    }
+    expect(find.text('Height, Languages & Religion'), findsOneWidget);
+    expect(find.textContaining('details remain'), findsWidgets);
+    expect(find.byType(TextFormField), findsNothing);
     expect(find.text('Children'), findsNothing);
     expect(tester.takeException(), isNull);
   });

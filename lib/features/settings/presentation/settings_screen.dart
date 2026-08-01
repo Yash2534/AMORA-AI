@@ -2,9 +2,9 @@ import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/floating_bottom_nav.dart';
+import 'package:amora_ai/core/widgets/amora_screen_title.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
-import 'package:amora_ai/core/widgets/section_header.dart';
 import 'package:amora_ai/features/events/presentation/events_screen.dart';
 import 'package:amora_ai/features/settings/presentation/widgets/settings_support_widgets.dart';
 import 'package:amora_ai/features/settings/presentation/notification_preferences_screen.dart';
@@ -46,7 +46,7 @@ class SettingsScreen extends StatelessWidget {
                       ),
                       child: Column(
                         children: [
-                          const SectionHeader(
+                          const AmoraScreenTitle(
                             title: 'Settings',
                             subtitle: 'Manage premium, safety, and events.',
                           ),

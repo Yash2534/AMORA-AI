@@ -2,9 +2,12 @@ import 'dart:math' as math;
 
 import 'package:amora_ai/core/access/amora_access.dart';
 import 'package:amora_ai/core/constants/app_images.dart';
+import 'package:amora_ai/core/theme/amora_gradients.dart';
+import 'package:amora_ai/core/theme/amora_shadows.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/amora_profile_image.dart';
+import 'package:amora_ai/core/widgets/amora_screen_title.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/floating_bottom_nav.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
@@ -17,17 +20,16 @@ import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
 import 'package:amora_ai/features/profile/domain/profile_form_options.dart';
 import 'package:amora_ai/features/profile/domain/profile_interest_policy.dart';
 import 'package:amora_ai/features/profile/presentation/kyc_verification_screen.dart';
-import 'package:amora_ai/features/profile/presentation/photo_manager_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_completion_metrics.dart';
 import 'package:amora_ai/features/profile/presentation/profile_completion_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_edit_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_preview_screen.dart';
-import 'package:amora_ai/features/profile/presentation/profile_section_editor_screen.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/profile_photo_gallery.dart';
-import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_story_image.dart';
+import 'package:amora_ai/features/settings/presentation/managed_profiles_screen.dart';
 import 'package:amora_ai/features/settings/presentation/profile_settings_screen.dart';
 import 'package:amora_ai/features/settings/presentation/safety_privacy_screen.dart';
 import 'package:amora_ai/features/subscription/presentation/subscription_screen.dart';
+import 'package:amora_ai/features/support/presentation/faq_support_screen.dart';
 import 'package:flutter/material.dart';
 
 typedef ProfileAccountDeletionCallback =
@@ -70,13 +72,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final profile = _repository.profile;
-    final primaryPhotoIndex = profile.photos.isEmpty
-        ? -1
-        : profile.primaryPhotoIndex.clamp(0, profile.photos.length - 1);
-    final storyPhotos = <(int, String)>[
-      for (var index = 0; index < profile.photos.length; index++)
-        if (index != primaryPhotoIndex) (index, profile.photos[index]),
-    ];
     final bottomInset = widget.showNavigation ? 116.0 : 36.0;
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -103,152 +98,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     FadeUp(
                       child: ProfileHero(
                         profile: profile,
-                        zodiac: _zodiacFor(profile.birthdate),
                         onEdit: () => _open(ProfileEditScreen.routeName),
                         onPreview: () => _open(ProfilePreviewScreen.routeName),
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-                    FadeUp(
-                      delay: const Duration(milliseconds: 35),
-                      child: ProfileCompletionCard(
-                        profile: profile,
                         onComplete: () =>
                             _open(ProfileCompletionScreen.routeName),
                       ),
                     ),
-                    const SizedBox(height: 30),
+                    const SizedBox(height: 32),
+                    ProfileAboutSection(profile: profile),
+                    const SizedBox(height: 32),
                     ProfileSectionHeading(
                       key: const ValueKey('profile-photo-gallery-heading'),
                       icon: Icons.photo_camera_rounded,
                       title: 'Photo Gallery',
-                      subtitle: 'The moments that make your story feel real.',
-                      actionLabel: 'Manage',
-                      onAction: () => _open(PhotoManagerScreen.routeName),
+                      subtitle: 'The moments that tell your story.',
                     ),
                     const SizedBox(height: 12),
-                    ProfilePhotoGallery(
+                    ProfilePhotoGallery(profile: profile),
+                    const SizedBox(height: 32),
+                    ProfileEditorialSections(
                       profile: profile,
-                      onManage: () => _open(PhotoManagerScreen.routeName),
-                    ),
-                    const SizedBox(height: 30),
-                    ProfileSectionHeading(
-                      icon: Icons.forum_rounded,
-                      title: 'Profile prompts',
-                      subtitle:
-                          'One thoughtful glimpse into how you think and connect.',
-                      actionLabel: 'Edit',
-                      onAction: () => _openSection(ProfileSection.prompts),
-                    ),
-                    const SizedBox(height: 12),
-                    ProfilePromptsCard(profile: profile),
-                    const SizedBox(height: 30),
-                    if (storyPhotos.isNotEmpty) ...[
-                      AmoraaProfileStoryImage(
-                        image: storyPhotos.first.$2,
-                        semanticLabel:
-                            'Profile photo ${storyPhotos.first.$1 + 1}',
-                        initials: AppImages.initialsForName(profile.name),
-                      ),
-                      const SizedBox(height: 30),
-                    ],
-                    ProfileSectionHeading(
-                      icon: Icons.favorite_rounded,
-                      title: 'Dating intentions',
-                      subtitle: 'Clear about the connection you want to build.',
-                      actionLabel: 'Edit',
-                      onAction: () => _open(ProfileEditScreen.routeName),
-                    ),
-                    const SizedBox(height: 12),
-                    DatingIntentionsCard(profile: profile),
-                    const SizedBox(height: 30),
-                    ProfileSectionHeading(
-                      icon: Icons.interests_rounded,
-                      title: 'Interests',
-                      subtitle: 'Easy places for a conversation to begin.',
-                      actionLabel: 'Edit',
-                      onAction: () => _openSection(ProfileSection.interests),
-                    ),
-                    const SizedBox(height: 12),
-                    ProfileInterestsCard(interests: profile.interests),
-                    const SizedBox(height: 30),
-                    if (storyPhotos.length > 1) ...[
-                      AmoraaProfileStoryImage(
-                        image: storyPhotos[1].$2,
-                        semanticLabel: 'Profile photo ${storyPhotos[1].$1 + 1}',
-                        initials: AppImages.initialsForName(profile.name),
-                      ),
-                      const SizedBox(height: 30),
-                    ],
-                    ProfileSectionHeading(
-                      icon: Icons.psychology_alt_rounded,
-                      title: 'Personality',
-                      subtitle: 'The lifestyle details you chose to share.',
-                      actionLabel: 'Edit',
-                      onAction: () => _openSection(ProfileSection.lifestyle),
-                    ),
-                    const SizedBox(height: 12),
-                    ProfilePersonalityCard(lifestyle: profile.lifestyle),
-                    for (
-                      var index = 2;
-                      index < storyPhotos.length;
-                      index++
-                    ) ...[
-                      const SizedBox(height: 24),
-                      AmoraaProfileStoryImage(
-                        image: storyPhotos[index].$2,
-                        semanticLabel:
-                            'Profile photo ${storyPhotos[index].$1 + 1}',
-                        initials: AppImages.initialsForName(profile.name),
-                      ),
-                    ],
-                    const SizedBox(height: 30),
-                    const ProfileSectionHeading(
-                      icon: Icons.verified_user_rounded,
-                      title: 'Verification & trust',
-                      subtitle: 'Safety signals are shown only when verified.',
-                    ),
-                    const SizedBox(height: 12),
-                    VerificationTrustCard(
+                      zodiac: _zodiacFor(profile.birthdate),
                       onVerify: () => _open(KycVerificationScreen.routeName),
                       onSafety: () => _open(SafetyPrivacyScreen.routeName),
-                    ),
-                    const SizedBox(height: 30),
-                    const ProfileSectionHeading(
-                      icon: Icons.workspace_premium_rounded,
-                      title: 'Premium membership',
-                      subtitle: 'A quieter invitation to get more from AMORAA.',
-                    ),
-                    const SizedBox(height: 12),
-                    PremiumMembershipCard(
                       onViewPremium: () => _open(SubscriptionScreen.routeName),
-                      onManage: () => _open(SubscriptionScreen.routeName),
-                    ),
-                    const SizedBox(height: 30),
-                    const ProfileSectionHeading(
-                      icon: Icons.admin_panel_settings_rounded,
-                      title: 'Account actions',
-                      subtitle:
-                          'Sign out or permanently remove your AMORAA account.',
-                    ),
-                    const SizedBox(height: 12),
-                    ProfileLinkGroup(
-                      items: [
-                        ProfileLinkItem(
-                          icon: Icons.logout_rounded,
-                          title: 'Log out',
-                          subtitle:
-                              'Sign out of this device without deleting your profile.',
-                          onTap: _confirmLogout,
-                        ),
-                        ProfileLinkItem(
-                          icon: Icons.delete_outline_rounded,
-                          title: 'Delete account',
-                          subtitle:
-                              'Permanently delete your AMORAA account and associated data.',
-                          onTap: _confirmDeleteAccount,
-                        ),
-                      ],
+                      onManagePremium: () =>
+                          _open(SubscriptionScreen.manageRoute),
+                      onSavedProfiles: () =>
+                          _open(SavedProfilesScreen.routeName),
+                      onBlockedProfiles: () =>
+                          _open(BlockedProfilesScreen.routeName),
+                      onSupport: () => _open(FaqSupportScreen.routeName),
+                      onLogout: _confirmLogout,
+                      onDeleteAccount: _confirmDeleteAccount,
                     ),
                   ],
                 ),
@@ -262,15 +144,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _open(String route) async {
     await Navigator.of(context).pushNamed(route);
-    if (mounted) setState(() {});
-  }
-
-  Future<void> _openSection(ProfileSection section) async {
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => ProfileSectionEditorScreen(section: section),
-      ),
-    );
     if (mounted) setState(() {});
   }
 
@@ -355,45 +228,30 @@ class _ProfileHeaderDelegate extends SliverPersistentHeaderDelegate {
     double shrinkOffset,
     bool overlapsContent,
   ) {
-    return Material(
-      color: AppColors.surface,
-      elevation: overlapsContent ? 2 : 0,
-      shadowColor: AppColors.primary.withValues(alpha: .08),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'My dating identity',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AmoraTextStyles.titleLarge.copyWith(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  Text(
-                    'Your story, your way',
-                    style: AmoraTextStyles.bodySmall.copyWith(
-                      color: AppColors.text.withValues(alpha: .62),
-                    ),
-                  ),
-                ],
+    return SizedBox.expand(
+      child: Material(
+        color: AppColors.surface,
+        elevation: overlapsContent ? 2 : 0,
+        shadowColor: AppColors.primary.withValues(alpha: .08),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Row(
+            children: [
+              const Expanded(
+                child: AmoraScreenTitle(
+                  title: 'My Dating Identity',
+                  subtitle: 'Your dating identity',
+                ),
               ),
-            ),
-            _ProfileHeaderActionButton(
-              key: const ValueKey('profile-settings-button'),
-              tooltip: 'Profile settings',
-              semanticLabel: 'Open profile settings',
-              onPressed: onSettings,
-              icon: Icons.settings_rounded,
-            ),
-          ],
+              _ProfileHeaderActionButton(
+                key: const ValueKey('profile-settings-button'),
+                tooltip: 'Profile settings',
+                semanticLabel: 'Open profile settings',
+                onPressed: onSettings,
+                icon: Icons.settings_rounded,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1366,111 +1224,111 @@ class ProfileHero extends StatelessWidget {
   const ProfileHero({
     super.key,
     required this.profile,
-    required this.zodiac,
     required this.onEdit,
     required this.onPreview,
+    required this.onComplete,
   });
 
   final LocalProfileDraft profile;
-  final String? zodiac;
   final VoidCallback onEdit;
   final VoidCallback onPreview;
+  final VoidCallback onComplete;
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final wide = constraints.maxWidth >= 760;
-        final media = Semantics(
-          image: true,
-          label: 'Primary profile photo for ${profile.name}',
-          child: SizedBox(
-            height: wide ? 430 : math.min(470, constraints.maxWidth * 1.18),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                AmoraProfileImage(
-                  imageUrl: profile.primaryPhoto,
-                  assetPath: profile.primaryPhoto,
-                  initials: AppImages.initialsForName(profile.name),
-                  fit: BoxFit.cover,
-                  borderRadius: BorderRadius.circular(30),
-                  semanticLabel: 'Primary profile photo for ${profile.name}',
-                ),
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(30),
-                    color: AppColors.primary.withValues(alpha: .40),
-                  ),
-                ),
-                if (!wide)
-                  Positioned(
-                    left: 20,
-                    right: 20,
-                    bottom: 20,
-                    child: _HeroIdentity(
-                      profile: profile,
-                      zodiac: zodiac,
-                      light: true,
-                    ),
-                  ),
-              ],
-            ),
-          ),
+        final photo = _ProfilePortrait(profile: profile);
+        final identity = _HeroIdentity(
+          profile: profile,
+          onEdit: onEdit,
+          onPreview: onPreview,
+          onComplete: onComplete,
         );
-
-        if (!wide) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              media,
-              const SizedBox(height: 14),
-              _HeroActions(onEdit: onEdit, onPreview: onPreview),
-            ],
-          );
-        }
-
-        return SizedBox(
-          height: 510,
-          child: PremiumCard(
-            radius: 30,
-            padding: const EdgeInsets.all(18),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(flex: 11, child: media),
-                const SizedBox(width: 24),
-                Expanded(
-                  flex: 10,
-                  child: Column(
+        return PremiumCard(
+          radius: 28,
+          padding: const EdgeInsets.all(12),
+          borderColor: AppColors.tertiary.withValues(alpha: .72),
+          shadowOpacity: .08,
+          child: wide
+              ? SizedBox(
+                  height: 488,
+                  child: Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
-                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      _HeroIdentity(
-                        profile: profile,
-                        zodiac: zodiac,
-                        light: false,
-                      ),
-                      const SizedBox(height: 20),
-                      Text(
-                        profile.bio,
-                        maxLines: 5,
-                        overflow: TextOverflow.ellipsis,
-                        style: AmoraTextStyles.bodyLarge.copyWith(
-                          color: AppColors.textSecondary,
-                          height: 1.5,
+                      Expanded(flex: 10, child: photo),
+                      const SizedBox(width: 28),
+                      Expanded(
+                        flex: 11,
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(0, 16, 16, 16),
+                          child: identity,
                         ),
                       ),
-                      const SizedBox(height: 24),
-                      _HeroActions(onEdit: onEdit, onPreview: onPreview),
                     ],
                   ),
+                )
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxHeight: math.min(470, constraints.maxWidth * 1.2),
+                      ),
+                      child: AspectRatio(aspectRatio: 4 / 5, child: photo),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(8, 24, 8, 8),
+                      child: identity,
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
         );
       },
+    );
+  }
+}
+
+class _ProfilePortrait extends StatelessWidget {
+  const _ProfilePortrait({required this.profile});
+
+  final LocalProfileDraft profile;
+
+  @override
+  Widget build(BuildContext context) {
+    return Hero(
+      tag: 'current-user-primary-photo',
+      child: Semantics(
+        image: true,
+        label: 'Primary profile photo for ${profile.name}',
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: AppColors.tertiary.withValues(alpha: .86),
+              width: 2,
+            ),
+            boxShadow: AmoraShadows.level2,
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(3),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: AmoraProfileImage(
+                imageUrl: profile.primaryPhoto,
+                assetPath: profile.primaryPhoto,
+                initials: AppImages.initialsForName(profile.name),
+                fit: BoxFit.cover,
+                alignment: const Alignment(0, -.1),
+                borderRadius: BorderRadius.circular(20),
+                semanticLabel: 'Primary profile photo for ${profile.name}',
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -1478,104 +1336,106 @@ class ProfileHero extends StatelessWidget {
 class _HeroIdentity extends StatelessWidget {
   const _HeroIdentity({
     required this.profile,
-    required this.zodiac,
-    required this.light,
+    required this.onEdit,
+    required this.onPreview,
+    required this.onComplete,
   });
 
   final LocalProfileDraft profile;
-  final String? zodiac;
-  final bool light;
+  final VoidCallback onEdit;
+  final VoidCallback onPreview;
+  final VoidCallback onComplete;
 
   @override
   Widget build(BuildContext context) {
-    final color = light ? AppColors.surface : AppColors.primary;
     return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          profile.age == null
-              ? profile.name
-              : '${profile.name}, ${profile.age}',
+          profile.name,
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
           style: AmoraTextStyles.headlineLarge.copyWith(
-            color: color,
-            fontSize: 30,
-            fontWeight: FontWeight.w700,
+            fontSize: 32,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -.5,
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
+        Text(
+          [
+            if (profile.age != null) '${profile.age}',
+            if (profile.location.trim().isNotEmpty) profile.location.trim(),
+          ].join('  •  '),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: AmoraTextStyles.bodyLarge.copyWith(
+            color: AppColors.text.withValues(alpha: .70),
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 14),
+        Text(
+          'Relationship intention',
+          style: AmoraTextStyles.labelSmall.copyWith(
+            color: AppColors.text.withValues(alpha: .58),
+            fontWeight: FontWeight.w700,
+            letterSpacing: .7,
+          ),
+        ),
+        const SizedBox(height: 7),
         Wrap(
           spacing: 8,
           runSpacing: 8,
           children: [
-            if (zodiac != null)
-              _HeroPill(
-                icon: Icons.brightness_2_rounded,
-                text: zodiac!,
-                light: light,
-              ),
             _HeroPill(
-              icon: Icons.location_on_rounded,
-              text: profile.location,
-              light: light,
+              icon: Icons.favorite_rounded,
+              text: ProfileFormOptions.normalizeDatingIntention(
+                profile.datingIntention,
+              ),
             ),
           ],
         ),
-        const SizedBox(height: 10),
-        Text(
-          profile.profession,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: AmoraTextStyles.bodyLarge.copyWith(
-            color: color.withValues(alpha: light ? .88 : .72),
-            fontWeight: FontWeight.w500,
-          ),
-        ),
+        const SizedBox(height: 20),
+        ProfileCompletionCard(profile: profile, onComplete: onComplete),
+        const SizedBox(height: 16),
+        _HeroActions(onEdit: onEdit, onPreview: onPreview),
       ],
     );
   }
 }
 
 class _HeroPill extends StatelessWidget {
-  const _HeroPill({
-    required this.icon,
-    required this.text,
-    required this.light,
-  });
+  const _HeroPill({required this.icon, required this.text});
 
   final IconData icon;
   final String text;
-  final bool light;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      constraints: const BoxConstraints(minHeight: 40),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: light
-            ? AppColors.surface.withValues(alpha: .16)
-            : AppColors.background,
+        color: AppColors.background,
         borderRadius: BorderRadius.circular(99),
-        border: Border.all(
-          color: light
-              ? AppColors.surface.withValues(alpha: .28)
-              : AppColors.tertiary,
-        ),
+        border: Border.all(color: AppColors.tertiary.withValues(alpha: .9)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            icon,
-            size: 16,
-            color: light ? AppColors.surface : AppColors.primary,
-          ),
+          Icon(icon, size: 16, color: AppColors.secondary),
           const SizedBox(width: 6),
-          Text(
-            text,
-            style: AmoraTextStyles.labelMedium.copyWith(
-              color: light ? AppColors.surface : AppColors.primary,
+          Flexible(
+            child: Text(
+              text,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: AmoraTextStyles.labelMedium.copyWith(
+                color: AppColors.primary,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ],
@@ -1593,7 +1453,7 @@ class _HeroActions extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final edit = AppPrimaryButton(
-      label: 'Edit profile',
+      label: 'Edit Profile',
       icon: Icons.edit_rounded,
       onPressed: onEdit,
     );
@@ -1626,6 +1486,97 @@ class _HeroActions extends StatelessWidget {
 class ProfileCompletionCard extends StatelessWidget {
   const ProfileCompletionCard({
     super.key,
+    required this.profile,
+    required this.onComplete,
+  });
+
+  final LocalProfileDraft profile;
+  final VoidCallback onComplete;
+
+  @override
+  Widget build(BuildContext context) {
+    final missingSections = <String>[
+      if (profile.photos.length < 2) 'photos',
+      if (profile.bio.trim().length < 40) 'bio',
+      if (ProfileInterestPolicy.visibleCount(profile.interests) < 5)
+        'interests',
+      if (profile.completedPromptCount < 1) 'prompt',
+      if ((profile.lifestyle['Height'] ?? '').trim().isEmpty) 'height',
+      if ((profile.lifestyle['Languages'] ?? '').trim().isEmpty) 'languages',
+      if ((profile.lifestyle['Religion'] ?? '').trim().isEmpty) 'religion',
+    ];
+    final completionPercent = profile.presentationCompletionPercent;
+
+    return PremiumCard(
+      key: const ValueKey('profile-completion-card'),
+      radius: 22,
+      padding: EdgeInsets.zero,
+      color: AppColors.background,
+      borderColor: AppColors.tertiary.withValues(alpha: .78),
+      shadowOpacity: 0,
+      child: Semantics(
+        button: true,
+        label: 'Complete profile, $completionPercent percent complete',
+        child: InkWell(
+          onTap: onComplete,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                _AnimatedProfileProgress(percent: completionPercent),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Profile Complete',
+                        style: AmoraTextStyles.titleMedium.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        missingSections.isEmpty
+                            ? 'Your story is ready to be discovered.'
+                            : 'Only ${missingSections.length} ${missingSections.length == 1 ? 'section' : 'sections'} remaining',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: AmoraTextStyles.bodySmall.copyWith(
+                          color: AppColors.text.withValues(alpha: .66),
+                        ),
+                      ),
+                      const SizedBox(height: 7),
+                      Text(
+                        missingSections.isEmpty
+                            ? 'Review profile'
+                            : 'Complete Profile',
+                        style: AmoraTextStyles.labelMedium.copyWith(
+                          color: AppColors.secondary,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(
+                  Icons.arrow_forward_rounded,
+                  color: AppColors.primary,
+                  size: 20,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// Kept temporarily for source compatibility with older golden fixtures.
+// ignore: unused_element
+class _LegacyProfileCompletionCard extends StatelessWidget {
+  const _LegacyProfileCompletionCard({
     required this.profile,
     required this.onComplete,
   });
@@ -1725,7 +1676,7 @@ class _AnimatedProfileProgress extends StatelessWidget {
       tween: Tween(begin: 0, end: percent / 100),
       duration: reduceMotion
           ? Duration.zero
-          : const Duration(milliseconds: 650),
+          : const Duration(milliseconds: 280),
       curve: Curves.easeOutCubic,
       builder: (context, value, _) {
         return Semantics(
@@ -1733,11 +1684,12 @@ class _AnimatedProfileProgress extends StatelessWidget {
           child: CustomPaint(
             painter: _ProgressRingPainter(value),
             child: SizedBox.square(
-              dimension: 88,
+              dimension: 68,
               child: Center(
                 child: Text(
                   '${(value * 100).round()}%',
                   style: AmoraTextStyles.titleLarge.copyWith(
+                    fontSize: 18,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -1784,6 +1736,187 @@ class _ProgressRingPainter extends CustomPainter {
   }
 }
 
+class ProfileAboutSection extends StatelessWidget {
+  const ProfileAboutSection({super.key, required this.profile});
+
+  final LocalProfileDraft profile;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ProfileSectionHeading(
+          icon: Icons.favorite_outline_rounded,
+          title: '❤️ About Me',
+          subtitle: 'The heart behind the profile.',
+        ),
+        const SizedBox(height: 12),
+        ProfileBioCard(bio: profile.bio),
+      ],
+    );
+  }
+}
+
+class ProfileEditorialSections extends StatelessWidget {
+  const ProfileEditorialSections({
+    super.key,
+    required this.profile,
+    required this.zodiac,
+    required this.onVerify,
+    required this.onSafety,
+    required this.onViewPremium,
+    required this.onManagePremium,
+    required this.onSavedProfiles,
+    required this.onBlockedProfiles,
+    required this.onSupport,
+    required this.onLogout,
+    required this.onDeleteAccount,
+  });
+
+  final LocalProfileDraft profile;
+  final String? zodiac;
+  final VoidCallback onVerify;
+  final VoidCallback onSafety;
+  final VoidCallback onViewPremium;
+  final VoidCallback onManagePremium;
+  final VoidCallback onSavedProfiles;
+  final VoidCallback onBlockedProfiles;
+  final VoidCallback onSupport;
+  final VoidCallback onLogout;
+  final VoidCallback onDeleteAccount;
+
+  @override
+  Widget build(BuildContext context) {
+    final blocks = <Widget>[
+      _ProfileSectionBlock(
+        heading: ProfileSectionHeading(
+          icon: Icons.badge_rounded,
+          title: '💼 Profile',
+          subtitle: 'The details that shape your story.',
+        ),
+        child: ProfileAboutCard(profile: profile, zodiac: zodiac),
+      ),
+      _ProfileSectionBlock(
+        heading: ProfileSectionHeading(
+          icon: Icons.interests_rounded,
+          title: '🎯 Interests',
+          subtitle: 'Easy places for a conversation to begin.',
+        ),
+        child: ProfileInterestsCard(interests: profile.interests),
+      ),
+      _ProfileSectionBlock(
+        heading: ProfileSectionHeading(
+          icon: Icons.auto_awesome_rounded,
+          title: '🧳 Lifestyle',
+          subtitle: 'A glimpse into how you live and recharge.',
+        ),
+        child: ProfilePersonalityCard(lifestyle: profile.lifestyle),
+      ),
+      _ProfileSectionBlock(
+        heading: ProfileSectionHeading(
+          icon: Icons.chat_bubble_outline_rounded,
+          title: '💬 Profile prompt',
+          subtitle: 'One thoughtful opening for a real conversation.',
+        ),
+        child: ProfilePromptsCard(profile: profile),
+      ),
+      _ProfileSectionBlock(
+        heading: const ProfileSectionHeading(
+          icon: Icons.verified_user_rounded,
+          title: 'Verification & trust',
+          subtitle: 'Private controls that help keep dating safer.',
+        ),
+        child: VerificationTrustCard(onVerify: onVerify, onSafety: onSafety),
+      ),
+      _ProfileSectionBlock(
+        heading: const ProfileSectionHeading(
+          icon: Icons.workspace_premium_rounded,
+          title: 'Premium membership',
+          subtitle: 'More intention, with less noise.',
+        ),
+        child: PremiumMembershipCard(
+          onViewPremium: onViewPremium,
+          onManage: onManagePremium,
+        ),
+      ),
+      _ProfileSectionBlock(
+        heading: const ProfileSectionHeading(
+          icon: Icons.grid_view_rounded,
+          title: 'Quick Actions',
+          subtitle: 'Shortcuts for your profile and privacy.',
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            ProfileQuickActions(
+              onSavedProfiles: onSavedProfiles,
+              onBlockedProfiles: onBlockedProfiles,
+              onSupport: onSupport,
+            ),
+            const SizedBox(height: 12),
+            ProfileLinkGroup(
+              items: [
+                ProfileLinkItem(
+                  icon: Icons.logout_rounded,
+                  title: 'Log out',
+                  subtitle: 'Sign out of this device.',
+                  onTap: onLogout,
+                ),
+                ProfileLinkItem(
+                  icon: Icons.delete_outline_rounded,
+                  title: 'Delete account',
+                  subtitle: 'Permanently remove your AMORAA account.',
+                  onTap: onDeleteAccount,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    ];
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final useColumns = constraints.maxWidth >= 760;
+        final width = useColumns
+            ? (constraints.maxWidth - 24) / 2
+            : constraints.maxWidth;
+        return Wrap(
+          spacing: 24,
+          runSpacing: 32,
+          children: [
+            for (var index = 0; index < blocks.length; index++)
+              SizedBox(
+                width: width,
+                child: FadeUp(
+                  duration: const Duration(milliseconds: 240),
+                  offset: 8,
+                  child: blocks[index],
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _ProfileSectionBlock extends StatelessWidget {
+  const _ProfileSectionBlock({required this.heading, required this.child});
+
+  final Widget heading;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [heading, const SizedBox(height: 12), child],
+    );
+  }
+}
+
 class ProfileSectionHeading extends StatelessWidget {
   const ProfileSectionHeading({
     super.key,
@@ -1805,8 +1938,21 @@ class ProfileSectionHeading extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, color: AppColors.secondary),
-        const SizedBox(width: 10),
+        Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(13),
+            border: Border.all(
+              color: AppColors.tertiary.withValues(alpha: .76),
+            ),
+            boxShadow: AmoraShadows.level1,
+          ),
+          alignment: Alignment.center,
+          child: Icon(icon, color: AppColors.secondary, size: 20),
+        ),
+        const SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1829,8 +1975,114 @@ class ProfileSectionHeading extends StatelessWidget {
           ),
         ),
         if (actionLabel != null)
-          TextButton(onPressed: onAction, child: Text(actionLabel!)),
+          SizedBox(
+            height: 48,
+            child: TextButton(onPressed: onAction, child: Text(actionLabel!)),
+          ),
       ],
+    );
+  }
+}
+
+class ProfileBioCard extends StatefulWidget {
+  const ProfileBioCard({super.key, required this.bio});
+
+  final String bio;
+
+  @override
+  State<ProfileBioCard> createState() => _ProfileBioCardState();
+}
+
+class _ProfileBioCardState extends State<ProfileBioCard> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final bio = widget.bio.trim();
+    if (bio.isEmpty) {
+      return const _ProfileEmptyCard(
+        icon: Icons.notes_rounded,
+        title: 'Your story starts here',
+        description: 'Share a few words about what makes you feel most alive.',
+      );
+    }
+    final canExpand = bio.characters.length > 150;
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+
+    return PremiumCard(
+      radius: 22,
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.format_quote_rounded,
+                  color: AppColors.secondary,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'In my own words',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AmoraTextStyles.labelLarge.copyWith(
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          AnimatedSize(
+            duration: reduceMotion
+                ? Duration.zero
+                : const Duration(milliseconds: 240),
+            curve: Curves.easeOutCubic,
+            alignment: Alignment.topCenter,
+            child: Text(
+              bio,
+              maxLines: _expanded ? null : 4,
+              overflow: _expanded
+                  ? TextOverflow.visible
+                  : TextOverflow.ellipsis,
+              style: AmoraTextStyles.bodyLarge.copyWith(
+                height: 1.62,
+                color: AppColors.text.withValues(alpha: .84),
+              ),
+            ),
+          ),
+          if (canExpand) ...[
+            const SizedBox(height: 4),
+            Semantics(
+              button: true,
+              label: _expanded ? 'Show less biography' : 'Read more biography',
+              child: TextButton(
+                onPressed: () => setState(() => _expanded = !_expanded),
+                child: AnimatedSwitcher(
+                  duration: reduceMotion
+                      ? Duration.zero
+                      : const Duration(milliseconds: 220),
+                  child: Text(
+                    _expanded ? 'Show Less' : 'Read More',
+                    key: ValueKey(_expanded),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }
@@ -1844,7 +2096,7 @@ class ProfilePromptsCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final prompts = profile.prompts.entries
         .where((entry) => entry.value.trim().isNotEmpty)
-        .take(3)
+        .take(1)
         .toList(growable: false);
     if (prompts.isEmpty) {
       return const _ProfileEmptyCard(
@@ -1853,55 +2105,42 @@ class ProfilePromptsCard extends StatelessWidget {
         description: 'Add three answers that make it easy to start talking.',
       );
     }
-    return Column(
-      children: [
-        for (var index = 0; index < prompts.length; index++) ...[
-          PremiumCard(
-            key: ValueKey('profile-prompt-$index'),
-            radius: 24,
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        prompts[index].key,
-                        style: AmoraTextStyles.labelLarge.copyWith(
-                          color: AppColors.secondary,
-                        ),
-                      ),
-                    ),
-                    const Icon(
-                      Icons.drag_handle_rounded,
-                      color: AppColors.tertiary,
-                    ),
-                  ],
+    final prompt = prompts.first;
+    return PremiumCard(
+      key: const ValueKey('profile-prompt-0'),
+      radius: 24,
+      padding: EdgeInsets.zero,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: AmoraGradients.warmSurface,
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                prompt.key,
+                style: AmoraTextStyles.labelLarge.copyWith(
+                  color: AppColors.secondary,
+                  fontWeight: FontWeight.w800,
                 ),
-                const SizedBox(height: 12),
-                Text(
-                  prompts[index].value,
-                  style: AmoraTextStyles.titleMedium.copyWith(
-                    fontSize: 17,
-                    height: 1.45,
-                    fontWeight: FontWeight.w600,
-                  ),
+              ),
+              const SizedBox(height: 14),
+              Text(
+                '“${prompt.value}”',
+                style: AmoraTextStyles.titleLarge.copyWith(
+                  fontSize: 19,
+                  height: 1.48,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: -.1,
                 ),
-                const SizedBox(height: 10),
-                Text(
-                  '${prompts[index].value.characters.length}/180',
-                  textAlign: TextAlign.end,
-                  style: AmoraTextStyles.bodySmall.copyWith(
-                    color: AppColors.text.withValues(alpha: .55),
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
-          if (index != prompts.length - 1) const SizedBox(height: 10),
-        ],
-      ],
+        ),
+      ),
     );
   }
 }
@@ -1923,7 +2162,22 @@ class ProfileAboutCard extends StatelessWidget {
       if (profile.company.trim().isNotEmpty)
         (Icons.business_rounded, 'Company', profile.company),
       (Icons.school_rounded, 'Education', profile.education),
-      (Icons.location_on_rounded, 'City', profile.location),
+      if ((profile.lifestyle['Height'] ?? '').trim().isNotEmpty)
+        (Icons.straighten_rounded, 'Height', profile.lifestyle['Height']!),
+      if ((profile.lifestyle['Languages'] ?? '').trim().isNotEmpty)
+        (
+          Icons.language_rounded,
+          'Languages',
+          ProfileFormOptions.parseLanguages(
+            profile.lifestyle['Languages'],
+          ).join(' • '),
+        ),
+      if ((profile.lifestyle['Religion'] ?? '').trim().isNotEmpty)
+        (
+          Icons.self_improvement_rounded,
+          'Religion',
+          profile.lifestyle['Religion']!,
+        ),
       (Icons.person_rounded, 'Gender', profile.gender),
       if (zodiac != null) (Icons.brightness_2_rounded, 'Zodiac', zodiac!),
     ];
@@ -2076,12 +2330,12 @@ class ProfileInterestsCard extends StatelessWidget {
             for (final interest in visibleInterests)
               Container(
                 constraints: BoxConstraints(
-                  minHeight: 42,
+                  minHeight: 36,
                   maxWidth: constraints.maxWidth,
                 ),
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 13,
-                  vertical: 9,
+                  horizontal: 12,
+                  vertical: 8,
                 ),
                 decoration: BoxDecoration(
                   color: AppColors.background,
@@ -2093,12 +2347,6 @@ class ProfileInterestsCard extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(
-                      Icons.favorite_border_rounded,
-                      size: 17,
-                      color: AppColors.secondary,
-                    ),
-                    const SizedBox(width: 7),
                     Flexible(
                       child: Text(
                         interest,
@@ -2119,6 +2367,115 @@ class ProfileInterestsCard extends StatelessWidget {
 
 class ProfilePersonalityCard extends StatelessWidget {
   const ProfilePersonalityCard({super.key, required this.lifestyle});
+
+  final Map<String, String> lifestyle;
+
+  @override
+  Widget build(BuildContext context) {
+    final icons = <String, IconData>{
+      'Exercise': Icons.fitness_center_rounded,
+      'Pets': Icons.pets_rounded,
+      'Drinking': Icons.local_bar_rounded,
+      'Smoking': Icons.smoke_free_rounded,
+      'Sleep habits': Icons.bedtime_rounded,
+      'Food preference': Icons.restaurant_rounded,
+    };
+    final entries = lifestyle.entries
+        .where(
+          (entry) =>
+              !const {'Height', 'Languages', 'Religion'}.contains(entry.key) &&
+              entry.value.trim().isNotEmpty,
+        )
+        .toList(growable: false);
+    if (entries.isEmpty) {
+      return const _ProfileEmptyCard(
+        icon: Icons.psychology_alt_rounded,
+        title: 'Keep this private or add a little more',
+        description: 'Only the lifestyle details you choose appear here.',
+      );
+    }
+    return PremiumCard(
+      radius: 24,
+      padding: const EdgeInsets.all(16),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final tileWidth = constraints.maxWidth >= 300
+              ? (constraints.maxWidth - 10) / 2
+              : constraints.maxWidth;
+          return Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              for (final entry in entries)
+                SizedBox(
+                  width: tileWidth,
+                  child: _LifestyleTile(
+                    icon: icons[entry.key] ?? Icons.auto_awesome_rounded,
+                    label: entry.key,
+                    value: entry.value,
+                  ),
+                ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _LifestyleTile extends StatelessWidget {
+  const _LifestyleTile({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(minHeight: 88),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.tertiary.withValues(alpha: .64)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: AppColors.secondary, size: 19),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AmoraTextStyles.labelSmall.copyWith(
+              color: AppColors.text.withValues(alpha: .58),
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: AmoraTextStyles.labelLarge.copyWith(
+              color: AppColors.primary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// Kept temporarily for source compatibility with older golden fixtures.
+// ignore: unused_element
+class _LegacyProfilePersonalityCard extends StatelessWidget {
+  const _LegacyProfilePersonalityCard({required this.lifestyle});
 
   final Map<String, String> lifestyle;
 
@@ -2184,25 +2541,33 @@ class VerificationTrustCard extends StatelessWidget {
             status: 'Always available',
           ),
           const SizedBox(height: 18),
-          Row(
-            children: [
-              Expanded(
-                child: AppPrimaryButton(
-                  label: 'Verify profile',
-                  icon: Icons.verified_rounded,
-                  onPressed: onVerify,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: AppPrimaryButton(
-                  label: 'Safety',
-                  icon: Icons.shield_outlined,
-                  variant: AppPrimaryButtonVariant.outlined,
-                  onPressed: onSafety,
-                ),
-              ),
-            ],
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final verify = AppPrimaryButton(
+                label: 'Verify profile',
+                icon: Icons.verified_rounded,
+                onPressed: onVerify,
+              );
+              final safety = AppPrimaryButton(
+                label: 'Safety',
+                icon: Icons.shield_outlined,
+                variant: AppPrimaryButtonVariant.outlined,
+                onPressed: onSafety,
+              );
+              if (constraints.maxWidth < 300) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [verify, const SizedBox(height: 10), safety],
+                );
+              }
+              return Row(
+                children: [
+                  Expanded(child: verify),
+                  const SizedBox(width: 10),
+                  Expanded(child: safety),
+                ],
+              );
+            },
           ),
         ],
       ),
@@ -2393,6 +2758,133 @@ class _PremiumFeatureRow extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class ProfileQuickActions extends StatelessWidget {
+  const ProfileQuickActions({
+    super.key,
+    required this.onSavedProfiles,
+    required this.onBlockedProfiles,
+    required this.onSupport,
+  });
+
+  final VoidCallback onSavedProfiles;
+  final VoidCallback onBlockedProfiles;
+  final VoidCallback onSupport;
+
+  @override
+  Widget build(BuildContext context) {
+    final actions = <(IconData, String, VoidCallback)>[
+      (Icons.bookmark_rounded, 'Saved Profiles', onSavedProfiles),
+      (Icons.block_rounded, 'Blocked Profiles', onBlockedProfiles),
+      (Icons.support_agent_rounded, 'Support', onSupport),
+    ];
+    return PremiumCard(
+      radius: 24,
+      padding: const EdgeInsets.all(12),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final tileWidth = constraints.maxWidth >= 280
+              ? (constraints.maxWidth - 10) / 2
+              : constraints.maxWidth;
+          return Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              for (final action in actions)
+                SizedBox(
+                  width: tileWidth,
+                  child: _QuickActionTile(
+                    icon: action.$1,
+                    label: action.$2,
+                    onTap: action.$3,
+                  ),
+                ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _QuickActionTile extends StatefulWidget {
+  const _QuickActionTile({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  State<_QuickActionTile> createState() => _QuickActionTileState();
+}
+
+class _QuickActionTileState extends State<_QuickActionTile> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    return Semantics(
+      button: true,
+      label: widget.label,
+      child: AnimatedScale(
+        scale: _pressed ? .98 : 1,
+        duration: reduceMotion
+            ? Duration.zero
+            : const Duration(milliseconds: 200),
+        curve: Curves.easeOutCubic,
+        child: Material(
+          color: AppColors.background,
+          borderRadius: BorderRadius.circular(18),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: widget.onTap,
+            onHighlightChanged: (pressed) {
+              if (_pressed != pressed) setState(() => _pressed = pressed);
+            },
+            child: SizedBox(
+              height: 96,
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(widget.icon, color: AppColors.secondary, size: 22),
+                    const Spacer(),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            widget.label,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: AmoraTextStyles.labelLarge.copyWith(
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        const Icon(
+                          Icons.arrow_outward_rounded,
+                          color: AppColors.primary,
+                          size: 17,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

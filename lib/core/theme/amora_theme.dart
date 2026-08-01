@@ -46,6 +46,7 @@ abstract final class AmoraTheme {
   static ThemeData light() {
     final inputTheme = _inputDecorationTheme();
     final textTheme = AmoraTextStyles.textTheme.apply(
+      fontFamily: AmoraTextStyles.fontFamily,
       bodyColor: AppColors.textPrimary,
       displayColor: AppColors.primary,
     );

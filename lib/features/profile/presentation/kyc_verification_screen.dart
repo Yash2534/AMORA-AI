@@ -418,23 +418,44 @@ class _VerificationTimeline extends StatelessWidget {
     return PremiumCard(
       radius: AmoraRadius.large,
       padding: const EdgeInsets.all(AmoraSpacing.space16),
-      child: Column(
-        children: [
-          for (var index = 0; index < items.length; index++) ...[
-            _TimelineItem(
-              title: items[index].$1,
-              icon: items[index].$2,
-              active: index == current,
-              complete: index < current || stage == _KycStage.complete,
-            ),
-            if (index != items.length - 1)
-              Container(
+      child: SizedBox(
+        height: 56.0 * items.length,
+        child: Stack(
+          children: [
+            const Positioned(
+              left: 29,
+              top: 28,
+              bottom: 28,
+              child: VerticalDivider(
                 width: 2,
-                height: 12,
-                color: index < current ? AppColors.primary : AppColors.divider,
+                thickness: 2,
+                color: AppColors.divider,
               ),
+            ),
+            Positioned(
+              left: 29,
+              top: 28,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 260),
+                curve: Curves.easeOutCubic,
+                width: 2,
+                height: 56.0 * current.clamp(0, items.length - 1),
+                color: AppColors.primary,
+              ),
+            ),
+            Column(
+              children: [
+                for (var index = 0; index < items.length; index++)
+                  _TimelineItem(
+                    title: items[index].$1,
+                    icon: items[index].$2,
+                    active: index == current,
+                    complete: index < current || stage == _KycStage.complete,
+                  ),
+              ],
+            ),
           ],
-        ],
+        ),
       ),
     );
   }

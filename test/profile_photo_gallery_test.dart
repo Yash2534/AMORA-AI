@@ -2,7 +2,6 @@ import 'package:amora_ai/core/constants/app_images.dart';
 import 'package:amora_ai/core/theme/amora_theme.dart';
 import 'package:amora_ai/core/widgets/amora_profile_image.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
-import 'package:amora_ai/features/profile/presentation/photo_manager_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_screen.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/profile_photo_gallery.dart';
 import 'package:flutter/gestures.dart';
@@ -164,7 +163,7 @@ void main() {
     addTearDown(() => tester.binding.setSurfaceSize(null));
   });
 
-  testWidgets('Profile Manage action preserves the photo-manager route', (
+  testWidgets('Profile gallery keeps editing in the global Edit Profile flow', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(390, 844));
@@ -193,12 +192,12 @@ void main() {
       scrollable: find.byType(Scrollable).first,
     );
     await tester.pumpAndSettle();
-    await tester.tap(
+    expect(
       find.descendant(of: heading, matching: find.text('Manage')),
+      findsNothing,
     );
-    await tester.pumpAndSettle();
-
-    expect(openedRoute?.name, PhotoManagerScreen.routeName);
+    expect(find.byKey(const ValueKey('profile-add-photo-card')), findsNothing);
+    expect(openedRoute, isNull);
     expect(tester.takeException(), isNull);
   });
 }

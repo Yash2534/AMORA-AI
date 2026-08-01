@@ -123,43 +123,54 @@ class AmoraGoogleButton extends StatelessWidget {
         width: double.infinity,
         child: OutlinedButton(
           onPressed: enabled ? onPressed : null,
-          style: OutlinedButton.styleFrom(
-            backgroundColor: AppColors.surface,
-            foregroundColor: AppColors.text,
-            disabledForegroundColor: AppColors.text.withValues(alpha: .56),
-            side: const BorderSide(color: AppColors.tertiary),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(18),
-            ),
-          ),
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              Align(
-                alignment: Alignment.centerLeft,
-                child: isLoading
-                    ? const SizedBox.square(
-                        dimension: 22,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Image.asset(
-                        AmoraBrandAssets.googleG,
-                        key: const ValueKey('official-google-g'),
-                        width: 22,
-                        height: 22,
-                        fit: BoxFit.contain,
-                        semanticLabel: 'Google',
-                      ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 32),
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+          style:
+              OutlinedButton.styleFrom(
+                backgroundColor: AppColors.surface,
+                foregroundColor: AppColors.text,
+                disabledForegroundColor: AppColors.text.withValues(alpha: .56),
+                side: const BorderSide(color: AppColors.tertiary),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18),
                 ),
+              ).copyWith(
+                overlayColor: WidgetStateProperty.resolveWith((states) {
+                  if (states.contains(WidgetState.pressed)) {
+                    return AppColors.primary.withValues(alpha: .08);
+                  }
+                  if (states.contains(WidgetState.hovered) ||
+                      states.contains(WidgetState.focused)) {
+                    return AppColors.tertiary.withValues(alpha: .34);
+                  }
+                  return AppColors.transparent;
+                }),
               ),
-            ],
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 220),
+                  child: isLoading
+                      ? const SizedBox.square(
+                          key: ValueKey('google-loading'),
+                          dimension: 22,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Image.asset(
+                          AmoraBrandAssets.googleG,
+                          key: const ValueKey('official-google-g'),
+                          width: 22,
+                          height: 22,
+                          fit: BoxFit.contain,
+                          semanticLabel: 'Google',
+                        ),
+                ),
+                const SizedBox(width: AmoraSpacing.space12),
+                Text(label, maxLines: 1),
+              ],
+            ),
           ),
         ),
       ),

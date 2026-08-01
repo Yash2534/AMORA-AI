@@ -619,25 +619,27 @@ class _EventsHeaderDelegate extends SliverPersistentHeaderDelegate {
     double shrinkOffset,
     bool overlapsContent,
   ) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: AppColors.surface.withValues(alpha: .98),
-        border: Border(
-          bottom: BorderSide(color: AppColors.primary.withValues(alpha: .08)),
+    return SizedBox.expand(
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: AppColors.surface.withValues(alpha: .98),
+          border: Border(
+            bottom: BorderSide(color: AppColors.primary.withValues(alpha: .08)),
+          ),
+          boxShadow: overlapsContent
+              ? [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: .08),
+                    blurRadius: 16,
+                    offset: const Offset(0, 6),
+                  ),
+                ]
+              : null,
         ),
-        boxShadow: overlapsContent
-            ? [
-                BoxShadow(
-                  color: AppColors.primary.withValues(alpha: .08),
-                  blurRadius: 16,
-                  offset: const Offset(0, 6),
-                ),
-              ]
-            : null,
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-        child: child,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          child: child,
+        ),
       ),
     );
   }

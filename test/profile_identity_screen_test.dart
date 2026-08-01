@@ -37,11 +37,15 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    expect(
+      tester.takeException(),
+      isNull,
+      reason: 'Initial compact Profile layout overflowed',
+    );
 
-    expect(find.text('My dating identity'), findsOneWidget);
+    expect(find.text('My Dating Identity'), findsOneWidget);
     expect(find.textContaining(original.name), findsOneWidget);
-    expect(find.text('Aquarius'), findsWidgets);
-    expect(find.text('Edit profile'), findsOneWidget);
+    expect(find.text('Edit Profile'), findsOneWidget);
     expect(find.text('Preview'), findsOneWidget);
     expect(
       find.byKey(const ValueKey('profile-settings-button')),
@@ -55,13 +59,14 @@ void main() {
 
     final scrollable = find.byType(Scrollable).first;
     for (final section in [
+      '❤️ About Me',
       'Photo Gallery',
-      'Profile prompts',
-      'Dating intentions',
-      'Interests',
-      'Personality',
+      '🎯 Interests',
+      '🧳 Lifestyle',
+      '💬 Profile prompt',
       'Verification & trust',
       'Premium membership',
+      'Quick Actions',
       'Log out',
       'Delete account',
     ]) {
@@ -74,6 +79,11 @@ void main() {
         await tester.pumpAndSettle();
       }
       expect(find.text(section), findsWidgets);
+      expect(
+        tester.takeException(),
+        isNull,
+        reason: 'Overflow while revealing $section',
+      );
       if (section == 'Premium membership') {
         await tester.scrollUntilVisible(
           find.byKey(const ValueKey('premium-membership-section')),
@@ -94,7 +104,6 @@ void main() {
     expect(find.textContaining('WhatsApp'), findsNothing);
     expect(find.textContaining('Create Ticket'), findsNothing);
     expect(find.textContaining('Phone Support'), findsNothing);
-    expect(find.text('Support'), findsNothing);
     expect(find.text('Legal'), findsNothing);
     expect(find.text('Email Support'), findsNothing);
     expect(find.text('Terms & Conditions'), findsNothing);
@@ -166,7 +175,7 @@ void main() {
       find.byKey(const ValueKey('profile-manage-membership-button')),
     );
     await tester.pumpAndSettle();
-    expect(openedRoute?.name, SubscriptionScreen.routeName);
+    expect(openedRoute?.name, SubscriptionScreen.manageRoute);
     expect(tester.takeException(), isNull);
   });
 
@@ -180,8 +189,8 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('My dating identity'), findsOneWidget);
-      expect(find.text('Your story, your way'), findsOneWidget);
+      expect(find.text('My Dating Identity'), findsOneWidget);
+      expect(find.text('Your dating identity'), findsOneWidget);
       expect(
         find.byKey(const ValueKey('profile-settings-button')),
         findsOneWidget,

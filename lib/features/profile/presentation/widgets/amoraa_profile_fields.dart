@@ -371,6 +371,7 @@ class AmoraaInterestsSelector extends StatelessWidget {
                 FilterChip(
                   label: Text(item),
                   selected: controller.interests.contains(item),
+                  showCheckmark: false,
                   avatar: controller.interests.contains(item)
                       ? const Icon(Icons.check_rounded, size: 18)
                       : null,
@@ -417,6 +418,7 @@ class AmoraaLifestyleSelector extends StatelessWidget {
                 ChoiceChip(
                   label: Text(value),
                   selected: controller.lifestyle[entry.key] == value,
+                  showCheckmark: false,
                   onSelected: (_) => controller.setLifestyle(entry.key, value),
                 ),
             ],

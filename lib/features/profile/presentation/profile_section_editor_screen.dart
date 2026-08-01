@@ -164,6 +164,7 @@ class _ProfileSectionEditorScreenState
                 FilterChip(
                   label: Text(item),
                   selected: _interests.contains(item),
+                  showCheckmark: false,
                   avatar: _interests.contains(item)
                       ? const Icon(Icons.check_rounded, size: 18)
                       : null,

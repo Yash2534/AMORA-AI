@@ -1,5 +1,6 @@
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/amora_snackbar.dart';
+import 'package:amora_ai/core/widgets/amora_screen_title.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/premium_avatar.dart';
 import 'package:amora_ai/core/widgets/premium_image.dart';
@@ -73,38 +74,15 @@ class EventsAppBar extends StatelessWidget {
       header: true,
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final compact = constraints.maxWidth < 390;
+          final compact =
+              constraints.maxWidth < 390 ||
+              MediaQuery.textScalerOf(context).scale(1) > 1.15;
           return Row(
             children: [
               Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Events',
-                      maxLines: 1,
-                      style: TextStyle(
-                        color: AppColors.primary,
-                        fontSize: compact ? 25 : 28,
-                        height: 1.05,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    if (!compact) ...[
-                      const SizedBox(height: 3),
-                      const Text(
-                        'Curated for meaningful connections',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: AppColors.text,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ],
+                child: AmoraScreenTitle(
+                  title: 'Events',
+                  subtitle: compact ? null : 'Meaningful ways to meet',
                 ),
               ),
               _ToolbarButton(

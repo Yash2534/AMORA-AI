@@ -2,7 +2,6 @@ import 'package:amora_ai/core/access/amora_access.dart';
 import 'package:amora_ai/core/theme/amora_theme.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/amora_filter_chip.dart';
-import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/floating_ai_assistant.dart';
 import 'package:amora_ai/features/discover/presentation/advanced_filters_screen.dart';
 import 'package:amora_ai/features/events/presentation/events_screen.dart';
@@ -37,11 +36,11 @@ void main() {
     await tester.pump();
 
     await Scrollable.ensureVisible(
-      tester.element(find.text('Edit profile').first),
+      tester.element(find.text('Edit Profile').first),
       alignment: .3,
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Edit profile').first);
+    await tester.tap(find.text('Edit Profile').first);
     await tester.pumpAndSettle();
     expect(find.text('Edit profile'), findsOneWidget);
     expect(find.byType(TextFormField), findsWidgets);
@@ -73,18 +72,27 @@ void main() {
       300,
       scrollable: find.byType(Scrollable).first,
     );
-    final completeAction = find.descendant(
+    final completionAction = find.descendant(
       of: completionCard,
-      matching: find.byType(AppPrimaryButton),
+      matching: find.byType(InkWell),
     );
-    tester.widget<AppPrimaryButton>(completeAction).onPressed?.call();
+    tester.widget<InkWell>(completionAction.first).onTap?.call();
     await tester.pumpAndSettle();
     expect(find.byType(AmoraaProfileForm), findsNothing);
-    expect(find.text('Complete your profile'), findsOneWidget);
-    await tester.ensureVisible(find.text('Profile Photos'));
+    expect(find.text('Profile Completion'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Profile Photos'),
+      280,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.pumpAndSettle();
     expect(find.text('Profile Photos'), findsOneWidget);
-    expect(find.text('Continue profile'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Back to Profile'),
+      420,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Back to Profile'), findsOneWidget);
     expect(find.text('Preview profile'), findsNothing);
   });
 

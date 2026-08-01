@@ -3,6 +3,7 @@ import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/amora_profile_image.dart';
+import 'package:amora_ai/core/widgets/amora_screen_title.dart';
 import 'package:amora_ai/core/widgets/floating_bottom_nav.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/chat/data/local_chat_repository.dart';
@@ -154,11 +155,27 @@ class _MatchesScreenState extends State<MatchesScreen> {
                                 AmoraSpacing.space12,
                               ),
                               sliver: SliverToBoxAdapter(
-                                child: AmoraCompatibilitySlider(
-                                  value: _compatibilityThreshold,
-                                  onChanged: (value) => setState(
-                                    () => _compatibilityThreshold = value,
-                                  ),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        'Best Matches',
+                                        style: AmoraTextStyles.sectionTitle,
+                                      ),
+                                    ),
+                                    const SizedBox(width: AmoraSpacing.space12),
+                                    OutlinedButton.icon(
+                                      key: const ValueKey(
+                                        'ai-compatibility-filter-button',
+                                      ),
+                                      onPressed: _showCompatibilityFilter,
+                                      icon: const Icon(
+                                        Icons.tune_rounded,
+                                        size: 19,
+                                      ),
+                                      label: Text('$_compatibilityThreshold%+'),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
@@ -613,6 +630,32 @@ class _MatchesScreenState extends State<MatchesScreen> {
     );
   }
 
+  Future<void> _showCompatibilityFilter() async {
+    var draftThreshold = _compatibilityThreshold;
+    final selected = await showModalBottomSheet<int>(
+      context: context,
+      useSafeArea: true,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+      ),
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (context, setSheetState) => _CompatibilityFilterSheet(
+          value: draftThreshold,
+          onChanged: (value) => setSheetState(() => draftThreshold = value),
+          onReset: () => setSheetState(
+            () => draftThreshold = defaultCompatibilityThreshold,
+          ),
+          onClose: () => Navigator.pop(sheetContext),
+          onApply: () => Navigator.pop(sheetContext, draftThreshold),
+        ),
+      ),
+    );
+    if (!mounted || selected == null) return;
+    setState(() => _compatibilityThreshold = selected);
+  }
+
   void _showRecommendationInfo() {
     showModalBottomSheet<void>(
       context: context,
@@ -662,6 +705,83 @@ class _MatchesScreenState extends State<MatchesScreen> {
   }
 }
 
+class _CompatibilityFilterSheet extends StatelessWidget {
+  const _CompatibilityFilterSheet({
+    required this.value,
+    required this.onChanged,
+    required this.onReset,
+    required this.onClose,
+    required this.onApply,
+  });
+
+  final int value;
+  final ValueChanged<int> onChanged;
+  final VoidCallback onReset;
+  final VoidCallback onClose;
+  final VoidCallback onApply;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: SingleChildScrollView(
+        padding: EdgeInsets.fromLTRB(
+          AmoraSpacing.space20,
+          AmoraSpacing.space12,
+          AmoraSpacing.space20,
+          AmoraSpacing.space20 + MediaQuery.viewInsetsOf(context).bottom,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const _SheetHandle(),
+            const SizedBox(height: AmoraSpacing.space12),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Compatibility Filter',
+                    style: AmoraTextStyles.bottomSheetTitle,
+                  ),
+                ),
+                IconButton(
+                  key: const ValueKey('compatibility-filter-close'),
+                  tooltip: 'Close compatibility filter',
+                  onPressed: onClose,
+                  icon: const Icon(Icons.close_rounded),
+                ),
+              ],
+            ),
+            const SizedBox(height: AmoraSpacing.space8),
+            AmoraCompatibilitySlider(value: value, onChanged: onChanged),
+            const SizedBox(height: AmoraSpacing.space16),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    key: const ValueKey('compatibility-filter-reset'),
+                    onPressed: onReset,
+                    child: const Text('Reset'),
+                  ),
+                ),
+                const SizedBox(width: AmoraSpacing.space12),
+                Expanded(
+                  child: FilledButton(
+                    key: const ValueKey('compatibility-filter-apply'),
+                    onPressed: onApply,
+                    child: const Text('Apply'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 enum AiMatchFilter { all, bestMatch, activeNow, verified }
 
 class AiMatchesAppBar extends StatelessWidget {
@@ -680,28 +800,10 @@ class AiMatchesAppBar extends StatelessWidget {
       height: 56,
       child: Row(
         children: [
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'AI Matches',
-                  maxLines: 1,
-                  style: AmoraTextStyles.headlineSmall.copyWith(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -.4,
-                  ),
-                ),
-                Text(
-                  'Curated for you',
-                  maxLines: 1,
-                  style: AmoraTextStyles.labelSmall.copyWith(
-                    color: AppColors.textNeutral.withValues(alpha: .58),
-                  ),
-                ),
-              ],
+          const Expanded(
+            child: AmoraScreenTitle(
+              title: 'AI Matches',
+              subtitle: 'Curated for you',
             ),
           ),
           TextButton.icon(

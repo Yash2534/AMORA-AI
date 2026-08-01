@@ -9,6 +9,7 @@ import 'package:amora_ai/features/profile/presentation/widgets/amoraa_language_s
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_fields.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_prompt_selector.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_story_image.dart';
+import 'package:amora_ai/features/profile/presentation/widgets/profile_photo_gallery.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -301,11 +302,8 @@ void main() {
       size: const Size(430, 5000),
     );
 
-    expect(
-      find.byType(AmoraaProfileStoryImage),
-      findsNWidgets(repository.profile.photos.length - 1),
-    );
-    expect(find.text('English · Hindi · Gujarati'), findsOneWidget);
+    expect(find.byType(ProfilePhotoGallery), findsOneWidget);
+    expect(find.text('English • Hindi • Gujarati'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

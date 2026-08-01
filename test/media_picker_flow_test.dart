@@ -124,7 +124,10 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: AmoraTheme.light(),
-        home: PhotoManagerScreen(mediaPicker: picker),
+        home: PhotoManagerScreen(
+          mediaPicker: picker,
+          cropPreviewRenderer: (_) async => _success.media!.dataUri,
+        ),
       ),
     );
     await tester.pump();
@@ -135,6 +138,12 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(picker.sources, [AmoraMediaSource.gallery]);
+    expect(find.text('Crop Photo'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('photo-crop-review-button')));
+    await tester.pumpAndSettle();
+    expect(find.text('Preview Photo'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('photo-crop-use-button')));
+    await tester.pumpAndSettle();
     expect(find.text('Photo added. Save changes to keep it.'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });

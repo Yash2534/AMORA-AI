@@ -1,3 +1,7 @@
+import 'dart:convert';
+import 'dart:math' as math;
+import 'dart:ui' as ui;
+
 import 'package:amora_ai/core/access/amora_access.dart';
 import 'package:amora_ai/core/media/amora_media_picker.dart';
 import 'package:amora_ai/core/theme/amora_icon_sizes.dart';
@@ -6,22 +10,28 @@ import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/amora_profile_image.dart';
+import 'package:amora_ai/core/widgets/amora_screen_title.dart';
 import 'package:amora_ai/core/widgets/amora_snackbar.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+
+typedef ProfilePhotoCropRenderer = Future<String> Function(GlobalKey cropKey);
 
 class PhotoManagerScreen extends StatefulWidget {
   const PhotoManagerScreen({
     super.key,
     this.mediaPicker = const DeviceAmoraMediaPicker(),
+    this.cropPreviewRenderer,
   });
 
   static const routeName = '/photo-manager';
 
   final AmoraMediaPicker mediaPicker;
+  final ProfilePhotoCropRenderer? cropPreviewRenderer;
 
   @override
   State<PhotoManagerScreen> createState() => _PhotoManagerScreenState();
@@ -255,8 +265,17 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
       );
       return;
     }
+    final croppedPhoto = await Navigator.of(context).push<String>(
+      MaterialPageRoute<String>(
+        builder: (_) => ProfilePhotoCropPreviewScreen(
+          sourceDataUri: media.dataUri,
+          previewRenderer: widget.cropPreviewRenderer,
+        ),
+      ),
+    );
+    if (!mounted || croppedPhoto == null) return;
     setState(() {
-      _photos.add(media.dataUri);
+      _photos.add(croppedPhoto);
       if (_photos.length == 1) _primary = 0;
     });
     _snack('Photo added. Save changes to keep it.');
@@ -474,4 +493,281 @@ class _Tip extends StatelessWidget {
       ],
     ),
   );
+}
+
+enum _PhotoCropStage { adjust, preview }
+
+class ProfilePhotoCropPreviewScreen extends StatefulWidget {
+  const ProfilePhotoCropPreviewScreen({
+    super.key,
+    required this.sourceDataUri,
+    this.previewRenderer,
+  });
+
+  final String sourceDataUri;
+  final ProfilePhotoCropRenderer? previewRenderer;
+
+  @override
+  State<ProfilePhotoCropPreviewScreen> createState() =>
+      _ProfilePhotoCropPreviewScreenState();
+}
+
+class _ProfilePhotoCropPreviewScreenState
+    extends State<ProfilePhotoCropPreviewScreen> {
+  static const _cropRatio = 4 / 5;
+  final _captureKey = GlobalKey();
+  final _transformationController = TransformationController();
+  _PhotoCropStage _stage = _PhotoCropStage.adjust;
+  String? _previewDataUri;
+  bool _renderingPreview = false;
+
+  @override
+  void dispose() {
+    _transformationController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        leading: IconButton(
+          tooltip: _stage == _PhotoCropStage.preview
+              ? 'Back to crop'
+              : 'Cancel photo crop',
+          onPressed: _stage == _PhotoCropStage.preview
+              ? () => setState(() => _stage = _PhotoCropStage.adjust)
+              : () => Navigator.of(context).pop(),
+          icon: const Icon(Icons.arrow_back_rounded),
+        ),
+        titleSpacing: 0,
+        title: AmoraScreenTitle(
+          title: _stage == _PhotoCropStage.adjust
+              ? 'Crop Photo'
+              : 'Preview Photo',
+          subtitle: _stage == _PhotoCropStage.adjust
+              ? 'Drag and zoom to frame your profile'
+              : 'Review before adding this photo',
+        ),
+      ),
+      body: SafeArea(
+        top: false,
+        child: ResponsiveMobileFrame(
+          maxWidth: 720,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AmoraSpacing.space20,
+              AmoraSpacing.space16,
+              AmoraSpacing.space20,
+              AmoraSpacing.space20,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: AnimatedSwitcher(
+                    duration: reduceMotion
+                        ? Duration.zero
+                        : const Duration(milliseconds: 240),
+                    switchInCurve: Curves.easeOutCubic,
+                    switchOutCurve: Curves.easeInCubic,
+                    child: _stage == _PhotoCropStage.adjust
+                        ? _CropCanvas(
+                            key: const ValueKey('photo-crop-canvas'),
+                            captureKey: _captureKey,
+                            sourceDataUri: widget.sourceDataUri,
+                            transformationController: _transformationController,
+                            aspectRatio: _cropRatio,
+                          )
+                        : _PhotoPreview(
+                            key: const ValueKey('photo-crop-preview'),
+                            dataUri: _previewDataUri!,
+                            aspectRatio: _cropRatio,
+                          ),
+                  ),
+                ),
+                const SizedBox(height: AmoraSpacing.space16),
+                if (_stage == _PhotoCropStage.adjust) ...[
+                  Text(
+                    'Use two fingers or the mouse wheel to zoom. Drag to reposition.',
+                    textAlign: TextAlign.center,
+                    style: AmoraTextStyles.caption.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: AmoraSpacing.space12),
+                  AppPrimaryButton(
+                    key: const ValueKey('photo-crop-review-button'),
+                    label: _renderingPreview ? 'Creating Preview' : 'Preview',
+                    icon: Icons.visibility_rounded,
+                    isLoading: _renderingPreview,
+                    onPressed: _renderingPreview ? null : _createPreview,
+                  ),
+                ] else ...[
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          key: const ValueKey('photo-crop-adjust-button'),
+                          onPressed: () =>
+                              setState(() => _stage = _PhotoCropStage.adjust),
+                          child: const Text('Adjust'),
+                        ),
+                      ),
+                      const SizedBox(width: AmoraSpacing.space12),
+                      Expanded(
+                        child: FilledButton(
+                          key: const ValueKey('photo-crop-use-button'),
+                          onPressed: () =>
+                              Navigator.of(context).pop(_previewDataUri),
+                          child: const Text('Use Photo'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _createPreview() async {
+    setState(() => _renderingPreview = true);
+    try {
+      if (widget.previewRenderer case final renderer?) {
+        final preview = await renderer(_captureKey);
+        if (!mounted) return;
+        _showPreview(preview);
+        return;
+      }
+      final deviceRatio = MediaQuery.devicePixelRatioOf(context);
+      await WidgetsBinding.instance.endOfFrame;
+      final boundary = _captureKey.currentContext?.findRenderObject();
+      if (boundary is! RenderRepaintBoundary) {
+        throw StateError('Crop preview is not ready');
+      }
+      final image = await boundary.toImage(
+        pixelRatio: math.min(deviceRatio, 2.0),
+      );
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      image.dispose();
+      if (byteData == null) throw StateError('Crop preview could not be read');
+      final bytes = byteData.buffer.asUint8List();
+      if (!mounted) return;
+      _showPreview('data:image/png;base64,${base64Encode(bytes)}');
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _renderingPreview = false);
+      showAmoraSnackBar(
+        context,
+        message: 'Preview could not be created. Please try again.',
+      );
+    }
+  }
+
+  void _showPreview(String dataUri) {
+    setState(() {
+      _previewDataUri = dataUri;
+      _renderingPreview = false;
+      _stage = _PhotoCropStage.preview;
+    });
+  }
+}
+
+class _CropCanvas extends StatelessWidget {
+  const _CropCanvas({
+    super.key,
+    required this.captureKey,
+    required this.sourceDataUri,
+    required this.transformationController,
+    required this.aspectRatio,
+  });
+
+  final GlobalKey captureKey;
+  final String sourceDataUri;
+  final TransformationController transformationController;
+  final double aspectRatio;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = math.min(
+          math.min(constraints.maxWidth, 440.0),
+          constraints.maxHeight * aspectRatio,
+        );
+        final height = width / aspectRatio;
+        return Center(
+          child: RepaintBoundary(
+            key: captureKey,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(24),
+              child: SizedBox(
+                width: width,
+                height: height,
+                child: InteractiveViewer(
+                  transformationController: transformationController,
+                  minScale: 1,
+                  maxScale: 4,
+                  panEnabled: true,
+                  scaleEnabled: true,
+                  clipBehavior: Clip.hardEdge,
+                  child: AmoraProfileImage(
+                    imageUrl: sourceDataUri,
+                    assetPath: sourceDataUri,
+                    initials: 'AM',
+                    width: width,
+                    height: height,
+                    fit: BoxFit.cover,
+                    borderRadius: BorderRadius.zero,
+                    semanticLabel: 'Adjustable profile photo crop',
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _PhotoPreview extends StatelessWidget {
+  const _PhotoPreview({
+    super.key,
+    required this.dataUri,
+    required this.aspectRatio,
+  });
+
+  final String dataUri;
+  final double aspectRatio;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = math.min(
+          math.min(constraints.maxWidth, 440.0),
+          constraints.maxHeight * aspectRatio,
+        );
+        return Center(
+          child: AmoraProfileImage(
+            imageUrl: dataUri,
+            assetPath: dataUri,
+            initials: 'AM',
+            width: width,
+            height: width / aspectRatio,
+            fit: BoxFit.cover,
+            borderRadius: BorderRadius.circular(24),
+            semanticLabel: 'Profile photo preview',
+          ),
+        );
+      },
+    );
+  }
 }

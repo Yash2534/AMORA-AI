@@ -1,9 +1,11 @@
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 
-/// Material 3-aligned type scale using the platform's native UI font.
+/// Material 3-aligned type scale shared by every AMORAA surface.
 abstract final class AmoraTextStyles {
-  static const String? fontFamily = null;
+  // The family is applied once by AmoraTheme. Individual tokens inherit it so
+  // accessibility and deterministic test themes can override the family.
+  static const String fontFamily = 'Roboto';
 
   static const displayLarge = TextStyle(
     fontSize: 48,
@@ -112,7 +114,13 @@ abstract final class AmoraTextStyles {
   static const dialogTitle = headlineSmall;
   static const dialogBody = bodyLarge;
   static const bottomSheetTitle = titleLarge;
-  static const screenTitle = headlineMedium;
+  static const screenTitle = TextStyle(
+    fontSize: 26,
+    height: 1.12,
+    fontWeight: FontWeight.w700,
+    letterSpacing: -0.25,
+    color: AppColors.primary,
+  );
   static const sectionTitle = titleLarge;
   static const cardTitle = titleMedium;
   static const supportingText = bodyMedium;

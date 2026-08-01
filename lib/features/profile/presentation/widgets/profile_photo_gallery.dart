@@ -8,17 +8,13 @@ import 'package:flutter/material.dart';
 
 /// Compact Profile-page gallery backed by the existing profile photo order.
 class ProfilePhotoGallery extends StatefulWidget {
-  const ProfilePhotoGallery({
-    super.key,
-    required this.profile,
-    required this.onManage,
-  });
+  const ProfilePhotoGallery({super.key, required this.profile, this.onManage});
 
   static const double photoWidth = 104;
   static const double photoHeight = 130;
 
   final LocalProfileDraft profile;
-  final VoidCallback onManage;
+  final VoidCallback? onManage;
 
   @override
   State<ProfilePhotoGallery> createState() => _ProfilePhotoGalleryState();
@@ -87,12 +83,15 @@ class _ProfilePhotoGalleryState extends State<ProfilePhotoGallery> {
             scrollDirection: Axis.horizontal,
             physics: const ClampingScrollPhysics(),
             padding: const EdgeInsets.symmetric(vertical: AmoraSpacing.space4),
-            itemCount: widget.profile.photos.length + 1,
+            itemCount:
+                widget.profile.photos.length +
+                (widget.onManage == null ? 0 : 1),
             separatorBuilder: (_, _) =>
                 const SizedBox(width: AmoraSpacing.space12),
             itemBuilder: (context, index) {
-              if (index == widget.profile.photos.length) {
-                return _AddPhotoCard(onTap: widget.onManage);
+              if (index == widget.profile.photos.length &&
+                  widget.onManage != null) {
+                return _AddPhotoCard(onTap: widget.onManage!);
               }
 
               final photo = widget.profile.photos[index];

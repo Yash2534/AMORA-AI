@@ -315,7 +315,7 @@ void main() {
     expect(complete.completionPercent, 100);
   });
 
-  testWidgets('profile completion uses its dedicated guided form', (
+  testWidgets('profile completion uses its dedicated progress dashboard', (
     tester,
   ) async {
     profiles.startNewProfile('New Member');
@@ -326,17 +326,26 @@ void main() {
       ),
     );
     expect(find.byType(AmoraaProfileForm), findsNothing);
-    expect(find.text('Complete your profile'), findsOneWidget);
-    expect(find.text('Next best step'), findsOneWidget);
+    expect(find.text('Profile Completion'), findsOneWidget);
+    expect(find.text('Recommended Next'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Basic Details'),
+      280,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('Basic Details').first);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('profile-name-field')), findsNothing);
+    expect(find.textContaining('details remain'), findsWidgets);
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('profile-completion-primary-button')),
+      420,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(
       find.byKey(const ValueKey('profile-completion-primary-button')),
       findsOneWidget,
     );
-    await tester.ensureVisible(find.text('Basic Details'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Basic Details'));
-    await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey('profile-name-field')), findsOneWidget);
   });
 
   test('Gujarat city catalogue is unique and alphabetically sorted', () {

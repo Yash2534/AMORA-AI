@@ -121,7 +121,7 @@ void main() {
     expect(find.text('Log out'), findsOneWidget);
     expect(find.text('Delete account'), findsOneWidget);
     expect(
-      find.text('Permanently delete your AMORAA account and associated data.'),
+      find.text('Permanently remove your AMORAA account.'),
       findsOneWidget,
     );
   });

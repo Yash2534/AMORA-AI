@@ -1,5 +1,9 @@
+import 'package:amora_ai/core/theme/amora_spacing.dart';
+import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
+import 'package:amora_ai/core/widgets/amora_screen_title.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
+import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/premium_motion.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/events/presentation/events_screen.dart';
@@ -34,6 +38,20 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             .firstOrNull;
         final memberActive =
             testFlow.membershipActive || activeProductionPlan != null;
+        final manageView =
+            ModalRoute.of(context)?.settings.name ==
+            SubscriptionScreen.manageRoute;
+        if (manageView) {
+          return _buildManageSubscription(
+            memberActive: memberActive,
+            planName: activeProductionPlan?.name ?? testFlow.selectedPlan.title,
+            billingLabel: membershipTestMode
+                ? '${formatMembershipAmount(testFlow.selectedPlan.amount)} · ${testFlow.selectedPlan.intervalLabel}'
+                : activeProductionPlan == null
+                ? 'No billing schedule'
+                : '${formatMembershipAmount(activeProductionPlan.monthlyPrice)} · billed monthly',
+          );
+        }
         return Scaffold(
           backgroundColor: AppColors.background,
           body: SafeArea(
@@ -136,6 +154,125 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     );
   }
 
+  Widget _buildManageSubscription({
+    required bool memberActive,
+    required String planName,
+    required String billingLabel,
+  }) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: ResponsiveMobileFrame(
+          maxWidth: 760,
+          child: CustomScrollView(
+            slivers: [
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(
+                  AmoraSpacing.space20,
+                  AmoraSpacing.space12,
+                  AmoraSpacing.space20,
+                  AmoraSpacing.space32,
+                ),
+                sliver: SliverList.list(
+                  children: [
+                    Row(
+                      children: [
+                        IconButton(
+                          tooltip: 'Back',
+                          onPressed: () => Navigator.of(context).maybePop(),
+                          icon: const Icon(Icons.arrow_back_rounded),
+                        ),
+                        const SizedBox(width: AmoraSpacing.space8),
+                        const Expanded(
+                          child: AmoraScreenTitle(
+                            title: 'Manage Subscription',
+                            subtitle: 'Billing and membership controls',
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AmoraSpacing.space24),
+                    if (!memberActive)
+                      PremiumCard(
+                        radius: 24,
+                        padding: const EdgeInsets.all(AmoraSpacing.space20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const Icon(
+                              Icons.card_membership_rounded,
+                              size: 36,
+                              color: AppColors.primary,
+                            ),
+                            const SizedBox(height: AmoraSpacing.space12),
+                            Text(
+                              'No Active Subscription',
+                              textAlign: TextAlign.center,
+                              style: AmoraTextStyles.sectionTitle,
+                            ),
+                            const SizedBox(height: AmoraSpacing.space8),
+                            Text(
+                              'Choose a plan before billing, renewal, and cancellation controls become available.',
+                              textAlign: TextAlign.center,
+                              style: AmoraTextStyles.bodyMedium.copyWith(
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                            const SizedBox(height: AmoraSpacing.space20),
+                            FilledButton(
+                              onPressed: () =>
+                                  Navigator.of(context).pushReplacementNamed(
+                                    SubscriptionScreen.membershipRoute,
+                                  ),
+                              child: const Text('View Membership Plans'),
+                            ),
+                          ],
+                        ),
+                      )
+                    else ...[
+                      PremiumCard(
+                        radius: 24,
+                        padding: EdgeInsets.zero,
+                        child: Column(
+                          children: [
+                            _ManageSubscriptionRow(
+                              icon: Icons.verified_rounded,
+                              title: 'Current Subscription',
+                              subtitle: '$planName · Active',
+                            ),
+                            const Divider(),
+                            _ManageSubscriptionRow(
+                              icon: Icons.receipt_long_rounded,
+                              title: 'Billing',
+                              subtitle: billingLabel,
+                            ),
+                            const Divider(),
+                            const _ManageSubscriptionRow(
+                              icon: Icons.autorenew_rounded,
+                              title: 'Renewal',
+                              subtitle:
+                                  'Managed by the configured payment provider',
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: AmoraSpacing.space16),
+                      OutlinedButton.icon(
+                        onPressed: _manageMembership,
+                        icon: const Icon(Icons.cancel_outlined),
+                        label: const Text('Cancellation Options'),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   void _continueToPayment() {
     if (membershipTestMode) {
       Navigator.of(context).pushNamed(
@@ -177,6 +314,49 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       return;
     }
     showPremiumSnack(context, 'Membership management opened');
+  }
+}
+
+class _ManageSubscriptionRow extends StatelessWidget {
+  const _ManageSubscriptionRow({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 72),
+      child: Padding(
+        padding: const EdgeInsets.all(AmoraSpacing.space16),
+        child: Row(
+          children: [
+            Icon(icon, color: AppColors.primary),
+            const SizedBox(width: AmoraSpacing.space12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: AmoraTextStyles.cardTitle),
+                  const SizedBox(height: AmoraSpacing.space4),
+                  Text(
+                    subtitle,
+                    style: AmoraTextStyles.caption.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

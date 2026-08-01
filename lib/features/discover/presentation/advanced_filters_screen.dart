@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:amora_ai/core/theme/amora_shadows.dart';
+import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/amora_snackbar.dart';
@@ -403,7 +404,6 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
             child: _OptionWrap(
               options: _educationList,
               selected: _education,
-              icon: Icons.school_outlined,
               onToggle: _toggle,
             ),
           ),
@@ -413,7 +413,6 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
             child: _OptionWrap(
               options: _professionList,
               selected: _profession,
-              icon: Icons.work_outline_rounded,
               onToggle: _toggle,
             ),
           ),
@@ -457,7 +456,6 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
                 child: _OptionWrap(
                   options: _communityList,
                   selected: _community,
-                  icon: Icons.groups_outlined,
                   onToggle: _toggle,
                 ),
               ),
@@ -468,7 +466,6 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
                 child: _OptionWrap(
                   options: _religionList,
                   selected: _religion,
-                  icon: Icons.public_rounded,
                   onToggle: _toggle,
                 ),
               ),
@@ -493,7 +490,6 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
                   _OptionWrap(
                     options: visibleLanguages,
                     selected: _languages,
-                    icon: Icons.translate_rounded,
                     onToggle: _toggle,
                   ),
               ],
@@ -1007,7 +1003,7 @@ class _SelectedFiltersSummary extends StatelessWidget {
                     size: 19,
                   ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: AmoraSpacing.space8),
                 Expanded(
                   child: AnimatedSwitcher(
                     duration: AmoraMotion.fast,

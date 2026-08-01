@@ -20,7 +20,7 @@ void main() {
       return ByteData.sublistView(Uint8List.fromList(bytes));
     }
 
-    final textLoader = FontLoader('QAEvidence')
+    final textLoader = FontLoader('Roboto')
       ..addFont(readFont(r'C:\Windows\Fonts\arial.ttf'));
     final iconLoader = FontLoader('MaterialIcons')
       ..addFont(
@@ -47,12 +47,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         debugShowCheckedModeBanner: false,
-        theme: baseTheme.copyWith(
-          textTheme: baseTheme.textTheme.apply(fontFamily: 'QAEvidence'),
-          primaryTextTheme: baseTheme.primaryTextTheme.apply(
-            fontFamily: 'QAEvidence',
-          ),
-        ),
+        theme: baseTheme,
         home: screen,
       ),
     );
