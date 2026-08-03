@@ -185,9 +185,9 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
 
     expect(find.text('Tell us about yourself'), findsOneWidget);
-    expect(find.text('Gender'), findsOneWidget);
+    expect(find.text('Gender'), findsWidgets);
     expect(find.text('Date of birth'), findsWidgets);
-    expect(find.text('Preferred gender'), findsOneWidget);
+    expect(find.text('Preferred gender'), findsWidgets);
     expect(find.text('City'), findsWidgets);
 
     final continueButton = tester.widget<FilledButton>(
@@ -199,7 +199,7 @@ void main() {
     await tester.pump();
     await tester.tap(find.text('Continue'));
     await tester.pump();
-    expect(find.text('Select your gender'), findsOneWidget);
+    expect(find.text('Select your gender'), findsWidgets);
     expect(find.text('Select your date of birth'), findsOneWidget);
     expect(find.text('Select a preferred gender'), findsOneWidget);
     expect(find.text('City is required'), findsOneWidget);

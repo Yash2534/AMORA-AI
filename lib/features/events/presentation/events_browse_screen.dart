@@ -7,6 +7,7 @@ import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/events/data/events_dummy_data.dart';
 import 'package:amora_ai/features/events/data/event_asset_catalog.dart';
 import 'package:amora_ai/features/events/domain/event_models.dart';
+import 'package:amora_ai/features/events/presentation/controllers/event_participation_controller.dart';
 import 'package:amora_ai/features/events/presentation/event_detail_screen.dart';
 import 'package:amora_ai/features/events/presentation/my_events_screen.dart';
 import 'package:amora_ai/features/events/presentation/widgets/events_widgets.dart';
@@ -40,7 +41,9 @@ class EventsBrowseScreen extends StatelessWidget {
 
 /// Public for focused widget tests and rendered directly by the Events route.
 class EventsMemberExperience extends StatefulWidget {
-  const EventsMemberExperience({super.key});
+  const EventsMemberExperience({super.key, this.controller});
+
+  final EventParticipationController? controller;
 
   @override
   State<EventsMemberExperience> createState() => _EventsMemberExperienceState();
@@ -66,7 +69,11 @@ class _EventsMemberExperienceState extends State<EventsMemberExperience> {
   var _loading = true;
   var _selectedCategory = _allCategory;
   var _didPrecache = false;
-  late final Map<String, TicketStatus> _participation;
+
+  EventParticipationController get _controller =>
+      widget.controller ?? EventParticipationController.instance;
+
+  Map<String, TicketStatus> get _participation => _controller.statuses;
 
   List<String> get _categories => _categoryOptions;
 
@@ -81,27 +88,19 @@ class _EventsMemberExperienceState extends State<EventsMemberExperience> {
         .toList(growable: false);
   }
 
-  List<EventModel> get _joinedEvents => events
+  List<EventModel> get _joinedEvents => _controller.registrations
       .where(
-        (event) =>
-            _participation[event.id] == TicketStatus.upcoming ||
-            _participation[event.id] == TicketStatus.waitlisted,
+        (registration) =>
+            registration.status == TicketStatus.upcoming ||
+            registration.status == TicketStatus.waitlisted,
       )
+      .map((registration) => registration.event)
       .toList(growable: false);
 
   @override
   void initState() {
     super.initState();
-    _participation = membershipTestMode
-        ? {
-            for (final id
-                in MembershipTestFlowController.instance.joinedEventIds)
-              id: TicketStatus.upcoming,
-          }
-        : {for (final entry in myEventTickets) entry.event.id: entry.status};
-    if (membershipTestMode) {
-      MembershipTestFlowController.instance.addListener(_syncTestParticipation);
-    }
+    _controller.addListener(_handleParticipationChanged);
     _loadingTimer = Timer(const Duration(milliseconds: 480), () {
       if (mounted) setState(() => _loading = false);
     });
@@ -120,22 +119,12 @@ class _EventsMemberExperienceState extends State<EventsMemberExperience> {
   @override
   void dispose() {
     _loadingTimer?.cancel();
-    if (membershipTestMode) {
-      MembershipTestFlowController.instance.removeListener(
-        _syncTestParticipation,
-      );
-    }
+    _controller.removeListener(_handleParticipationChanged);
     super.dispose();
   }
 
-  void _syncTestParticipation() {
-    if (!mounted) return;
-    final joined = MembershipTestFlowController.instance.joinedEventIds;
-    setState(() {
-      _participation
-        ..removeWhere((_, status) => status == TicketStatus.upcoming)
-        ..addEntries(joined.map((id) => MapEntry(id, TicketStatus.upcoming)));
-    });
+  void _handleParticipationChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
@@ -184,7 +173,6 @@ class _EventsMemberExperienceState extends State<EventsMemberExperience> {
               onSearch: _showSearch,
               onCalendar: () =>
                   Navigator.of(context).pushNamed(MyEventsScreen.routeName),
-              onFilter: _showFilters,
             ),
           ),
         ),
@@ -481,6 +469,7 @@ class _EventsMemberExperienceState extends State<EventsMemberExperience> {
     }
     if (membershipTestMode) {
       MembershipTestFlowController.instance.joinEvent(event.id);
+      _controller.registerEvent(event);
       showEventSnack(context, 'You joined ${event.title}');
       return;
     }
@@ -488,49 +477,9 @@ class _EventsMemberExperienceState extends State<EventsMemberExperience> {
       context: context,
       onAuthenticated: () {
         if (!mounted) return;
-        setState(() => _participation[event.id] = TicketStatus.upcoming);
+        _controller.registerEvent(event);
         showEventSnack(context, 'You joined ${event.title}');
       },
-    );
-  }
-
-  void _showFilters() {
-    showModalBottomSheet<void>(
-      context: context,
-      useSafeArea: true,
-      backgroundColor: AppColors.surface,
-      showDragHandle: true,
-      builder: (sheetContext) => Padding(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text(
-              'Discover events',
-              style: TextStyle(
-                color: AppColors.primary,
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 6),
-            const Text(
-              'Choose a category from the discovery row.',
-              style: TextStyle(color: AppColors.text, fontSize: 14),
-            ),
-            const SizedBox(height: 18),
-            EventCategoryBar(
-              categories: _categories,
-              selected: _selectedCategory,
-              onSelected: (category) {
-                setState(() => _selectedCategory = category);
-                Navigator.pop(sheetContext);
-              },
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

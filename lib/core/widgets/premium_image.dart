@@ -1,15 +1,17 @@
-import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:amora_ai/core/constants/app_images.dart';
-import 'package:amora_ai/core/theme/app_colors.dart';
-import 'package:amora_ai/core/widgets/image_fallback.dart';
+import 'package:amora_ai/core/widgets/amoraa_adaptive_image.dart';
 import 'package:flutter/material.dart';
 
-class PremiumImage extends StatefulWidget {
+/// Compatibility facade for existing call sites. All rendering is delegated
+/// to the shared adaptive image system.
+class PremiumImage extends StatelessWidget {
   const PremiumImage({
     super.key,
     this.imageUrl,
     this.assetPath,
+    this.memoryBytes,
     this.fallbackAsset = AppImages.fallbackProfile,
     this.initials = 'AM',
     this.width,
@@ -21,6 +23,12 @@ class PremiumImage extends StatefulWidget {
     this.cacheWidth,
     this.cacheHeight,
     this.enableRetry = true,
+    this.semanticLabel,
+    this.aspectMode = AmoraaImageAspectMode.free,
+    this.originalAspectRatio,
+    this.maxWidth,
+    this.minHeight,
+    this.maxHeight,
   });
 
   const PremiumImage.asset({
@@ -37,6 +45,12 @@ class PremiumImage extends StatefulWidget {
     int? cacheWidth,
     int? cacheHeight,
     bool enableRetry = true,
+    String? semanticLabel,
+    AmoraaImageAspectMode aspectMode = AmoraaImageAspectMode.free,
+    double? originalAspectRatio,
+    double? maxWidth,
+    double? minHeight,
+    double? maxHeight,
   }) : this(
          key: key,
          assetPath: assetPath,
@@ -51,10 +65,17 @@ class PremiumImage extends StatefulWidget {
          cacheWidth: cacheWidth,
          cacheHeight: cacheHeight,
          enableRetry: enableRetry,
+         semanticLabel: semanticLabel,
+         aspectMode: aspectMode,
+         originalAspectRatio: originalAspectRatio,
+         maxWidth: maxWidth,
+         minHeight: minHeight,
+         maxHeight: maxHeight,
        );
 
   final String? imageUrl;
   final String? assetPath;
+  final Uint8List? memoryBytes;
   final String fallbackAsset;
   final String initials;
   final double? width;
@@ -66,153 +87,37 @@ class PremiumImage extends StatefulWidget {
   final int? cacheWidth;
   final int? cacheHeight;
   final bool enableRetry;
-
-  @override
-  State<PremiumImage> createState() => _PremiumImageState();
-}
-
-class _PremiumImageState extends State<PremiumImage> {
-  int _retryKey = 0;
+  final String? semanticLabel;
+  final AmoraaImageAspectMode aspectMode;
+  final double? originalAspectRatio;
+  final double? maxWidth;
+  final double? minHeight;
+  final double? maxHeight;
 
   @override
   Widget build(BuildContext context) {
-    Widget image = ClipRRect(
-      borderRadius: widget.borderRadius,
-      child: _buildImage(),
+    Widget image = AmoraaAdaptiveImage(
+      source: imageUrl,
+      assetPath: assetPath,
+      bytes: memoryBytes,
+      fallbackAsset: fallbackAsset,
+      initials: initials,
+      width: width,
+      height: height,
+      fit: fit,
+      alignment: alignment,
+      borderRadius: borderRadius,
+      cacheWidth: cacheWidth,
+      cacheHeight: cacheHeight,
+      enableRetry: enableRetry,
+      semanticLabel: semanticLabel,
+      aspectMode: aspectMode,
+      originalAspectRatio: originalAspectRatio,
+      maxWidth: maxWidth,
+      minHeight: minHeight,
+      maxHeight: maxHeight,
     );
-
-    image = RepaintBoundary(
-      child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 220),
-        switchInCurve: Curves.easeOut,
-        switchOutCurve: Curves.easeOut,
-        child: KeyedSubtree(key: ValueKey(_retryKey), child: image),
-      ),
-    );
-
-    if (widget.heroTag != null) {
-      image = Hero(tag: widget.heroTag!, child: image);
-    }
-
+    if (heroTag != null) image = Hero(tag: heroTag!, child: image);
     return image;
-  }
-
-  Widget _buildImage() {
-    final source = (widget.assetPath ?? widget.imageUrl)?.trim();
-    if (source != null && source.startsWith('data:image/')) {
-      final comma = source.indexOf(',');
-      if (comma > 0) {
-        try {
-          return Image.memory(
-            base64Decode(source.substring(comma + 1)),
-            width: widget.width,
-            height: widget.height,
-            fit: widget.fit,
-            alignment: widget.alignment,
-            filterQuality: FilterQuality.medium,
-            cacheWidth: widget.cacheWidth,
-            cacheHeight: widget.cacheHeight,
-            frameBuilder: _fadeFrame,
-            errorBuilder: (_, _, _) => _fallbackAsset(),
-          );
-        } on FormatException {
-          return _fallbackAsset();
-        }
-      }
-    }
-
-    if (source != null &&
-        (source.startsWith('http://') ||
-            source.startsWith('https://') ||
-            source.startsWith('blob:'))) {
-      return Image.network(
-        source,
-        width: widget.width,
-        height: widget.height,
-        fit: widget.fit,
-        alignment: widget.alignment,
-        filterQuality: FilterQuality.medium,
-        cacheWidth: widget.cacheWidth,
-        cacheHeight: widget.cacheHeight,
-        frameBuilder: _fadeFrame,
-        loadingBuilder: (context, child, progress) {
-          if (progress == null) return child;
-          final expected = progress.expectedTotalBytes;
-          return ColoredBox(
-            color: Theme.of(context).colorScheme.surfaceContainer,
-            child: Center(
-              child: CircularProgressIndicator(
-                value: expected == null
-                    ? null
-                    : progress.cumulativeBytesLoaded / expected,
-              ),
-            ),
-          );
-        },
-        errorBuilder: (_, _, _) => _fallbackAsset(),
-      );
-    }
-
-    return Image.asset(
-      AppImages.resolveAsset(source, fallback: widget.fallbackAsset),
-      width: widget.width,
-      height: widget.height,
-      fit: widget.fit,
-      alignment: widget.alignment,
-      filterQuality: FilterQuality.medium,
-      cacheWidth: widget.cacheWidth,
-      cacheHeight: widget.cacheHeight,
-      frameBuilder: _fadeFrame,
-      errorBuilder: (_, _, _) => _fallbackAsset(),
-    );
-  }
-
-  Widget _fallbackAsset() {
-    final fallback = AppImages.resolveAsset(
-      widget.fallbackAsset,
-      fallback: AppImages.defaultAvatar,
-    );
-    return Image.asset(
-      fallback,
-      width: widget.width,
-      height: widget.height,
-      fit: widget.fit,
-      alignment: widget.alignment,
-      filterQuality: FilterQuality.medium,
-      cacheWidth: widget.cacheWidth,
-      cacheHeight: widget.cacheHeight,
-      frameBuilder: _fadeFrame,
-      errorBuilder: (_, _, _) =>
-          _gradientFallback(showRetry: widget.enableRetry),
-    );
-  }
-
-  Widget _fadeFrame(
-    BuildContext context,
-    Widget child,
-    int? frame,
-    bool wasSynchronouslyLoaded,
-  ) {
-    if (wasSynchronouslyLoaded) return child;
-    return AnimatedOpacity(
-      opacity: frame == null ? 0 : 1,
-      duration: const Duration(milliseconds: 260),
-      curve: Curves.easeOut,
-      child: child,
-    );
-  }
-
-  Widget _gradientFallback({required bool showRetry}) {
-    final fallback = ImageFallback(
-      initials: widget.initials,
-      width: widget.width,
-      height: widget.height,
-      showRetry: showRetry,
-    );
-    if (!showRetry || !widget.enableRetry) return fallback;
-    return Material(
-      color: AppColors.transparent,
-      child: InkWell(onTap: () => setState(() => _retryKey++), child: fallback),
-    );
   }
 }

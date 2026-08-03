@@ -1,4 +1,5 @@
 import 'package:amora_ai/core/theme/amora_theme.dart';
+import 'package:amora_ai/core/widgets/amoraa_adaptive_image.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
 import 'package:amora_ai/features/profile/domain/profile_form_options.dart';
 import 'package:amora_ai/features/profile/presentation/controllers/profile_form_controller.dart';
@@ -49,9 +50,69 @@ void main() {
     });
     expect(
       ProfileFormOptions.serializeLanguages({'Gujarati', 'English', 'Hindi'}),
-      'English, Hindi & Gujarati',
+      'Gujarati, Hindi & English',
     );
   });
+
+  testWidgets(
+    'Education Other is inline, validated, trimmed, and stored safely',
+    (tester) async {
+      await repository.resetForTesting(originalProfile.copyWith(education: ''));
+      final controller = ProfileFormController(repository: repository);
+      addTearDown(controller.dispose);
+      final formKey = GlobalKey<FormState>();
+      await pump(
+        tester,
+        SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Form(
+            key: formKey,
+            child: ListenableBuilder(
+              listenable: controller,
+              builder: (context, _) =>
+                  AmoraaWorkEducationSection(controller: controller),
+            ),
+          ),
+        ),
+        size: const Size(390, 844),
+      );
+
+      final selector = find.byKey(const ValueKey('profile-education-field'));
+      await tester.tap(selector);
+      await tester.pumpAndSettle();
+      final other = find.byKey(const ValueKey('amoraa-select-option-Other'));
+      await tester.scrollUntilVisible(
+        other,
+        160,
+        scrollable: find.byType(Scrollable).last,
+      );
+      await tester.tap(other);
+      await tester.pumpAndSettle();
+
+      final custom = find.byKey(
+        const ValueKey('profile-custom-education-field'),
+      );
+      expect(custom, findsOneWidget);
+      expect(formKey.currentState!.validate(), isFalse);
+      await tester.pump();
+      expect(find.text('Specify education'), findsNWidgets(2));
+
+      await tester.enterText(custom, '  Montessori training  ');
+      expect(formKey.currentState!.validate(), isTrue);
+      await controller.save();
+      expect(controller.customEducation.text, 'Montessori training');
+      expect(repository.profile.education, 'Other');
+
+      await tester.tap(selector);
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const ValueKey('amoraa-select-option-Undergraduate')),
+      );
+      await tester.pumpAndSettle();
+      expect(custom, findsNothing);
+      expect(controller.customEducation.text, 'Montessori training');
+    },
+  );
 
   testWidgets('languages multi-selects without a dropdown and persists', (
     tester,
@@ -105,7 +166,7 @@ void main() {
     await controller.save();
     expect(
       repository.profile.lifestyle['Languages'],
-      'English, Hindi & Gujarati',
+      'Gujarati, Hindi & English',
     );
 
     final reloaded = ProfileFormController(repository: repository);
@@ -149,6 +210,8 @@ void main() {
       findsNothing,
     );
 
+    await tester.tap(find.widgetWithText(TextButton, 'Edit').first);
+    await tester.pumpAndSettle();
     await tester.tap(
       find.byKey(const ValueKey('profile-prompt-card-selector')),
     );
@@ -194,7 +257,7 @@ void main() {
 
     final intentionList = find.byType(Scrollable).last;
     for (final intention in ProfileFormOptions.datingIntentions) {
-      final option = find.byKey(ValueKey('dating-intention-$intention'));
+      final option = find.byKey(ValueKey('amoraa-select-option-$intention'));
       await tester.scrollUntilVisible(option, 180, scrollable: intentionList);
       expect(find.text(intention), findsOneWidget);
     }
@@ -209,18 +272,19 @@ void main() {
       'New Friends',
       'See Where It Goes',
       'Life Partner',
-      'Casual Connection',
+      'Travel Companion',
+      'Fun & Experiences',
     ]) {
       expect(find.text(retired), findsNothing);
     }
 
-    final travel = find.byKey(
-      const ValueKey('dating-intention-Travel Companion'),
+    final casual = find.byKey(
+      const ValueKey('amoraa-select-option-Casual Connection'),
     );
-    await tester.ensureVisible(travel);
-    await tester.tap(travel);
+    await tester.ensureVisible(casual);
+    await tester.tap(casual);
     await tester.pumpAndSettle();
-    expect(selected, 'Travel Companion');
+    expect(selected, 'Casual Connection');
   });
 
   test('intentions stay separate from existing lifestyle interests', () {
@@ -274,8 +338,13 @@ void main() {
     );
 
     final ratios = tester
-        .widgetList<AspectRatio>(find.byType(AspectRatio))
-        .map((widget) => widget.aspectRatio)
+        .widgetList<AmoraaAdaptiveImage>(find.byType(AmoraaAdaptiveImage))
+        .map(
+          (widget) => (widget.originalAspectRatio ?? 4 / 5).clamp(
+            AmoraaProfileStoryImage.minimumAspectRatio,
+            AmoraaProfileStoryImage.maximumAspectRatio,
+          ),
+        )
         .toList(growable: false);
     expect(ratios, [
       AmoraaProfileStoryImage.minimumAspectRatio,
@@ -314,10 +383,9 @@ void main() {
       'Meaningful Dating',
       'Exploring Possibilities',
       'Friendship First',
-      'Travel Companion',
-      'Fun & Experiences',
+      'Casual Connection',
     ]);
-    expect(ProfileFormOptions.datingIntentionDescriptions, hasLength(7));
+    expect(ProfileFormOptions.datingIntentionDescriptions, hasLength(6));
     expect(ProfileFormOptions.datingIntentionDescriptions, const {
       'Marriage Minded':
           'Focused on marriage and building a committed future together.',
@@ -329,9 +397,7 @@ void main() {
           'Open-minded and seeing where a meaningful connection can lead.',
       'Friendship First':
           'Prefer to build trust and friendship before moving forward.',
-      'Travel Companion':
-          'Looking for someone to explore new places and shared experiences with.',
-      'Fun & Experiences':
+      'Casual Connection':
           'Interested in exciting activities, events, and memorable experiences.',
     });
     expect(
@@ -339,8 +405,8 @@ void main() {
       'Marriage Minded',
     );
     expect(
-      ProfileFormOptions.normalizeDatingIntention('Travel Partner'),
-      'Travel Companion',
+      ProfileFormOptions.normalizeDatingIntention('Casual'),
+      'Casual Connection',
     );
   });
 }

@@ -6,6 +6,7 @@ import 'package:amora_ai/features/auth/presentation/forgot_password_screen.dart'
 import 'package:amora_ai/features/profile/presentation/profile_basic_details_screen.dart';
 import 'package:amora_ai/features/settings/presentation/account_action_screens.dart';
 import 'package:amora_ai/features/settings/presentation/managed_profiles_screen.dart';
+import 'package:amora_ai/features/settings/presentation/likes_super_likes_screen.dart';
 import 'package:amora_ai/features/settings/presentation/notification_preferences_screen.dart';
 import 'package:amora_ai/features/settings/presentation/widgets/profile_settings_hub_widgets.dart';
 import 'package:amora_ai/features/settings/presentation/widgets/support_legal_settings_section.dart';
@@ -95,6 +96,13 @@ class ProfileSettingsScreen extends StatelessWidget {
                               open(ProfileBasicDetailsScreen.routeName),
                         ),
                         ProfileSettingsHubRow(
+                          key: const ValueKey('settings-likes-super-likes'),
+                          icon: Icons.favorite_rounded,
+                          title: 'Likes & Super Likes',
+                          subtitle: 'Review people you liked or Super Liked.',
+                          onTap: () => open(LikesSuperLikesScreen.routeName),
+                        ),
+                        ProfileSettingsHubRow(
                           key: const ValueKey('settings-saved-profiles'),
                           icon: Icons.bookmark_outline_rounded,
                           title: 'Saved Profiles',
@@ -150,7 +158,7 @@ class ProfileSettingsScreen extends StatelessWidget {
                     const SupportLegalSettingsSection(),
                     const SizedBox(height: AmoraSpacing.space24),
                     ProfileSettingsGroup(
-                      label: 'Account Actions',
+                      label: 'Security & Session',
                       children: [
                         ProfileSettingsHubRow(
                           key: const ValueKey('settings-change-password'),
@@ -166,12 +174,26 @@ class ProfileSettingsScreen extends StatelessWidget {
                           subtitle: 'Sign out safely on this device.',
                           onTap: () => open(LogoutAccountScreen.routeName),
                         ),
+                      ],
+                    ),
+                    const SizedBox(height: AmoraSpacing.space24),
+                    ProfileSettingsGroup(
+                      label: 'Account Actions',
+                      children: [
+                        ProfileSettingsHubRow(
+                          key: const ValueKey('settings-deactivate-account'),
+                          icon: Icons.pause_circle_outline_rounded,
+                          title: 'Deactivate Account',
+                          subtitle:
+                              'Temporarily hide your profile and pause your account. You can return later by signing in again.',
+                          onTap: () => open(DeactivateAccountScreen.routeName),
+                        ),
                         ProfileSettingsHubRow(
                           key: const ValueKey('settings-delete-account'),
-                          icon: Icons.person_remove_outlined,
+                          icon: Icons.delete_forever_rounded,
                           title: 'Delete Account',
                           subtitle:
-                              'Review permanent account deletion options.',
+                              'Permanently delete your AMORAA account and associated data.',
                           danger: true,
                           onTap: () =>
                               open(DeleteAccountInformationScreen.routeName),

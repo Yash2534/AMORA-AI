@@ -3,6 +3,7 @@ import 'package:amora_ai/core/data/image_repository.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
+import 'package:amora_ai/core/widgets/amoraa_select_field.dart';
 import 'package:amora_ai/core/widgets/premium_avatar.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
@@ -62,25 +63,17 @@ class _AiIcebreakersScreenState extends State<AiIcebreakersScreen> {
                   const SizedBox(height: AmoraSpacing.x4),
                   const SectionTitle(title: 'Tone'),
                   const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
-                    children: [
+                  AmoraaCompactSelect<String>(
+                    label: 'Tone',
+                    value: _tone,
+                    prefixIcon: Icons.tune_rounded,
+                    options: [
                       for (final tone in icebreakerTones)
-                        ChoiceChip(
-                          label: Text(tone),
-                          selected: _tone == tone,
-                          showCheckmark: false,
-                          selectedColor: AppColors.primaryPurple,
-                          labelStyle: TextStyle(
-                            color: _tone == tone
-                                ? AppColors.surface
-                                : AppColors.deepWine,
-                            fontWeight: FontWeight.w800,
-                          ),
-                          onSelected: (_) => setState(() => _tone = tone),
-                        ),
+                        AmoraaSelectOption(value: tone, label: tone),
                     ],
+                    onChanged: (tone) {
+                      if (tone != null) setState(() => _tone = tone);
+                    },
                   ),
                   const SizedBox(height: AmoraSpacing.x4),
                   SectionTitle(title: 'Generated icebreakers', subtitle: _tone),

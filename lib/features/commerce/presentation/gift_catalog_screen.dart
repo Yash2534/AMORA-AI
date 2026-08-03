@@ -4,6 +4,7 @@ import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/amora_bottom_sheet.dart';
+import 'package:amora_ai/core/widgets/amoraa_select_field.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/premium_asset_image.dart';
@@ -97,26 +98,19 @@ class _GiftShopCatalogScreenState extends State<GiftShopCatalogScreen> {
                     ],
                   ),
                   const SizedBox(height: 18),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
+                  AmoraaCompactSelect<String>(
+                    label: 'Gift category',
+                    value: _category,
+                    prefixIcon: Icons.category_rounded,
+                    options: [
                       for (final category in _categories)
-                        ChoiceChip(
-                          label: Text(category),
-                          selected: _category == category,
-                          showCheckmark: false,
-                          selectedColor: AppColors.primaryPurple,
-                          labelStyle: TextStyle(
-                            color: _category == category
-                                ? AppColors.surface
-                                : AppColors.deepWine,
-                            fontWeight: FontWeight.w700,
-                          ),
-                          onSelected: (_) =>
-                              setState(() => _category = category),
-                        ),
+                        AmoraaSelectOption(value: category, label: category),
                     ],
+                    onChanged: (category) {
+                      if (category != null) {
+                        setState(() => _category = category);
+                      }
+                    },
                   ),
                   const SizedBox(height: 16),
                   for (final gift in gifts)

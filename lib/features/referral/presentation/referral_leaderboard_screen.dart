@@ -3,6 +3,7 @@ import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
+import 'package:amora_ai/core/widgets/amoraa_select_field.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:flutter/material.dart';
 
@@ -36,14 +37,18 @@ class _ReferralLeaderboardScreenState extends State<ReferralLeaderboardScreen> {
               children: [
                 const _Header(),
                 const SizedBox(height: 18),
-                SegmentedButton<String>(
-                  segments: const [
-                    ButtonSegment(value: 'Weekly', label: Text('Weekly')),
-                    ButtonSegment(value: 'Monthly', label: Text('Monthly')),
+                AmoraaCompactSelect<String>(
+                  key: const ValueKey('referral-period-selector'),
+                  label: 'Leaderboard period',
+                  value: _period,
+                  prefixIcon: Icons.calendar_view_month_rounded,
+                  options: const [
+                    AmoraaSelectOption(value: 'Weekly', label: 'Weekly'),
+                    AmoraaSelectOption(value: 'Monthly', label: 'Monthly'),
                   ],
-                  selected: {_period},
-                  onSelectionChanged: (value) =>
-                      setState(() => _period = value.first),
+                  onChanged: (value) {
+                    if (value != null) setState(() => _period = value);
+                  },
                 ),
                 const SizedBox(height: 16),
                 PremiumCard(

@@ -1,20 +1,18 @@
 import 'dart:math' as math;
 
-import 'package:amora_ai/core/access/amora_access.dart';
 import 'package:amora_ai/core/theme/amora_gradients.dart';
 import 'package:amora_ai/core/theme/amora_shadows.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/amora_screen_title.dart';
+import 'package:amora_ai/core/widgets/amoraa_identity_badge.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/floating_bottom_nav.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/premium_motion.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
-import 'package:amora_ai/features/auth/presentation/login_screen.dart';
-import 'package:amora_ai/features/chat/data/local_chat_repository.dart';
-import 'package:amora_ai/features/onboarding/data/local_onboarding_repository.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
+import 'package:amora_ai/features/profile/domain/profile_completion_calculator.dart';
 import 'package:amora_ai/features/profile/domain/profile_form_options.dart';
 import 'package:amora_ai/features/profile/domain/profile_interest_policy.dart';
 import 'package:amora_ai/features/profile/presentation/kyc_verification_screen.dart';
@@ -25,8 +23,10 @@ import 'package:amora_ai/features/profile/presentation/profile_preview_screen.da
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_photo_view.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/profile_photo_gallery.dart';
 import 'package:amora_ai/features/settings/presentation/managed_profiles_screen.dart';
+import 'package:amora_ai/features/settings/presentation/likes_super_likes_screen.dart';
 import 'package:amora_ai/features/settings/presentation/profile_settings_screen.dart';
 import 'package:amora_ai/features/settings/presentation/safety_privacy_screen.dart';
+import 'package:amora_ai/features/subscription/domain/amoraa_membership_status.dart';
 import 'package:amora_ai/features/subscription/presentation/subscription_screen.dart';
 import 'package:amora_ai/features/support/presentation/faq_support_screen.dart';
 import 'package:flutter/material.dart';
@@ -56,11 +56,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void initState() {
     super.initState();
     _repository.addListener(_refresh);
+    AmoraaMembershipStatus.listenable.addListener(_refresh);
   }
 
   @override
   void dispose() {
     _repository.removeListener(_refresh);
+    AmoraaMembershipStatus.listenable.removeListener(_refresh);
     super.dispose();
   }
 
@@ -97,6 +99,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     FadeUp(
                       child: ProfileHero(
                         profile: profile,
+                        isAadhaarVerified: false,
+                        isPremium: AmoraaMembershipStatus.isPremiumActive,
                         onEdit: () => _open(ProfileEditScreen.routeName),
                         onPreview: () => _open(ProfilePreviewScreen.routeName),
                         onComplete: () =>
@@ -118,18 +122,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ProfileEditorialSections(
                       profile: profile,
                       zodiac: _zodiacFor(profile.birthdate),
+                      onEditPrompt: () async {
+                        await Navigator.of(context).pushNamed(
+                          ProfileEditScreen.routeName,
+                          arguments: ProfileFormFieldId.profilePrompt,
+                        );
+                        if (mounted) setState(() {});
+                      },
                       onVerify: () => _open(KycVerificationScreen.routeName),
                       onSafety: () => _open(SafetyPrivacyScreen.routeName),
                       onViewPremium: () => _open(SubscriptionScreen.routeName),
                       onManagePremium: () =>
                           _open(SubscriptionScreen.manageRoute),
+                      onLikesSuperLikes: () =>
+                          _open(LikesSuperLikesScreen.routeName),
                       onSavedProfiles: () =>
                           _open(SavedProfilesScreen.routeName),
                       onBlockedProfiles: () =>
                           _open(BlockedProfilesScreen.routeName),
                       onSupport: () => _open(FaqSupportScreen.routeName),
-                      onLogout: _confirmLogout,
-                      onDeleteAccount: _confirmDeleteAccount,
                     ),
                   ],
                 ),
@@ -144,69 +155,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _open(String route) async {
     await Navigator.of(context).pushNamed(route);
     if (mounted) setState(() {});
-  }
-
-  Future<void> _confirmLogout() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        icon: const Icon(Icons.logout_rounded, color: AppColors.primary),
-        title: const Text('Log out of AMORAA?'),
-        content: const Text(
-          'Your profile stays saved. You can sign back in with your registered account.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Stay signed in'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Log out'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true || !mounted) return;
-    AmoraSession.logOut();
-    Navigator.of(
-      context,
-    ).pushNamedAndRemoveUntil(LoginScreen.routeName, (route) => false);
-  }
-
-  Future<void> _confirmDeleteAccount() async {
-    final deleted = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      isDismissible: false,
-      enableDrag: false,
-      useSafeArea: true,
-      backgroundColor: AppColors.transparent,
-      barrierColor: AppColors.primary.withValues(alpha: .24),
-      builder: (sheetContext) =>
-          _AccountDeletionFlowSheet(onDeleteAccount: widget.onDeleteAccount),
-    );
-    if (deleted != true || !mounted) return;
-    await _clearDeletedAccountState();
-    if (!mounted) return;
-    AmoraSession.logOut();
-    Navigator.of(
-      context,
-    ).pushNamedAndRemoveUntil(LoginScreen.routeName, (route) => false);
-  }
-
-  Future<void> _clearDeletedAccountState() async {
-    for (final clear in <Future<void> Function()>[
-      LocalChatRepository.instance.clearForAccountDeletion,
-      LocalProfileRepository.instance.clearForAccountDeletion,
-      LocalOnboardingRepository.instance.clearForAccountDeletion,
-    ]) {
-      try {
-        await clear();
-      } catch (_) {
-        // A backend-confirmed deletion still requires the local session to end.
-      }
-    }
   }
 }
 
@@ -1223,12 +1171,16 @@ class ProfileHero extends StatelessWidget {
   const ProfileHero({
     super.key,
     required this.profile,
+    required this.isAadhaarVerified,
+    required this.isPremium,
     required this.onEdit,
     required this.onPreview,
     required this.onComplete,
   });
 
   final LocalProfileDraft profile;
+  final bool isAadhaarVerified;
+  final bool isPremium;
   final VoidCallback onEdit;
   final VoidCallback onPreview;
   final VoidCallback onComplete;
@@ -1241,6 +1193,8 @@ class ProfileHero extends StatelessWidget {
         final photo = _ProfilePortrait(profile: profile);
         final identity = _HeroIdentity(
           profile: profile,
+          isAadhaarVerified: isAadhaarVerified,
+          isPremium: isPremium,
           onEdit: onEdit,
           onPreview: onPreview,
           onComplete: onComplete,
@@ -1352,18 +1306,23 @@ extension _FirstOrNull<T> on Iterable<T> {
 class _HeroIdentity extends StatelessWidget {
   const _HeroIdentity({
     required this.profile,
+    required this.isAadhaarVerified,
+    required this.isPremium,
     required this.onEdit,
     required this.onPreview,
     required this.onComplete,
   });
 
   final LocalProfileDraft profile;
+  final bool isAadhaarVerified;
+  final bool isPremium;
   final VoidCallback onEdit;
   final VoidCallback onPreview;
   final VoidCallback onComplete;
 
   @override
   Widget build(BuildContext context) {
+    final city = ProfileFormOptions.normalizeCity(profile.location);
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1378,11 +1337,22 @@ class _HeroIdentity extends StatelessWidget {
             letterSpacing: -.5,
           ),
         ),
+        if (resolveAmoraaIdentityBadge(
+              isAadhaarVerified: isAadhaarVerified,
+              isPremium: isPremium,
+            ) !=
+            AmoraaIdentityBadgeType.none) ...[
+          const SizedBox(height: 8),
+          AmoraaIdentityBadge(
+            isAadhaarVerified: isAadhaarVerified,
+            isPremium: isPremium,
+          ),
+        ],
         const SizedBox(height: 6),
         Text(
           [
             if (profile.age != null) '${profile.age}',
-            if (profile.location.trim().isNotEmpty) profile.location.trim(),
+            if (city.isNotEmpty) city,
           ].join('  •  '),
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
@@ -1779,28 +1749,28 @@ class ProfileEditorialSections extends StatelessWidget {
     super.key,
     required this.profile,
     required this.zodiac,
+    required this.onEditPrompt,
     required this.onVerify,
     required this.onSafety,
     required this.onViewPremium,
     required this.onManagePremium,
+    required this.onLikesSuperLikes,
     required this.onSavedProfiles,
     required this.onBlockedProfiles,
     required this.onSupport,
-    required this.onLogout,
-    required this.onDeleteAccount,
   });
 
   final LocalProfileDraft profile;
   final String? zodiac;
+  final VoidCallback onEditPrompt;
   final VoidCallback onVerify;
   final VoidCallback onSafety;
   final VoidCallback onViewPremium;
   final VoidCallback onManagePremium;
+  final VoidCallback onLikesSuperLikes;
   final VoidCallback onSavedProfiles;
   final VoidCallback onBlockedProfiles;
   final VoidCallback onSupport;
-  final VoidCallback onLogout;
-  final VoidCallback onDeleteAccount;
 
   @override
   Widget build(BuildContext context) {
@@ -1832,10 +1802,10 @@ class ProfileEditorialSections extends StatelessWidget {
       _ProfileSectionBlock(
         heading: ProfileSectionHeading(
           icon: Icons.chat_bubble_outline_rounded,
-          title: '💬 Profile prompt',
-          subtitle: 'One thoughtful opening for a real conversation.',
+          title: '💬 Profile prompts',
+          subtitle: 'Thoughtful openings for a real conversation.',
         ),
-        child: ProfilePromptsCard(profile: profile),
+        child: ProfilePromptsCard(profile: profile, onEdit: onEditPrompt),
       ),
       _ProfileSectionBlock(
         heading: const ProfileSectionHeading(
@@ -1866,26 +1836,10 @@ class ProfileEditorialSections extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             ProfileQuickActions(
+              onLikesSuperLikes: onLikesSuperLikes,
               onSavedProfiles: onSavedProfiles,
               onBlockedProfiles: onBlockedProfiles,
               onSupport: onSupport,
-            ),
-            const SizedBox(height: 12),
-            ProfileLinkGroup(
-              items: [
-                ProfileLinkItem(
-                  icon: Icons.logout_rounded,
-                  title: 'Log out',
-                  subtitle: 'Sign out of this device.',
-                  onTap: onLogout,
-                ),
-                ProfileLinkItem(
-                  icon: Icons.delete_outline_rounded,
-                  title: 'Delete account',
-                  subtitle: 'Permanently remove your AMORAA account.',
-                  onTap: onDeleteAccount,
-                ),
-              ],
             ),
           ],
         ),
@@ -2104,59 +2058,79 @@ class _ProfileBioCardState extends State<ProfileBioCard> {
 }
 
 class ProfilePromptsCard extends StatelessWidget {
-  const ProfilePromptsCard({super.key, required this.profile});
+  const ProfilePromptsCard({
+    super.key,
+    required this.profile,
+    required this.onEdit,
+  });
 
   final LocalProfileDraft profile;
+  final VoidCallback onEdit;
 
   @override
   Widget build(BuildContext context) {
     final prompts = profile.prompts.entries
         .where((entry) => entry.value.trim().isNotEmpty)
-        .take(1)
         .toList(growable: false);
     if (prompts.isEmpty) {
       return const _ProfileEmptyCard(
         icon: Icons.add_comment_rounded,
         title: 'No prompts yet',
-        description: 'Add three answers that make it easy to start talking.',
+        description: 'Add one answer that makes it easy to start talking.',
       );
     }
-    final prompt = prompts.first;
-    return PremiumCard(
-      key: const ValueKey('profile-prompt-0'),
-      radius: 24,
-      padding: EdgeInsets.zero,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: AmoraGradients.warmSurface,
-          borderRadius: BorderRadius.circular(24),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                prompt.key,
-                style: AmoraTextStyles.labelLarge.copyWith(
-                  color: AppColors.secondary,
-                  fontWeight: FontWeight.w800,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (var index = 0; index < prompts.length; index++) ...[
+          PremiumCard(
+            key: ValueKey('profile-prompt-$index'),
+            radius: 24,
+            padding: EdgeInsets.zero,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: AmoraGradients.warmSurface,
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      prompts[index].key,
+                      style: AmoraTextStyles.labelLarge.copyWith(
+                        color: AppColors.secondary,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Text(
+                      '“${prompts[index].value.trim()}”',
+                      style: AmoraTextStyles.titleLarge.copyWith(
+                        fontSize: 19,
+                        height: 1.48,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: -.1,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton.icon(
+                        onPressed: onEdit,
+                        icon: const Icon(Icons.edit_outlined),
+                        label: const Text('Edit'),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 14),
-              Text(
-                '“${prompt.value}”',
-                style: AmoraTextStyles.titleLarge.copyWith(
-                  fontSize: 19,
-                  height: 1.48,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: -.1,
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
-      ),
+          if (index != prompts.length - 1) const SizedBox(height: 12),
+        ],
+      ],
     );
   }
 }
@@ -2177,7 +2151,11 @@ class ProfileAboutCard extends StatelessWidget {
       (Icons.work_rounded, 'Occupation', profile.profession),
       if (profile.company.trim().isNotEmpty)
         (Icons.business_rounded, 'Company', profile.company),
-      (Icons.school_rounded, 'Education', profile.education),
+      (
+        Icons.school_rounded,
+        'Education',
+        ProfileFormOptions.normalizeEducation(profile.education),
+      ),
       if ((profile.lifestyle['Height'] ?? '').trim().isNotEmpty)
         (Icons.straighten_rounded, 'Height', profile.lifestyle['Height']!),
       if ((profile.lifestyle['Languages'] ?? '').trim().isNotEmpty)
@@ -2192,9 +2170,13 @@ class ProfileAboutCard extends StatelessWidget {
         (
           Icons.self_improvement_rounded,
           'Religion',
-          profile.lifestyle['Religion']!,
+          ProfileFormOptions.normalizeReligion(profile.lifestyle['Religion']),
         ),
-      (Icons.person_rounded, 'Gender', profile.gender),
+      (
+        Icons.person_rounded,
+        'Gender',
+        ProfileFormOptions.normalizeGender(profile.gender),
+      ),
       if (zodiac != null) (Icons.brightness_2_rounded, 'Zodiac', zodiac!),
     ];
     return ProfileInfoCard(items: values);
@@ -2396,10 +2378,13 @@ class ProfilePersonalityCard extends StatelessWidget {
       'Sleep habits': Icons.bedtime_rounded,
       'Food preference': Icons.restaurant_rounded,
     };
-    final entries = lifestyle.entries
+    final normalized = ProfileFormOptions.normalizeLifestyleSelections(
+      lifestyle,
+    );
+    final entries = normalized.entries
         .where(
           (entry) =>
-              !const {'Height', 'Languages', 'Religion'}.contains(entry.key) &&
+              ProfileFormOptions.lifestyleOptions.containsKey(entry.key) &&
               entry.value.trim().isNotEmpty,
         )
         .toList(growable: false);
@@ -2782,11 +2767,13 @@ class _PremiumFeatureRow extends StatelessWidget {
 class ProfileQuickActions extends StatelessWidget {
   const ProfileQuickActions({
     super.key,
+    required this.onLikesSuperLikes,
     required this.onSavedProfiles,
     required this.onBlockedProfiles,
     required this.onSupport,
   });
 
+  final VoidCallback onLikesSuperLikes;
   final VoidCallback onSavedProfiles;
   final VoidCallback onBlockedProfiles;
   final VoidCallback onSupport;
@@ -2794,6 +2781,7 @@ class ProfileQuickActions extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final actions = <(IconData, String, VoidCallback)>[
+      (Icons.favorite_rounded, 'Likes & Super Likes', onLikesSuperLikes),
       (Icons.bookmark_rounded, 'Saved Profiles', onSavedProfiles),
       (Icons.block_rounded, 'Blocked Profiles', onBlockedProfiles),
       (Icons.support_agent_rounded, 'Support', onSupport),
@@ -2816,6 +2804,12 @@ class ProfileQuickActions extends StatelessWidget {
                   child: _QuickActionTile(
                     icon: action.$1,
                     label: action.$2,
+                    semanticLabel: switch (action.$2) {
+                      'Likes & Super Likes' => 'Open Likes and Super Likes',
+                      'Saved Profiles' => 'Open Saved Profiles',
+                      'Blocked Profiles' => 'Open Blocked Profiles',
+                      _ => 'Open Support',
+                    },
                     onTap: action.$3,
                   ),
                 ),
@@ -2831,11 +2825,13 @@ class _QuickActionTile extends StatefulWidget {
   const _QuickActionTile({
     required this.icon,
     required this.label,
+    required this.semanticLabel,
     required this.onTap,
   });
 
   final IconData icon;
   final String label;
+  final String semanticLabel;
   final VoidCallback onTap;
 
   @override
@@ -2850,7 +2846,7 @@ class _QuickActionTileState extends State<_QuickActionTile> {
     final reduceMotion = MediaQuery.disableAnimationsOf(context);
     return Semantics(
       button: true,
-      label: widget.label,
+      label: widget.semanticLabel,
       child: AnimatedScale(
         scale: _pressed ? .98 : 1,
         duration: reduceMotion

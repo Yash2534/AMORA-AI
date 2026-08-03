@@ -1,12 +1,15 @@
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
-import 'package:amora_ai/core/widgets/amora_inputs.dart';
 import 'package:amora_ai/core/widgets/amora_dob_field.dart';
+import 'package:amora_ai/core/widgets/amoraa_select_field.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/app_text_field.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
+import 'package:amora_ai/features/profile/domain/profile_form_options.dart';
+import 'package:amora_ai/features/profile/domain/profile_form_validators.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class ProfileBasicDetailsScreen extends StatefulWidget {
   const ProfileBasicDetailsScreen({super.key});
@@ -24,6 +27,7 @@ class _ProfileBasicDetailsScreenState extends State<ProfileBasicDetailsScreen> {
   late final TextEditingController _profession;
   late final TextEditingController _company;
   late final TextEditingController _education;
+  late final TextEditingController _customEducation;
   late final TextEditingController _city;
   late String _gender;
   DateTime? _birthDate;
@@ -35,11 +39,20 @@ class _ProfileBasicDetailsScreenState extends State<ProfileBasicDetailsScreen> {
     final profile = LocalProfileRepository.instance.profile;
     _name = TextEditingController(text: profile.name);
     _birthDate = profile.dateOfBirth;
-    _profession = TextEditingController(text: profile.profession);
+    _profession = TextEditingController(
+      text: ProfileFormOptions.normalizeOccupation(profile.profession),
+    );
     _company = TextEditingController(text: profile.company);
-    _education = TextEditingController(text: profile.education);
-    _city = TextEditingController(text: profile.location);
-    _gender = profile.gender.isEmpty ? 'Prefer not to say' : profile.gender;
+    _education = TextEditingController(
+      text: ProfileFormOptions.normalizeEducation(profile.education),
+    );
+    _customEducation = TextEditingController(
+      text: ProfileFormOptions.customEducationFromStored(profile.education),
+    );
+    _city = TextEditingController(
+      text: ProfileFormOptions.normalizeCity(profile.location),
+    );
+    _gender = ProfileFormOptions.normalizeGender(profile.gender);
   }
 
   @override
@@ -48,6 +61,7 @@ class _ProfileBasicDetailsScreenState extends State<ProfileBasicDetailsScreen> {
     _profession.dispose();
     _company.dispose();
     _education.dispose();
+    _customEducation.dispose();
     _city.dispose();
     super.dispose();
   }
@@ -109,27 +123,79 @@ class _ProfileBasicDetailsScreenState extends State<ProfileBasicDetailsScreen> {
                         },
                       ),
                       const SizedBox(height: 16),
-                      AmoraDropdownFormField<String>(
+                      AmoraaSelectField<String>(
                         label: 'Gender',
-                        value: _gender,
-                        items: const [
-                          'Woman',
-                          'Man',
-                          'Non-binary',
-                          'Prefer not to say',
+                        value: _gender.isEmpty ? null : _gender,
+                        hintText: 'Select gender',
+                        prefixIcon: Icons.person_outline_rounded,
+                        isRequired: true,
+                        validator: (value) =>
+                            ProfileFormValidators.approvedSelection(
+                              value,
+                              ProfileFormOptions.genderOptions,
+                              'gender',
+                            ),
+                        options: [
+                          for (final value in ProfileFormOptions.genderOptions)
+                            AmoraaSelectOption(value: value, label: value),
                         ],
                         onChanged: (value) {
                           if (value != null) setState(() => _gender = value);
                         },
                       ),
                       const SizedBox(height: 16),
-                      AppTextField(
-                        controller: _profession,
-                        label: 'Profession',
-                        icon: Icons.work_outline_rounded,
-                        textInputAction: TextInputAction.next,
-                        validator: _required,
+                      AmoraaSearchableSelect<String>(
+                        label: 'Occupation',
+                        value: _profession.text.isEmpty
+                            ? null
+                            : _profession.text,
+                        hintText: 'Select occupation',
+                        searchHint: 'Search occupation',
+                        prefixIcon: Icons.work_outline_rounded,
+                        isRequired: true,
+                        validator: (value) =>
+                            ProfileFormValidators.approvedSelection(
+                              value,
+                              ProfileFormOptions.occupations,
+                              'occupation',
+                            ),
+                        options: [
+                          for (final value in ProfileFormOptions.occupations)
+                            AmoraaSelectOption(value: value, label: value),
+                        ],
+                        onChanged: (value) {
+                          if (value != null) {
+                            setState(() => _profession.text = value);
+                          }
+                        },
                       ),
+                      if (_education.text == 'Other') ...[
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          key: const ValueKey(
+                            'profile-basic-custom-education-field',
+                          ),
+                          controller: _customEducation,
+                          maxLength:
+                              ProfileFormOptions.customEducationMaxLength,
+                          inputFormatters: [
+                            LengthLimitingTextInputFormatter(
+                              ProfileFormOptions.customEducationMaxLength,
+                            ),
+                          ],
+                          validator: (value) =>
+                              ProfileFormValidators.customEducation(
+                                _education.text,
+                                value,
+                              ),
+                          decoration: const InputDecoration(
+                            labelText: 'Specify education',
+                            hintText: 'Enter your education',
+                            prefixIcon: Icon(Icons.edit_note_rounded),
+                            counterText: '',
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 16),
                       AppTextField(
                         controller: _company,
@@ -138,21 +204,49 @@ class _ProfileBasicDetailsScreenState extends State<ProfileBasicDetailsScreen> {
                         textInputAction: TextInputAction.next,
                       ),
                       const SizedBox(height: 16),
-                      AppTextField(
-                        controller: _education,
+                      AmoraaSelectField<String>(
                         label: 'Education',
-                        icon: Icons.school_outlined,
-                        textInputAction: TextInputAction.next,
-                        validator: _required,
+                        value: _education.text.isEmpty ? null : _education.text,
+                        hintText: 'Select education',
+                        prefixIcon: Icons.school_outlined,
+                        isRequired: true,
+                        validator: (value) =>
+                            ProfileFormValidators.approvedSelection(
+                              value,
+                              ProfileFormOptions.education,
+                              'education',
+                            ),
+                        options: [
+                          for (final value in ProfileFormOptions.education)
+                            AmoraaSelectOption(value: value, label: value),
+                        ],
+                        onChanged: (value) {
+                          if (value != null) {
+                            setState(() => _education.text = value);
+                          }
+                        },
                       ),
                       const SizedBox(height: 16),
-                      AppTextField(
-                        controller: _city,
+                      AmoraaSearchableSelect<String>(
                         label: 'City',
-                        icon: Icons.location_city_rounded,
-                        textInputAction: TextInputAction.done,
-                        validator: _required,
-                        onSubmitted: (_) => _save(),
+                        value: _city.text.isEmpty ? null : _city.text,
+                        hintText: 'Select city',
+                        searchHint: 'Search city',
+                        prefixIcon: Icons.location_city_rounded,
+                        isRequired: true,
+                        validator: (value) =>
+                            ProfileFormValidators.approvedSelection(
+                              value,
+                              ProfileFormOptions.cities,
+                              'city',
+                            ),
+                        options: [
+                          for (final value in ProfileFormOptions.cities)
+                            AmoraaSelectOption(value: value, label: value),
+                        ],
+                        onChanged: (value) {
+                          if (value != null) setState(() => _city.text = value);
+                        },
                       ),
                     ],
                   ),
@@ -188,6 +282,17 @@ class _ProfileBasicDetailsScreenState extends State<ProfileBasicDetailsScreen> {
 
   void _save() {
     FocusScope.of(context).unfocus();
+    if (_education.text == 'Other') {
+      final trimmedCustomEducation = _customEducation.text.trim();
+      if (trimmedCustomEducation != _customEducation.text) {
+        _customEducation.value = TextEditingValue(
+          text: trimmedCustomEducation,
+          selection: TextSelection.collapsed(
+            offset: trimmedCustomEducation.length,
+          ),
+        );
+      }
+    }
     setState(() => _showDobError = true);
     if (!(_formKey.currentState?.validate() ?? false) ||
         AmoraDateOfBirth.validate(_birthDate) != null) {
@@ -198,7 +303,7 @@ class _ProfileBasicDetailsScreenState extends State<ProfileBasicDetailsScreen> {
       repository.profile.copyWith(
         name: _name.text.trim(),
         birthdate: AmoraDateOfBirth.format(_birthDate!),
-        gender: _gender,
+        gender: ProfileFormOptions.storedGenderValue(_gender),
         profession: _profession.text.trim(),
         company: _company.text.trim(),
         education: _education.text.trim(),

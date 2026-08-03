@@ -6,6 +6,7 @@ import 'package:amora_ai/core/widgets/amora_snackbar.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
+import 'package:amora_ai/features/profile/domain/profile_form_options.dart';
 import 'package:flutter/material.dart';
 
 class DealbreakersScreen extends StatefulWidget {
@@ -22,13 +23,13 @@ class _DealbreakersScreenState extends State<DealbreakersScreen> {
   double _distance = 25;
   final Set<String> _mustHaves = {'Relationship intention', 'City'};
   final Map<String, String> _values = {
-    'Smoking': 'No',
-    'Drinking': 'Occasionally',
+    'Smoking': ProfileFormOptions.smokingOptions.first,
+    'Drinking': ProfileFormOptions.drinkingOptions[1],
     'Kids': 'Open',
     'Religion/Community': 'Flexible',
-    'Relationship intention': 'Long-term',
+    'Relationship intention': ProfileFormOptions.datingIntentions[1],
     'City': 'Ahmedabad',
-    'Education': 'Graduate+',
+    'Education': 'Undergraduate',
   };
 
   @override

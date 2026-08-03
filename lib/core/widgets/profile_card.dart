@@ -6,6 +6,7 @@ import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/widgets/amora_profile_image.dart';
 import 'package:amora_ai/features/profile/domain/profile_interest_policy.dart';
+import 'package:amora_ai/features/profile/domain/profile_form_options.dart';
 import 'package:flutter/material.dart';
 
 class AmoraProfileCardData {
@@ -62,6 +63,9 @@ class ProfileCard extends StatelessWidget {
     final interests = ProfileInterestPolicy.visible(
       profile.interests,
     ).take(compact ? 1 : 3).toList(growable: false);
+    final intention = ProfileFormOptions.normalizeDatingIntention(
+      profile.intent,
+    );
 
     return InkWell(
       onTap: onTap,
@@ -153,7 +157,7 @@ class ProfileCard extends StatelessWidget {
                       spacing: AmoraSpacing.space8,
                       runSpacing: AmoraSpacing.space8,
                       children: [
-                        _OverlayPill(text: profile.intent),
+                        if (intention.isNotEmpty) _OverlayPill(text: intention),
                         for (final interest in interests)
                           _OverlayPill(text: interest),
                       ],

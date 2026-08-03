@@ -60,11 +60,8 @@ class SettingsScreen extends StatelessWidget {
                     ),
                     Align(
                       alignment: Alignment.bottomCenter,
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-                        child: const FloatingBottomNav(
-                          activeTab: AmoraNavTab.profile,
-                        ),
+                      child: const FloatingBottomNav(
+                        activeTab: AmoraNavTab.profile,
                       ),
                     ),
                   ],

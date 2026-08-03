@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
@@ -6,10 +8,12 @@ import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
 import 'package:amora_ai/features/profile/domain/profile_completion_calculator.dart';
+import 'package:amora_ai/features/profile/domain/profile_form_options.dart';
 import 'package:amora_ai/features/profile/domain/profile_form_validators.dart';
 import 'package:amora_ai/features/profile/presentation/controllers/profile_form_controller.dart';
 import 'package:amora_ai/features/profile/presentation/kyc_verification_screen.dart';
 import 'package:amora_ai/features/profile/presentation/photo_manager_screen.dart';
+import 'package:amora_ai/features/profile/presentation/profile_form_navigation.dart';
 import 'package:amora_ai/features/profile/presentation/profile_preview_screen.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_fields.dart';
 import 'package:flutter/material.dart';
@@ -27,10 +31,12 @@ class AmoraaProfileForm extends StatefulWidget {
   const AmoraaProfileForm({
     super.key,
     this.mode = ProfileFormMode.edit,
+    this.initialField,
     required this.onSaved,
   });
 
   final ProfileFormMode mode;
+  final ProfileFormFieldId? initialField;
   final ProfileFormSaved onSaved;
 
   @override
@@ -39,20 +45,36 @@ class AmoraaProfileForm extends StatefulWidget {
 
 class _AmoraaProfileFormState extends State<AmoraaProfileForm> {
   final _formKey = GlobalKey<FormState>();
+  final _scrollController = ScrollController();
   late final ProfileFormController _controller;
+  late final ProfileFormNavigationTargets _navigationTargets;
   bool _showValidation = false;
+  ProfileFormFieldId? _highlightedField;
+  int _scrollRequest = 0;
+  String? _validationSummary;
+  Timer? _highlightTimer;
 
   @override
   void initState() {
     super.initState();
     _controller = ProfileFormController()..addListener(_refresh);
+    _navigationTargets = ProfileFormNavigationTargets();
+    if (widget.initialField case final field?) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _scrollToField(field, requestFocus: true);
+      });
+    }
   }
 
   @override
   void dispose() {
+    _scrollRequest++;
+    _highlightTimer?.cancel();
     _controller
       ..removeListener(_refresh)
       ..dispose();
+    _scrollController.dispose();
+    _navigationTargets.dispose();
     super.dispose();
   }
 
@@ -63,6 +85,7 @@ class _AmoraaProfileFormState extends State<AmoraaProfileForm> {
   @override
   Widget build(BuildContext context) {
     final profile = _controller.draftProfile;
+    final pending = profile.pendingFields;
     return PopScope<Object?>(
       canPop: !_controller.dirty,
       onPopInvokedWithResult: (didPop, _) {
@@ -113,6 +136,7 @@ class _AmoraaProfileFormState extends State<AmoraaProfileForm> {
               key: _formKey,
               child: CustomScrollView(
                 key: const PageStorageKey<String>('edit-profile-scroll'),
+                controller: _scrollController,
                 keyboardDismissBehavior:
                     ScrollViewKeyboardDismissBehavior.onDrag,
                 slivers: [
@@ -124,113 +148,153 @@ class _AmoraaProfileFormState extends State<AmoraaProfileForm> {
                       AmoraSpacing.space40 +
                           MediaQuery.viewInsetsOf(context).bottom,
                     ),
-                    sliver: SliverList.list(
-                      children: [
-                        Text(
-                          'All profile details',
-                          style: AmoraTextStyles.headlineSmall.copyWith(
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.w800,
+                    sliver: SliverToBoxAdapter(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            'All profile details',
+                            style: AmoraTextStyles.headlineSmall.copyWith(
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: AmoraSpacing.space4),
-                        Text(
-                          'Edit any supported field, then save everything together.',
-                          style: AmoraTextStyles.bodyMedium.copyWith(
-                            color: AppColors.textSecondary,
+                          const SizedBox(height: AmoraSpacing.space4),
+                          Text(
+                            'Edit any supported field, then save everything together.',
+                            style: AmoraTextStyles.bodyMedium.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: AmoraSpacing.space24),
-                        _EditSection(
-                          id: ProfileCompletionSectionId.photos,
-                          icon: Icons.photo_camera_rounded,
-                          title: 'Profile Photos',
-                          child: AmoraaProfilePhotoSection(
-                            profile: profile,
-                            showError: _showValidation,
-                            onManage: _openPhotoManager,
-                            onAdd: () => _openPhotoManager(openPicker: true),
+                          if (pending.isNotEmpty) ...[
+                            const SizedBox(height: AmoraSpacing.space16),
+                            _EditPendingSummary(
+                              pending: pending,
+                              onSelected: (field) =>
+                                  _scrollToField(field.id, requestFocus: true),
+                            ),
+                          ],
+                          if (_validationSummary case final message?) ...[
+                            const SizedBox(height: AmoraSpacing.space12),
+                            _EditValidationSummary(message: message),
+                          ],
+                          const SizedBox(height: AmoraSpacing.space24),
+                          _EditSection(
+                            id: ProfileCompletionSectionId.photos,
+                            icon: Icons.photo_camera_rounded,
+                            title: 'Profile Photos',
+                            child: _target(
+                              ProfileFormFieldId.photos,
+                              'Profile Photos',
+                              AmoraaProfilePhotoSection(
+                                profile: profile,
+                                showError: _showValidation,
+                                onManage: _openPhotoManager,
+                                onAdd: () =>
+                                    _openPhotoManager(openPicker: true),
+                              ),
+                            ),
                           ),
-                        ),
-                        _EditSection(
-                          id: ProfileCompletionSectionId.basicDetails,
-                          icon: Icons.badge_rounded,
-                          title: 'Basic Details',
-                          child: AmoraaBasicDetailsSection(
-                            controller: _controller,
-                            showValidation: _showValidation,
+                          _EditSection(
+                            id: ProfileCompletionSectionId.basicDetails,
+                            icon: Icons.badge_rounded,
+                            title: 'Basic Details',
+                            child: AmoraaBasicDetailsSection(
+                              controller: _controller,
+                              showValidation: _showValidation,
+                              navigationTargets: _navigationTargets,
+                              highlightedField: _highlightedField,
+                            ),
                           ),
-                        ),
-                        _EditSection(
-                          id: ProfileCompletionSectionId.workEducation,
-                          icon: Icons.work_outline_rounded,
-                          title: 'Work & Education',
-                          child: AmoraaWorkEducationSection(
-                            controller: _controller,
+                          _EditSection(
+                            id: ProfileCompletionSectionId.workEducation,
+                            icon: Icons.work_outline_rounded,
+                            title: 'Work & Education',
+                            child: AmoraaWorkEducationSection(
+                              controller: _controller,
+                              navigationTargets: _navigationTargets,
+                              highlightedField: _highlightedField,
+                            ),
                           ),
-                        ),
-                        _EditSection(
-                          id: ProfileCompletionSectionId.locationIntentions,
-                          icon: Icons.favorite_outline_rounded,
-                          title: 'Location & Dating Intentions',
-                          child: AmoraaLocationIntentionsSection(
-                            controller: _controller,
+                          _EditSection(
+                            id: ProfileCompletionSectionId.locationIntentions,
+                            icon: Icons.favorite_outline_rounded,
+                            title: 'Location & Dating Intentions',
+                            child: AmoraaLocationIntentionsSection(
+                              controller: _controller,
+                              navigationTargets: _navigationTargets,
+                              highlightedField: _highlightedField,
+                            ),
                           ),
-                        ),
-                        _EditSection(
-                          id: ProfileCompletionSectionId.identityDetails,
-                          icon: Icons.tune_rounded,
-                          title: 'Height, Languages & Religion',
-                          child: AmoraaIdentityDetailsSelector(
-                            controller: _controller,
-                            showValidation: _showValidation,
+                          _EditSection(
+                            id: ProfileCompletionSectionId.identityDetails,
+                            icon: Icons.tune_rounded,
+                            title: 'Height, Languages & Religion',
+                            child: AmoraaIdentityDetailsSelector(
+                              controller: _controller,
+                              showValidation: _showValidation,
+                              navigationTargets: _navigationTargets,
+                              highlightedField: _highlightedField,
+                            ),
                           ),
-                        ),
-                        _EditSection(
-                          id: ProfileCompletionSectionId.bio,
-                          icon: Icons.notes_rounded,
-                          title: 'Bio',
-                          child: AmoraaProfileBioField(
-                            controller: _controller.bio,
+                          _EditSection(
+                            id: ProfileCompletionSectionId.bio,
+                            icon: Icons.notes_rounded,
+                            title: 'Bio',
+                            child: AmoraaProfileBioField(
+                              controller: _controller.bio,
+                              navigationTargets: _navigationTargets,
+                              highlightedField: _highlightedField,
+                            ),
                           ),
-                        ),
-                        _EditSection(
-                          id: ProfileCompletionSectionId.interests,
-                          icon: Icons.interests_rounded,
-                          title: 'Interests',
-                          child: AmoraaInterestsSelector(
-                            controller: _controller,
-                            showValidation: _showValidation,
+                          _EditSection(
+                            id: ProfileCompletionSectionId.interests,
+                            icon: Icons.interests_rounded,
+                            title: 'Interests',
+                            child: _target(
+                              ProfileFormFieldId.interests,
+                              'Interests',
+                              AmoraaInterestsSelector(
+                                controller: _controller,
+                                showValidation: _showValidation,
+                              ),
+                            ),
                           ),
-                        ),
-                        _EditSection(
-                          id: ProfileCompletionSectionId.lifestyle,
-                          icon: Icons.self_improvement_rounded,
-                          title: 'Lifestyle',
-                          child: AmoraaLifestyleSelector(
-                            controller: _controller,
-                            showValidation: _showValidation,
+                          _EditSection(
+                            id: ProfileCompletionSectionId.lifestyle,
+                            icon: Icons.self_improvement_rounded,
+                            title: 'Lifestyle',
+                            child: _target(
+                              ProfileFormFieldId.lifestyle,
+                              'Lifestyle',
+                              AmoraaLifestyleSelector(
+                                controller: _controller,
+                                showValidation: _showValidation,
+                              ),
+                            ),
                           ),
-                        ),
-                        _EditSection(
-                          id: ProfileCompletionSectionId.prompt,
-                          icon: Icons.forum_outlined,
-                          title: 'Profile Prompt',
-                          child: AmoraaProfilePromptField(
-                            controller: _controller,
-                            showValidation: _showValidation,
+                          _EditSection(
+                            id: ProfileCompletionSectionId.prompt,
+                            icon: Icons.forum_outlined,
+                            title: 'Profile Prompt',
+                            child: AmoraaProfilePromptField(
+                              controller: _controller,
+                              showValidation: _showValidation,
+                              navigationTargets: _navigationTargets,
+                              highlightedField: _highlightedField,
+                            ),
                           ),
-                        ),
-                        _EditSection(
-                          id: null,
-                          icon: Icons.verified_user_rounded,
-                          title: 'Verification',
-                          child: AmoraaVerificationSection(
-                            onOpenVerification: () =>
-                                _openNamed(KycVerificationScreen.routeName),
+                          _EditSection(
+                            id: null,
+                            icon: Icons.verified_user_rounded,
+                            title: 'Verification',
+                            child: AmoraaVerificationSection(
+                              onOpenVerification: () =>
+                                  _openNamed(KycVerificationScreen.routeName),
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ],
@@ -240,6 +304,12 @@ class _AmoraaProfileFormState extends State<AmoraaProfileForm> {
         ),
         bottomNavigationBar: _ProfileSaveBar(
           saving: _controller.saving,
+          enabled:
+              !_controller.promptEditorActive ||
+              ProfileFormValidators.promptAnswer(
+                    _controller.promptAnswer.text,
+                  ) ==
+                  null,
           label: 'Save changes',
           onPressed: _save,
         ),
@@ -249,12 +319,34 @@ class _AmoraaProfileFormState extends State<AmoraaProfileForm> {
 
   Future<void> _save() async {
     FocusScope.of(context).unfocus();
-    setState(() => _showValidation = true);
+    setState(() {
+      _showValidation = true;
+      _validationSummary = null;
+    });
     final profile = _controller.draftProfile;
-    final validForm = _formKey.currentState?.validate() ?? false;
+    _formKey.currentState?.validate();
     final errors = ProfileFormValidators.editableProfile(profile);
-    if (!validForm || errors.isNotEmpty || _controller.saving) {
-      if (errors.isNotEmpty) _showError(errors.first);
+    final customEducationError = ProfileFormValidators.customEducation(
+      _controller.education.text,
+      _controller.customEducation.text,
+    );
+    final promptError = _controller.promptEditorActive
+        ? ProfileFormValidators.promptAnswer(_controller.promptAnswer.text)
+        : null;
+    if (errors.isNotEmpty ||
+        customEducationError != null ||
+        promptError != null ||
+        _controller.saving) {
+      final firstInvalid = _firstInvalidEditableField(profile);
+      final message = errors.isNotEmpty
+          ? errors.first
+          : customEducationError ??
+                promptError ??
+                'Review the highlighted profile field.';
+      setState(() => _validationSummary = message);
+      if (firstInvalid != null) {
+        await _scrollToField(firstInvalid, requestFocus: true);
+      }
       return;
     }
     try {
@@ -266,6 +358,111 @@ class _AmoraaProfileFormState extends State<AmoraaProfileForm> {
         _showError('Profile could not be saved. Please try again.');
       }
     }
+  }
+
+  ProfileFormFieldId? _firstInvalidEditableField(UserProfile profile) {
+    if (ProfileFormValidators.requiredText(profile.name) != null) {
+      return ProfileFormFieldId.name;
+    }
+    if (ProfileFormValidators.dateOfBirth(profile.dateOfBirth) != null) {
+      return ProfileFormFieldId.dateOfBirth;
+    }
+    if (ProfileFormValidators.approvedSelection(
+          ProfileFormOptions.normalizeGender(profile.gender),
+          ProfileFormOptions.genderOptions,
+          'gender',
+        ) !=
+        null) {
+      return ProfileFormFieldId.gender;
+    }
+    if (ProfileFormValidators.approvedSelection(
+          profile.profession,
+          ProfileFormOptions.occupations,
+          'occupation',
+        ) !=
+        null) {
+      return ProfileFormFieldId.occupation;
+    }
+    if (ProfileFormValidators.approvedSelection(
+              ProfileFormOptions.normalizeEducation(profile.education),
+              ProfileFormOptions.education,
+              'education',
+            ) !=
+            null ||
+        ProfileFormValidators.customEducation(
+              _controller.education.text,
+              _controller.customEducation.text,
+            ) !=
+            null) {
+      return ProfileFormFieldId.education;
+    }
+    if (ProfileFormOptions.normalizeCity(profile.location).isEmpty) {
+      return ProfileFormFieldId.city;
+    }
+    if (ProfileFormOptions.normalizeDatingIntention(
+      profile.datingIntention,
+    ).isEmpty) {
+      return ProfileFormFieldId.datingIntention;
+    }
+    if (ProfileFormValidators.bio(profile.bio) != null) {
+      return ProfileFormFieldId.bio;
+    }
+    if (_controller.promptEditorActive &&
+        ProfileFormValidators.promptAnswer(_controller.promptAnswer.text) !=
+            null) {
+      return ProfileFormFieldId.profilePrompt;
+    }
+    return null;
+  }
+
+  Widget _target(ProfileFormFieldId id, String label, Widget child) {
+    return ProfileFormTarget(
+      id: id,
+      targets: _navigationTargets,
+      highlighted: _highlightedField == id,
+      label: label,
+      child: child,
+    );
+  }
+
+  Future<void> _scrollToField(
+    ProfileFormFieldId id, {
+    bool requestFocus = false,
+  }) async {
+    final request = ++_scrollRequest;
+    _highlightTimer?.cancel();
+    FocusScope.of(context).unfocus();
+    setState(() => _highlightedField = id);
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted || request != _scrollRequest) return;
+    var targetContext = _navigationTargets.keyFor(id).currentContext;
+    if (targetContext == null) {
+      await WidgetsBinding.instance.endOfFrame;
+      if (!mounted || request != _scrollRequest) return;
+      targetContext = _navigationTargets.keyFor(id).currentContext;
+    }
+    final renderObject = targetContext?.findRenderObject();
+    if (targetContext == null ||
+        !targetContext.mounted ||
+        renderObject == null ||
+        !renderObject.attached ||
+        !_scrollController.hasClients) {
+      return;
+    }
+    await _scrollController.position.ensureVisible(
+      renderObject,
+      duration: const Duration(milliseconds: 320),
+      curve: Curves.easeOutCubic,
+      alignment: .12,
+    );
+    if (!mounted || request != _scrollRequest) return;
+    if (requestFocus) {
+      _navigationTargets.focusNodeFor(id)?.requestFocus();
+    }
+    _highlightTimer = Timer(const Duration(milliseconds: 950), () {
+      if (!mounted || request != _scrollRequest) return;
+      setState(() => _highlightedField = null);
+    });
   }
 
   void _showError(String message) {
@@ -366,14 +563,97 @@ class _EditSection extends StatelessWidget {
   }
 }
 
+class _EditPendingSummary extends StatelessWidget {
+  const _EditPendingSummary({required this.pending, required this.onSelected});
+
+  final List<ProfilePendingField> pending;
+  final ValueChanged<ProfilePendingField> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return PremiumCard(
+      key: const ValueKey('edit-profile-pending-summary'),
+      radius: 20,
+      padding: const EdgeInsets.all(AmoraSpacing.space16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('Information still pending', style: AmoraTextStyles.titleMedium),
+          const SizedBox(height: AmoraSpacing.space4),
+          Text(
+            'Choose an item to go directly to its field.',
+            style: AmoraTextStyles.bodySmall.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: AmoraSpacing.space8),
+          for (final field in pending)
+            Semantics(
+              button: true,
+              label: '${field.actionLabel}, incomplete profile field',
+              child: InkWell(
+                key: ValueKey('edit-pending-${field.id.name}'),
+                onTap: () => onSelected(field),
+                borderRadius: BorderRadius.circular(12),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(
+                    minHeight: AmoraSpacing.minimumTouchTarget,
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.arrow_downward_rounded),
+                      const SizedBox(width: AmoraSpacing.space8),
+                      Expanded(child: Text(field.actionLabel)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EditValidationSummary extends StatelessWidget {
+  const _EditValidationSummary({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      liveRegion: true,
+      child: Container(
+        key: const ValueKey('edit-profile-validation-summary'),
+        padding: const EdgeInsets.all(AmoraSpacing.space12),
+        decoration: BoxDecoration(
+          color: AppColors.tertiary.withValues(alpha: .34),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.secondary),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.info_outline_rounded, color: AppColors.primary),
+            const SizedBox(width: AmoraSpacing.space8),
+            Expanded(child: Text(message)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _ProfileSaveBar extends StatelessWidget {
   const _ProfileSaveBar({
     required this.saving,
+    required this.enabled,
     required this.label,
     required this.onPressed,
   });
 
   final bool saving;
+  final bool enabled;
   final String label;
   final VoidCallback onPressed;
 
@@ -396,7 +676,7 @@ class _ProfileSaveBar extends StatelessWidget {
                 label: label,
                 icon: Icons.check_rounded,
                 isLoading: saving,
-                onPressed: saving ? null : onPressed,
+                onPressed: saving || !enabled ? null : onPressed,
               ),
             ),
           ),

@@ -45,8 +45,8 @@ void main() {
   UserProfile completeProfile() => originalProfile.copyWith(
     name: 'Complete AMORAA Member',
     gender: 'Female',
-    profession: 'Product Designer',
-    education: 'MBA',
+    profession: 'Designer',
+    education: 'Postgraduate',
     location: 'Surat',
     datingIntention: 'Marriage Minded',
     bio:

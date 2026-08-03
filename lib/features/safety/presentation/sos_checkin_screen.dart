@@ -1,6 +1,7 @@
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
+import 'package:amora_ai/core/widgets/amoraa_select_field.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:flutter/material.dart';
@@ -108,17 +109,21 @@ class _SosCheckinScreenState extends State<SosCheckinScreen>
                     const SizedBox(height: 18),
                     const _SectionTitle('Safety timer'),
                     const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        for (final value in ['30 min', '1 hour', '2 hours'])
-                          ChoiceChip(
-                            label: Text(value),
-                            selected: _timer == value,
-                            onSelected: (_) => setState(() => _timer = value),
-                          ),
+                    AmoraaCompactSelect<String>(
+                      label: 'Safety timer',
+                      value: _timer,
+                      prefixIcon: Icons.timer_outlined,
+                      options: [
+                        for (final value in const [
+                          '30 min',
+                          '1 hour',
+                          '2 hours',
+                        ])
+                          AmoraaSelectOption(value: value, label: value),
                       ],
+                      onChanged: (value) {
+                        if (value != null) setState(() => _timer = value);
+                      },
                     ),
                     const SizedBox(height: 12),
                     SwitchListTile(

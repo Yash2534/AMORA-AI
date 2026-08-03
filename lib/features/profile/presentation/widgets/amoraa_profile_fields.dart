@@ -2,11 +2,15 @@ import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/amora_dob_field.dart';
-import 'package:amora_ai/features/onboarding/data/gujarat_cities.dart';
+import 'package:amora_ai/core/widgets/amoraa_select_field.dart';
+import 'package:amora_ai/core/widgets/premium_card.dart';
+import 'package:amora_ai/features/discover/presentation/widgets/amoraa_minimum_height_picker.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
+import 'package:amora_ai/features/profile/domain/profile_completion_calculator.dart';
 import 'package:amora_ai/features/profile/domain/profile_form_options.dart';
 import 'package:amora_ai/features/profile/domain/profile_form_validators.dart';
 import 'package:amora_ai/features/profile/presentation/controllers/profile_form_controller.dart';
+import 'package:amora_ai/features/profile/presentation/profile_form_navigation.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_photo_view.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_dating_intention_selector.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_language_selector.dart';
@@ -136,53 +140,74 @@ class AmoraaBasicDetailsSection extends StatelessWidget {
     super.key,
     required this.controller,
     required this.showValidation,
+    this.navigationTargets,
+    this.highlightedField,
   });
 
   final ProfileFormController controller;
   final bool showValidation;
+  final ProfileFormNavigationTargets? navigationTargets;
+  final ProfileFormFieldId? highlightedField;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        TextFormField(
-          key: const ValueKey('profile-name-field'),
-          controller: controller.name,
-          textInputAction: TextInputAction.next,
-          validator: ProfileFormValidators.requiredText,
-          decoration: const InputDecoration(
-            labelText: 'Full Name',
-            prefixIcon: Icon(Icons.person_rounded),
+        _profileTarget(
+          id: ProfileFormFieldId.name,
+          label: 'Full Name',
+          targets: navigationTargets,
+          highlightedField: highlightedField,
+          child: TextFormField(
+            key: const ValueKey('profile-name-field'),
+            controller: controller.name,
+            focusNode: navigationTargets?.focusNodeFor(ProfileFormFieldId.name),
+            textInputAction: TextInputAction.next,
+            validator: ProfileFormValidators.requiredText,
+            decoration: const InputDecoration(
+              labelText: 'Full Name',
+              prefixIcon: Icon(Icons.person_rounded),
+            ),
           ),
         ),
         const SizedBox(height: AmoraSpacing.space12),
-        AmoraDobField(
-          value: controller.birthDate,
-          errorText: showValidation
-              ? ProfileFormValidators.dateOfBirth(controller.birthDate)
-              : null,
-          onChanged: controller.setBirthDate,
+        _profileTarget(
+          id: ProfileFormFieldId.dateOfBirth,
+          label: 'Date of Birth',
+          targets: navigationTargets,
+          highlightedField: highlightedField,
+          child: AmoraDobField(
+            value: controller.birthDate,
+            errorText: showValidation
+                ? ProfileFormValidators.dateOfBirth(controller.birthDate)
+                : null,
+            onChanged: controller.setBirthDate,
+          ),
         ),
         const SizedBox(height: AmoraSpacing.space12),
-        DropdownButtonFormField<String>(
-          key: const ValueKey('profile-gender-field'),
-          initialValue: const ['Male', 'Female'].contains(controller.gender)
-              ? controller.gender
-              : null,
-          isExpanded: true,
-          validator: ProfileFormValidators.requiredText,
-          decoration: const InputDecoration(
-            labelText: 'Gender',
-            prefixIcon: Icon(Icons.person_outline_rounded),
+        _profileTarget(
+          id: ProfileFormFieldId.gender,
+          label: 'Gender',
+          targets: navigationTargets,
+          highlightedField: highlightedField,
+          child: AmoraaSelectField<String>(
+            key: const ValueKey('profile-gender-field'),
+            value: ProfileFormOptions.genderOptions.contains(controller.gender)
+                ? controller.gender
+                : null,
+            label: 'Gender',
+            hintText: 'Select gender',
+            prefixIcon: Icons.person_outline_rounded,
+            isRequired: true,
+            validator: ProfileFormValidators.requiredText,
+            options: [
+              for (final value in ProfileFormOptions.genderOptions)
+                AmoraaSelectOption(value: value, label: value),
+            ],
+            onChanged: (value) {
+              if (value != null) controller.setGender(value);
+            },
           ),
-          items: const ['Male', 'Female']
-              .map(
-                (value) => DropdownMenuItem(value: value, child: Text(value)),
-              )
-              .toList(growable: false),
-          onChanged: (value) {
-            if (value != null) controller.setGender(value);
-          },
         ),
       ],
     );
@@ -190,20 +215,45 @@ class AmoraaBasicDetailsSection extends StatelessWidget {
 }
 
 class AmoraaWorkEducationSection extends StatelessWidget {
-  const AmoraaWorkEducationSection({super.key, required this.controller});
+  const AmoraaWorkEducationSection({
+    super.key,
+    required this.controller,
+    this.navigationTargets,
+    this.highlightedField,
+  });
 
   final ProfileFormController controller;
+  final ProfileFormNavigationTargets? navigationTargets;
+  final ProfileFormFieldId? highlightedField;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        AmoraaSearchableDropdown(
-          key: const ValueKey('profile-occupation-field'),
-          controller: controller.profession,
+        _profileTarget(
+          id: ProfileFormFieldId.occupation,
           label: 'Occupation',
-          icon: Icons.work_rounded,
-          options: ProfileFormOptions.occupations,
+          targets: navigationTargets,
+          highlightedField: highlightedField,
+          child: AmoraaSearchableSelect<String>(
+            key: const ValueKey('profile-occupation-field'),
+            value: controller.profession.text.isEmpty
+                ? null
+                : controller.profession.text,
+            label: 'Occupation',
+            hintText: 'Select occupation',
+            searchHint: 'Search occupation',
+            prefixIcon: Icons.work_rounded,
+            isRequired: true,
+            validator: ProfileFormValidators.requiredText,
+            options: [
+              for (final value in ProfileFormOptions.occupations)
+                AmoraaSelectOption(value: value, label: value),
+            ],
+            onChanged: (value) {
+              if (value != null) controller.profession.text = value;
+            },
+          ),
         ),
         const SizedBox(height: AmoraSpacing.space12),
         TextFormField(
@@ -215,38 +265,107 @@ class AmoraaWorkEducationSection extends StatelessWidget {
           ),
         ),
         const SizedBox(height: AmoraSpacing.space12),
-        AmoraaSearchableDropdown(
-          key: const ValueKey('profile-education-field'),
-          controller: controller.education,
+        _profileTarget(
+          id: ProfileFormFieldId.education,
           label: 'Education',
-          icon: Icons.school_rounded,
-          options: ProfileFormOptions.education,
+          targets: navigationTargets,
+          highlightedField: highlightedField,
+          child: AmoraaSelectField<String>(
+            key: const ValueKey('profile-education-field'),
+            value: controller.education.text.isEmpty
+                ? null
+                : controller.education.text,
+            label: 'Education',
+            hintText: 'Select education',
+            prefixIcon: Icons.school_rounded,
+            isRequired: true,
+            validator: ProfileFormValidators.requiredText,
+            options: [
+              for (final value in ProfileFormOptions.education)
+                AmoraaSelectOption(value: value, label: value),
+            ],
+            onChanged: (value) {
+              if (value != null) controller.setEducation(value);
+            },
+          ),
         ),
+        if (controller.education.text == 'Other') ...[
+          const SizedBox(height: AmoraSpacing.space12),
+          TextFormField(
+            key: const ValueKey('profile-custom-education-field'),
+            controller: controller.customEducation,
+            maxLength: ProfileFormOptions.customEducationMaxLength,
+            inputFormatters: [
+              LengthLimitingTextInputFormatter(
+                ProfileFormOptions.customEducationMaxLength,
+              ),
+            ],
+            validator: (value) => ProfileFormValidators.customEducation(
+              controller.education.text,
+              value,
+            ),
+            decoration: const InputDecoration(
+              labelText: 'Specify education',
+              hintText: 'Enter your education',
+              prefixIcon: Icon(Icons.edit_note_rounded),
+              counterText: '',
+            ),
+          ),
+        ],
       ],
     );
   }
 }
 
 class AmoraaLocationIntentionsSection extends StatelessWidget {
-  const AmoraaLocationIntentionsSection({super.key, required this.controller});
+  const AmoraaLocationIntentionsSection({
+    super.key,
+    required this.controller,
+    this.navigationTargets,
+    this.highlightedField,
+  });
 
   final ProfileFormController controller;
+  final ProfileFormNavigationTargets? navigationTargets;
+  final ProfileFormFieldId? highlightedField;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        AmoraaSearchableDropdown(
-          key: const ValueKey('profile-city-field'),
-          controller: controller.city,
+        _profileTarget(
+          id: ProfileFormFieldId.city,
           label: 'City',
-          icon: Icons.location_on_rounded,
-          options: gujaratCities,
+          targets: navigationTargets,
+          highlightedField: highlightedField,
+          child: AmoraaSearchableSelect<String>(
+            key: const ValueKey('profile-city-field'),
+            value: controller.city.text.isEmpty ? null : controller.city.text,
+            label: 'City',
+            hintText: 'Select city',
+            searchHint: 'Search city',
+            prefixIcon: Icons.location_on_rounded,
+            isRequired: true,
+            validator: ProfileFormValidators.requiredText,
+            options: [
+              for (final value in ProfileFormOptions.cities)
+                AmoraaSelectOption(value: value, label: value),
+            ],
+            onChanged: (value) {
+              if (value != null) controller.city.text = value;
+            },
+          ),
         ),
         const SizedBox(height: AmoraSpacing.space12),
-        AmoraaDatingIntentionSelector(
-          value: controller.datingIntention.text,
-          onChanged: (value) => controller.datingIntention.text = value,
+        _profileTarget(
+          id: ProfileFormFieldId.datingIntention,
+          label: 'Dating Intention',
+          targets: navigationTargets,
+          highlightedField: highlightedField,
+          child: AmoraaDatingIntentionSelector(
+            value: controller.datingIntention.text,
+            onChanged: (value) => controller.datingIntention.text = value,
+          ),
         ),
       ],
     );
@@ -258,104 +377,210 @@ class AmoraaIdentityDetailsSelector extends StatelessWidget {
     super.key,
     required this.controller,
     this.showValidation = false,
+    this.navigationTargets,
+    this.highlightedField,
   });
 
   final ProfileFormController controller;
   final bool showValidation;
+  final ProfileFormNavigationTargets? navigationTargets;
+  final ProfileFormFieldId? highlightedField;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        _IdentityDropdown(
-          fieldName: 'Height',
-          controller: controller,
-          showValidation: showValidation,
+        _profileTarget(
+          id: ProfileFormFieldId.height,
+          label: 'Height',
+          targets: navigationTargets,
+          highlightedField: highlightedField,
+          child: _ProfileHeightSelector(
+            controller: controller,
+            showValidation: showValidation,
+          ),
         ),
         const SizedBox(height: AmoraSpacing.space12),
-        AmoraaLanguageSelector(
-          selectedLanguages: controller.languages,
-          onChanged: controller.setLanguages,
-          showError: showValidation,
+        _profileTarget(
+          id: ProfileFormFieldId.languages,
+          label: 'Languages',
+          targets: navigationTargets,
+          highlightedField: highlightedField,
+          child: AmoraaLanguageSelector(
+            selectedLanguages: controller.languages,
+            onChanged: controller.setLanguages,
+            showError: showValidation,
+          ),
         ),
         const SizedBox(height: AmoraSpacing.space12),
-        _IdentityDropdown(
-          fieldName: 'Religion',
-          controller: controller,
-          showValidation: showValidation,
+        _profileTarget(
+          id: ProfileFormFieldId.religion,
+          label: 'Religion',
+          targets: navigationTargets,
+          highlightedField: highlightedField,
+          child: AmoraaSelectField<String>(
+            key: const ValueKey('profile-religion-field'),
+            label: 'Religion',
+            value:
+                ProfileFormOptions.normalizeReligion(
+                  controller.lifestyle['Religion'],
+                ).isEmpty
+                ? null
+                : ProfileFormOptions.normalizeReligion(
+                    controller.lifestyle['Religion'],
+                  ),
+            hintText: 'Select religion',
+            prefixIcon: Icons.diversity_3_rounded,
+            isRequired: true,
+            validator: (value) => ProfileFormValidators.approvedSelection(
+              value,
+              ProfileFormOptions.religions,
+              'religion',
+            ),
+            errorText: showValidation
+                ? ProfileFormValidators.approvedSelection(
+                    controller.lifestyle['Religion'],
+                    ProfileFormOptions.religions,
+                    'religion',
+                  )
+                : null,
+            options: [
+              for (final value in ProfileFormOptions.religions)
+                AmoraaSelectOption(value: value, label: value),
+            ],
+            onChanged: (value) => controller.setLifestyle('Religion', value),
+          ),
         ),
       ],
     );
   }
 }
 
-class _IdentityDropdown extends StatelessWidget {
-  const _IdentityDropdown({
-    required this.fieldName,
+class _ProfileHeightSelector extends StatelessWidget {
+  const _ProfileHeightSelector({
     required this.controller,
     required this.showValidation,
   });
 
-  final String fieldName;
   final ProfileFormController controller;
   final bool showValidation;
 
   @override
   Widget build(BuildContext context) {
-    final options = ProfileFormOptions.identityOptions[fieldName]!;
-    return DropdownButtonFormField<String>(
-      key: ValueKey('profile-${fieldName.toLowerCase()}-field'),
-      initialValue: options.contains(controller.lifestyle[fieldName])
-          ? controller.lifestyle[fieldName]
-          : null,
-      isExpanded: true,
-      decoration: InputDecoration(
-        labelText: fieldName,
-        prefixIcon: Icon(
-          fieldName == 'Height'
-              ? Icons.height_rounded
-              : Icons.diversity_3_rounded,
-        ),
-        errorText: showValidation
-            ? ProfileFormValidators.identityValue(
-                controller.lifestyle[fieldName],
-                fieldName.toLowerCase(),
-              )
-            : null,
-      ),
-      items: options
-          .map(
-            (value) => DropdownMenuItem(
-              value: value,
-              child: Text(value, overflow: TextOverflow.ellipsis),
+    final centimeters = ProfileFormOptions.parseHeightCentimeters(
+      controller.lifestyle['Height'],
+    );
+    final value = centimeters == null
+        ? ''
+        : ProfileFormOptions.formatProfileHeight(centimeters);
+    return FormField<String>(
+      key: const ValueKey('profile-height-field'),
+      initialValue: value,
+      validator: (current) =>
+          ProfileFormValidators.identityValue(current, 'height'),
+      builder: (field) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Semantics(
+            button: true,
+            label: value.isEmpty ? 'Choose height' : 'Height, $value',
+            child: Material(
+              color: AppColors.surface,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(18),
+                side: BorderSide(
+                  color: field.hasError
+                      ? Theme.of(context).colorScheme.error
+                      : AppColors.tertiary,
+                ),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                onTap: () async {
+                  final selected = await showModalBottomSheet<int>(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: AppColors.transparent,
+                    builder: (sheetContext) => AmoraaMinimumHeightPicker(
+                      purpose: HeightPickerPurpose.profileHeight,
+                      initialMinimumCentimeters: centimeters,
+                      onClose: () => Navigator.of(sheetContext).pop(),
+                      onApply: (next) => Navigator.of(sheetContext).pop(next),
+                    ),
+                  );
+                  if (selected == null) return;
+                  final next = ProfileFormOptions.formatProfileHeight(selected);
+                  field.didChange(next);
+                  controller.setLifestyle('Height', next);
+                },
+                child: Padding(
+                  padding: const EdgeInsets.all(AmoraSpacing.space16),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.height_rounded),
+                      const SizedBox(width: AmoraSpacing.space12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Height', style: AmoraTextStyles.labelMedium),
+                            const SizedBox(height: AmoraSpacing.space4),
+                            Text(
+                              value.isEmpty ? 'Choose height' : value,
+                              style: AmoraTextStyles.titleMedium,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.chevron_right_rounded),
+                    ],
+                  ),
+                ),
+              ),
             ),
-          )
-          .toList(growable: false),
-      onChanged: (value) => controller.setLifestyle(fieldName, value),
+          ),
+          if (showValidation && field.errorText != null)
+            _FormError(field.errorText!),
+        ],
+      ),
     );
   }
 }
 
 class AmoraaProfileBioField extends StatelessWidget {
-  const AmoraaProfileBioField({super.key, required this.controller});
+  const AmoraaProfileBioField({
+    super.key,
+    required this.controller,
+    this.navigationTargets,
+    this.highlightedField,
+  });
 
   final TextEditingController controller;
+  final ProfileFormNavigationTargets? navigationTargets;
+  final ProfileFormFieldId? highlightedField;
 
   @override
   Widget build(BuildContext context) {
-    return TextFormField(
-      key: const ValueKey('profile-bio-field'),
-      controller: controller,
-      minLines: 5,
-      maxLines: 8,
-      maxLength: 240,
-      inputFormatters: [LengthLimitingTextInputFormatter(240)],
-      validator: ProfileFormValidators.bio,
-      decoration: const InputDecoration(
-        labelText: 'Bio',
-        hintText: 'Tell people what life with you feels like',
-        prefixIcon: Icon(Icons.notes_rounded),
-        counterText: '',
+    return _profileTarget(
+      id: ProfileFormFieldId.bio,
+      label: 'Bio',
+      targets: navigationTargets,
+      highlightedField: highlightedField,
+      child: TextFormField(
+        key: const ValueKey('profile-bio-field'),
+        controller: controller,
+        focusNode: navigationTargets?.focusNodeFor(ProfileFormFieldId.bio),
+        minLines: 5,
+        maxLines: 8,
+        maxLength: 240,
+        inputFormatters: [LengthLimitingTextInputFormatter(240)],
+        validator: ProfileFormValidators.bio,
+        decoration: const InputDecoration(
+          labelText: 'Bio',
+          hintText: 'Tell people what life with you feels like',
+          prefixIcon: Icon(Icons.notes_rounded),
+          counterText: '',
+        ),
       ),
     );
   }
@@ -462,38 +687,179 @@ class AmoraaProfilePromptField extends StatelessWidget {
     super.key,
     required this.controller,
     this.showValidation = false,
+    this.navigationTargets,
+    this.highlightedField,
   });
 
   final ProfileFormController controller;
   final bool showValidation;
+  final ProfileFormNavigationTargets? navigationTargets;
+  final ProfileFormFieldId? highlightedField;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        AmoraaProfilePromptSelector(
-          selectedPrompt: controller.promptTitle,
-          options: {...ProfileFormOptions.promptTitles, controller.promptTitle},
-          onSelected: controller.setPromptTitle,
-        ),
-        const SizedBox(height: AmoraSpacing.space12),
-        TextFormField(
-          key: const ValueKey('profile-prompt-answer-field'),
-          controller: controller.promptAnswer,
-          minLines: 2,
-          maxLines: 4,
-          maxLength: 180,
-          inputFormatters: [LengthLimitingTextInputFormatter(180)],
-          decoration: InputDecoration(
-            labelText: 'Your answer',
-            hintText: 'Write a specific, warm answer',
-            errorText:
-                showValidation && controller.promptAnswer.text.trim().isEmpty
-                ? 'Complete one profile prompt'
-                : null,
+    return ListenableBuilder(
+      listenable: controller,
+      builder: (context, _) => _buildContent(context),
+    );
+  }
+
+  Widget _buildContent(BuildContext context) {
+    final saved = controller.savedPrompts.entries.toList(growable: false);
+    return _profileTarget(
+      id: ProfileFormFieldId.profilePrompt,
+      label: 'Profile Prompts',
+      targets: navigationTargets,
+      highlightedField: highlightedField,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (var index = 0; index < saved.length; index++) ...[
+            _SavedProfilePromptCard(
+              key: ValueKey('saved-profile-prompt-$index'),
+              prompt: saved[index].key,
+              answer: saved[index].value,
+              editing:
+                  controller.promptEditorActive &&
+                  controller.promptEditingOriginalTitle == saved[index].key,
+              onEdit: () {
+                controller.beginEditPrompt(saved[index].key);
+                _focusPromptAnswer();
+              },
+            ),
+            const SizedBox(height: AmoraSpacing.space12),
+          ],
+          if (controller.promptEditorActive) ...[
+            Semantics(
+              container: true,
+              label: 'Profile prompt editor',
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  AmoraaProfilePromptSelector(
+                    selectedPrompt: controller.promptTitle,
+                    options: {
+                      ...controller.availablePromptTitles,
+                      controller.promptTitle,
+                    },
+                    onSelected: controller.setPromptTitle,
+                  ),
+                  const SizedBox(height: AmoraSpacing.space12),
+                  TextFormField(
+                    key: const ValueKey('profile-prompt-answer-field'),
+                    controller: controller.promptAnswer,
+                    focusNode: navigationTargets?.focusNodeFor(
+                      ProfileFormFieldId.profilePrompt,
+                    ),
+                    minLines: 3,
+                    maxLines: 6,
+                    maxLength: ProfileFormOptions.profilePromptAnswerMaxLength,
+                    inputFormatters: [
+                      LengthLimitingTextInputFormatter(
+                        ProfileFormOptions.profilePromptAnswerMaxLength,
+                      ),
+                    ],
+                    validator: ProfileFormValidators.promptAnswer,
+                    autovalidateMode: showValidation
+                        ? AutovalidateMode.always
+                        : AutovalidateMode.onUserInteraction,
+                    decoration: const InputDecoration(
+                      labelText: 'Your answer',
+                      hintText: 'Write a specific, warm answer',
+                      counterText: '',
+                    ),
+                  ),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      key: const ValueKey('cancel-profile-prompt-edit'),
+                      onPressed: controller.cancelPromptEditing,
+                      child: const Text('Cancel'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ] else if (controller.canAddPrompt)
+            OutlinedButton.icon(
+              key: const ValueKey('add-profile-prompt'),
+              onPressed: () => showAmoraaProfilePromptPicker(
+                context,
+                selectedPrompt: '',
+                options: controller.availablePromptTitles,
+                onSelected: (prompt) {
+                  controller.beginAddPrompt(prompt);
+                  _focusPromptAnswer();
+                },
+              ),
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('Add Prompt'),
+            ),
+          if (showValidation && saved.isEmpty && !controller.promptEditorActive)
+            const _FormError('Complete one profile prompt'),
+        ],
+      ),
+    );
+  }
+
+  void _focusPromptAnswer() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      navigationTargets
+          ?.focusNodeFor(ProfileFormFieldId.profilePrompt)
+          ?.requestFocus();
+    });
+  }
+}
+
+class _SavedProfilePromptCard extends StatelessWidget {
+  const _SavedProfilePromptCard({
+    super.key,
+    required this.prompt,
+    required this.answer,
+    required this.editing,
+    required this.onEdit,
+  });
+
+  final String prompt;
+  final String answer;
+  final bool editing;
+  final VoidCallback onEdit;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      container: true,
+      label: 'Prompt, $prompt. Answer, $answer${editing ? '. Editing' : ''}',
+      child: SizedBox(
+        width: double.infinity,
+        child: PremiumCard(
+          radius: 18,
+          padding: const EdgeInsets.all(AmoraSpacing.space16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('Prompt', style: AmoraTextStyles.labelMedium),
+              const SizedBox(height: AmoraSpacing.space4),
+              Text(prompt, style: AmoraTextStyles.titleMedium),
+              const SizedBox(height: AmoraSpacing.space12),
+              Text('Answer', style: AmoraTextStyles.labelMedium),
+              const SizedBox(height: AmoraSpacing.space4),
+              Text(answer, style: AmoraTextStyles.bodyMedium),
+              const SizedBox(height: AmoraSpacing.space8),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: onEdit,
+                  icon: Icon(
+                    editing ? Icons.edit_rounded : Icons.edit_outlined,
+                  ),
+                  label: Text(editing ? 'Editing' : 'Edit'),
+                ),
+              ),
+            ],
           ),
         ),
-      ],
+      ),
     );
   }
 }
@@ -517,53 +883,21 @@ class AmoraaVerificationSection extends StatelessWidget {
   }
 }
 
-class AmoraaSearchableDropdown extends StatelessWidget {
-  const AmoraaSearchableDropdown({
-    super.key,
-    required this.controller,
-    required this.label,
-    required this.icon,
-    required this.options,
-  });
-
-  final TextEditingController controller;
-  final String label;
-  final IconData icon;
-  final List<String> options;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) => DropdownMenu<String>(
-        controller: controller,
-        width: constraints.maxWidth,
-        enableFilter: true,
-        enableSearch: true,
-        requestFocusOnTap: true,
-        leadingIcon: Icon(icon),
-        label: Text(label),
-        hintText: 'Search $label',
-        inputDecorationTheme: const InputDecorationTheme(
-          filled: true,
-          fillColor: AppColors.surface,
-        ),
-        menuStyle: MenuStyle(
-          maximumSize: const WidgetStatePropertyAll(Size.fromHeight(320)),
-          shape: WidgetStatePropertyAll(
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-          ),
-        ),
-        dropdownMenuEntries: options
-            .map(
-              (value) => DropdownMenuEntry<String>(value: value, label: value),
-            )
-            .toList(growable: false),
-        onSelected: (value) {
-          if (value != null) controller.text = value;
-        },
-      ),
-    );
-  }
+Widget _profileTarget({
+  required ProfileFormFieldId id,
+  required String label,
+  required ProfileFormNavigationTargets? targets,
+  required ProfileFormFieldId? highlightedField,
+  required Widget child,
+}) {
+  if (targets == null) return child;
+  return ProfileFormTarget(
+    id: id,
+    targets: targets,
+    highlighted: highlightedField == id,
+    label: label,
+    child: child,
+  );
 }
 
 class _InlineEmptyState extends StatelessWidget {

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/amora_dialog.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
+import 'package:amora_ai/core/widgets/amoraa_select_field.dart';
 import 'package:amora_ai/core/widgets/premium_motion.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/discover/presentation/browse_grid_screen.dart';
@@ -692,17 +693,20 @@ class _TestOutcomeControl extends StatelessWidget {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
+            child: AmoraaCompactSelect<TestPaymentOutcome>(
+              label: 'Next test result',
+              value: controller.nextOutcome,
+              prefixIcon: Icons.science_rounded,
+              options: [
                 for (final outcome in TestPaymentOutcome.values)
-                  ChoiceChip(
-                    selected: controller.nextOutcome == outcome,
-                    label: Text('Simulate ${_outcomeLabel(outcome)}'),
-                    onSelected: (_) => controller.selectOutcome(outcome),
+                  AmoraaSelectOption(
+                    value: outcome,
+                    label: 'Simulate ${_outcomeLabel(outcome)}',
                   ),
               ],
+              onChanged: (outcome) {
+                if (outcome != null) controller.selectOutcome(outcome);
+              },
             ),
           ),
         ],

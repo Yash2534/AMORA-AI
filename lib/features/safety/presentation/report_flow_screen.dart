@@ -5,6 +5,7 @@ import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/amora_dialog.dart';
+import 'package:amora_ai/core/widgets/amoraa_select_field.dart';
 import 'package:amora_ai/core/widgets/premium_avatar.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
@@ -74,18 +75,20 @@ class _ReportFlowScreenState extends State<ReportFlowScreen> {
                       const SizedBox(height: 16),
                       _SectionCard(
                         title: 'Reason',
-                        child: Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
+                        child: AmoraaSelectField<String>(
+                          label: 'Report reason',
+                          value: _reason,
+                          prefixIcon: Icons.flag_rounded,
+                          isRequired: true,
+                          options: [
                             for (final reason in _reasons)
-                              ChoiceChip(
-                                label: Text(reason),
-                                selected: _reason == reason,
-                                onSelected: (_) =>
-                                    setState(() => _reason = reason),
-                              ),
+                              AmoraaSelectOption(value: reason, label: reason),
                           ],
+                          onChanged: (reason) {
+                            if (reason != null) {
+                              setState(() => _reason = reason);
+                            }
+                          },
                         ),
                       ),
                       const SizedBox(height: 16),

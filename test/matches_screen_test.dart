@@ -69,16 +69,7 @@ void main() {
     final featured = tester.widget<FeaturedAiMatchCard>(
       find.byType(FeaturedAiMatchCard),
     );
-    expect(
-      find.byWidgetPredicate(
-        (widget) =>
-            widget is Semantics &&
-            widget.properties.label ==
-                '${featured.profile.score} percent compatibility, '
-                    '${compatibilityCardLabel(featured.profile.score)}',
-      ),
-      findsOneWidget,
-    );
+    expect(find.text('${featured.profile.score}%'), findsNothing);
     expect(find.text('High confidence'), findsNothing);
     expect(tester.takeException(), isNull);
   });
@@ -125,6 +116,7 @@ void main() {
     expect(inlineFilterSource, isNot(contains("'98%'")));
     expect(inlineFilterSource, isNot(contains('"98%"')));
     expect(screenSource, isNot(contains('_CompatibilityRingPainter')));
+    expect(screenSource, isNot(contains('class AiCompatibilityBadge')));
     expect(screenSource, isNot(contains('_CompatibilityFilterSheet')));
     expect(screenSource, isNot(contains('_showCompatibilityFilter')));
     expect(oldSlider.existsSync(), isFalse);
@@ -170,8 +162,7 @@ void main() {
     expect(scores.every((score) => score >= 90), isTrue);
     expect(scores, orderedEquals([...scores]..sort((a, b) => b.compareTo(a))));
     for (final score in scores) {
-      expect(find.text('$score%'), findsWidgets);
-      expect(find.text(compatibilityCardLabel(score)), findsWidgets);
+      expect(find.text('$score%'), findsNothing);
     }
     expect(tester.takeException(), isNull);
   });
@@ -291,12 +282,20 @@ void main() {
   testWidgets('supported filters use existing profile fields', (tester) async {
     await pumpMatches(tester);
 
-    await tester.tap(find.byKey(const ValueKey('ai-match-filter-best-match')));
+    await tester.tap(find.byKey(const ValueKey('ai-match-filter-bar')));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey('amoraa-select-option-Best Match')),
+    );
     await tester.pumpAndSettle();
     expect(find.byType(FeaturedAiMatchCard), findsOneWidget);
     expect(find.text('More recommendations'), findsNothing);
 
-    await tester.tap(find.byKey(const ValueKey('ai-match-filter-active-now')));
+    await tester.tap(find.byKey(const ValueKey('ai-match-filter-bar')));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey('amoraa-select-option-Active Now')),
+    );
     await tester.pumpAndSettle();
     final visible = tester.widget<FeaturedAiMatchCard>(
       find.byType(FeaturedAiMatchCard),
@@ -353,6 +352,10 @@ void main() {
 
     expect(find.text('Why this recommendation'), findsOneWidget);
     expect(find.text('Compatibility score'), findsOneWidget);
+    expect(
+      find.text('${featured.profile.score}% supplied by AMORAA'),
+      findsOneWidget,
+    );
     expect(find.text('Relationship intention'), findsOneWidget);
     expect(find.text('Distance'), findsOneWidget);
     expect(find.text('Activity'), findsOneWidget);

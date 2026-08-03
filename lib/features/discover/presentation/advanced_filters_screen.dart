@@ -5,20 +5,19 @@ import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/amora_snackbar.dart';
+import 'package:amora_ai/core/widgets/amoraa_select_field.dart';
 import 'package:amora_ai/core/widgets/premium_motion.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/discover/presentation/browse_grid_screen.dart';
 import 'package:amora_ai/features/discover/presentation/widgets/amoraa_minimum_height_picker.dart';
+import 'package:amora_ai/features/profile/domain/profile_form_options.dart';
+import 'package:amora_ai/features/profile/domain/profile_form_validators.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 const int visiblePreferenceChipLimit = 4;
 
-const approvedFilterCities = <String>[
-  'Ahmedabad',
-  'Gandhinagar',
-  'Surat',
-  'Vadodara',
-];
+const approvedFilterCities = ProfileFormOptions.cities;
 
 class AdvancedFiltersScreen extends StatefulWidget {
   const AdvancedFiltersScreen({super.key});
@@ -55,6 +54,8 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
   bool _eventInterest = false;
 
   late final TextEditingController _filterSearchController;
+  late final TextEditingController _customEducationController;
+  String? _customEducationError;
   Timer? _searchDebounce;
   Timer? _highlightTimer;
   String _languageQuery = '';
@@ -77,6 +78,7 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
   void initState() {
     super.initState();
     _filterSearchController = TextEditingController();
+    _customEducationController = TextEditingController();
   }
 
   @override
@@ -84,6 +86,7 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
     _searchDebounce?.cancel();
     _highlightTimer?.cancel();
     _filterSearchController.dispose();
+    _customEducationController.dispose();
     super.dispose();
   }
 
@@ -236,10 +239,18 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
                 icon: Icons.location_city_rounded,
                 title: 'City',
                 description: 'Choose one preferred city',
-                child: _SingleSelectGrid(
-                  options: approvedFilterCities,
-                  selected: _cities.isEmpty ? null : _cities.first,
-                  onSelected: (option) => _selectSingle(_cities, option),
+                child: AmoraaCompactSelect<String>(
+                  key: const ValueKey('filters-city-selector'),
+                  label: 'City',
+                  value: _cities.isEmpty ? null : _cities.first,
+                  hintText: 'Any city',
+                  prefixIcon: Icons.location_city_rounded,
+                  allowClear: true,
+                  options: [
+                    for (final option in ProfileFormOptions.cities)
+                      AmoraaSelectOption(value: option, label: option),
+                  ],
+                  onChanged: (option) => _setSingle(_cities, option),
                 ),
               ),
               _ControlBlock(
@@ -270,29 +281,23 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
       expanded: _expandedGroups.contains(_GroupIds.intentions),
       highlighted: _highlightedGroup == _GroupIds.intentions,
       onToggle: _toggleGroup,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final twoColumns = constraints.maxWidth >= 560;
-          final width = twoColumns
-              ? (constraints.maxWidth - 10) / 2
-              : constraints.maxWidth;
-          return Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              for (final option in _relationshipIntentions)
-                SizedBox(
-                  width: width,
-                  child: _IntentChoiceTile(
-                    label: option,
-                    emoji: _intentEmoji[option] ?? '❤️',
-                    selected: _intents.contains(option),
-                    onTap: () => _toggle(_intents, option),
-                  ),
-                ),
-            ],
-          );
-        },
+      child: AmoraaSelectField<String>(
+        key: const ValueKey('filters-intention-selector'),
+        label: 'Dating Intention',
+        value: _intents.isEmpty ? null : _intents.first,
+        hintText: 'Any intention',
+        prefixIcon: Icons.favorite_outline_rounded,
+        allowClear: true,
+        options: [
+          for (final option in ProfileFormOptions.datingIntentions)
+            AmoraaSelectOption(
+              value: option,
+              label: option,
+              description:
+                  ProfileFormOptions.datingIntentionDescriptions[option],
+            ),
+        ],
+        onChanged: (option) => _setSingle(_intents, option),
       ),
     );
   }
@@ -328,7 +333,7 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
               onToggle: _toggle,
             ),
           ),
-          if (_lifestyleInterests.length > 8) ...[
+          if (ProfileFormOptions.datingTypes.length > 8) ...[
             const SizedBox(height: 8),
             TextButton.icon(
               key: const ValueKey('filters-lifestyle-show-more'),
@@ -367,19 +372,65 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
           _ControlBlock(
             icon: Icons.school_outlined,
             title: 'Education',
-            child: _SingleSelectOptionWrap(
-              options: _educationList,
-              selected: _education.isEmpty ? null : _education.first,
-              onSelected: (option) => _selectSingle(_education, option),
+            child: Column(
+              children: [
+                AmoraaCompactSelect<String>(
+                  key: const ValueKey('filters-education-selector'),
+                  label: 'Education',
+                  value: _education.isEmpty ? null : _education.first,
+                  hintText: 'Any education',
+                  prefixIcon: Icons.school_outlined,
+                  allowClear: true,
+                  options: [
+                    for (final option in ProfileFormOptions.education)
+                      AmoraaSelectOption(value: option, label: option),
+                  ],
+                  onChanged: _setEducation,
+                ),
+                if (_education.contains('Other')) ...[
+                  const SizedBox(height: 12),
+                  TextField(
+                    key: const ValueKey('filters-custom-education-field'),
+                    controller: _customEducationController,
+                    maxLength: ProfileFormOptions.customEducationMaxLength,
+                    inputFormatters: [
+                      LengthLimitingTextInputFormatter(
+                        ProfileFormOptions.customEducationMaxLength,
+                      ),
+                    ],
+                    onChanged: (_) {
+                      if (_customEducationError != null) {
+                        setState(() => _customEducationError = null);
+                      }
+                    },
+                    decoration: InputDecoration(
+                      labelText: 'Specify education',
+                      hintText: 'Enter your education',
+                      prefixIcon: const Icon(Icons.edit_note_rounded),
+                      counterText: '',
+                      errorText: _customEducationError,
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
           _ControlBlock(
             icon: Icons.work_outline_rounded,
             title: 'Profession',
-            child: _OptionWrap(
-              options: _professionList,
-              selected: _profession,
-              onToggle: _toggle,
+            child: AmoraaSearchableSelect<String>(
+              key: const ValueKey('filters-profession-selector'),
+              label: 'Profession',
+              value: _profession.isEmpty ? null : _profession.first,
+              hintText: 'Any profession',
+              searchHint: 'Search profession',
+              prefixIcon: Icons.work_outline_rounded,
+              allowClear: true,
+              options: [
+                for (final option in ProfileFormOptions.occupations)
+                  AmoraaSelectOption(value: option, label: option),
+              ],
+              onChanged: (option) => _setSingle(_profession, option),
             ),
           ),
         ],
@@ -388,7 +439,7 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
   }
 
   Widget _buildIdentitySection() {
-    final visibleLanguages = _languageList
+    final visibleLanguages = ProfileFormOptions.languages
         .where(
           (language) => language.toLowerCase().contains(
             _languageQuery.trim().toLowerCase(),
@@ -429,10 +480,17 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
                 icon: Icons.public_rounded,
                 title: 'Religion',
                 description: 'Choose only what you are comfortable sharing',
-                child: _OptionWrap(
-                  options: _religionList,
-                  selected: _religion,
-                  onToggle: _toggle,
+                child: AmoraaCompactSelect<String>(
+                  label: 'Religion',
+                  value: _religion.isEmpty ? null : _religion.first,
+                  hintText: 'Any religion',
+                  prefixIcon: Icons.public_rounded,
+                  allowClear: true,
+                  options: [
+                    for (final option in ProfileFormOptions.religions)
+                      AmoraaSelectOption(value: option, label: option),
+                  ],
+                  onChanged: (option) => _setSingle(_religion, option),
                 ),
               ),
             ],
@@ -474,32 +532,55 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
       title: 'Habits',
       subtitle: 'Daily choices',
       summary: _habitsSummary,
-      selectedCount: 0,
+      selectedCount:
+          (_smoking == 'Any' ? 0 : 1) +
+          (_drinking == 'Any' ? 0 : 1) +
+          (_weed == 'Any' ? 0 : 1),
       expanded: _expandedGroups.contains(_GroupIds.habits),
       highlighted: _highlightedGroup == _GroupIds.habits,
       onToggle: _toggleGroup,
       child: _ResponsiveTriple(
         children: [
-          _SegmentControl(
-            icon: Icons.smoke_free_rounded,
-            title: 'Smoking',
+          AmoraaCompactSelect<String>(
+            key: const ValueKey('filters-smoking-selector'),
+            label: 'Smoking',
             value: _smoking,
-            options: const ['Any', 'Never', 'Occasionally'],
-            onChanged: (value) => setState(() => _smoking = value),
+            prefixIcon: Icons.smoke_free_rounded,
+            options: [
+              const AmoraaSelectOption(value: 'Any', label: 'Any'),
+              for (final option in ProfileFormOptions.smokingOptions)
+                AmoraaSelectOption(value: option, label: option),
+            ],
+            onChanged: (value) {
+              if (value != null) setState(() => _smoking = value);
+            },
           ),
-          _SegmentControl(
-            icon: Icons.local_bar_outlined,
-            title: 'Drinking',
+          AmoraaCompactSelect<String>(
+            key: const ValueKey('filters-drinking-selector'),
+            label: 'Drinking',
             value: _drinking,
-            options: const ['Any', 'Never', 'Socially'],
-            onChanged: (value) => setState(() => _drinking = value),
+            prefixIcon: Icons.local_bar_outlined,
+            options: [
+              const AmoraaSelectOption(value: 'Any', label: 'Any'),
+              for (final option in ProfileFormOptions.drinkingOptions)
+                AmoraaSelectOption(value: option, label: option),
+            ],
+            onChanged: (value) {
+              if (value != null) setState(() => _drinking = value);
+            },
           ),
-          _SegmentControl(
-            icon: Icons.grass_rounded,
-            title: 'Weed',
+          AmoraaCompactSelect<String>(
+            label: 'Weed',
             value: _weed,
-            options: const ['Any', 'Never', 'Occasionally'],
-            onChanged: (value) => setState(() => _weed = value),
+            prefixIcon: Icons.grass_rounded,
+            options: const [
+              AmoraaSelectOption(value: 'Any', label: 'Any'),
+              AmoraaSelectOption(value: 'Never', label: 'Never'),
+              AmoraaSelectOption(value: 'Occasionally', label: 'Occasionally'),
+            ],
+            onChanged: (value) {
+              if (value != null) setState(() => _weed = value);
+            },
           ),
         ],
       ),
@@ -599,7 +680,7 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
     }
     if (_verifiedOnly) add('Trust', 'Verified only');
     for (final value in _lifestyles) {
-      add('Lifestyle', value);
+      add('Type of Dating', value);
     }
     for (final value in _community) {
       add('Community', value);
@@ -631,13 +712,20 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
     if (_onlineNow) add('Trust', 'Online now');
     if (_hasPrompts) add('Trust', 'Has profile prompts');
     if (_eventInterest) add('Events', 'Interested in events');
+    if (_smoking != 'Any') add('Smoking', _smoking);
+    if (_drinking != 'Any') add('Drinking', _drinking);
     return preferences;
   }
 
   List<String> get _visibleLifestyleOptions {
-    if (_showAllLifestyle) return _lifestyleInterests;
-    final visible = <String>{..._lifestyleInterests.take(8), ..._lifestyles};
-    return _lifestyleInterests.where(visible.contains).toList(growable: false);
+    if (_showAllLifestyle) return ProfileFormOptions.datingTypes;
+    final visible = <String>{
+      ...ProfileFormOptions.datingTypes.take(8),
+      ..._lifestyles,
+    };
+    return ProfileFormOptions.datingTypes
+        .where(visible.contains)
+        .toList(growable: false);
   }
 
   String get _basicsSummary {
@@ -690,15 +778,18 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
     });
   }
 
-  void _selectSingle(Set<String> selected, String option) {
+  void _setSingle(Set<String> selected, String? option) {
     setState(() {
-      if (selected.length == 1 && selected.contains(option)) {
-        selected.clear();
-      } else {
-        selected
-          ..clear()
-          ..add(option);
-      }
+      selected.clear();
+      if (option != null) selected.add(option);
+    });
+  }
+
+  void _setEducation(String? option) {
+    setState(() {
+      _education.clear();
+      if (option != null) _education.add(option);
+      if (option != 'Other') _customEducationError = null;
     });
   }
 
@@ -907,6 +998,8 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
       _intents.clear();
       _lifestyles.clear();
       _education.clear();
+      _customEducationController.clear();
+      _customEducationError = null;
       _profession.clear();
       _community
         ..clear()
@@ -931,6 +1024,21 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
   }
 
   void _apply() {
+    final educationError = ProfileFormValidators.customEducation(
+      _education.isEmpty ? null : _education.first,
+      _customEducationController.text,
+    );
+    if (educationError != null) {
+      setState(() => _customEducationError = educationError);
+      return;
+    }
+    final customEducation = _customEducationController.text.trim();
+    if (customEducation != _customEducationController.text) {
+      _customEducationController.value = TextEditingValue(
+        text: customEducation,
+        selection: TextSelection.collapsed(offset: customEducation.length),
+      );
+    }
     final navigator = Navigator.of(context);
     showAmoraSnackBar(context, message: 'Filters applied');
     if (navigator.canPop()) {
@@ -1890,158 +1998,6 @@ class _OptionWrap extends StatelessWidget {
   }
 }
 
-class _SingleSelectOptionWrap extends StatelessWidget {
-  const _SingleSelectOptionWrap({
-    required this.options,
-    required this.selected,
-    required this.onSelected,
-  });
-
-  final List<String> options;
-  final String? selected;
-  final ValueChanged<String> onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    return Wrap(
-      spacing: AmoraSpacing.space8,
-      runSpacing: AmoraSpacing.space8,
-      children: [
-        for (final option in options)
-          _PremiumFilterChip(
-            key: ValueKey('filter-option-$option'),
-            label: option,
-            selected: selected == option,
-            onTap: () => onSelected(option),
-          ),
-      ],
-    );
-  }
-}
-
-class _SingleSelectGrid extends StatelessWidget {
-  const _SingleSelectGrid({
-    required this.options,
-    required this.selected,
-    required this.onSelected,
-  });
-
-  final List<String> options;
-  final String? selected;
-  final ValueChanged<String> onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final width = (constraints.maxWidth - AmoraSpacing.space8) / 2;
-        return Wrap(
-          spacing: AmoraSpacing.space8,
-          runSpacing: AmoraSpacing.space8,
-          children: [
-            for (final option in options)
-              SizedBox(
-                width: width,
-                child: _PremiumSingleSelectTile(
-                  key: ValueKey('filter-option-$option'),
-                  label: option,
-                  selected: selected == option,
-                  onTap: () => onSelected(option),
-                ),
-              ),
-          ],
-        );
-      },
-    );
-  }
-}
-
-class _PremiumSingleSelectTile extends StatelessWidget {
-  const _PremiumSingleSelectTile({
-    super.key,
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      selected: selected,
-      label: '$label, ${selected ? 'selected' : 'not selected'}',
-      child: Material(
-        color: AppColors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(18),
-          child: AnimatedContainer(
-            duration: AmoraMotion.fast,
-            curve: AmoraMotion.curve,
-            constraints: const BoxConstraints(minHeight: 52),
-            padding: const EdgeInsets.symmetric(
-              horizontal: AmoraSpacing.space12,
-              vertical: AmoraSpacing.space8,
-            ),
-            decoration: BoxDecoration(
-              color: selected
-                  ? AppColors.tertiary.withValues(alpha: .34)
-                  : AppColors.surface,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(
-                color: selected ? AppColors.secondary : AppColors.tertiary,
-                width: selected ? 1.5 : 1,
-              ),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 18,
-                  height: 18,
-                  padding: const EdgeInsets.all(3),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: selected
-                          ? AppColors.secondary
-                          : AppColors.tertiary,
-                      width: 1.5,
-                    ),
-                  ),
-                  child: selected
-                      ? const DecoratedBox(
-                          decoration: BoxDecoration(
-                            color: AppColors.secondary,
-                            shape: BoxShape.circle,
-                          ),
-                        )
-                      : null,
-                ),
-                const SizedBox(width: AmoraSpacing.space8),
-                Expanded(
-                  child: Text(
-                    label,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: AmoraTextStyles.labelMedium.copyWith(
-                      color: AppColors.text,
-                      fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _HeightFilterEntry extends StatelessWidget {
   const _HeightFilterEntry({required this.value, required this.onTap});
 
@@ -2169,102 +2125,6 @@ class _PremiumFilterChip extends StatelessWidget {
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _IntentChoiceTile extends StatelessWidget {
-  const _IntentChoiceTile({
-    required this.label,
-    required this.emoji,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String label;
-  final String emoji;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      selected: selected,
-      child: Material(
-        color: selected
-            ? AppColors.tertiary.withValues(alpha: .44)
-            : AppColors.background,
-        borderRadius: BorderRadius.circular(20),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(20),
-          child: AnimatedContainer(
-            duration: AmoraMotion.fast,
-            constraints: const BoxConstraints(minHeight: 62),
-            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: selected ? AppColors.secondary : AppColors.tertiary,
-                width: selected ? 1.5 : 1,
-              ),
-            ),
-            child: Row(
-              children: [
-                Text(emoji, style: const TextStyle(fontSize: 20)),
-                const SizedBox(width: 9),
-                Expanded(
-                  child: Text(
-                    label,
-                    maxLines: 2,
-                    style: AmoraTextStyles.labelMedium.copyWith(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SegmentControl extends StatelessWidget {
-  const _SegmentControl({
-    required this.icon,
-    required this.title,
-    required this.value,
-    required this.options,
-    required this.onChanged,
-  });
-
-  final IconData icon;
-  final String title;
-  final String value;
-  final List<String> options;
-  final ValueChanged<String> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return _ControlBlock(
-      icon: icon,
-      title: title,
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: [
-          for (final option in options)
-            _PremiumFilterChip(
-              label: option,
-              selected: value == option,
-              onTap: () => onChanged(option),
-            ),
-        ],
       ),
     );
   }
@@ -2583,41 +2443,6 @@ abstract final class _GroupIds {
 
 const _noSearchMatch = '__no_match__';
 
-const _relationshipIntentions = [
-  'Marriage Minded',
-  'Long-Term Relationship',
-  'Meaningful Dating',
-  'Exploring Possibilities',
-  'Friendship First',
-  'Casual Connection',
-];
-
-const _intentEmoji = <String, String>{
-  'Marriage Minded': '💍',
-  'Long-Term Relationship': '❤️',
-  'Meaningful Dating': '☕',
-  'Exploring Possibilities': '✨',
-  'Friendship First': '🤝',
-  'Casual Connection': '🥂',
-};
-
-const _lifestyleInterests = [
-  'Travel Companion',
-  'Adventure Seeker',
-  'Fitness Partner',
-  'Foodie Partner',
-  'Coffee Dates',
-  'Pet Lover',
-  'Movie Nights',
-  'Music Lover',
-  'Road Trip Buddy',
-  'Book Lover',
-  'Creative Soul',
-  'Tech Enthusiast',
-  'Wellness & Yoga',
-  'Volunteer & Community',
-];
-
 const _lifestyleEmoji = <String, String>{
   'Travel Companion': '✈️',
   'Adventure Seeker': '🏔️',
@@ -2635,28 +2460,6 @@ const _lifestyleEmoji = <String, String>{
   'Volunteer & Community': '❤️',
 };
 
-const _educationList = [
-  'Graduate',
-  'Postgraduate',
-  'MBA',
-  'Engineer',
-  'Doctor',
-  'CA/Finance',
-  'Design/Creative',
-];
-
-const _professionList = [
-  'Entrepreneur',
-  'Software Engineer',
-  'Architect',
-  'Doctor',
-  'Designer',
-  'Student',
-  'Business Owner',
-  'Marketing',
-  'Finance',
-];
-
 const _communityList = [
   'Open to all',
   'Gujarati',
@@ -2665,24 +2468,4 @@ const _communityList = [
   'Brahmin',
   'Vaishnav',
   'Other',
-];
-
-const _religionList = [
-  'Hindu',
-  'Jain',
-  'Muslim',
-  'Sikh',
-  'Christian',
-  'Spiritual',
-  'Open',
-];
-
-const _languageList = [
-  'Gujarati',
-  'Hindi',
-  'English',
-  'Marathi',
-  'Punjabi',
-  'Tamil',
-  'Malayalam',
 ];

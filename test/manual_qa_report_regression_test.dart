@@ -145,7 +145,9 @@ void main() {
     );
   });
 
-  testWidgets('Safety Center exposes no simulated actions', (tester) async {
+  testWidgets('Safety Center exposes only supported destinations', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       MaterialApp(
         theme: AmoraTheme.light(),
@@ -158,9 +160,18 @@ void main() {
       ),
     );
 
-    expect(find.text('Verified Profile'), findsOneWidget);
-    expect(find.text('Photo Verification'), findsOneWidget);
+    expect(find.text('Aadhaar & selfie verification'), findsOneWidget);
+    expect(find.text('Verified Profile'), findsNothing);
+    expect(find.text('Photo Verification'), findsNothing);
+    expect(find.text('Face Verification'), findsNothing);
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('safety-emergency-unavailable')),
+      300,
+    );
+    expect(find.text('Emergency tools unavailable'), findsOneWidget);
+    expect(find.text('Privacy controls unavailable'), findsOneWidget);
     expect(find.text('Report History'), findsNothing);
+    expect(find.text('Report a Problem'), findsNothing);
     expect(find.text('Data Portability'), findsNothing);
     expect(find.text('Delete Account'), findsNothing);
     expect(find.text('Block User'), findsNothing);

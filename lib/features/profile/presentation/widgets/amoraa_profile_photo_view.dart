@@ -42,17 +42,23 @@ class AmoraaProfilePhotoView extends StatelessWidget {
       fit: StackFit.expand,
       children: [
         ExcludeSemantics(
-          child: AmoraProfileImage(
-            imageUrl: photo.source,
-            assetPath: photo.source,
-            memoryBytes: photo.bytes,
-            initials: 'AM',
-            fit: fit,
-            alignment: alignment,
-            borderRadius: borderRadius,
-            width: width,
-            height: height,
-            semanticLabel: semanticLabel,
+          child: LayoutBuilder(
+            builder: (context, constraints) => AmoraProfileImage(
+              imageUrl: photo.source,
+              assetPath: photo.source,
+              memoryBytes: photo.bytes,
+              initials: 'AM',
+              fit: fit,
+              alignment: alignment,
+              borderRadius: borderRadius,
+              width:
+                  width ??
+                  (constraints.hasBoundedWidth ? constraints.maxWidth : null),
+              height:
+                  height ??
+                  (constraints.hasBoundedHeight ? constraints.maxHeight : null),
+              semanticLabel: semanticLabel,
+            ),
           ),
         ),
         if (showTransferState &&

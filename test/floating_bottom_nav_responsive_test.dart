@@ -1,4 +1,6 @@
 import 'package:amora_ai/core/theme/amora_theme.dart';
+import 'package:amora_ai/core/theme/amora_spacing.dart';
+import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/floating_bottom_nav.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -51,8 +53,9 @@ void main() {
       Size(412, 915): 372,
       Size(430, 932): 382,
       Size(480, 932): 432,
-      Size(600, 960): 552,
+      Size(600, 960): FloatingBottomNav.maxBarWidth,
       Size(768, 1024): FloatingBottomNav.maxBarWidth,
+      Size(1024, 768): FloatingBottomNav.maxBarWidth,
       Size(844, 390): FloatingBottomNav.maxBarWidth,
     };
 
@@ -87,6 +90,7 @@ void main() {
         );
         expect(labelFinder, findsOneWidget);
         final paragraph = tester.renderObject<RenderParagraph>(labelFinder);
+        expect(paragraph.maxLines, 1);
         expect(
           paragraph.didExceedMaxLines,
           isFalse,
@@ -138,6 +142,47 @@ void main() {
     expect(s23Icon.size, standardIcon.size);
     expect(s23Bar.width - standardBar.width, 14);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('active tab uses the compact pill and rounded selected icon', (
+    tester,
+  ) async {
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await pumpNavigation(tester, size: const Size(390, 844));
+
+    final selectedIndicatorFinder = find.byKey(
+      const ValueKey('bottom-nav-indicator-Discover'),
+    );
+    final selectedIndicator = tester.widget<AnimatedContainer>(
+      selectedIndicatorFinder,
+    );
+    final inactiveIndicator = tester.widget<AnimatedContainer>(
+      find.byKey(const ValueKey('bottom-nav-indicator-Chats')),
+    );
+    final selectedIcon = tester.widget<Icon>(
+      find.descendant(
+        of: find.byKey(const ValueKey('bottom-nav-indicator-Discover')),
+        matching: find.byType(Icon),
+      ),
+    );
+
+    expect(
+      tester.getSize(selectedIndicatorFinder),
+      const Size(
+        FloatingBottomNav.iconContainerWidth,
+        FloatingBottomNav.iconContainerHeight,
+      ),
+    );
+    expect(
+      (selectedIndicator.decoration! as BoxDecoration).borderRadius,
+      AmoraRadius.pillBorder,
+    );
+    expect(
+      (inactiveIndicator.decoration! as BoxDecoration).color,
+      AppColors.transparent,
+    );
+    expect(selectedIcon.icon, Icons.explore_rounded);
+    expect(selectedIcon.size, FloatingBottomNav.selectedIconSize);
   });
 
   testWidgets('selection changes preserve geometry and callbacks', (

@@ -67,20 +67,3 @@ class LifestyleChip extends StatelessWidget {
     );
   }
 }
-
-const lifestyleInterests = [
-  'Travel Companion ✈️',
-  'Adventure Seeker 🏔️',
-  'Fitness Partner 💪',
-  'Foodie Partner 🍜',
-  'Coffee Dates ☕',
-  'Pet Lover 🐶',
-  'Movie Nights 🎬',
-  'Music Lover 🎵',
-  'Road Trip Buddy 🚗',
-  'Book Lover 📚',
-  'Creative Soul 🎨',
-  'Tech Enthusiast 💻',
-  'Wellness & Yoga 🧘',
-  'Volunteer & Community ❤️',
-];

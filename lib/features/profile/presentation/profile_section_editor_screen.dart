@@ -37,7 +37,9 @@ class _ProfileSectionEditorScreenState
       ProfileInterestPolicy.visible(profile.interests),
     );
     _retiredInterests = ProfileInterestPolicy.retired(profile.interests);
-    _lifestyle = Map<String, String>.of(profile.lifestyle);
+    _lifestyle = ProfileFormOptions.normalizeLifestyleSelections(
+      profile.lifestyle,
+    );
     final existingPrompts = profile.prompts.entries
         .where((entry) => entry.value.trim().isNotEmpty)
         .take(3)

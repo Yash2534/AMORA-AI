@@ -1,7 +1,9 @@
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/amora_snackbar.dart';
 import 'package:amora_ai/core/widgets/amora_screen_title.dart';
+import 'package:amora_ai/core/widgets/amoraa_adaptive_image.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
+import 'package:amora_ai/core/widgets/amoraa_select_field.dart';
 import 'package:amora_ai/core/widgets/premium_avatar.dart';
 import 'package:amora_ai/core/widgets/premium_image.dart';
 import 'package:amora_ai/core/widgets/premium_motion.dart';
@@ -61,12 +63,10 @@ class EventsAppBar extends StatelessWidget {
     super.key,
     required this.onSearch,
     required this.onCalendar,
-    required this.onFilter,
   });
 
   final VoidCallback onSearch;
   final VoidCallback onCalendar;
-  final VoidCallback onFilter;
 
   @override
   Widget build(BuildContext context) {
@@ -90,13 +90,6 @@ class EventsAppBar extends StatelessWidget {
                 tooltip: 'Search events',
                 icon: Icons.search_rounded,
                 onPressed: onSearch,
-              ),
-              const SizedBox(width: 4),
-              _ToolbarButton(
-                key: const ValueKey('events-filter-button'),
-                tooltip: 'Filter events',
-                icon: Icons.tune_rounded,
-                onPressed: onFilter,
               ),
               const SizedBox(width: 4),
               _ToolbarButton(
@@ -232,7 +225,7 @@ class EventsContextBar extends StatelessWidget {
                 label: 'This week',
               ),
               _ContextPill(
-                icon: Icons.favorite_rounded,
+                icon: Icons.event_available_rounded,
                 label: '$joinedCount joined',
               ),
             ],
@@ -352,49 +345,22 @@ class EventCategoryBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 44,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: categories.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 8),
-        itemBuilder: (context, index) {
-          final category = categories[index];
-          final active = category == selected;
-          return Semantics(
-            button: true,
-            selected: active,
-            label: 'Show $category events',
-            child: AnimatedScale(
-              scale: active ? 1 : .97,
-              duration: MediaQuery.disableAnimationsOf(context)
-                  ? Duration.zero
-                  : AmoraMotion.selection,
-              curve: AmoraMotion.curve,
-              child: ChoiceChip(
-                selected: active,
-                showCheckmark: false,
-                avatar: Icon(
-                  _categoryIcon(category),
-                  size: 17,
-                  color: active ? AppColors.surface : AppColors.secondary,
-                ),
-                label: Text(category),
-                onSelected: (_) => onSelected(category),
-                selectedColor: AppColors.primary,
-                backgroundColor: AppColors.surface,
-                side: BorderSide(
-                  color: active ? AppColors.primary : AppColors.secondary,
-                ),
-                labelStyle: TextStyle(
-                  color: active ? AppColors.surface : AppColors.text,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          );
-        },
-      ),
+    return AmoraaCompactSelect<String>(
+      key: const ValueKey('event-category-selector'),
+      label: 'Event category',
+      value: selected,
+      prefixIcon: _categoryIcon(selected),
+      options: [
+        for (final category in categories)
+          AmoraaSelectOption(
+            value: category,
+            label: category,
+            icon: _categoryIcon(category),
+          ),
+      ],
+      onChanged: (category) {
+        if (category != null) onSelected(category);
+      },
     );
   }
 }
@@ -411,7 +377,7 @@ IconData _categoryIcon(String category) {
   if (value.contains('travel') || value.contains('outdoor')) {
     return Icons.landscape_rounded;
   }
-  if (value.contains('speed')) return Icons.favorite_rounded;
+  if (value.contains('speed')) return Icons.groups_rounded;
   if (value.contains('circle')) return Icons.groups_rounded;
   if (value.contains('near')) return Icons.near_me_rounded;
   if (value.contains('week')) return Icons.date_range_rounded;
@@ -453,13 +419,27 @@ class EventImagePanel extends StatelessWidget {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              PremiumImage(
-                imageUrl: event.image.imageUrl,
-                assetPath: event.image.assetPath,
-                fallbackAsset: event.image.assetPath,
-                initials: event.image.label.characters.first,
-                fit: BoxFit.cover,
-                borderRadius: effectiveRadius,
+              LayoutBuilder(
+                builder: (context, constraints) => PremiumImage(
+                  imageUrl: event.image.imageUrl,
+                  assetPath: event.image.assetPath,
+                  fallbackAsset: event.image.assetPath,
+                  initials: event.image.label.characters.first,
+                  width: constraints.maxWidth,
+                  height: constraints.maxHeight,
+                  aspectMode: AmoraaImageAspectMode.event,
+                  fit: BoxFit.cover,
+                  borderRadius: effectiveRadius,
+                  cacheWidth:
+                      (constraints.maxWidth *
+                              MediaQuery.devicePixelRatioOf(context))
+                          .round(),
+                  cacheHeight:
+                      (constraints.maxHeight *
+                              MediaQuery.devicePixelRatioOf(context))
+                          .round(),
+                  semanticLabel: '${event.title} event image',
+                ),
               ),
               DecoratedBox(
                 decoration: BoxDecoration(
@@ -496,19 +476,15 @@ class EventDetailHero extends StatelessWidget {
     super.key,
     required this.event,
     required this.status,
-    required this.saved,
     required this.height,
     required this.onBack,
-    required this.onSave,
     required this.onShare,
   });
 
   final EventModel event;
   final TicketStatus? status;
-  final bool saved;
   final double height;
   final VoidCallback onBack;
-  final VoidCallback onSave;
   final VoidCallback onShare;
 
   @override
@@ -531,14 +507,6 @@ class EventDetailHero extends StatelessWidget {
                   onPressed: onBack,
                 ),
                 const Spacer(),
-                _EventHeroButton(
-                  tooltip: saved ? 'Remove saved event' : 'Save event',
-                  icon: saved
-                      ? Icons.favorite_rounded
-                      : Icons.favorite_border_rounded,
-                  onPressed: onSave,
-                ),
-                const SizedBox(width: 8),
                 _EventHeroButton(
                   tooltip: 'Share event',
                   icon: Icons.ios_share_rounded,
@@ -773,7 +741,7 @@ class FeaturedEventCard extends StatelessWidget {
                 LayoutBuilder(
                   builder: (context, constraints) => EventImagePanel(
                     event: event,
-                    height: (constraints.maxWidth * 10 / 16).clamp(230, 360),
+                    height: (constraints.maxWidth * 9 / 16).clamp(230, 520),
                     radius: 30,
                     child: Padding(
                       padding: const EdgeInsets.all(18),
@@ -1531,7 +1499,7 @@ class EventJoinButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final (label, icon) = switch (status) {
       TicketStatus.upcoming => ('Joined', Icons.check_circle_rounded),
-      TicketStatus.attended => ('View memories', Icons.favorite_rounded),
+      TicketStatus.attended => ('View memories', Icons.history_rounded),
       TicketStatus.waitlisted => ('View waitlist', Icons.hourglass_top_rounded),
       TicketStatus.cancelled => ('Cancelled', Icons.event_busy_rounded),
       null => ('Join Event', Icons.add_rounded),
@@ -1949,15 +1917,17 @@ class _SkeletonBlock extends StatelessWidget {
 class EventsEmptyState extends StatelessWidget {
   const EventsEmptyState({
     super.key,
-    required this.onShowAll,
+    this.onShowAll,
     this.title = 'No events match your preferences yet',
     this.description =
         'Try another category or check back for new curated experiences.',
+    this.actionLabel = 'Show All Events',
   });
 
-  final VoidCallback onShowAll;
+  final VoidCallback? onShowAll;
   final String title;
   final String description;
+  final String actionLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -1965,7 +1935,7 @@ class EventsEmptyState extends StatelessWidget {
       icon: Icons.search_off_rounded,
       title: title,
       description: description,
-      actionLabel: 'Show All Events',
+      actionLabel: actionLabel,
       onAction: onShowAll,
     );
   }
@@ -1994,14 +1964,14 @@ class _EventsStateCard extends StatelessWidget {
     required this.title,
     required this.description,
     required this.actionLabel,
-    required this.onAction,
+    this.onAction,
   });
 
   final IconData icon;
   final String title;
   final String description;
   final String actionLabel;
-  final VoidCallback onAction;
+  final VoidCallback? onAction;
 
   @override
   Widget build(BuildContext context) {
@@ -2035,12 +2005,14 @@ class _EventsStateCard extends StatelessWidget {
               height: 1.4,
             ),
           ),
-          const SizedBox(height: 18),
-          AppPrimaryButton(
-            label: actionLabel,
-            onPressed: onAction,
-            fullWidth: false,
-          ),
+          if (onAction != null) ...[
+            const SizedBox(height: 18),
+            AppPrimaryButton(
+              label: actionLabel,
+              onPressed: onAction,
+              fullWidth: false,
+            ),
+          ],
         ],
       ),
     );

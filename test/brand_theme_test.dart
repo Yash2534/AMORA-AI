@@ -89,8 +89,18 @@ void main() {
         secondary.style?.foregroundColor?.resolve({}),
         AppColors.onSecondary,
       );
-      final activeLabel = tester.widget<Text>(find.text('Discover'));
-      expect(activeLabel.style?.color, AppColors.active);
+      final activeLabelStyles = tester.widgetList<AnimatedDefaultTextStyle>(
+        find.ancestor(
+          of: find.text('Discover'),
+          matching: find.byType(AnimatedDefaultTextStyle),
+        ),
+      );
+      expect(
+        activeLabelStyles.any(
+          (widget) => widget.style.color == AppColors.primary,
+        ),
+        isTrue,
+      );
       expect(find.text('Premium Verified'), findsOneWidget);
       expect(find.text('Verified'), findsOneWidget);
       expect(tester.takeException(), isNull);

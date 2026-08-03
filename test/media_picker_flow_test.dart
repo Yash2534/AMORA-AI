@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:amora_ai/core/media/amora_media_picker.dart';
 import 'package:amora_ai/core/theme/amora_theme.dart';
 import 'package:amora_ai/features/events/presentation/post_event_feedback_screen.dart';
@@ -230,14 +232,19 @@ Future<void> _tapKycAction(WidgetTester tester, String label) async {
   await tester.pump();
 }
 
-const _success = AmoraMediaPickResult.success(
+final _success = AmoraMediaPickResult.success(
   AmoraPickedMedia(
-    dataUri:
-        'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+    dataUri: _successDataUri,
     name: 'qa-image.png',
-    byteLength: 68,
+    byteLength: _successBytes.lengthInBytes,
+    bytes: _successBytes,
+    mimeType: 'image/png',
   ),
 );
+
+const _successDataUri =
+    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
+final _successBytes = base64Decode(_successDataUri.split(',').last);
 
 class _FakeMediaPicker implements AmoraMediaPicker {
   _FakeMediaPicker(this.results);

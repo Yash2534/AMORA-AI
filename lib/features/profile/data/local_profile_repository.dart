@@ -55,26 +55,29 @@ class UserProfile {
       ? AppImages.fallbackProfile
       : photos[primaryPhotoIndex.clamp(0, photos.length - 1)];
 
+  ProfileCompletionInput get completionInput => ProfileCompletionInput(
+    photoCount: photos.length,
+    name: name,
+    birthdate: dateOfBirth,
+    gender: gender,
+    profession: profession,
+    education: education,
+    location: location,
+    datingIntention: datingIntention,
+    height: lifestyle['Height'] ?? '',
+    languages: lifestyle['Languages'] ?? '',
+    religion: lifestyle['Religion'] ?? '',
+    bio: bio,
+    interests: interests,
+    lifestyle: lifestyle,
+    completedPromptCount: completedPromptCount,
+  );
+
   ProfileCompletionResult get completionResult =>
-      ProfileCompletionCalculator.calculate(
-        ProfileCompletionInput(
-          photoCount: photos.length,
-          name: name,
-          birthdate: dateOfBirth,
-          gender: gender,
-          profession: profession,
-          education: education,
-          location: location,
-          datingIntention: datingIntention,
-          height: lifestyle['Height'] ?? '',
-          languages: lifestyle['Languages'] ?? '',
-          religion: lifestyle['Religion'] ?? '',
-          bio: bio,
-          interests: interests,
-          lifestyle: lifestyle,
-          completedPromptCount: completedPromptCount,
-        ),
-      );
+      ProfileCompletionCalculator.calculate(completionInput);
+
+  List<ProfilePendingField> get pendingFields =>
+      ProfileCompletionCalculator.pendingFields(completionInput);
 
   int get completionPercent => completionResult.percentage;
 
@@ -213,6 +216,7 @@ class ProfilePhotoViewData {
     required this.isPrimary,
     required this.uploadState,
     this.bytes,
+    this.mimeType,
     this.errorMessage,
   });
 
@@ -222,6 +226,7 @@ class ProfilePhotoViewData {
   final bool isPrimary;
   final ProfilePhotoUploadState uploadState;
   final Uint8List? bytes;
+  final String? mimeType;
   final String? errorMessage;
 
   String? get remoteUrl {
@@ -265,6 +270,7 @@ class LocalProfileRepository extends ChangeNotifier {
   final Map<String, String> _photoIds = {};
   final Map<String, ProfilePhotoUploadState> _photoStates = {};
   final Map<String, Uint8List> _photoBytes = {};
+  final Map<String, String> _photoMimeTypes = {};
   final Map<String, String> _photoErrors = {};
   int _nextPhotoId = 0;
 
@@ -284,6 +290,7 @@ class LocalProfileRepository extends ChangeNotifier {
               () => _initialPhotoState(_profile.photos[index]),
             ),
             bytes: _photoBytes[_profile.photos[index]],
+            mimeType: _photoMimeTypes[_profile.photos[index]],
             errorMessage: _photoErrors[_profile.photos[index]],
           ),
       ]);
@@ -338,11 +345,15 @@ class LocalProfileRepository extends ChangeNotifier {
     String source, {
     ProfilePhotoUploadState uploadState = ProfilePhotoUploadState.localOnly,
     Uint8List? bytes,
+    String? mimeType,
   }) {
     if (source.trim().isEmpty || _profile.photos.contains(source)) return;
     _photoIds[source] = 'profile-photo-${_nextPhotoId++}';
     _photoStates[source] = uploadState;
     if (bytes != null && bytes.isNotEmpty) _photoBytes[source] = bytes;
+    if (mimeType != null && mimeType.trim().isNotEmpty) {
+      _photoMimeTypes[source] = mimeType.trim();
+    }
     final photos = [..._profile.photos, source];
     updatePhotosInSession(
       photos,
@@ -361,6 +372,9 @@ class LocalProfileRepository extends ChangeNotifier {
     final removed = photos.removeAt(index);
     _photoIds.remove(removed);
     _photoStates.remove(removed);
+    _photoBytes.remove(removed);
+    _photoMimeTypes.remove(removed);
+    _photoErrors.remove(removed);
     var primary = _profile.primaryPhotoIndex;
     if (photos.isEmpty) {
       primary = 0;
@@ -399,15 +413,23 @@ class LocalProfileRepository extends ChangeNotifier {
 
   void replacePhotoSourceInSession(String localSource, String remoteUrl) {
     final index = _profile.photos.indexOf(localSource);
-    if (index < 0 || remoteUrl.trim().isEmpty) return;
-    final photos = List<String>.of(_profile.photos)..[index] = remoteUrl;
+    final normalizedRemoteUrl = remoteUrl.trim();
+    if (index < 0 || !_isRemotePhotoUrl(normalizedRemoteUrl)) return;
+    final photos = List<String>.of(_profile.photos)
+      ..[index] = normalizedRemoteUrl;
     final id = _photoIds.remove(localSource);
     final bytes = _photoBytes.remove(localSource);
+    final mimeType = _photoMimeTypes.remove(localSource);
     _photoStates.remove(localSource);
     _photoErrors.remove(localSource);
-    if (id != null) _photoIds[remoteUrl] = id;
-    if (bytes != null && bytes.isNotEmpty) _photoBytes[remoteUrl] = bytes;
-    _photoStates[remoteUrl] = ProfilePhotoUploadState.uploaded;
+    if (id != null) _photoIds[normalizedRemoteUrl] = id;
+    if (bytes != null && bytes.isNotEmpty) {
+      _photoBytes[normalizedRemoteUrl] = bytes;
+    }
+    if (mimeType != null && mimeType.isNotEmpty) {
+      _photoMimeTypes[normalizedRemoteUrl] = mimeType;
+    }
+    _photoStates[normalizedRemoteUrl] = ProfilePhotoUploadState.uploaded;
     updatePhotosInSession(photos, _profile.primaryPhotoIndex);
   }
 
@@ -472,6 +494,7 @@ class LocalProfileRepository extends ChangeNotifier {
     _photoIds.removeWhere((source, _) => !activeSources.contains(source));
     _photoStates.removeWhere((source, _) => !activeSources.contains(source));
     _photoBytes.removeWhere((source, _) => !activeSources.contains(source));
+    _photoMimeTypes.removeWhere((source, _) => !activeSources.contains(source));
     _photoErrors.removeWhere((source, _) => !activeSources.contains(source));
     notifyListeners();
   }
@@ -517,6 +540,11 @@ class LocalProfileRepository extends ChangeNotifier {
 
   Future<void> clearForAccountDeletion() async {
     _profile = _clearedProfile;
+    _photoIds.clear();
+    _photoStates.clear();
+    _photoBytes.clear();
+    _photoMimeTypes.clear();
+    _photoErrors.clear();
     notifyListeners();
     final preferences = await SharedPreferences.getInstance();
     await preferences.remove(_storageKey);
@@ -528,6 +556,7 @@ class LocalProfileRepository extends ChangeNotifier {
     _photoIds.clear();
     _photoStates.clear();
     _photoBytes.clear();
+    _photoMimeTypes.clear();
     _photoErrors.clear();
     _nextPhotoId = 0;
     notifyListeners();
@@ -552,6 +581,13 @@ class LocalProfileRepository extends ChangeNotifier {
       return ProfilePhotoUploadState.localOnly;
     }
     return ProfilePhotoUploadState.bundled;
+  }
+
+  static bool _isRemotePhotoUrl(String source) {
+    final uri = Uri.tryParse(source);
+    return uri != null &&
+        (uri.scheme == 'http' || uri.scheme == 'https') &&
+        uri.host.isNotEmpty;
   }
 }
 

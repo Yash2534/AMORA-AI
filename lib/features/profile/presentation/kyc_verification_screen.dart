@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:amora_ai/core/access/amora_access.dart';
 import 'package:amora_ai/core/media/amora_media_picker.dart';
@@ -8,6 +7,7 @@ import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
+import 'package:amora_ai/core/widgets/amoraa_adaptive_image.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/discover/presentation/browse_grid_screen.dart';
@@ -836,7 +836,6 @@ class _KycMediaPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final encoded = media.dataUri.split(',').last;
     return Semantics(
       label: '$label preview',
       child: Container(
@@ -849,20 +848,13 @@ class _KycMediaPreview extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            ClipRRect(
+            AmoraaAdaptiveImage(
+              source: media.dataUri,
+              aspectMode: AmoraaImageAspectMode.adaptive,
+              originalAspectRatio: 4 / 3,
+              fit: BoxFit.cover,
               borderRadius: BorderRadius.circular(12),
-              child: AspectRatio(
-                aspectRatio: 4 / 3,
-                child: Image.memory(
-                  base64Decode(encoded),
-                  fit: BoxFit.cover,
-                  gaplessPlayback: true,
-                  errorBuilder: (_, _, _) => const ColoredBox(
-                    color: AppColors.tertiary,
-                    child: Icon(Icons.image_outlined, color: AppColors.primary),
-                  ),
-                ),
-              ),
+              semanticLabel: '$label preview image',
             ),
             const SizedBox(height: AmoraSpacing.space8),
             Text(

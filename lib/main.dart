@@ -54,6 +54,7 @@ import 'package:amora_ai/features/safety/presentation/sos_checkin_screen.dart';
 import 'package:amora_ai/features/settings/presentation/account_action_screens.dart';
 import 'package:amora_ai/features/settings/presentation/notification_preferences_screen.dart';
 import 'package:amora_ai/features/settings/presentation/managed_profiles_screen.dart';
+import 'package:amora_ai/features/settings/presentation/likes_super_likes_screen.dart';
 import 'package:amora_ai/features/settings/presentation/profile_settings_screen.dart';
 import 'package:amora_ai/features/settings/presentation/safety_privacy_screen.dart';
 import 'package:amora_ai/features/settings/presentation/settings_screen.dart';
@@ -78,8 +79,9 @@ String resolveAmoraInitialRoute(String platformRoute) {
   final normalized = hashIndex >= 0
       ? platformRoute.substring(hashIndex + 1)
       : platformRoute;
-  if (normalized == ProfileCompletionScreen.routeName) {
-    return ProfileCompletionScreen.routeName;
+  if (normalized == ProfileCompletionScreen.routeName ||
+      normalized == PhotoManagerScreen.routeName) {
+    return normalized;
   }
   return AmoraSplashScreen.routeName;
 }
@@ -166,6 +168,7 @@ class _MyAppState extends State<MyApp> {
           ProfileSettingsScreen.routeName: (_) => const ProfileSettingsScreen(),
           SavedProfilesScreen.routeName: (_) => const SavedProfilesScreen(),
           BlockedProfilesScreen.routeName: (_) => const BlockedProfilesScreen(),
+          LikesSuperLikesScreen.routeName: (_) => const LikesSuperLikesScreen(),
           SafetyPrivacyScreen.routeName: (_) => const SafetyPrivacyScreen(),
           SafetyPrivacyScreen.legacyRouteName: (_) =>
               const SafetyPrivacyScreen(),
@@ -202,6 +205,8 @@ class _MyAppState extends State<MyApp> {
           CommunityGuidelinesScreen.routeName: (_) =>
               const CommunityGuidelinesScreen(),
           LogoutAccountScreen.routeName: (_) => const LogoutAccountScreen(),
+          DeactivateAccountScreen.routeName: (_) =>
+              const DeactivateAccountScreen(),
           DeleteAccountInformationScreen.routeName: (_) =>
               const DeleteAccountInformationScreen(),
         },

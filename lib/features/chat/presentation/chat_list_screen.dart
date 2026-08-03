@@ -4,6 +4,7 @@ import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/amora_bottom_sheet.dart';
 import 'package:amora_ai/core/widgets/amora_screen_title.dart';
+import 'package:amora_ai/core/widgets/amoraa_select_field.dart';
 import 'package:amora_ai/core/widgets/floating_bottom_nav.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/chat/presentation/chat_detail_screen.dart';
@@ -740,75 +741,18 @@ class ChatFilterBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
+    return AmoraaCompactSelect<ChatInboxFilter>(
       key: const ValueKey('chats-filter-bar'),
-      height: 40,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: ChatInboxFilter.values.length,
-        separatorBuilder: (_, _) => const SizedBox(width: AmoraSpacing.space8),
-        itemBuilder: (context, index) {
-          final filter = ChatInboxFilter.values[index];
-          return _ChatFilterChip(
-            filter: filter,
-            selected: filter == selected,
-            onTap: () => onSelected(filter),
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _ChatFilterChip extends StatelessWidget {
-  const _ChatFilterChip({
-    required this.filter,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final ChatInboxFilter filter;
-  final bool selected;
-  final VoidCallback onTap;
-
-  String get _label => _filterLabel(filter);
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      selected: selected,
-      child: Material(
-        color: AppColors.surface,
-        borderRadius: AmoraRadius.pillBorder,
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          key: ValueKey('chat-filter-${_label.toLowerCase()}'),
-          onTap: onTap,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 220),
-            curve: Curves.easeOutCubic,
-            alignment: Alignment.center,
-            padding: const EdgeInsets.symmetric(
-              horizontal: AmoraSpacing.space16,
-            ),
-            decoration: BoxDecoration(
-              color: selected ? AppColors.primary : AppColors.surface,
-              borderRadius: AmoraRadius.pillBorder,
-              border: Border.all(
-                color: selected ? AppColors.primary : AppColors.tertiary,
-              ),
-            ),
-            child: Text(
-              _label,
-              style: AmoraTextStyles.labelMedium.copyWith(
-                color: selected ? AppColors.surface : AppColors.textNeutral,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ),
-      ),
+      label: 'Chat filter',
+      value: selected,
+      prefixIcon: Icons.filter_alt_outlined,
+      options: [
+        for (final filter in ChatInboxFilter.values)
+          AmoraaSelectOption(value: filter, label: _filterLabel(filter)),
+      ],
+      onChanged: (filter) {
+        if (filter != null) onSelected(filter);
+      },
     );
   }
 }

@@ -4,6 +4,8 @@ import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/amora_profile_image.dart';
 import 'package:amora_ai/core/widgets/amora_screen_title.dart';
+import 'package:amora_ai/core/widgets/amoraa_identity_badge.dart';
+import 'package:amora_ai/core/widgets/amoraa_select_field.dart';
 import 'package:amora_ai/core/widgets/floating_bottom_nav.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/chat/data/local_chat_repository.dart';
@@ -11,6 +13,7 @@ import 'package:amora_ai/features/chat/presentation/chat_detail_screen.dart';
 import 'package:amora_ai/features/discover/presentation/discover_action_controller.dart';
 import 'package:amora_ai/features/matches/presentation/widgets/amoraa_inline_compatibility_filter.dart';
 import 'package:amora_ai/features/profile/domain/profile_interest_policy.dart';
+import 'package:amora_ai/features/profile/presentation/controllers/profile_relationship_controller.dart';
 import 'package:amora_ai/features/profile/presentation/profile_detail_screen.dart';
 import 'package:flutter/material.dart';
 
@@ -25,6 +28,7 @@ class MatchesScreen extends StatefulWidget {
 }
 
 class _MatchesScreenState extends State<MatchesScreen> {
+  final _relationships = ProfileRelationshipController.instance;
   AiMatchFilter _filter = AiMatchFilter.all;
   int _compatibilityThreshold = defaultCompatibilityThreshold;
   final Set<String> _selectedProfileIds = <String>{};
@@ -35,6 +39,22 @@ class _MatchesScreenState extends State<MatchesScreen> {
   int _bulkCompleted = 0;
   int _bulkTotal = 0;
   int? _successCount;
+
+  @override
+  void initState() {
+    super.initState();
+    _relationships.addListener(_refreshReactions);
+  }
+
+  @override
+  void dispose() {
+    _relationships.removeListener(_refreshReactions);
+    super.dispose();
+  }
+
+  void _refreshReactions() {
+    if (mounted) setState(() {});
+  }
 
   List<DummyProfile> get _recommendations {
     return List<DummyProfile>.of(_uniqueRecommendations)
@@ -72,6 +92,7 @@ class _MatchesScreenState extends State<MatchesScreen> {
 
   bool _canLike(DummyProfile profile) =>
       !_likedProfileIds.contains(profile.id) &&
+      !_relationships.isLiked(profile.id) &&
       !_processingProfileIds.contains(profile.id);
 
   @override
@@ -316,7 +337,7 @@ class _MatchesScreenState extends State<MatchesScreen> {
                                                 AmoraSpacing.space16,
                                             crossAxisSpacing:
                                                 AmoraSpacing.space16,
-                                            mainAxisExtent: 880,
+                                            mainAxisExtent: 1024,
                                           ),
                                       itemCount: feed.length,
                                       itemBuilder: (context, index) =>
@@ -564,6 +585,7 @@ class _MatchesScreenState extends State<MatchesScreen> {
           failures.add(profile);
         }
       });
+      if (sent) _relationships.likeProfile(profile);
     }
 
     if (!mounted) return;
@@ -863,101 +885,39 @@ class AiMatchFilterBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
+    return AmoraaCompactSelect<AiMatchFilter>(
       key: const ValueKey('ai-match-filter-bar'),
-      height: 42,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: AiMatchFilter.values.length,
-        separatorBuilder: (_, _) => const SizedBox(width: AmoraSpacing.space8),
-        itemBuilder: (context, index) {
-          final filter = AiMatchFilter.values[index];
-          return _AiMatchFilterChip(
-            filter: filter,
-            selected: filter == selected,
-            onTap: () => onSelected(filter),
-          );
-        },
-      ),
+      label: 'Match filter',
+      value: selected,
+      prefixIcon: _aiMatchFilterIcon(selected),
+      options: [
+        for (final filter in AiMatchFilter.values)
+          AmoraaSelectOption(
+            value: filter,
+            label: _aiMatchFilterLabel(filter),
+            icon: _aiMatchFilterIcon(filter),
+          ),
+      ],
+      onChanged: (filter) {
+        if (filter != null) onSelected(filter);
+      },
     );
   }
 }
 
-class _AiMatchFilterChip extends StatelessWidget {
-  const _AiMatchFilterChip({
-    required this.filter,
-    required this.selected,
-    required this.onTap,
-  });
+String _aiMatchFilterLabel(AiMatchFilter filter) => switch (filter) {
+  AiMatchFilter.all => 'All',
+  AiMatchFilter.bestMatch => 'Best Match',
+  AiMatchFilter.activeNow => 'Active Now',
+  AiMatchFilter.verified => 'Verified',
+};
 
-  final AiMatchFilter filter;
-  final bool selected;
-  final VoidCallback onTap;
-
-  String get _label => switch (filter) {
-    AiMatchFilter.all => 'All',
-    AiMatchFilter.bestMatch => 'Best Match',
-    AiMatchFilter.activeNow => 'Active Now',
-    AiMatchFilter.verified => 'Verified',
-  };
-
-  IconData get _icon => switch (filter) {
-    AiMatchFilter.all => Icons.favorite_border_rounded,
-    AiMatchFilter.bestMatch => Icons.auto_awesome_rounded,
-    AiMatchFilter.activeNow => Icons.circle,
-    AiMatchFilter.verified => Icons.verified_rounded,
-  };
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      selected: selected,
-      child: Material(
-        color: AppColors.surface,
-        borderRadius: AmoraRadius.pillBorder,
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          key: ValueKey(
-            'ai-match-filter-${_label.toLowerCase().replaceAll(' ', '-')}',
-          ),
-          onTap: onTap,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 220),
-            curve: Curves.easeOutCubic,
-            padding: const EdgeInsets.symmetric(
-              horizontal: AmoraSpacing.space16,
-            ),
-            decoration: BoxDecoration(
-              color: selected ? AppColors.primary : AppColors.surface,
-              borderRadius: AmoraRadius.pillBorder,
-              border: Border.all(
-                color: selected ? AppColors.primary : AppColors.secondary,
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  _icon,
-                  size: filter == AiMatchFilter.activeNow ? 10 : 17,
-                  color: selected ? AppColors.surface : AppColors.secondary,
-                ),
-                const SizedBox(width: AmoraSpacing.space8),
-                Text(
-                  _label,
-                  style: AmoraTextStyles.labelMedium.copyWith(
-                    color: selected ? AppColors.surface : AppColors.textNeutral,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
+IconData _aiMatchFilterIcon(AiMatchFilter filter) => switch (filter) {
+  AiMatchFilter.all => Icons.favorite_border_rounded,
+  AiMatchFilter.bestMatch => Icons.auto_awesome_rounded,
+  AiMatchFilter.activeNow => Icons.circle,
+  AiMatchFilter.verified => Icons.verified_rounded,
+};
 
 class SelectableAiMatchCard extends StatelessWidget {
   const SelectableAiMatchCard({
@@ -1225,7 +1185,7 @@ class AiMatchCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             AspectRatio(
-              aspectRatio: 1.12,
+              aspectRatio: 4 / 5,
               child: AiMatchImage(profile: profile, onTap: onOpenProfile),
             ),
             _AiMatchContent(
@@ -1279,11 +1239,6 @@ class AiMatchImage extends StatelessWidget {
                   );
                 },
               ),
-              Positioned(
-                top: AmoraSpacing.space12,
-                left: AmoraSpacing.space12,
-                child: AiCompatibilityBadge(score: profile.score),
-              ),
               if (featured)
                 Positioned(
                   top: AmoraSpacing.space12,
@@ -1321,68 +1276,6 @@ class AiMatchImage extends StatelessWidget {
                 ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class AiCompatibilityBadge extends StatelessWidget {
-  const AiCompatibilityBadge({super.key, required this.score});
-
-  final int score;
-
-  @override
-  Widget build(BuildContext context) {
-    final safeScore = score.clamp(0, 100);
-    final label = compatibilityCardLabel(safeScore);
-    return Semantics(
-      label: '$safeScore percent compatibility, $label',
-      child: Container(
-        constraints: const BoxConstraints(minHeight: 48, maxWidth: 116),
-        padding: const EdgeInsets.symmetric(
-          horizontal: AmoraSpacing.space8,
-          vertical: AmoraSpacing.space4,
-        ),
-        decoration: BoxDecoration(
-          color: AppColors.surface.withValues(alpha: .94),
-          borderRadius: BorderRadius.circular(AmoraRadius.large),
-          border: Border.all(color: AppColors.tertiary),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.primary.withValues(alpha: .12),
-              blurRadius: 14,
-              spreadRadius: -8,
-              offset: const Offset(0, 6),
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              '$safeScore%',
-              style: AmoraTextStyles.titleMedium.copyWith(
-                color: AppColors.primary,
-                fontWeight: FontWeight.w900,
-                letterSpacing: -.4,
-              ),
-            ),
-            const SizedBox(width: AmoraSpacing.space8),
-            Flexible(
-              child: Text(
-                label,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: AmoraTextStyles.labelSmall.copyWith(
-                  color: AppColors.textSecondary,
-                  fontSize: 9,
-                  fontWeight: FontWeight.w800,
-                  height: 1.08,
-                ),
-              ),
-            ),
-          ],
         ),
       ),
     );
@@ -1438,13 +1331,16 @@ class _AiMatchContent extends StatelessWidget {
                               ),
                     ),
                   ),
-                  if (profile.verified)
-                    const Padding(
+                  if (resolveAmoraaIdentityBadge(
+                        isAadhaarVerified: profile.verified,
+                        isPremium: profile.premium,
+                      ) !=
+                      AmoraaIdentityBadgeType.none)
+                    Padding(
                       padding: EdgeInsets.only(left: AmoraSpacing.space8),
-                      child: Icon(
-                        Icons.verified_rounded,
-                        color: AppColors.secondary,
-                        size: 20,
+                      child: AmoraaIdentityBadge(
+                        isAadhaarVerified: profile.verified,
+                        isPremium: profile.premium,
                       ),
                     ),
                 ],

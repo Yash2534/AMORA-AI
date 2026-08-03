@@ -6,6 +6,7 @@ import 'package:amora_ai/features/legal/presentation/community_guidelines_screen
 import 'package:amora_ai/features/legal/presentation/legal_document_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_basic_details_screen.dart';
 import 'package:amora_ai/features/settings/presentation/account_action_screens.dart';
+import 'package:amora_ai/features/settings/presentation/likes_super_likes_screen.dart';
 import 'package:amora_ai/features/settings/presentation/managed_profiles_screen.dart';
 import 'package:amora_ai/features/settings/presentation/notification_preferences_screen.dart';
 import 'package:amora_ai/features/settings/presentation/profile_settings_screen.dart';
@@ -69,6 +70,8 @@ void main() {
     final destinations = <Key, String>{
       const ValueKey('settings-personal-information'):
           ProfileBasicDetailsScreen.routeName,
+      const ValueKey('settings-likes-super-likes'):
+          LikesSuperLikesScreen.routeName,
       const ValueKey('settings-saved-profiles'): SavedProfilesScreen.routeName,
       const ValueKey('settings-blocked-profiles'):
           BlockedProfilesScreen.routeName,
@@ -86,6 +89,8 @@ void main() {
       const ValueKey('settings-change-password'):
           ForgotPasswordScreen.routeName,
       const ValueKey('settings-logout'): LogoutAccountScreen.routeName,
+      const ValueKey('settings-deactivate-account'):
+          DeactivateAccountScreen.routeName,
       const ValueKey('settings-delete-account'):
           DeleteAccountInformationScreen.routeName,
     };
@@ -103,6 +108,25 @@ void main() {
         reason: '${entry.key} did not open ${entry.value}',
       );
     }
+  });
+
+  testWidgets('Account entries use the required canonical order', (
+    tester,
+  ) async {
+    await pumpHub(tester, size: const Size(390, 2400));
+
+    const labels = <String>[
+      'Personal Information',
+      'Likes & Super Likes',
+      'Saved Profiles',
+      'Blocked Profiles',
+    ];
+    final verticalPositions = labels
+        .map((label) => tester.getTopLeft(find.text(label)).dy)
+        .toList();
+    expect(verticalPositions, orderedEquals([...verticalPositions]..sort()));
+    expect(find.text('Deactivate Account'), findsOneWidget);
+    expect(find.text('Delete Account'), findsOneWidget);
   });
 
   testWidgets('support and legal live only in Profile Settings', (
@@ -183,8 +207,9 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('Safety Center'), findsOneWidget);
-    expect(find.text('Verified Profile'), findsOneWidget);
-    expect(find.text('Photo Verification'), findsOneWidget);
+    expect(find.text('Aadhaar & selfie verification'), findsOneWidget);
+    expect(find.text('Verified Profile'), findsNothing);
+    expect(find.text('Photo Verification'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 }

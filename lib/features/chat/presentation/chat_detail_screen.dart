@@ -14,6 +14,7 @@ import 'package:amora_ai/features/chat/data/local_chat_repository.dart';
 import 'package:amora_ai/features/chat/presentation/widgets/chat_presence_avatar.dart';
 import 'package:amora_ai/features/chat/presentation/widgets/amora_chat_composer.dart';
 import 'package:amora_ai/features/profile/presentation/profile_detail_screen.dart';
+import 'package:amora_ai/features/profile/presentation/controllers/profile_relationship_controller.dart';
 import 'package:amora_ai/features/safety/presentation/blocked_user_success_sheet.dart';
 import 'package:amora_ai/features/safety/presentation/report_flow_screen.dart';
 import 'package:amora_ai/features/safety/widgets/block_confirmation_dialog.dart';
@@ -23,18 +24,22 @@ class ChatDetailArgs {
   const ChatDetailArgs({
     required this.conversationId,
     this.recipientId,
+    this.profileId,
     this.recipientName,
     this.recipientImage,
     this.recipientStatus,
     this.prefillText,
+    this.messageContext,
   });
 
   final String conversationId;
   final String? recipientId;
+  final String? profileId;
   final String? recipientName;
   final String? recipientImage;
   final String? recipientStatus;
   final String? prefillText;
+  final ChatMessageContext? messageContext;
 }
 
 class ChatDetailScreen extends StatefulWidget {
@@ -60,6 +65,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   Object? _error;
   String? _conversationId;
   ChatConversation? _conversation;
+  ChatMessageContext? _pendingContext;
 
   DummyProfile get _profile => _conversation!.user;
   bool get _online => _conversation?.online ?? false;
@@ -74,6 +80,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     final args = ModalRoute.of(context)?.settings.arguments;
     if (args is ChatDetailArgs) {
       _conversationId = args.conversationId;
+      _pendingContext = args.messageContext;
       final initialDraft = args.prefillText?.trim().isNotEmpty == true
           ? args.prefillText!
           : _repository.draftForConversation(args.conversationId);
@@ -158,6 +165,15 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
               _conversation!.unavailableReason ??
               'This conversation is no longer available.',
           compactHeight: compactHeight,
+          contextLabel:
+              _pendingContext?.type == ChatMessageContextType.profilePrompt
+              ? 'Replying to profile prompt'
+              : null,
+          contextTitle: _pendingContext?.title,
+          contextDetail: _pendingContext?.detail,
+          onRemoveContext: _pendingContext == null
+              ? null
+              : () => setState(() => _pendingContext = null),
           onEmojiPickerVisibilityChanged: (visible) {
             if (mounted && _emojiPickerVisible != visible) {
               setState(() => _emojiPickerVisible = visible);
@@ -222,16 +238,28 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     if (text.length > AmoraChatComposer.maximumMessageLength) return;
     setState(() => _sending = true);
     try {
-      final updated = await _repository.sendMessage(conversationId, text);
+      final context = _pendingContext;
+      final updated = await _repository.sendMessage(
+        conversationId,
+        text,
+        context: context,
+      );
       if (updated == null) throw StateError('Conversation not found');
       if (!mounted) return;
       setState(() {
         _conversation = updated;
         _controller.clear();
+        _pendingContext = null;
       });
       await _repository.clearDraft(conversationId);
     } catch (_) {
-      if (mounted) _snack('Message could not be sent. Try again.');
+      if (mounted) {
+        _snack(
+          _pendingContext?.type == ChatMessageContextType.profilePrompt
+              ? 'Couldn’t send your reply. Try again.'
+              : 'Message could not be sent. Try again.',
+        );
+      }
       return;
     } finally {
       if (mounted) setState(() => _sending = false);
@@ -359,6 +387,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     showBlockConfirmationDialog(context: context, userName: _profile.name).then(
       (blocked) {
         if (blocked != true || !mounted) return;
+        ProfileRelationshipController.instance.blockProfile(_profile);
         final conversationId = _conversationId;
         if (conversationId != null) {
           unawaited(
@@ -662,17 +691,25 @@ class MessageBubble extends StatelessWidget {
                         ? CrossAxisAlignment.end
                         : CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        message.text,
-                        style: TextStyle(
-                          color: message.mine
-                              ? AppColors.surface
-                              : AppColors.text,
-                          fontSize: 16,
-                          height: 1.38,
-                          fontWeight: FontWeight.w400,
+                      if (message.context != null) ...[
+                        _MessageContextCard(
+                          context: message.context!,
+                          mine: message.mine,
                         ),
-                      ),
+                        if (!_isRoseWithoutNote) const SizedBox(height: 8),
+                      ],
+                      if (!_isRoseWithoutNote)
+                        Text(
+                          message.text,
+                          style: TextStyle(
+                            color: message.mine
+                                ? AppColors.surface
+                                : AppColors.text,
+                            fontSize: 16,
+                            height: 1.38,
+                            fontWeight: FontWeight.w400,
+                          ),
+                        ),
                       if (showMetadata) ...[
                         const SizedBox(height: 5),
                         Row(
@@ -711,6 +748,10 @@ class MessageBubble extends StatelessWidget {
     );
   }
 
+  bool get _isRoseWithoutNote =>
+      message.context?.type == ChatMessageContextType.rose &&
+      message.text.trim().toLowerCase() == 'rose';
+
   BorderRadius get _bubbleRadius {
     const large = Radius.circular(22);
     const grouped = Radius.circular(8);
@@ -728,6 +769,107 @@ class MessageBubble extends StatelessWidget {
       topRight: large,
       bottomLeft: groupedWithNext ? grouped : tail,
       bottomRight: large,
+    );
+  }
+}
+
+class _MessageContextCard extends StatelessWidget {
+  const _MessageContextCard({required this.context, required this.mine});
+
+  final ChatMessageContext context;
+  final bool mine;
+
+  @override
+  Widget build(BuildContext context) {
+    final foreground = mine ? AppColors.surface : AppColors.text;
+    final muted = foreground.withValues(alpha: .74);
+    final isRose = this.context.type == ChatMessageContextType.rose;
+    return Semantics(
+      label: isRose
+          ? 'Rose. Sent from Profile Detail.'
+          : 'Reply to profile prompt. ${this.context.title}. ${this.context.detail}',
+      child: Container(
+        key: ValueKey(
+          isRose ? 'rose-chat-message' : 'prompt-reply-chat-context',
+        ),
+        width: double.infinity,
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: mine
+              ? AppColors.surface.withValues(alpha: .13)
+              : AppColors.tertiary.withValues(alpha: .30),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: mine
+                ? AppColors.surface.withValues(alpha: .24)
+                : AppColors.secondary.withValues(alpha: .30),
+          ),
+        ),
+        child: isRose
+            ? Row(
+                children: [
+                  Icon(
+                    Icons.local_florist_rounded,
+                    color: mine ? AppColors.surface : AppColors.secondary,
+                    size: 28,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Rose',
+                          style: TextStyle(
+                            color: foreground,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        Text(
+                          this.context.detail,
+                          style: TextStyle(
+                            color: muted,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              )
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Reply to profile prompt',
+                    style: TextStyle(
+                      color: muted,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    '“${this.context.title}”',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: foreground,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  Text(
+                    this.context.detail,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: muted, fontSize: 12),
+                  ),
+                ],
+              ),
+      ),
     );
   }
 }

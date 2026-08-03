@@ -1,10 +1,13 @@
+import 'dart:async';
+
 import 'package:amora_ai/core/access/amora_access.dart';
 import 'package:amora_ai/core/theme/amora_theme.dart';
+import 'package:amora_ai/core/widgets/app_primary_button.dart';
+import 'package:amora_ai/features/auth/presentation/login_screen.dart';
 import 'package:amora_ai/features/chat/data/local_chat_repository.dart';
 import 'package:amora_ai/features/onboarding/data/local_onboarding_repository.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
-import 'package:amora_ai/features/profile/presentation/profile_screen.dart';
-import 'package:amora_ai/features/settings/presentation/profile_settings_screen.dart';
+import 'package:amora_ai/features/settings/presentation/account_action_screens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -27,203 +30,155 @@ void main() {
     await chats.resetForTesting();
   });
 
-  Future<void> pumpProfile(
-    WidgetTester tester, {
-    ProfileAccountDeletionCallback? onDeleteAccount,
+  Future<void> pumpAction(
+    WidgetTester tester,
+    Widget home, {
+    Size size = const Size(390, 844),
   }) async {
-    await tester.binding.setSurfaceSize(const Size(430, 932));
+    await tester.binding.setSurfaceSize(size);
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(
       MaterialApp(
         theme: AmoraTheme.light(),
-        routes: {'/login': (_) => const Scaffold(body: Text('Login'))},
-        home: ProfileScreen(
-          showNavigation: false,
-          onDeleteAccount: onDeleteAccount,
-        ),
+        routes: {
+          LoginScreen.routeName: (_) => const Scaffold(body: Text('Login')),
+        },
+        home: home,
       ),
     );
     await tester.pumpAndSettle();
   }
 
-  Future<void> openDeleteAccount(WidgetTester tester) async {
-    await tester.scrollUntilVisible(
-      find.text('Delete account'),
-      420,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await Scrollable.ensureVisible(
-      tester.element(find.text('Delete account')),
-      alignment: .5,
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Delete account'));
-    await tester.pumpAndSettle();
-  }
+  testWidgets('deactivation is reversible and never fakes service success', (
+    tester,
+  ) async {
+    await pumpAction(tester, const DeactivateAccountScreen());
 
-  FilledButton primaryButton(WidgetTester tester, String label) {
-    expect(find.text(label), findsOneWidget);
-    return tester.widget<FilledButton>(
-      find.byKey(const ValueKey('delete-primary-action')),
-    );
-  }
+    expect(find.text('Deactivate your account?'), findsOneWidget);
+    expect(find.textContaining('reactivate it later'), findsOneWidget);
+    expect(find.text('Keep My Account'), findsOneWidget);
 
-  Future<void> chooseReason(WidgetTester tester, String code) async {
-    final reason = find.byKey(ValueKey('delete-reason-$code'));
-    await tester.scrollUntilVisible(
-      reason,
-      240,
-      scrollable: find.byType(Scrollable).last,
+    await tester.tap(
+      find.byKey(const ValueKey('deactivate-account-understood')),
     );
-    await Scrollable.ensureVisible(tester.element(reason), alignment: .5);
-    await tester.pumpAndSettle();
-    await tester.tap(reason);
     await tester.pump();
-  }
+    await tester.tap(find.byKey(const ValueKey('confirm-deactivate-account')));
+    await tester.pump();
 
-  Future<void> tapPrimary(WidgetTester tester) async {
-    await tester.tap(find.byKey(const ValueKey('delete-primary-action')));
-    await tester.pumpAndSettle();
-  }
-
-  testWidgets('Profile Settings exposes dedicated account action rows', (
-    tester,
-  ) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: AmoraTheme.light(),
-        home: const ProfileSettingsScreen(),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    await tester.scrollUntilVisible(
-      find.text('Logout'),
-      420,
-      scrollable: find.byType(Scrollable).first,
-    );
-    expect(find.text('Logout'), findsOneWidget);
-    expect(find.text('Change Password'), findsOneWidget);
-    expect(find.text('Delete Account'), findsOneWidget);
-    expect(find.byIcon(Icons.logout_rounded), findsOneWidget);
-  });
-
-  testWidgets('canonical account actions appear once in Profile', (
-    tester,
-  ) async {
-    await pumpProfile(tester);
-    await tester.scrollUntilVisible(
-      find.text('Log out'),
-      420,
-      scrollable: find.byType(Scrollable).first,
-    );
-
-    expect(find.text('Log out'), findsOneWidget);
-    expect(find.text('Delete account'), findsOneWidget);
     expect(
-      find.text('Permanently remove your AMORAA account.'),
+      find.textContaining('No account-deactivation service'),
       findsOneWidget,
     );
+    expect(AmoraSession.isLoggedIn.value, isTrue);
   });
 
-  testWidgets('reason and Other details are mandatory', (tester) async {
-    await pumpProfile(tester, onDeleteAccount: (_, _) async => false);
-    await openDeleteAccount(tester);
+  testWidgets('deactivation blocks duplicate submissions', (tester) async {
+    final result = Completer<bool>();
+    var calls = 0;
+    await pumpAction(
+      tester,
+      DeactivateAccountScreen(
+        onDeactivate: () {
+          calls += 1;
+          return result.future;
+        },
+      ),
+    );
 
-    expect(primaryButton(tester, 'Continue').onPressed, isNull);
-    await chooseReason(tester, 'other');
-    expect(primaryButton(tester, 'Continue').onPressed, isNull);
-
-    await tester.enterText(
-      find.byKey(const ValueKey('delete-other-reason-field')),
-      'Too short',
+    await tester.tap(
+      find.byKey(const ValueKey('deactivate-account-understood')),
     );
     await tester.pump();
-    expect(primaryButton(tester, 'Continue').onPressed, isNull);
-
-    await tester.enterText(
-      find.byKey(const ValueKey('delete-other-reason-field')),
-      'A meaningful custom reason',
-    );
+    final submit = find.byKey(const ValueKey('confirm-deactivate-account'));
+    await tester.tap(submit);
     await tester.pump();
-    expect(primaryButton(tester, 'Continue').onPressed, isNotNull);
+    await tester.tap(submit);
+    await tester.pump();
+    expect(calls, 1);
+
+    result.complete(false);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Please try again'), findsOneWidget);
+    expect(AmoraSession.isLoggedIn.value, isTrue);
   });
 
-  testWidgets('final confirmation is required and failure preserves session', (
+  testWidgets('permanent deletion requires a deliberate second confirmation', (
     tester,
   ) async {
-    await pumpProfile(tester, onDeleteAccount: (_, _) async => false);
-    await openDeleteAccount(tester);
+    await pumpAction(tester, const DeleteAccountInformationScreen());
 
-    await chooseReason(tester, 'found_partner');
-    await tapPrimary(tester);
-    expect(find.text('Understand what happens next'), findsOneWidget);
+    expect(find.text('Delete your account permanently?'), findsOneWidget);
+    expect(find.textContaining('cannot be undone'), findsOneWidget);
+    expect(find.text('Delete Permanently'), findsNothing);
 
-    await tapPrimary(tester);
-    expect(primaryButton(tester, 'Delete my account').onPressed, isNull);
+    await tester.tap(find.byKey(const ValueKey('settings-delete-continue')));
+    await tester.pump();
+    expect(find.text('Type DELETE to continue'), findsOneWidget);
 
+    final deleteButton = tester.widget<AppPrimaryButton>(
+      find.byKey(const ValueKey('settings-delete-permanently')),
+    );
+    expect(deleteButton.onPressed, isNull);
+  });
+
+  testWidgets('missing or failed deletion service preserves session and data', (
+    tester,
+  ) async {
+    final nameBefore = profiles.profile.name;
+    await pumpAction(tester, const DeleteAccountInformationScreen());
+    await tester.tap(find.byKey(const ValueKey('settings-delete-continue')));
+    await tester.pump();
     await tester.enterText(
-      find.byKey(const ValueKey('delete-account-confirmation-field')),
+      find.byKey(const ValueKey('settings-delete-confirmation-field')),
       'DELETE',
     );
     await tester.pump();
-    expect(primaryButton(tester, 'Delete my account').onPressed, isNotNull);
+    await tester.tap(find.byKey(const ValueKey('settings-delete-permanently')));
+    await tester.pump();
 
-    final nameBefore = profiles.profile.name;
-    await tapPrimary(tester);
+    expect(find.textContaining('no delete-account service'), findsOneWidget);
     expect(AmoraSession.isLoggedIn.value, isTrue);
     expect(profiles.profile.name, nameBefore);
-    expect(find.textContaining('couldn’t delete'), findsOneWidget);
   });
 
-  testWidgets('missing deletion endpoint never exposes a fake success action', (
+  testWidgets('confirmed server deletion clears local state then logs out', (
     tester,
   ) async {
-    await pumpProfile(tester);
-    await openDeleteAccount(tester);
-
-    await chooseReason(tester, 'found_partner');
-    await tapPrimary(tester);
-    await tapPrimary(tester);
-    await tester.enterText(
-      find.byKey(const ValueKey('delete-account-confirmation-field')),
-      'DELETE',
-    );
-    await tester.pump();
-
-    expect(find.textContaining('no account-deletion endpoint'), findsOneWidget);
-    expect(primaryButton(tester, 'Delete my account').onPressed, isNull);
-    expect(AmoraSession.isLoggedIn.value, isTrue);
-  });
-
-  testWidgets('confirmed deletion clears local state and auth stack', (
-    tester,
-  ) async {
-    String? submittedReason;
-    await pumpProfile(
+    var calls = 0;
+    await pumpAction(
       tester,
-      onDeleteAccount: (reason, details) async {
-        submittedReason = reason;
-        return true;
-      },
+      DeleteAccountInformationScreen(
+        onDeleteAccount: () async {
+          calls += 1;
+          return true;
+        },
+      ),
     );
-    await openDeleteAccount(tester);
-
-    await chooseReason(tester, 'found_partner');
-    await tapPrimary(tester);
-    await tapPrimary(tester);
+    await tester.tap(find.byKey(const ValueKey('settings-delete-continue')));
+    await tester.pump();
     await tester.enterText(
-      find.byKey(const ValueKey('delete-account-confirmation-field')),
+      find.byKey(const ValueKey('settings-delete-confirmation-field')),
       'DELETE',
     );
     await tester.pump();
-    await tapPrimary(tester);
+    await tester.tap(find.byKey(const ValueKey('settings-delete-permanently')));
+    await tester.pumpAndSettle();
 
-    expect(submittedReason, 'found_partner');
+    expect(calls, 1);
     expect(AmoraSession.isLoggedIn.value, isFalse);
     expect(profiles.profile.name, isEmpty);
     expect(chats.conversations, isEmpty);
     expect(find.text('Login'), findsOneWidget);
-    expect(find.byType(ProfileScreen), findsNothing);
+  });
+
+  testWidgets('account action screens remain overflow-free at 320 px', (
+    tester,
+  ) async {
+    await pumpAction(
+      tester,
+      const DeactivateAccountScreen(),
+      size: const Size(320, 700),
+    );
+    expect(tester.takeException(), isNull);
   });
 }

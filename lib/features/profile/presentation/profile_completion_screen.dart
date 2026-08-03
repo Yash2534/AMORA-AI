@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
@@ -7,9 +9,11 @@ import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
 import 'package:amora_ai/features/profile/domain/profile_completion_calculator.dart';
+import 'package:amora_ai/features/profile/domain/profile_form_validators.dart';
 import 'package:amora_ai/features/profile/presentation/controllers/profile_form_controller.dart';
 import 'package:amora_ai/features/profile/presentation/kyc_verification_screen.dart';
 import 'package:amora_ai/features/profile/presentation/photo_manager_screen.dart';
+import 'package:amora_ai/features/profile/presentation/profile_form_navigation.dart';
 import 'package:amora_ai/features/profile/presentation/profile_screen.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_fields.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_photo_view.dart';
@@ -28,6 +32,7 @@ class ProfileCompletionScreen extends StatefulWidget {
 
 class _ProfileCompletionScreenState extends State<ProfileCompletionScreen> {
   final _repository = LocalProfileRepository.instance;
+  final _scrollController = ScrollController();
   final Set<ProfileCompletionSectionId> _expanded = {};
   final Set<ProfileCompletionSectionId> _showValidation = {};
   final Map<ProfileCompletionSectionId, GlobalKey<FormState>> _formKeys = {
@@ -35,13 +40,18 @@ class _ProfileCompletionScreenState extends State<ProfileCompletionScreen> {
   };
   final Map<ProfileCompletionSectionId, String> _saveErrors = {};
   late final ProfileFormController _controller;
+  late final ProfileFormNavigationTargets _navigationTargets;
   ProfileCompletionSectionId? _savingSection;
+  ProfileFormFieldId? _highlightedField;
+  int _scrollRequest = 0;
+  Timer? _highlightTimer;
 
   @override
   void initState() {
     super.initState();
     _controller = ProfileFormController(repository: _repository)
       ..addListener(_refresh);
+    _navigationTargets = ProfileFormNavigationTargets();
     _repository.addListener(_refresh);
     final next = _repository.profile.completionResult.recommendedNext;
     if (next != null) _expanded.add(next.id);
@@ -49,10 +59,14 @@ class _ProfileCompletionScreenState extends State<ProfileCompletionScreen> {
 
   @override
   void dispose() {
+    _scrollRequest++;
+    _highlightTimer?.cancel();
     _repository.removeListener(_refresh);
     _controller
       ..removeListener(_refresh)
       ..dispose();
+    _scrollController.dispose();
+    _navigationTargets.dispose();
     super.dispose();
   }
 
@@ -64,6 +78,7 @@ class _ProfileCompletionScreenState extends State<ProfileCompletionScreen> {
   Widget build(BuildContext context) {
     final profile = _repository.profile;
     final result = profile.completionResult;
+    final pending = profile.pendingFields;
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -78,6 +93,7 @@ class _ProfileCompletionScreenState extends State<ProfileCompletionScreen> {
         child: ResponsiveMobileFrame(
           maxWidth: 820,
           child: CustomScrollView(
+            controller: _scrollController,
             keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             slivers: [
               SliverPadding(
@@ -88,62 +104,84 @@ class _ProfileCompletionScreenState extends State<ProfileCompletionScreen> {
                   AmoraSpacing.space40 +
                       MediaQuery.viewPaddingOf(context).bottom,
                 ),
-                sliver: SliverList.list(
-                  children: [
-                    _CompletionDashboardHeader(
-                      profile: profile,
-                      result: result,
-                    ),
-                    const SizedBox(height: AmoraSpacing.space16),
-                    if (result.recommendedNext case final next?)
-                      _RecommendationCard(
-                        section: next,
-                        onOpen: () => _toggle(next.id, true),
-                      )
-                    else
-                      const _ReadyCard(),
-                    const SizedBox(height: AmoraSpacing.space24),
-                    Text(
-                      'Completion Checklist',
-                      style: AmoraTextStyles.sectionTitle,
-                    ),
-                    const SizedBox(height: AmoraSpacing.space4),
-                    Text(
-                      'Open a section to review what is complete and what still needs attention.',
-                      style: AmoraTextStyles.bodyMedium.copyWith(
-                        color: AppColors.textSecondary,
+                sliver: SliverToBoxAdapter(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _CompletionDashboardHeader(
+                        profile: profile,
+                        result: result,
                       ),
-                    ),
-                    const SizedBox(height: AmoraSpacing.space16),
-                    for (final section in result.sections) ...[
-                      _CompletionSectionCard(
-                        key: ValueKey('completion-section-${section.id.name}'),
-                        section: section,
-                        expanded: _expanded.contains(section.id),
-                        onTap: () => _toggle(section.id),
-                        editor: _editorFor(section.id),
-                        saving: _savingSection == section.id,
-                        error: _saveErrors[section.id],
-                        onSave: () => _saveSection(section.id),
+                      const SizedBox(height: AmoraSpacing.space16),
+                      if (pending case [final next, ...])
+                        _RecommendationCard(
+                          field: next,
+                          onOpen: () => _scrollToField(next.id),
+                        )
+                      else
+                        const _ReadyCard(),
+                      const SizedBox(height: AmoraSpacing.space24),
+                      Text(
+                        'Completion Checklist',
+                        style: AmoraTextStyles.sectionTitle,
                       ),
-                      const SizedBox(height: AmoraSpacing.space12),
+                      const SizedBox(height: AmoraSpacing.space4),
+                      Text(
+                        'Open a section to review what is complete and what still needs attention.',
+                        style: AmoraTextStyles.bodyMedium.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: AmoraSpacing.space16),
+                      for (final section in result.sections) ...[
+                        _CompletionSectionCard(
+                          key: ValueKey(
+                            'completion-section-${section.id.name}',
+                          ),
+                          section: section,
+                          expanded: _expanded.contains(section.id),
+                          onTap: () => _toggle(section.id),
+                          editor: _editorFor(section.id),
+                          saving: _savingSection == section.id,
+                          saveEnabled:
+                              section.id != ProfileCompletionSectionId.prompt ||
+                              !_controller.promptEditorActive ||
+                              ProfileFormValidators.promptAnswer(
+                                    _controller.promptAnswer.text,
+                                  ) ==
+                                  null,
+                          error: _saveErrors[section.id],
+                          onSave: () => _saveSection(section.id),
+                        ),
+                        const SizedBox(height: AmoraSpacing.space12),
+                      ],
+                      if (pending.isNotEmpty) ...[
+                        const SizedBox(height: AmoraSpacing.space12),
+                        _PendingFieldsCard(
+                          pending: pending,
+                          onSelected: (field) => _scrollToField(field.id),
+                        ),
+                        const SizedBox(height: AmoraSpacing.space12),
+                      ],
+                      _VerificationRecommendationCard(
+                        onOpen: () async {
+                          await Navigator.of(
+                            context,
+                          ).pushNamed(KycVerificationScreen.routeName);
+                          if (mounted) setState(() {});
+                        },
+                      ),
+                      const SizedBox(height: AmoraSpacing.space24),
+                      AppPrimaryButton(
+                        key: const ValueKey(
+                          'profile-completion-primary-button',
+                        ),
+                        label: 'Back to Profile',
+                        icon: Icons.person_rounded,
+                        onPressed: _backToProfile,
+                      ),
                     ],
-                    _VerificationRecommendationCard(
-                      onOpen: () async {
-                        await Navigator.of(
-                          context,
-                        ).pushNamed(KycVerificationScreen.routeName);
-                        if (mounted) setState(() {});
-                      },
-                    ),
-                    const SizedBox(height: AmoraSpacing.space24),
-                    AppPrimaryButton(
-                      key: const ValueKey('profile-completion-primary-button'),
-                      label: 'Back to Profile',
-                      icon: Icons.person_rounded,
-                      onPressed: _backToProfile,
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ],
@@ -163,44 +201,123 @@ class _ProfileCompletionScreenState extends State<ProfileCompletionScreen> {
     });
   }
 
+  Widget _target(ProfileFormFieldId id, String label, Widget child) {
+    return ProfileFormTarget(
+      id: id,
+      targets: _navigationTargets,
+      highlighted: _highlightedField == id,
+      label: label,
+      child: child,
+    );
+  }
+
+  Future<void> _scrollToField(ProfileFormFieldId id) async {
+    final request = ++_scrollRequest;
+    _highlightTimer?.cancel();
+    final needsExpansion = !_expanded.contains(id.sectionId);
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _expanded.add(id.sectionId);
+      _highlightedField = id;
+    });
+    await WidgetsBinding.instance.endOfFrame;
+    if (needsExpansion) {
+      await Future<void>.delayed(const Duration(milliseconds: 240));
+      await WidgetsBinding.instance.endOfFrame;
+    }
+    if (!mounted || request != _scrollRequest) return;
+    var targetContext = _navigationTargets.keyFor(id).currentContext;
+    if (targetContext == null) {
+      await WidgetsBinding.instance.endOfFrame;
+      if (!mounted || request != _scrollRequest) return;
+      targetContext = _navigationTargets.keyFor(id).currentContext;
+    }
+    final renderObject = targetContext?.findRenderObject();
+    if (targetContext == null ||
+        !targetContext.mounted ||
+        renderObject == null ||
+        !renderObject.attached ||
+        !_scrollController.hasClients) {
+      return;
+    }
+    await _scrollController.position.ensureVisible(
+      renderObject,
+      duration: const Duration(milliseconds: 320),
+      curve: Curves.easeOutCubic,
+      alignment: .12,
+    );
+    if (!mounted || request != _scrollRequest) return;
+    _navigationTargets.focusNodeFor(id)?.requestFocus();
+    _highlightTimer = Timer(const Duration(milliseconds: 950), () {
+      if (!mounted || request != _scrollRequest) return;
+      setState(() => _highlightedField = null);
+    });
+  }
+
   Widget _editorFor(ProfileCompletionSectionId id) {
     final showValidation = _showValidation.contains(id);
     final profile = _controller.draftProfile;
     final editor = switch (id) {
-      ProfileCompletionSectionId.photos => AmoraaProfilePhotoSection(
-        profile: profile,
-        showError: showValidation,
-        onManage: _openPhotoManager,
-        onAdd: () => _openPhotoManager(openPicker: true),
+      ProfileCompletionSectionId.photos => _target(
+        ProfileFormFieldId.photos,
+        'Profile Photos',
+        AmoraaProfilePhotoSection(
+          profile: profile,
+          showError: showValidation,
+          onManage: _openPhotoManager,
+          onAdd: () => _openPhotoManager(openPicker: true),
+        ),
       ),
       ProfileCompletionSectionId.basicDetails => AmoraaBasicDetailsSection(
         controller: _controller,
         showValidation: showValidation,
+        navigationTargets: _navigationTargets,
+        highlightedField: _highlightedField,
       ),
       ProfileCompletionSectionId.workEducation => AmoraaWorkEducationSection(
         controller: _controller,
+        navigationTargets: _navigationTargets,
+        highlightedField: _highlightedField,
       ),
       ProfileCompletionSectionId.locationIntentions =>
-        AmoraaLocationIntentionsSection(controller: _controller),
+        AmoraaLocationIntentionsSection(
+          controller: _controller,
+          navigationTargets: _navigationTargets,
+          highlightedField: _highlightedField,
+        ),
       ProfileCompletionSectionId.identityDetails =>
         AmoraaIdentityDetailsSelector(
           controller: _controller,
           showValidation: showValidation,
+          navigationTargets: _navigationTargets,
+          highlightedField: _highlightedField,
         ),
       ProfileCompletionSectionId.bio => AmoraaProfileBioField(
         controller: _controller.bio,
+        navigationTargets: _navigationTargets,
+        highlightedField: _highlightedField,
       ),
-      ProfileCompletionSectionId.interests => AmoraaInterestsSelector(
-        controller: _controller,
-        showValidation: showValidation,
+      ProfileCompletionSectionId.interests => _target(
+        ProfileFormFieldId.interests,
+        'Interests',
+        AmoraaInterestsSelector(
+          controller: _controller,
+          showValidation: showValidation,
+        ),
       ),
-      ProfileCompletionSectionId.lifestyle => AmoraaLifestyleSelector(
-        controller: _controller,
-        showValidation: showValidation,
+      ProfileCompletionSectionId.lifestyle => _target(
+        ProfileFormFieldId.lifestyle,
+        'Lifestyle',
+        AmoraaLifestyleSelector(
+          controller: _controller,
+          showValidation: showValidation,
+        ),
       ),
       ProfileCompletionSectionId.prompt => AmoraaProfilePromptField(
         controller: _controller,
         showValidation: showValidation,
+        navigationTargets: _navigationTargets,
+        highlightedField: _highlightedField,
       ),
     };
     return Form(key: _formKeys[id], child: editor);
@@ -237,6 +354,10 @@ class _ProfileCompletionScreenState extends State<ProfileCompletionScreen> {
         _saveErrors[id] =
             '${section.title} still needs ${section.missingFields} ${section.missingFields == 1 ? 'detail' : 'details'}.';
       });
+      final pending = draft.pendingFields
+          .where((field) => field.id.sectionId == id)
+          .firstOrNull;
+      await _scrollToField(pending?.id ?? _firstFieldForSection(id));
       return;
     }
     setState(() => _savingSection = id);
@@ -261,6 +382,20 @@ class _ProfileCompletionScreenState extends State<ProfileCompletionScreen> {
       });
     }
   }
+
+  ProfileFormFieldId _firstFieldForSection(
+    ProfileCompletionSectionId id,
+  ) => switch (id) {
+    ProfileCompletionSectionId.photos => ProfileFormFieldId.photos,
+    ProfileCompletionSectionId.basicDetails => ProfileFormFieldId.name,
+    ProfileCompletionSectionId.workEducation => ProfileFormFieldId.occupation,
+    ProfileCompletionSectionId.locationIntentions => ProfileFormFieldId.city,
+    ProfileCompletionSectionId.identityDetails => ProfileFormFieldId.height,
+    ProfileCompletionSectionId.bio => ProfileFormFieldId.bio,
+    ProfileCompletionSectionId.interests => ProfileFormFieldId.interests,
+    ProfileCompletionSectionId.lifestyle => ProfileFormFieldId.lifestyle,
+    ProfileCompletionSectionId.prompt => ProfileFormFieldId.profilePrompt,
+  };
 
   void _backToProfile() {
     if (Navigator.of(context).canPop()) {
@@ -399,9 +534,9 @@ class _CompletionRing extends StatelessWidget {
 }
 
 class _RecommendationCard extends StatelessWidget {
-  const _RecommendationCard({required this.section, required this.onOpen});
+  const _RecommendationCard({required this.field, required this.onOpen});
 
-  final ProfileSectionProgress section;
+  final ProfilePendingField field;
   final VoidCallback onOpen;
 
   @override
@@ -432,18 +567,70 @@ class _RecommendationCard extends StatelessWidget {
               children: [
                 Text('Recommended Next', style: AmoraTextStyles.labelMedium),
                 const SizedBox(height: AmoraSpacing.space4),
-                Text(section.title, style: AmoraTextStyles.cardTitle),
+                Text(field.actionLabel, style: AmoraTextStyles.cardTitle),
                 const SizedBox(height: AmoraSpacing.space4),
                 Text(
-                  section.description,
+                  'Go directly to this incomplete field.',
                   style: AmoraTextStyles.bodySmall.copyWith(
                     color: AppColors.textSecondary,
                   ),
                 ),
-                TextButton(onPressed: onOpen, child: const Text('Review')),
+                TextButton(onPressed: onOpen, child: const Text('Continue')),
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PendingFieldsCard extends StatelessWidget {
+  const _PendingFieldsCard({required this.pending, required this.onSelected});
+
+  final List<ProfilePendingField> pending;
+  final ValueChanged<ProfilePendingField> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return PremiumCard(
+      key: const ValueKey('completion-pending-fields'),
+      radius: 20,
+      padding: const EdgeInsets.all(AmoraSpacing.space16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('Pending', style: AmoraTextStyles.sectionTitle),
+          const SizedBox(height: AmoraSpacing.space4),
+          Text(
+            'Choose a missing detail to edit it here.',
+            style: AmoraTextStyles.bodySmall.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: AmoraSpacing.space8),
+          for (final field in pending)
+            Semantics(
+              button: true,
+              label: '${field.actionLabel}, incomplete profile field',
+              child: InkWell(
+                key: ValueKey('completion-pending-${field.id.name}'),
+                onTap: () => onSelected(field),
+                borderRadius: BorderRadius.circular(12),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(
+                    minHeight: AmoraSpacing.minimumTouchTarget,
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.arrow_downward_rounded),
+                      const SizedBox(width: AmoraSpacing.space8),
+                      Expanded(child: Text(field.actionLabel)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -475,6 +662,7 @@ class _CompletionSectionCard extends StatelessWidget {
     required this.onTap,
     required this.editor,
     required this.saving,
+    required this.saveEnabled,
     required this.error,
     required this.onSave,
   });
@@ -484,6 +672,7 @@ class _CompletionSectionCard extends StatelessWidget {
   final VoidCallback onTap;
   final Widget editor;
   final bool saving;
+  final bool saveEnabled;
   final String? error;
   final VoidCallback onSave;
 
@@ -608,7 +797,7 @@ class _CompletionSectionCard extends StatelessWidget {
                           label: saving ? 'Saving' : 'Save Section',
                           icon: Icons.check_rounded,
                           isLoading: saving,
-                          onPressed: saving ? null : onSave,
+                          onPressed: saving || !saveEnabled ? null : onSave,
                         ),
                       ],
                     ),

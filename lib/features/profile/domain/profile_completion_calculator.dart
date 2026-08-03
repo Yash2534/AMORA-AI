@@ -1,4 +1,5 @@
 import 'package:amora_ai/core/widgets/amora_dob_field.dart';
+import 'package:amora_ai/features/profile/domain/profile_form_options.dart';
 import 'package:amora_ai/features/profile/domain/profile_interest_policy.dart';
 
 enum ProfileCompletionSectionId {
@@ -11,6 +12,51 @@ enum ProfileCompletionSectionId {
   interests,
   lifestyle,
   prompt,
+}
+
+enum ProfileFormFieldId {
+  photos,
+  name,
+  dateOfBirth,
+  gender,
+  occupation,
+  education,
+  city,
+  datingIntention,
+  height,
+  languages,
+  religion,
+  bio,
+  interests,
+  lifestyle,
+  profilePrompt,
+}
+
+extension ProfileFormFieldSection on ProfileFormFieldId {
+  ProfileCompletionSectionId get sectionId => switch (this) {
+    ProfileFormFieldId.photos => ProfileCompletionSectionId.photos,
+    ProfileFormFieldId.name ||
+    ProfileFormFieldId.dateOfBirth ||
+    ProfileFormFieldId.gender => ProfileCompletionSectionId.basicDetails,
+    ProfileFormFieldId.occupation ||
+    ProfileFormFieldId.education => ProfileCompletionSectionId.workEducation,
+    ProfileFormFieldId.city || ProfileFormFieldId.datingIntention =>
+      ProfileCompletionSectionId.locationIntentions,
+    ProfileFormFieldId.height ||
+    ProfileFormFieldId.languages ||
+    ProfileFormFieldId.religion => ProfileCompletionSectionId.identityDetails,
+    ProfileFormFieldId.bio => ProfileCompletionSectionId.bio,
+    ProfileFormFieldId.interests => ProfileCompletionSectionId.interests,
+    ProfileFormFieldId.lifestyle => ProfileCompletionSectionId.lifestyle,
+    ProfileFormFieldId.profilePrompt => ProfileCompletionSectionId.prompt,
+  };
+}
+
+class ProfilePendingField {
+  const ProfilePendingField({required this.id, required this.actionLabel});
+
+  final ProfileFormFieldId id;
+  final String actionLabel;
 }
 
 class ProfileCompletionInput {
@@ -116,7 +162,88 @@ class ProfileCompletionResult {
 }
 
 abstract final class ProfileCompletionCalculator {
-  static const Set<String> _identityKeys = {'Height', 'Languages', 'Religion'};
+  static List<ProfilePendingField> pendingFields(ProfileCompletionInput input) {
+    final pending = <ProfilePendingField>[];
+    void add(bool missing, ProfileFormFieldId id, String label) {
+      if (missing) pending.add(ProfilePendingField(id: id, actionLabel: label));
+    }
+
+    add(input.photoCount < 2, ProfileFormFieldId.photos, 'Add profile photos');
+    add(input.name.trim().isEmpty, ProfileFormFieldId.name, 'Add your name');
+    add(
+      AmoraDateOfBirth.validate(input.birthdate) != null,
+      ProfileFormFieldId.dateOfBirth,
+      'Add your date of birth',
+    );
+    add(
+      ProfileFormOptions.normalizeGender(input.gender).isEmpty,
+      ProfileFormFieldId.gender,
+      'Select your gender',
+    );
+    add(
+      ProfileFormOptions.normalizeOccupation(input.profession).isEmpty,
+      ProfileFormFieldId.occupation,
+      'Add your occupation',
+    );
+    add(
+      ProfileFormOptions.normalizeEducation(input.education).isEmpty,
+      ProfileFormFieldId.education,
+      'Add your education',
+    );
+    add(
+      ProfileFormOptions.normalizeCity(input.location).isEmpty,
+      ProfileFormFieldId.city,
+      'Select your city',
+    );
+    add(
+      ProfileFormOptions.normalizeDatingIntention(
+        input.datingIntention,
+      ).isEmpty,
+      ProfileFormFieldId.datingIntention,
+      'Select your dating intention',
+    );
+    add(
+      ProfileFormOptions.parseHeightCentimeters(input.height) == null,
+      ProfileFormFieldId.height,
+      'Add your height',
+    );
+    add(
+      ProfileFormOptions.parseLanguages(input.languages).isEmpty,
+      ProfileFormFieldId.languages,
+      'Add your languages',
+    );
+    add(
+      ProfileFormOptions.normalizeReligion(input.religion).isEmpty,
+      ProfileFormFieldId.religion,
+      'Add your religion',
+    );
+    add(
+      input.bio.trim().length < 40,
+      ProfileFormFieldId.bio,
+      'Complete your bio',
+    );
+    add(
+      ProfileInterestPolicy.visibleCount(input.interests) < 5,
+      ProfileFormFieldId.interests,
+      'Choose your interests',
+    );
+    add(
+      !ProfileFormOptions.lifestyleOptions.entries.any(
+        (entry) => ProfileFormOptions.normalizeLifestyleValue(
+          entry.key,
+          input.lifestyle[entry.key],
+        ).isNotEmpty,
+      ),
+      ProfileFormFieldId.lifestyle,
+      'Add a lifestyle preference',
+    );
+    add(
+      input.completedPromptCount < 1,
+      ProfileFormFieldId.profilePrompt,
+      'Add a profile prompt',
+    );
+    return List.unmodifiable(pending);
+  }
 
   static ProfileCompletionResult calculate(ProfileCompletionInput input) {
     bool filled(String value) => value.trim().isNotEmpty;
@@ -124,8 +251,11 @@ abstract final class ProfileCompletionCalculator {
     final visibleInterestCount = ProfileInterestPolicy.visibleCount(
       input.interests,
     );
-    final lifestyleComplete = input.lifestyle.entries.any(
-      (entry) => !_identityKeys.contains(entry.key) && filled(entry.value),
+    final lifestyleComplete = ProfileFormOptions.lifestyleOptions.entries.any(
+      (entry) => ProfileFormOptions.normalizeLifestyleValue(
+        entry.key,
+        input.lifestyle[entry.key],
+      ).isNotEmpty,
     );
 
     final sections = <ProfileSectionProgress>[
@@ -144,7 +274,7 @@ abstract final class ProfileCompletionCalculator {
         completedFields: [
           filled(input.name),
           validBirthdate,
-          filled(input.gender),
+          ProfileFormOptions.normalizeGender(input.gender).isNotEmpty,
         ].where((value) => value).length,
         totalFields: 3,
         weight: 15,
@@ -154,8 +284,8 @@ abstract final class ProfileCompletionCalculator {
         title: 'Work & Education',
         description: 'Share your occupation and education.',
         completedFields: [
-          filled(input.profession),
-          filled(input.education),
+          ProfileFormOptions.normalizeOccupation(input.profession).isNotEmpty,
+          ProfileFormOptions.normalizeEducation(input.education).isNotEmpty,
         ].where((value) => value).length,
         totalFields: 2,
         weight: 10,
@@ -165,8 +295,10 @@ abstract final class ProfileCompletionCalculator {
         title: 'Location & Dating Intentions',
         description: 'Where you are and what you’re looking for.',
         completedFields: [
-          filled(input.location),
-          filled(input.datingIntention),
+          ProfileFormOptions.normalizeCity(input.location).isNotEmpty,
+          ProfileFormOptions.normalizeDatingIntention(
+            input.datingIntention,
+          ).isNotEmpty,
         ].where((value) => value).length,
         totalFields: 2,
         weight: 10,
@@ -176,9 +308,9 @@ abstract final class ProfileCompletionCalculator {
         title: 'Height, Languages & Religion',
         description: 'A few details that help matches understand you.',
         completedFields: [
-          filled(input.height),
-          filled(input.languages),
-          filled(input.religion),
+          ProfileFormOptions.parseHeightCentimeters(input.height) != null,
+          ProfileFormOptions.parseLanguages(input.languages).isNotEmpty,
+          ProfileFormOptions.normalizeReligion(input.religion).isNotEmpty,
         ].where((value) => value).length,
         totalFields: 3,
         weight: 15,

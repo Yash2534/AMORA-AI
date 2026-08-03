@@ -63,12 +63,10 @@ void main() {
       'Photo Gallery',
       '🎯 Interests',
       '🧳 Lifestyle',
-      '💬 Profile prompt',
+      '💬 Profile prompts',
       'Verification & trust',
       'Premium membership',
       'Quick Actions',
-      'Log out',
-      'Delete account',
     ]) {
       for (
         var attempt = 0;
@@ -100,6 +98,17 @@ void main() {
         expect(find.text('Manage'), findsOneWidget);
       }
     }
+
+    for (final action in const [
+      'Likes & Super Likes',
+      'Saved Profiles',
+      'Blocked Profiles',
+      'Support',
+    ]) {
+      expect(find.text(action), findsOneWidget);
+    }
+    expect(find.text('Log out'), findsNothing);
+    expect(find.text('Delete account'), findsNothing);
 
     expect(find.textContaining('WhatsApp'), findsNothing);
     expect(find.textContaining('Create Ticket'), findsNothing);

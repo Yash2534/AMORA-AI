@@ -45,38 +45,40 @@ class AmoraaLanguageSelector extends StatelessWidget {
             runSpacing: AmoraSpacing.space8,
             children: [
               for (final language in ordered)
-                InputChip(
-                  key: ValueKey('selected-language-$language'),
-                  label: Text(language),
-                  avatar: const Icon(Icons.translate_rounded, size: 18),
-                  deleteIcon: const Icon(Icons.close_rounded, size: 18),
-                  deleteButtonTooltipMessage: 'Remove $language',
-                  onDeleted: () {
-                    onChanged(
-                      Set<String>.of(selectedLanguages)..remove(language),
-                    );
-                  },
+                ConstrainedBox(
+                  constraints: const BoxConstraints(
+                    minHeight: AmoraSpacing.minimumTouchTarget,
+                  ),
+                  child: InputChip(
+                    key: ValueKey('selected-language-$language'),
+                    label: Text(language),
+                    deleteIcon: const Icon(Icons.close_rounded, size: 18),
+                    deleteButtonTooltipMessage: 'Remove $language',
+                    onDeleted: () {
+                      onChanged(
+                        Set<String>.of(selectedLanguages)..remove(language),
+                      );
+                    },
+                  ),
                 ),
             ],
           ),
         const SizedBox(height: AmoraSpacing.space12),
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                '${ordered.length} selected',
-                style: AmoraTextStyles.labelMedium.copyWith(
-                  color: AppColors.textSecondary,
-                ),
-              ),
-            ),
-            TextButton.icon(
-              key: const ValueKey('add-languages-button'),
-              onPressed: () => _openPicker(context),
-              icon: const Icon(Icons.add_rounded),
-              label: const Text('Add languages'),
-            ),
-          ],
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            key: const ValueKey('add-languages-button'),
+            onPressed: () => _openPicker(context),
+            icon: const Icon(Icons.add_rounded),
+            label: const Text('Add language'),
+          ),
+        ),
+        Text(
+          '${ordered.length} selected',
+          key: const ValueKey('selected-language-count'),
+          style: AmoraTextStyles.labelMedium.copyWith(
+            color: AppColors.textSecondary,
+          ),
         ),
         if (showError && ordered.isEmpty)
           Padding(
@@ -176,7 +178,7 @@ class _LanguagePickerSheetState extends State<_LanguagePickerSheet> {
               ),
             ),
             const SizedBox(height: AmoraSpacing.space16),
-            Text('Add languages', style: AmoraTextStyles.headlineSmall),
+            Text('Add language', style: AmoraTextStyles.headlineSmall),
             const SizedBox(height: AmoraSpacing.space4),
             Text(
               '${_selected.length} selected',

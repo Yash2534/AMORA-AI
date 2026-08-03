@@ -3,9 +3,9 @@ import 'package:amora_ai/core/access/amora_access.dart';
 import 'package:amora_ai/core/theme/amora_theme.dart';
 import 'package:amora_ai/features/auth/presentation/login_screen.dart';
 import 'package:amora_ai/features/onboarding/data/local_onboarding_repository.dart';
-import 'package:amora_ai/features/onboarding/data/gujarat_cities.dart';
 import 'package:amora_ai/features/onboarding/presentation/profile_onboarding_flow.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
+import 'package:amora_ai/features/profile/domain/profile_form_options.dart';
 import 'package:amora_ai/features/profile/presentation/profile_completion_screen.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_form.dart';
 import 'package:flutter/material.dart';
@@ -131,21 +131,34 @@ void main() {
 
     expect(find.text('Step 2 of 6'), findsOneWidget);
     expect(find.text('How do you identify?'), findsOneWidget);
-    await tester.tap(find.text('Non-binary'));
+    await tester.tap(find.byKey(const ValueKey('onboarding-gender-selector')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('amoraa-select-option-Other')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('onboarding-custom-gender')),
+      'Non-binary',
+    );
     await tester.pump();
     await tester.tap(find.byKey(const Key('onboarding-continue')));
     await tester.pumpAndSettle();
 
     expect(find.text('Step 3 of 6'), findsOneWidget);
-    await tester.ensureVisible(find.text('Everyone'));
-    await tester.tap(find.text('Everyone'));
+    await tester.ensureVisible(find.text('Female'));
+    await tester.tap(find.text('Female'));
     await tester.pump();
     await tester.tap(find.byKey(const Key('onboarding-continue')));
     await tester.pumpAndSettle();
 
     expect(find.text('Step 4 of 6'), findsOneWidget);
-    await tester.tap(find.text('Long-term relationship'));
-    await tester.pump();
+    await tester.tap(
+      find.byKey(const ValueKey('onboarding-relationship-selector')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey('amoraa-select-option-Long-Term Relationship')),
+    );
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('onboarding-continue')));
     await tester.pumpAndSettle();
 
@@ -154,11 +167,13 @@ void main() {
     await tester.tap(find.byKey(const Key('onboarding-city')));
     await tester.pumpAndSettle();
     await tester.enterText(
-      find.byKey(const ValueKey('gujarat-city-search')),
+      find.byKey(const ValueKey('amoraa-select-search')),
       'Ahmed',
     );
     await tester.pump();
-    await tester.tap(find.byKey(const ValueKey('gujarat-city-Ahmedabad')));
+    await tester.tap(
+      find.byKey(const ValueKey('amoraa-select-option-Ahmedabad')),
+    );
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.byKey(const Key('onboarding-continue')));
     await tester.pump();
@@ -304,7 +319,13 @@ void main() {
     expect(blank.completionPercent, 0);
 
     final complete = originalProfile.copyWith(
-      interests: const ['Coffee', 'Travel', 'Music', 'Design', 'Nature'],
+      interests: const [
+        'Coffee',
+        'Road trips',
+        'Live music',
+        'Design',
+        'Wildlife',
+      ],
       lifestyle: {
         ...originalProfile.lifestyle,
         'Height': '5′8″–5′11″',
@@ -328,12 +349,14 @@ void main() {
     expect(find.byType(AmoraaProfileForm), findsNothing);
     expect(find.text('Profile Completion'), findsOneWidget);
     expect(find.text('Recommended Next'), findsOneWidget);
-    await tester.scrollUntilVisible(
-      find.text('Basic Details'),
-      280,
-      scrollable: find.byType(Scrollable).first,
+    final basicSection = find.byKey(
+      const ValueKey('completion-section-basicDetails'),
     );
-    await tester.tap(find.text('Basic Details').first);
+    await tester.ensureVisible(basicSection);
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(of: basicSection, matching: find.text('Basic Details')),
+    );
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('profile-name-field')), findsOneWidget);
     expect(
@@ -352,13 +375,16 @@ void main() {
     );
   });
 
-  test('Gujarat city catalogue is unique and alphabetically sorted', () {
-    final sorted = [...gujaratCities]..sort();
-    expect(gujaratCities, orderedEquals(sorted));
-    expect(gujaratCities.toSet(), hasLength(gujaratCities.length));
+  test('onboarding uses the exact shared city catalogue', () {
+    expect(ProfileFormOptions.cities, const [
+      'Gandhinagar',
+      'Ahmedabad',
+      'Surat',
+      'Vadodara',
+    ]);
     expect(
-      gujaratCities,
-      containsAll(const ['Ahmedabad', 'Surat', 'Vadodara', 'Bilimora']),
+      ProfileFormOptions.cities.toSet(),
+      hasLength(ProfileFormOptions.cities.length),
     );
   });
 }

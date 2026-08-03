@@ -17,6 +17,10 @@ class AmoraChatComposer extends StatefulWidget {
     this.disabledReason,
     this.onEmojiPickerVisibilityChanged,
     this.compactHeight,
+    this.contextLabel,
+    this.contextTitle,
+    this.contextDetail,
+    this.onRemoveContext,
   });
 
   static const maximumMessageLength = 2000;
@@ -29,6 +33,10 @@ class AmoraChatComposer extends StatefulWidget {
   final String? disabledReason;
   final ValueChanged<bool>? onEmojiPickerVisibilityChanged;
   final bool? compactHeight;
+  final String? contextLabel;
+  final String? contextTitle;
+  final String? contextDetail;
+  final VoidCallback? onRemoveContext;
 
   @override
   State<AmoraChatComposer> createState() => _AmoraChatComposerState();
@@ -148,6 +156,13 @@ class _AmoraChatComposerState extends State<AmoraChatComposer> {
                 ),
               ),
             ),
+          if (widget.contextTitle?.trim().isNotEmpty == true)
+            _ComposerContextPreview(
+              label: widget.contextLabel ?? 'Replying to',
+              title: widget.contextTitle!,
+              detail: widget.contextDetail,
+              onRemove: widget.onRemoveContext,
+            ),
           Container(
             padding: compactHeight
                 ? const EdgeInsets.fromLTRB(8, 4, 10, 4)
@@ -228,7 +243,9 @@ class _AmoraChatComposerState extends State<AmoraChatComposer> {
                       ),
                       decoration: InputDecoration(
                         hintText: widget.enabled
-                            ? 'Write a message…'
+                            ? widget.contextTitle?.trim().isNotEmpty == true
+                                  ? 'Write a reply…'
+                                  : 'Write a message…'
                             : 'Messaging unavailable',
                         border: InputBorder.none,
                         enabledBorder: InputBorder.none,
@@ -362,6 +379,98 @@ class _AmoraChatComposerState extends State<AmoraChatComposer> {
                 : const SizedBox.shrink(),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ComposerContextPreview extends StatelessWidget {
+  const _ComposerContextPreview({
+    required this.label,
+    required this.title,
+    this.detail,
+    this.onRemove,
+  });
+
+  final String label;
+  final String title;
+  final String? detail;
+  final VoidCallback? onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      container: true,
+      label: '$label. $title. ${detail ?? ''}',
+      child: Container(
+        key: const ValueKey('chat-composer-context'),
+        width: double.infinity,
+        margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+        padding: const EdgeInsets.fromLTRB(12, 9, 6, 9),
+        decoration: BoxDecoration(
+          color: AppColors.tertiary.withValues(alpha: .28),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.secondary.withValues(alpha: .36)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 3,
+              height: 42,
+              decoration: BoxDecoration(
+                color: AppColors.secondary,
+                borderRadius: BorderRadius.circular(99),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      color: AppColors.primary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '“$title”',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppColors.text,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  if (detail?.trim().isNotEmpty == true)
+                    Text(
+                      detail!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: AppColors.text.withValues(alpha: .68),
+                        fontSize: 12,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            if (onRemove != null)
+              SizedBox.square(
+                dimension: 48,
+                child: IconButton(
+                  key: const ValueKey('remove-chat-context'),
+                  tooltip: 'Remove reply context',
+                  onPressed: onRemove,
+                  icon: const Icon(Icons.close_rounded, size: 20),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

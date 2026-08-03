@@ -3,13 +3,14 @@ import 'dart:math' as math;
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
+import 'package:amora_ai/core/widgets/amoraa_select_field.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/core/navigation/main_shell.dart';
-import 'package:amora_ai/features/onboarding/data/gujarat_cities.dart';
 import 'package:amora_ai/features/onboarding/data/local_onboarding_repository.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
+import 'package:amora_ai/features/profile/domain/profile_form_options.dart';
 import 'package:amora_ai/features/profile/presentation/photo_manager_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -51,8 +52,19 @@ class _ProfileOnboardingFlowState extends State<ProfileOnboardingFlow> {
         ? 0
         : stageIndex;
     _pageController = PageController(initialPage: _page);
-    _customGenderController.text = _repository.state.customGender;
-    _cityController.text = _repository.state.city ?? '';
+    final storedGender = _repository.state.gender;
+    final normalizedGender = ProfileFormOptions.normalizeGender(storedGender);
+    _customGenderController.text =
+        _repository.state.customGender.trim().isEmpty &&
+            normalizedGender == 'Other' &&
+            storedGender != null &&
+            storedGender.toLowerCase() != 'other' &&
+            storedGender.toLowerCase() != 'self-describe'
+        ? storedGender
+        : _repository.state.customGender;
+    _cityController.text = ProfileFormOptions.normalizeCity(
+      _repository.state.city,
+    );
   }
 
   @override
@@ -150,12 +162,14 @@ class _ProfileOnboardingFlowState extends State<ProfileOnboardingFlow> {
     return switch (_page) {
       0 => state.birthDate != null && state.isAdult,
       1 =>
-        state.gender != null &&
-            (state.gender != 'Self-describe' ||
+        ProfileFormOptions.normalizeGender(state.gender).isNotEmpty &&
+            (ProfileFormOptions.normalizeGender(state.gender) != 'Other' ||
                 _customGenderController.text.trim().isNotEmpty),
-      2 => state.interestedIn.isNotEmpty,
+      2 => state.interestedIn.any(
+        (value) => ProfileFormOptions.normalizeGender(value).isNotEmpty,
+      ),
       3 => state.relationshipGoal != null,
-      4 => _cityController.text.trim().isNotEmpty,
+      4 => ProfileFormOptions.cities.contains(_cityController.text.trim()),
       5 => LocalProfileRepository.instance.profile.photos.length >= 2,
       _ => false,
     };
@@ -172,6 +186,7 @@ class _ProfileOnboardingFlowState extends State<ProfileOnboardingFlow> {
     if (_page == 1) {
       _repository.update(
         _repository.state.copyWith(
+          gender: ProfileFormOptions.normalizeGender(_repository.state.gender),
           customGender: _customGenderController.text.trim(),
         ),
       );
@@ -207,9 +222,10 @@ class _ProfileOnboardingFlowState extends State<ProfileOnboardingFlow> {
     final current = LocalProfileRepository.instance.profile;
     LocalProfileRepository.instance.save(
       current.copyWith(
-        gender: onboarding.gender == 'Self-describe'
-            ? onboarding.customGender
-            : onboarding.gender,
+        gender: ProfileFormOptions.storedGenderValue(
+          onboarding.gender,
+          customValue: onboarding.customGender,
+        ),
         location: onboarding.city,
         datingIntention: onboarding.relationshipGoal,
       ),
@@ -877,28 +893,35 @@ class _GenderQuestion extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const options = [
-      'Woman',
-      'Man',
-      'Non-binary',
-      'Self-describe',
-      'Prefer not to say',
-    ];
+    final normalizedGender = ProfileFormOptions.normalizeGender(state.gender);
     return _QuestionFrame(
       icon: Icons.person_rounded,
       title: 'How do you identify?',
       supporting: 'Choose the language that feels right for you.',
       child: Column(
         children: [
-          for (final option in options)
-            _ChoiceCard(
-              label: option,
-              selected: state.gender == option,
-              onTap: () => onChanged(state.copyWith(gender: option)),
-            ),
-          if (state.gender == 'Self-describe') ...[
+          AmoraaSelectField<String>(
+            key: const ValueKey('onboarding-gender-selector'),
+            label: 'Gender',
+            value: normalizedGender.isEmpty ? null : normalizedGender,
+            hintText: 'Select how you identify',
+            supportingText: 'Choose the language that feels right for you.',
+            prefixIcon: Icons.person_rounded,
+            isRequired: true,
+            options: [
+              for (final option in ProfileFormOptions.genderOptions)
+                AmoraaSelectOption(value: option, label: option),
+            ],
+            onChanged: (option) {
+              if (option != null) {
+                onChanged(state.copyWith(gender: option));
+              }
+            },
+          ),
+          if (normalizedGender == 'Other') ...[
             const SizedBox(height: 8),
             TextField(
+              key: const ValueKey('onboarding-custom-gender'),
               controller: customController,
               decoration: const InputDecoration(
                 labelText: 'Describe your gender',
@@ -927,29 +950,25 @@ class _InterestedQuestion extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const options = ['Women', 'Men', 'Non-binary people', 'Everyone'];
+    final selectedOptions = state.interestedIn
+        .map(ProfileFormOptions.normalizeGender)
+        .where(ProfileFormOptions.genderOptions.contains)
+        .toSet();
     return _QuestionFrame(
       icon: Icons.people_alt_rounded,
       title: 'Who would you like to meet?',
       supporting: 'You can update this later in Dating Preferences.',
       child: Column(
         children: [
-          for (final option in options)
+          for (final option in ProfileFormOptions.genderOptions)
             _ChoiceCard(
               label: option,
-              selected: state.interestedIn.contains(option),
+              selected: selectedOptions.contains(option),
               onTap: () {
-                final selected = Set<String>.of(state.interestedIn);
-                if (option == 'Everyone') {
-                  selected
-                    ..clear()
-                    ..add(option);
-                } else {
-                  selected.remove('Everyone');
-                  selected.contains(option)
-                      ? selected.remove(option)
-                      : selected.add(option);
-                }
+                final selected = Set<String>.of(selectedOptions);
+                selected.contains(option)
+                    ? selected.remove(option)
+                    : selected.add(option);
                 onChanged(state.copyWith(interestedIn: selected));
               },
             ),
@@ -964,31 +983,38 @@ class _RelationshipQuestion extends StatelessWidget {
   final LocalOnboardingState state;
   final ValueChanged<LocalOnboardingState> onChanged;
 
-  static const options = <String, String>{
-    'Long-term relationship': 'Build something lasting and intentional.',
-    'Serious dating': 'Meet people ready for committed dating.',
-    'Dating and seeing where it goes': 'Stay open while dating thoughtfully.',
-    'Friendship': 'Begin with genuine companionship.',
-    'Still figuring it out': 'Explore honestly without pressure.',
-  };
-
   @override
   Widget build(BuildContext context) {
+    final selected = ProfileFormOptions.normalizeDatingIntention(
+      state.relationshipGoal,
+    );
     return _QuestionFrame(
       icon: Icons.favorite_rounded,
       title: 'What are you looking for?',
       supporting: 'This helps people understand your intention from the start.',
-      child: Column(
-        children: [
-          for (final entry in options.entries)
-            _ChoiceCard(
-              label: entry.key,
-              supporting: entry.value,
-              selected: state.relationshipGoal == entry.key,
-              onTap: () =>
-                  onChanged(state.copyWith(relationshipGoal: entry.key)),
+      child: AmoraaSelectField<String>(
+        key: const ValueKey('onboarding-relationship-selector'),
+        label: 'Dating Intention',
+        value: selected.isEmpty ? null : selected,
+        hintText: 'Select your intention',
+        supportingText:
+            'This helps people understand your intention from the start.',
+        prefixIcon: Icons.favorite_rounded,
+        isRequired: true,
+        options: [
+          for (final option in ProfileFormOptions.datingIntentions)
+            AmoraaSelectOption(
+              value: option,
+              label: option,
+              description:
+                  ProfileFormOptions.datingIntentionDescriptions[option],
             ),
         ],
+        onChanged: (value) {
+          if (value != null) {
+            onChanged(state.copyWith(relationshipGoal: value));
+          }
+        },
       ),
     );
   }
@@ -1014,16 +1040,26 @@ class _LocationQuestion extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _OnboardingCityField(
+            AmoraaSearchableSelect<String>(
               key: const Key('onboarding-city'),
-              city: cityController.text,
-              onSelect: () => _selectCity(context),
-              onClear: cityController.text.trim().isEmpty
-                  ? null
-                  : () {
-                      cityController.clear();
-                      onChanged(state.copyWith(city: ''));
-                    },
+              label: 'Your city',
+              value: ProfileFormOptions.cities.contains(cityController.text)
+                  ? cityController.text
+                  : null,
+              hintText: 'Search or select a city',
+              searchHint: 'Search or select a city',
+              supportingText: 'Choose the city where you currently live.',
+              prefixIcon: Icons.location_on_rounded,
+              isRequired: true,
+              allowClear: true,
+              options: [
+                for (final city in ProfileFormOptions.cities)
+                  AmoraaSelectOption(value: city, label: city),
+              ],
+              onChanged: (value) {
+                cityController.text = value ?? '';
+                onChanged(state.copyWith(city: value ?? ''));
+              },
             ),
             const SizedBox(height: 20),
             Text('Preferred distance: ${state.preferredDistance.round()} km'),
@@ -1047,370 +1083,6 @@ class _LocationQuestion extends StatelessWidget {
       ),
     );
   }
-
-  Future<void> _selectCity(BuildContext context) async {
-    final width = MediaQuery.sizeOf(context).width;
-    final current = cityController.text.trim();
-    final result = width >= 700
-        ? await showDialog<String>(
-            context: context,
-            builder: (_) => Dialog(
-              insetPadding: const EdgeInsets.all(24),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(28),
-              ),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(
-                  maxWidth: 560,
-                  maxHeight: 680,
-                ),
-                child: _GujaratCitySearchSheet(currentCity: current),
-              ),
-            ),
-          )
-        : await showModalBottomSheet<String>(
-            context: context,
-            isScrollControlled: true,
-            useSafeArea: true,
-            backgroundColor: AppColors.surface,
-            shape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
-            ),
-            builder: (_) => FractionallySizedBox(
-              heightFactor: .88,
-              child: _GujaratCitySearchSheet(currentCity: current),
-            ),
-          );
-    if (result == null || !context.mounted) return;
-    cityController.text = result;
-    onChanged(state.copyWith(city: result));
-  }
-}
-
-class _OnboardingCityField extends StatelessWidget {
-  const _OnboardingCityField({
-    super.key,
-    required this.city,
-    required this.onSelect,
-    this.onClear,
-  });
-
-  final String city;
-  final VoidCallback onSelect;
-  final VoidCallback? onClear;
-
-  @override
-  Widget build(BuildContext context) {
-    final hasCity = city.trim().isNotEmpty;
-    return Semantics(
-      button: true,
-      liveRegion: hasCity,
-      label: hasCity
-          ? 'Your city, $city. Open city selection.'
-          : 'Search or select a city',
-      child: Material(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(18),
-        child: InkWell(
-          onTap: onSelect,
-          borderRadius: BorderRadius.circular(18),
-          child: Container(
-            constraints: const BoxConstraints(minHeight: 64),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: AppColors.tertiary),
-            ),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.location_on_rounded,
-                  color: AppColors.secondary,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        'Your city',
-                        style: AmoraTextStyles.labelMedium.copyWith(
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        hasCity ? city : 'Search or select a city',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AmoraTextStyles.bodyLarge.copyWith(
-                          color: hasCity
-                              ? AppColors.text
-                              : AppColors.text.withValues(alpha: .58),
-                          fontWeight: hasCity
-                              ? FontWeight.w600
-                              : FontWeight.w400,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (onClear != null)
-                  IconButton(
-                    tooltip: 'Clear selected city',
-                    onPressed: onClear,
-                    icon: const Icon(Icons.close_rounded),
-                  )
-                else
-                  const Icon(
-                    Icons.keyboard_arrow_down_rounded,
-                    color: AppColors.primary,
-                  ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _GujaratCitySearchSheet extends StatefulWidget {
-  const _GujaratCitySearchSheet({required this.currentCity});
-
-  final String currentCity;
-
-  @override
-  State<_GujaratCitySearchSheet> createState() =>
-      _GujaratCitySearchSheetState();
-}
-
-class _GujaratCitySearchSheetState extends State<_GujaratCitySearchSheet> {
-  final _searchController = TextEditingController();
-  final _searchFocusNode = FocusNode(debugLabel: 'Gujarat city search');
-  final _keyboardFocusNode = FocusNode(debugLabel: 'Gujarat city keyboard');
-  int _highlightedIndex = 0;
-
-  List<String> get _filteredCities {
-    final query = _searchController.text.trim().toLowerCase();
-    if (query.isEmpty) return gujaratCities;
-    return gujaratCities
-        .where((city) => city.toLowerCase().contains(query))
-        .toList(growable: false);
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _searchController.addListener(_filterChanged);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _searchFocusNode.requestFocus();
-    });
-  }
-
-  @override
-  void dispose() {
-    _searchController
-      ..removeListener(_filterChanged)
-      ..dispose();
-    _searchFocusNode.dispose();
-    _keyboardFocusNode.dispose();
-    super.dispose();
-  }
-
-  void _filterChanged() {
-    setState(() => _highlightedIndex = 0);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final cities = _filteredCities;
-    return Focus(
-      focusNode: _keyboardFocusNode,
-      onKeyEvent: (_, event) => _handleKey(event, cities),
-      child: Material(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(28),
-        clipBehavior: Clip.antiAlias,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Center(
-                child: Container(
-                  width: 44,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: .18),
-                    borderRadius: BorderRadius.circular(99),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Choose your city',
-                      style: AmoraTextStyles.headlineSmall.copyWith(
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    tooltip: 'Close city selection',
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close_rounded),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                key: const ValueKey('gujarat-city-search'),
-                controller: _searchController,
-                focusNode: _searchFocusNode,
-                textInputAction: TextInputAction.search,
-                onSubmitted: (_) {
-                  if (cities.isNotEmpty) {
-                    Navigator.pop(context, cities[_highlightedIndex]);
-                  }
-                },
-                decoration: InputDecoration(
-                  hintText: 'Search or select a city',
-                  prefixIcon: const Icon(Icons.search_rounded),
-                  suffixIcon: _searchController.text.isEmpty
-                      ? null
-                      : IconButton(
-                          tooltip: 'Clear city search',
-                          onPressed: _searchController.clear,
-                          icon: const Icon(Icons.close_rounded),
-                        ),
-                ),
-              ),
-              if (widget.currentCity.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                Text(
-                  'Current selection: ${widget.currentCity}',
-                  style: AmoraTextStyles.bodySmall.copyWith(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-              const SizedBox(height: 12),
-              Expanded(
-                child: cities.isEmpty
-                    ? const _NoCityResults()
-                    : ListView.builder(
-                        key: const ValueKey('gujarat-city-list'),
-                        itemCount: cities.length,
-                        itemBuilder: (context, index) {
-                          final city = cities[index];
-                          final selected = city == widget.currentCity;
-                          final highlighted = index == _highlightedIndex;
-                          return Semantics(
-                            selected: selected,
-                            button: true,
-                            child: ListTile(
-                              key: ValueKey('gujarat-city-$city'),
-                              minTileHeight: 52,
-                              selected: selected || highlighted,
-                              selectedTileColor: AppColors.tertiary.withValues(
-                                alpha: selected ? .32 : .16,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                              leading: Icon(
-                                selected
-                                    ? Icons.check_circle_rounded
-                                    : Icons.location_city_rounded,
-                                color: selected
-                                    ? AppColors.secondary
-                                    : AppColors.primary,
-                              ),
-                              title: Text(
-                                city,
-                                style: AmoraTextStyles.bodyLarge.copyWith(
-                                  fontWeight: selected
-                                      ? FontWeight.w700
-                                      : FontWeight.w500,
-                                ),
-                              ),
-                              onTap: () => Navigator.pop(context, city),
-                            ),
-                          );
-                        },
-                      ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  KeyEventResult _handleKey(KeyEvent event, List<String> cities) {
-    if (event is! KeyDownEvent) return KeyEventResult.ignored;
-    if (event.logicalKey == LogicalKeyboardKey.escape) {
-      Navigator.pop(context);
-      return KeyEventResult.handled;
-    }
-    if (cities.isEmpty) return KeyEventResult.ignored;
-    if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
-      setState(() {
-        _highlightedIndex = (_highlightedIndex + 1).clamp(0, cities.length - 1);
-      });
-      return KeyEventResult.handled;
-    }
-    if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
-      setState(() {
-        _highlightedIndex = (_highlightedIndex - 1).clamp(0, cities.length - 1);
-      });
-      return KeyEventResult.handled;
-    }
-    if (event.logicalKey == LogicalKeyboardKey.enter) {
-      Navigator.pop(context, cities[_highlightedIndex]);
-      return KeyEventResult.handled;
-    }
-    return KeyEventResult.ignored;
-  }
-}
-
-class _NoCityResults extends StatelessWidget {
-  const _NoCityResults();
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(
-            Icons.location_off_rounded,
-            color: AppColors.secondary,
-            size: 38,
-          ),
-          const SizedBox(height: 10),
-          Text(
-            'No Gujarat cities found',
-            style: AmoraTextStyles.titleMedium.copyWith(
-              color: AppColors.primary,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Try a shorter or different spelling.',
-            style: AmoraTextStyles.bodyMedium,
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 class _ChoiceCard extends StatelessWidget {
@@ -1418,10 +1090,8 @@ class _ChoiceCard extends StatelessWidget {
     required this.label,
     required this.selected,
     required this.onTap,
-    this.supporting,
   });
   final String label;
-  final String? supporting;
   final bool selected;
   final VoidCallback onTap;
 
@@ -1451,21 +1121,7 @@ class _ChoiceCard extends StatelessWidget {
             child: Row(
               children: [
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(label, style: AmoraTextStyles.titleMedium),
-                      if (supporting != null) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          supporting!,
-                          style: AmoraTextStyles.bodySmall.copyWith(
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
+                  child: Text(label, style: AmoraTextStyles.titleMedium),
                 ),
                 Icon(
                   selected ? Icons.check_circle_rounded : Icons.circle_outlined,

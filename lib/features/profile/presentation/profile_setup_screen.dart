@@ -5,11 +5,12 @@ import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/amora_dob_field.dart';
+import 'package:amora_ai/core/widgets/amoraa_select_field.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
-import 'package:amora_ai/core/widgets/app_text_field.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/discover/presentation/browse_grid_screen.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
+import 'package:amora_ai/features/profile/domain/profile_form_options.dart';
 import 'package:flutter/material.dart';
 
 class ProfileSetupScreen extends StatefulWidget {
@@ -37,7 +38,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       _gender != null &&
       _hasValidDateOfBirth &&
       _preferredGender != null &&
-      _cityController.text.trim().isNotEmpty;
+      ProfileFormOptions.cities.contains(_cityController.text.trim());
 
   String? get _dateOfBirthError => AmoraDateOfBirth.validate(_dateOfBirth);
 
@@ -129,18 +130,33 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                                 description: 'How do you identify?',
                               ),
                               const SizedBox(height: AmoraSpacing.space12),
-                              _ChoiceGrid(
-                                choices: _genderChoices,
-                                selectedValue: _gender,
-                                onSelected: (value) {
-                                  setState(() => _gender = value);
-                                },
-                              ),
-                              _InlineError(
-                                message:
+                              AmoraaSelectField<String>(
+                                key: const ValueKey(
+                                  'profile-setup-gender-selector',
+                                ),
+                                label: 'Gender',
+                                value: _gender,
+                                hintText: 'Select your gender',
+                                prefixIcon: Icons.person_rounded,
+                                isRequired: true,
+                                errorText:
                                     _showValidationErrors && _gender == null
                                     ? 'Select your gender'
                                     : null,
+                                options: [
+                                  for (final value
+                                      in ProfileFormOptions.genderOptions)
+                                    AmoraaSelectOption(
+                                      value: value,
+                                      label: value,
+                                      icon: _genderIcon(value),
+                                    ),
+                                ],
+                                onChanged: (value) {
+                                  if (value != null) {
+                                    setState(() => _gender = value);
+                                  }
+                                },
                               ),
                               const _SectionDivider(),
                               const _SectionHeading(
@@ -169,20 +185,34 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                                 description: 'Who would you like to meet?',
                               ),
                               const SizedBox(height: AmoraSpacing.space12),
-                              _ChoiceGrid(
-                                choices: _preferredGenderChoices,
-                                selectedValue: _preferredGender,
-                                preferThreeColumns: true,
-                                onSelected: (value) {
-                                  setState(() => _preferredGender = value);
-                                },
-                              ),
-                              _InlineError(
-                                message:
+                              AmoraaSelectField<String>(
+                                key: const ValueKey(
+                                  'profile-setup-preferred-gender-selector',
+                                ),
+                                label: 'Preferred gender',
+                                value: _preferredGender,
+                                hintText: 'Select who you would like to meet',
+                                prefixIcon: Icons.people_alt_rounded,
+                                isRequired: true,
+                                errorText:
                                     _showValidationErrors &&
                                         _preferredGender == null
                                     ? 'Select a preferred gender'
                                     : null,
+                                options: [
+                                  for (final value
+                                      in ProfileFormOptions.genderOptions)
+                                    AmoraaSelectOption(
+                                      value: value,
+                                      label: value,
+                                      icon: _genderIcon(value),
+                                    ),
+                                ],
+                                onChanged: (value) {
+                                  if (value != null) {
+                                    setState(() => _preferredGender = value);
+                                  }
+                                },
                               ),
                               const _SectionDivider(),
                               const _SectionHeading(
@@ -192,16 +222,29 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                                     'Enter the city where you want to discover matches.',
                               ),
                               const SizedBox(height: AmoraSpacing.space12),
-                              AppTextField(
-                                controller: _cityController,
+                              AmoraaSelectField<String>(
                                 label: 'City',
-                                hint: 'Enter your city',
-                                icon: Icons.location_city_rounded,
-                                keyboardType: TextInputType.streetAddress,
-                                textInputAction: TextInputAction.done,
+                                value:
+                                    ProfileFormOptions.cities.contains(
+                                      _cityController.text,
+                                    )
+                                    ? _cityController.text
+                                    : null,
+                                hintText: 'Select city',
+                                prefixIcon: Icons.location_city_rounded,
+                                isRequired: true,
                                 validator: _validateCity,
-                                onSubmitted: (_) {
-                                  if (_isComplete) _continue();
+                                options: [
+                                  for (final city in ProfileFormOptions.cities)
+                                    AmoraaSelectOption(
+                                      value: city,
+                                      label: city,
+                                    ),
+                                ],
+                                onChanged: (value) {
+                                  if (value != null) {
+                                    _cityController.text = value;
+                                  }
                                 },
                               ),
                             ],
@@ -273,7 +316,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     await repository.savePersisted(
       repository.profile.copyWith(
         birthdate: AmoraDateOfBirth.format(_dateOfBirth!),
-        gender: _gender,
+        gender: ProfileFormOptions.storedGenderValue(_gender),
         location: trimmedCity,
       ),
     );
@@ -290,7 +333,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     if (value == null || value.trim().isEmpty) {
       return 'City is required';
     }
-    return null;
+    return ProfileFormOptions.cities.contains(value.trim())
+        ? null
+        : 'Select city';
   }
 }
 
@@ -449,196 +494,8 @@ class _SectionDivider extends StatelessWidget {
   }
 }
 
-class _ChoiceGrid extends StatelessWidget {
-  const _ChoiceGrid({
-    required this.choices,
-    required this.selectedValue,
-    required this.onSelected,
-    this.preferThreeColumns = false,
-  });
-
-  final List<_ProfileChoice> choices;
-  final String? selectedValue;
-  final ValueChanged<String> onSelected;
-  final bool preferThreeColumns;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final columns = preferThreeColumns && constraints.maxWidth >= 440
-            ? 3
-            : 2;
-        final spacing = AmoraSpacing.space8 * (columns - 1);
-        final itemWidth = (constraints.maxWidth - spacing) / columns;
-
-        return Wrap(
-          spacing: AmoraSpacing.space8,
-          runSpacing: AmoraSpacing.space8,
-          children: [
-            for (final choice in choices)
-              SizedBox(
-                width: itemWidth,
-                child: _ChoiceCard(
-                  choice: choice,
-                  selected: selectedValue == choice.value,
-                  onTap: () => onSelected(choice.value),
-                ),
-              ),
-          ],
-        );
-      },
-    );
-  }
-}
-
-class _ChoiceCard extends StatelessWidget {
-  const _ChoiceCard({
-    required this.choice,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final _ProfileChoice choice;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      selected: selected,
-      label: choice.label,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        decoration: BoxDecoration(
-          color: selected ? AppColors.tertiary : AppColors.surface,
-          borderRadius: AmoraRadius.button,
-          border: Border.all(
-            color: selected ? AppColors.primary : AppColors.tertiary,
-            width: selected ? 2 : 1,
-          ),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Material(
-          color: AppColors.transparent,
-          child: InkWell(
-            onTap: onTap,
-            canRequestFocus: true,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(minHeight: 76),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AmoraSpacing.space12,
-                  vertical: AmoraSpacing.space12,
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      choice.icon,
-                      color: selected ? AppColors.primary : AppColors.secondary,
-                    ),
-                    const SizedBox(width: AmoraSpacing.space8),
-                    Expanded(
-                      child: Text(
-                        choice.label,
-                        style: AmoraTextStyles.labelLarge.copyWith(
-                          color: AppColors.textNeutral,
-                        ),
-                      ),
-                    ),
-                    if (selected)
-                      const Icon(
-                        Icons.check_circle_rounded,
-                        color: AppColors.primary,
-                        size: 20,
-                      ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _InlineError extends StatelessWidget {
-  const _InlineError({required this.message});
-
-  final String? message;
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 180),
-      child: message == null
-          ? const SizedBox.shrink()
-          : Padding(
-              key: ValueKey(message),
-              padding: const EdgeInsets.only(
-                top: AmoraSpacing.space8,
-                left: AmoraSpacing.space12,
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(
-                    Icons.info_outline_rounded,
-                    color: AppColors.secondary,
-                    size: 18,
-                  ),
-                  const SizedBox(width: AmoraSpacing.space8),
-                  Expanded(
-                    child: Text(
-                      message!,
-                      style: AmoraTextStyles.bodySmall.copyWith(
-                        color: AppColors.secondary,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-    );
-  }
-}
-
-class _ProfileChoice {
-  const _ProfileChoice({
-    required this.value,
-    required this.label,
-    required this.icon,
-  });
-
-  final String value;
-  final String label;
-  final IconData icon;
-}
-
-const _genderChoices = [
-  _ProfileChoice(value: 'Man', label: 'Man', icon: Icons.male_rounded),
-  _ProfileChoice(value: 'Woman', label: 'Woman', icon: Icons.female_rounded),
-  _ProfileChoice(
-    value: 'Non-binary',
-    label: 'Non-binary',
-    icon: Icons.transgender_rounded,
-  ),
-  _ProfileChoice(
-    value: 'Prefer not to say',
-    label: 'Prefer not to say',
-    icon: Icons.person_outline_rounded,
-  ),
-];
-
-const _preferredGenderChoices = [
-  _ProfileChoice(value: 'Men', label: 'Men', icon: Icons.man_rounded),
-  _ProfileChoice(value: 'Women', label: 'Women', icon: Icons.woman_rounded),
-  _ProfileChoice(
-    value: 'Everyone',
-    label: 'Everyone',
-    icon: Icons.groups_rounded,
-  ),
-];
+IconData _genderIcon(String value) => switch (value) {
+  'Male' => Icons.male_rounded,
+  'Female' => Icons.female_rounded,
+  _ => Icons.person_outline_rounded,
+};

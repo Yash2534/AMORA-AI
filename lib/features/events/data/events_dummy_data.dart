@@ -173,38 +173,3 @@ EventModel _eventFromRepository(int index, EventImageData visual) {
 final heroEvents = events.take(5).toList();
 final popularEvents = [events[1], events[2], events[3], events[5]];
 final recommendedEvents = [events[0], events[6], events[8]];
-
-final myEventTickets = [
-  MyEventTicket(
-    event: events[0],
-    ticketNumber: 'AMR-CF-1826',
-    seat: 'Lounge A12',
-    status: TicketStatus.upcoming,
-    position: 0,
-    estimatedEntry: 'Confirmed',
-  ),
-  MyEventTicket(
-    event: events[3],
-    ticketNumber: 'AMR-SR-1011',
-    seat: 'Sky B04',
-    status: TicketStatus.attended,
-    position: 0,
-    estimatedEntry: 'Completed',
-  ),
-  MyEventTicket(
-    event: events[1],
-    ticketNumber: 'AMR-PS-7720',
-    seat: 'Waitlist',
-    status: TicketStatus.waitlisted,
-    position: 4,
-    estimatedEntry: 'High chance by Friday',
-  ),
-  MyEventTicket(
-    event: events[2],
-    ticketNumber: 'AMR-CX-4092',
-    seat: 'Cancelled',
-    status: TicketStatus.cancelled,
-    position: 0,
-    estimatedEntry: 'Refund pending',
-  ),
-];

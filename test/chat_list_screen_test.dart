@@ -80,7 +80,9 @@ void main() {
       (chat) => chat.unread > 0,
     );
 
-    await tester.tap(find.byKey(const ValueKey('chat-filter-unread')));
+    await tester.tap(find.byKey(const ValueKey('chats-filter-bar')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('amoraa-select-option-Unread')));
     await tester.pumpAndSettle();
 
     expect(find.byKey(ValueKey('conversation-${readChat.id}')), findsNothing);

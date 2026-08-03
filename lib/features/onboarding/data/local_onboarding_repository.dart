@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:amora_ai/core/widgets/amora_dob_field.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
+import 'package:amora_ai/features/profile/domain/profile_form_options.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -252,17 +253,16 @@ class LocalOnboardingRepository extends ChangeNotifier {
   void _syncUserProfile() {
     final repository = LocalProfileRepository.instance;
     final profile = repository.profile;
-    final selectedGender = _state.gender == 'Self-describe'
-        ? _state.customGender.trim()
-        : _state.gender?.trim();
+    final selectedGender = ProfileFormOptions.storedGenderValue(
+      _state.gender,
+      customValue: _state.customGender,
+    );
     repository.save(
       profile.copyWith(
         birthdate: _state.birthDate == null
             ? null
             : AmoraDateOfBirth.format(_state.birthDate!),
-        gender: selectedGender == null || selectedGender.isEmpty
-            ? null
-            : selectedGender,
+        gender: selectedGender.isEmpty ? null : selectedGender,
         location: _state.city?.trim().isEmpty ?? true
             ? null
             : _state.city!.trim(),

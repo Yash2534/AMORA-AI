@@ -8,6 +8,49 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 enum ChatMessageStatus { sending, queued, sent, delivered, read, failed }
 
+enum ChatMessageContextType { profilePrompt, rose }
+
+@immutable
+class ChatMessageContext {
+  const ChatMessageContext.profilePrompt({
+    required this.promptId,
+    required this.title,
+    required this.detail,
+  }) : type = ChatMessageContextType.profilePrompt;
+
+  const ChatMessageContext.rose()
+    : type = ChatMessageContextType.rose,
+      promptId = null,
+      title = 'Rose',
+      detail = 'Sent from Profile Detail';
+
+  final ChatMessageContextType type;
+  final String? promptId;
+  final String title;
+  final String detail;
+
+  Map<String, Object?> toJson() => <String, Object?>{
+    'type': type.name,
+    'promptId': promptId,
+    'title': title,
+    'detail': detail,
+  };
+
+  factory ChatMessageContext.fromJson(Map<String, Object?> json) {
+    final type = ChatMessageContextType.values
+        .where((value) => value.name == json['type'])
+        .firstOrNull;
+    if (type == ChatMessageContextType.profilePrompt) {
+      return ChatMessageContext.profilePrompt(
+        promptId: json['promptId'] as String? ?? '',
+        title: json['title'] as String? ?? '',
+        detail: json['detail'] as String? ?? '',
+      );
+    }
+    return const ChatMessageContext.rose();
+  }
+}
+
 @immutable
 class ChatMessage {
   const ChatMessage({
@@ -17,6 +60,7 @@ class ChatMessage {
     required this.time,
     required this.createdAtEpochMs,
     this.status = ChatMessageStatus.sent,
+    this.context,
   });
 
   final String id;
@@ -25,6 +69,7 @@ class ChatMessage {
   final String time;
   final int createdAtEpochMs;
   final ChatMessageStatus status;
+  final ChatMessageContext? context;
 
   bool get read => status == ChatMessageStatus.read;
 
@@ -36,6 +81,7 @@ class ChatMessage {
       time: time,
       createdAtEpochMs: createdAtEpochMs,
       status: status ?? this.status,
+      context: context,
     );
   }
 
@@ -46,6 +92,7 @@ class ChatMessage {
     'time': time,
     'createdAtEpochMs': createdAtEpochMs,
     'status': status.name,
+    'context': context?.toJson(),
   };
 
   factory ChatMessage.fromJson(Map<String, Object?> json) {
@@ -60,6 +107,12 @@ class ChatMessage {
     final createdAt =
         (json['createdAtEpochMs'] as num?)?.toInt() ??
         DateTime.now().millisecondsSinceEpoch;
+    final rawContext = json['context'];
+    final context = rawContext is Map
+        ? ChatMessageContext.fromJson(
+            rawContext.map((key, value) => MapEntry(key.toString(), value)),
+          )
+        : null;
     return ChatMessage(
       id:
           json['id'] as String? ??
@@ -71,6 +124,7 @@ class ChatMessage {
       status:
           status ??
           (legacyRead ? ChatMessageStatus.read : ChatMessageStatus.sent),
+      context: context,
     );
   }
 }
@@ -293,8 +347,9 @@ class LocalChatRepository extends ChangeNotifier {
 
   Future<ChatConversation?> sendMessage(
     String conversationId,
-    String text,
-  ) async {
+    String text, {
+    ChatMessageContext? context,
+  }) async {
     final value = text.trim();
     if (value.isEmpty || value.length > 2000) {
       return conversation(conversationId);
@@ -312,6 +367,7 @@ class LocalChatRepository extends ChangeNotifier {
       time: _displayTime(now),
       createdAtEpochMs: now.millisecondsSinceEpoch,
       status: ChatMessageStatus.sending,
+      context: context,
     );
     _appendMessage(index, pending, unread: 0);
 

@@ -21,6 +21,8 @@ class EventModel {
     required this.palette,
     required this.intent,
     required this.interests,
+    this.startAt,
+    this.endAt,
   });
 
   final String id;
@@ -42,6 +44,8 @@ class EventModel {
   final List<Color> palette;
   final String intent;
   final List<String> interests;
+  final DateTime? startAt;
+  final DateTime? endAt;
 }
 
 class EventVisual {
@@ -98,22 +102,18 @@ class EventReview {
   final String comment;
 }
 
-class MyEventTicket {
-  const MyEventTicket({
+class UserEventRegistration {
+  const UserEventRegistration({
     required this.event,
-    required this.ticketNumber,
-    required this.seat,
     required this.status,
-    required this.position,
-    required this.estimatedEntry,
+    required this.registeredAt,
+    this.cancelledAt,
   });
 
   final EventModel event;
-  final String ticketNumber;
-  final String seat;
   final TicketStatus status;
-  final int position;
-  final String estimatedEntry;
+  final DateTime registeredAt;
+  final DateTime? cancelledAt;
 }
 
 enum TicketStatus { upcoming, attended, waitlisted, cancelled }

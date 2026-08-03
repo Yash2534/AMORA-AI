@@ -6,7 +6,6 @@ import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/widgets/amora_badge.dart';
-import 'package:amora_ai/core/widgets/amora_filter_chip.dart';
 import 'package:amora_ai/core/widgets/amora_snackbar.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
@@ -841,31 +840,6 @@ class NotificationCard extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class CategoryFilterChip extends StatelessWidget {
-  const CategoryFilterChip({
-    super.key,
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(right: AmoraSpacing.space8),
-      child: AmoraFilterChip(
-        label: label,
-        selected: selected,
-        onSelected: (_) => onTap(),
       ),
     );
   }

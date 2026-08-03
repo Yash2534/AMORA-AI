@@ -3,9 +3,11 @@ import 'dart:async';
 import 'package:amora_ai/core/access/amora_access.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
+import 'package:amora_ai/core/widgets/premium_avatar.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/events/data/events_dummy_data.dart';
 import 'package:amora_ai/features/events/domain/event_models.dart';
+import 'package:amora_ai/features/events/presentation/controllers/event_participation_controller.dart';
 import 'package:amora_ai/features/events/presentation/event_group_chat_screen.dart';
 import 'package:amora_ai/features/events/presentation/event_waitlist_screen.dart';
 import 'package:amora_ai/features/events/presentation/post_event_feedback_screen.dart';
@@ -16,18 +18,18 @@ import 'package:amora_ai/features/subscription/presentation/testing/membership_t
 import 'package:flutter/material.dart';
 
 class EventDetailScreen extends StatefulWidget {
-  const EventDetailScreen({super.key, this.event});
+  const EventDetailScreen({super.key, this.event, this.controller});
 
   static const routeName = '/event-detail';
 
   final EventModel? event;
+  final EventParticipationController? controller;
 
   @override
   State<EventDetailScreen> createState() => _EventDetailScreenState();
 }
 
 class _EventDetailScreenState extends State<EventDetailScreen> {
-  bool _saved = false;
   bool _loading = true;
   bool _actionBusy = false;
   bool _celebrateJoin = false;
@@ -36,33 +38,30 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   Timer? _loadingTimer;
   Timer? _celebrationTimer;
 
+  EventParticipationController get _controller =>
+      widget.controller ?? EventParticipationController.instance;
+
   @override
   void initState() {
     super.initState();
     _loadingTimer = Timer(const Duration(milliseconds: 260), () {
       if (mounted) setState(() => _loading = false);
     });
-    if (membershipTestMode) {
-      MembershipTestFlowController.instance.addListener(_syncTestStatus);
-    }
+    _controller.addListener(_syncStatus);
   }
 
   @override
   void dispose() {
     _loadingTimer?.cancel();
     _celebrationTimer?.cancel();
-    if (membershipTestMode) {
-      MembershipTestFlowController.instance.removeListener(_syncTestStatus);
-    }
+    _controller.removeListener(_syncStatus);
     super.dispose();
   }
 
-  void _syncTestStatus() {
+  void _syncStatus() {
     if (!mounted || _eventId == null) return;
     setState(() {
-      _status = MembershipTestFlowController.instance.isJoined(_eventId!)
-          ? TicketStatus.upcoming
-          : null;
+      _status = _controller.statusFor(_eventId!);
     });
   }
 
@@ -106,17 +105,15 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
             key: ValueKey('event-detail-${event.id}'),
             slivers: [
               SliverToBoxAdapter(
-                child: EventDetailHero(
-                  event: event,
-                  status: _status,
-                  saved: _saved,
-                  height: (MediaQuery.sizeOf(context).height * .42).clamp(
-                    320.0,
-                    460.0,
+                child: LayoutBuilder(
+                  builder: (context, constraints) => EventDetailHero(
+                    event: event,
+                    status: _status,
+                    height: (constraints.maxWidth * 9 / 16).clamp(260.0, 460.0),
+                    onBack: () => Navigator.of(context).maybePop(),
+                    onShare: () =>
+                        showEventSnack(context, 'Share link prepared'),
                   ),
-                  onBack: () => Navigator.of(context).maybePop(),
-                  onSave: () => _toggleSaved(event),
-                  onShare: () => showEventSnack(context, 'Share link prepared'),
                 ),
               ),
               SliverPadding(
@@ -253,35 +250,15 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   }
 
   TicketStatus? _existingStatus(EventModel event) {
-    if (membershipTestMode) {
-      return MembershipTestFlowController.instance.isJoined(event.id)
-          ? TicketStatus.upcoming
-          : null;
-    }
-    for (final entry in myEventTickets) {
-      if (entry.event.id == event.id) return entry.status;
-    }
-    return null;
-  }
-
-  void _toggleSaved(EventModel event) {
-    AmoraSession.requireAuth(
-      context: context,
-      onAuthenticated: () {
-        if (!mounted) return;
-        setState(() => _saved = !_saved);
-        showEventSnack(
-          context,
-          _saved ? '${event.title} saved' : '${event.title} removed from saved',
-        );
-      },
-    );
+    return _controller.statusFor(event.id);
   }
 
   void _handlePrimaryAction(EventModel event) {
     if (_actionBusy) return;
     if (_status == TicketStatus.waitlisted) {
-      Navigator.of(context).pushNamed(EventWaitlistScreen.routeName);
+      Navigator.of(
+        context,
+      ).pushNamed(EventWaitlistScreen.routeName, arguments: event);
       return;
     }
     if (_status == TicketStatus.attended) {
@@ -297,6 +274,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     if (membershipTestMode) {
       _startJoinMotion();
       MembershipTestFlowController.instance.joinEvent(event.id);
+      _controller.registerEvent(event);
       showEventSnack(context, 'You joined ${event.title}');
       return;
     }
@@ -304,8 +282,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       context: context,
       onAuthenticated: () {
         if (!mounted) return;
+        _controller.registerEvent(event);
         setState(() {
-          _status = TicketStatus.upcoming;
           _actionBusy = true;
           _celebrateJoin = true;
         });
@@ -368,13 +346,12 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                 Navigator.pop(sheetContext);
                 if (membershipTestMode) {
                   MembershipTestFlowController.instance.leaveEvent(event.id);
-                } else {
-                  setState(() {
-                    _status = null;
-                    _actionBusy = false;
-                    _celebrateJoin = false;
-                  });
                 }
+                _controller.cancelEvent(event);
+                setState(() {
+                  _actionBusy = false;
+                  _celebrateJoin = false;
+                });
                 showEventSnack(context, 'You left ${event.title}');
               },
             ),
@@ -665,11 +642,12 @@ class _AttendeeCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              CircleAvatar(
+              PremiumAvatar(
                 radius: 18,
-                backgroundColor: AppColors.tertiary,
-                foregroundImage: AssetImage(attendee.photoAsset),
-                child: Text(attendee.name.characters.first),
+                imageUrl: attendee.photoAsset,
+                fallbackAsset: attendee.photoAsset,
+                initials: attendee.name.characters.first,
+                semanticLabel: '${attendee.name} attendee photo',
               ),
               const Spacer(),
               if (attendee.verified)
@@ -737,7 +715,7 @@ class _DetailActionBar extends StatelessWidget {
       TicketStatus.attended => Icons.rate_review_rounded,
       TicketStatus.waitlisted => Icons.hourglass_top_rounded,
       TicketStatus.cancelled => Icons.event_busy_rounded,
-      null => Icons.favorite_rounded,
+      null => Icons.event_available_rounded,
     };
     return SafeArea(
       top: false,
@@ -788,7 +766,7 @@ class _DetailActionBar extends StatelessWidget {
               child: AppPrimaryButton(
                 key: ValueKey(label),
                 label: label,
-                icon: busy ? Icons.favorite_rounded : icon,
+                icon: busy ? Icons.hourglass_top_rounded : icon,
                 isLoading: busy,
                 variant: isJoined
                     ? AppPrimaryButtonVariant.outlined

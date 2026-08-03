@@ -3,9 +3,11 @@ import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/amora_search_bar.dart';
+import 'package:amora_ai/core/widgets/amoraa_select_field.dart';
 import 'package:amora_ai/core/data/image_repository.dart';
 import 'package:amora_ai/core/widgets/premium_editorial_panel.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
+import 'package:amora_ai/features/profile/domain/profile_form_options.dart';
 import 'package:amora_ai/features/admin_shared/presentation/admin_dashboard_widgets.dart';
 import 'package:flutter/material.dart';
 
@@ -117,32 +119,34 @@ class _DateSpotsMapScreenState extends State<DateSpotsMapScreen> {
                     hintText: 'Search cafes, restaurants, venues...',
                   ),
                   const SizedBox(height: 14),
-                  SizedBox(
-                    height: 42,
-                    child: ListView(
-                      scrollDirection: Axis.horizontal,
-                      children: [
-                        for (final city in _cities)
-                          CategoryFilterChip(
-                            label: city,
-                            selected: _city == city,
-                            onTap: () => setState(() => _city = city),
-                          ),
-                      ],
-                    ),
+                  AmoraaCompactSelect<String>(
+                    key: const ValueKey('date-spots-city-selector'),
+                    label: 'City',
+                    value: _city,
+                    prefixIcon: Icons.location_city_rounded,
+                    options: [
+                      for (final city in _cities)
+                        AmoraaSelectOption(value: city, label: city),
+                    ],
+                    onChanged: (city) {
+                      if (city != null) setState(() => _city = city);
+                    },
                   ),
                   const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
+                  AmoraaCompactSelect<String>(
+                    key: const ValueKey('date-spots-category-selector'),
+                    label: 'Venue category',
+                    value: _category,
+                    prefixIcon: Icons.category_outlined,
+                    options: [
                       for (final category in _categories)
-                        CategoryFilterChip(
-                          label: category,
-                          selected: _category == category,
-                          onTap: () => setState(() => _category = category),
-                        ),
+                        AmoraaSelectOption(value: category, label: category),
                     ],
+                    onChanged: (category) {
+                      if (category != null) {
+                        setState(() => _category = category);
+                      }
+                    },
                   ),
                   const SizedBox(height: 18),
                   const VenueMapPreviewCard(),
@@ -250,7 +254,7 @@ class _Spot {
   final String packagePrice;
 }
 
-const _cities = ['Ahmedabad', 'Gandhinagar', 'Vadodara', 'Surat', 'Rajkot'];
+const _cities = ProfileFormOptions.cities;
 const _categories = [
   'Coffee',
   'Rooftop',

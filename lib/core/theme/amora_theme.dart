@@ -137,18 +137,6 @@ abstract final class AmoraTheme {
         shape: RoundedRectangleBorder(borderRadius: AmoraRadius.button),
       ),
       inputDecorationTheme: inputTheme,
-      dropdownMenuTheme: DropdownMenuThemeData(
-        textStyle: AmoraTextStyles.bodyLarge,
-        inputDecorationTheme: inputTheme,
-        menuStyle: MenuStyle(
-          backgroundColor: const WidgetStatePropertyAll(
-            AppColors.surfaceContainerLowest,
-          ),
-          shape: const WidgetStatePropertyAll(
-            RoundedRectangleBorder(borderRadius: AmoraRadius.card),
-          ),
-        ),
-      ),
       checkboxTheme: CheckboxThemeData(
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AmoraRadius.small / 2),

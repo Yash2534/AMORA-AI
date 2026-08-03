@@ -9,6 +9,7 @@ import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/amora_profile_image.dart';
 import 'package:amora_ai/core/widgets/amora_super_like_animation.dart';
+import 'package:amora_ai/core/widgets/amoraa_identity_badge.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/floating_bottom_nav.dart';
 import 'package:amora_ai/core/widgets/premium_motion.dart';
@@ -17,6 +18,7 @@ import 'package:amora_ai/features/discover/presentation/advanced_filters_screen.
 import 'package:amora_ai/features/discover/presentation/discover_action_controller.dart';
 import 'package:amora_ai/features/notifications/presentation/notifications_hub_screen.dart';
 import 'package:amora_ai/features/profile/domain/profile_interest_policy.dart';
+import 'package:amora_ai/features/profile/presentation/controllers/profile_relationship_controller.dart';
 import 'package:amora_ai/features/profile/presentation/profile_detail_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
@@ -449,6 +451,7 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
         : -exitDistance;
     if (action == DiscoverAction.like) {
       await _actions.likeProfile();
+      ProfileRelationshipController.instance.likeProfile(profile);
     } else {
       await _actions.rejectProfile();
     }
@@ -479,8 +482,14 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
 
   Future<void> _rewind() async {
     if (!_actions.canRewind) return;
+    final entry = _actions.history.last;
     HapticFeedback.selectionClick();
     await _actions.rewindProfile();
+    if (entry.action == DiscoverAction.like) {
+      ProfileRelationshipController.instance.removeLike(entry.profileId);
+    } else if (entry.action == DiscoverAction.superLike) {
+      ProfileRelationshipController.instance.removeSuperLike(entry.profileId);
+    }
   }
 
   List<String> _photosFor(DummyProfile profile) {
@@ -518,6 +527,7 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
         HapticFeedback.mediumImpact();
         _superLikeProfileName = profile.name;
         await _actions.superLikeProfile();
+        ProfileRelationshipController.instance.superLikeProfile(profile);
         if (!mounted) return;
         setState(() => _photoIndices.remove(profile.id));
         if (!MediaQuery.disableAnimationsOf(context)) {
@@ -548,7 +558,11 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
           onSuperLike: () async {
             if (_actions.currentProfileId != profile.id) return false;
             await _actions.superLikeProfile();
-            return _actions.superLikedProfileIds.contains(profile.id);
+            final sent = _actions.superLikedProfileIds.contains(profile.id);
+            if (sent) {
+              ProfileRelationshipController.instance.superLikeProfile(profile);
+            }
+            return sent;
           },
         ),
       ),
@@ -1059,8 +1073,17 @@ class _ProfileOverlay extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (profile.verified) const _VerifiedBadge(),
-        if (profile.verified) const SizedBox(height: 8),
+        if (resolveAmoraaIdentityBadge(
+              isAadhaarVerified: profile.verified,
+              isPremium: profile.premium,
+            ) !=
+            AmoraaIdentityBadgeType.none) ...[
+          AmoraaIdentityBadge(
+            isAadhaarVerified: profile.verified,
+            isPremium: profile.premium,
+          ),
+          const SizedBox(height: 8),
+        ],
         Text(
           '${profile.name}, ${profile.age}',
           maxLines: 1,
@@ -1129,41 +1152,6 @@ class _ProfileOverlay extends StatelessWidget {
           ],
         ),
       ],
-    );
-  }
-}
-
-class _VerifiedBadge extends StatelessWidget {
-  const _VerifiedBadge();
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: AppColors.surface.withValues(alpha: .94),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.verified_rounded,
-              color: AppColors.secondary,
-              size: 16,
-            ),
-            const SizedBox(width: 5),
-            Text(
-              'Verified',
-              style: AmoraTextStyles.labelSmall.copyWith(
-                color: AppColors.primary,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

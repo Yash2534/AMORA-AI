@@ -9,10 +9,21 @@ class ProfileFormController extends ChangeNotifier {
     : repository = repository ?? LocalProfileRepository.instance {
     _baseProfile = this.repository.profile;
     name = TextEditingController(text: _baseProfile.name);
-    profession = TextEditingController(text: _baseProfile.profession);
+    profession = TextEditingController(
+      text: ProfileFormOptions.normalizeOccupation(_baseProfile.profession),
+    );
     company = TextEditingController(text: _baseProfile.company);
-    education = TextEditingController(text: _baseProfile.education);
-    city = TextEditingController(text: _baseProfile.location);
+    education = TextEditingController(
+      text: ProfileFormOptions.normalizeEducation(_baseProfile.education),
+    );
+    customEducation = TextEditingController(
+      text: ProfileFormOptions.customEducationFromStored(
+        _baseProfile.education,
+      ),
+    );
+    city = TextEditingController(
+      text: ProfileFormOptions.normalizeCity(_baseProfile.location),
+    );
     bio = TextEditingController(text: _baseProfile.bio);
     datingIntention = TextEditingController(
       text: ProfileFormOptions.normalizeDatingIntention(
@@ -20,16 +31,14 @@ class ProfileFormController extends ChangeNotifier {
       ),
     );
     birthDate = _baseProfile.dateOfBirth;
-    gender = switch (_baseProfile.gender.toLowerCase()) {
-      'woman' || 'female' => 'Female',
-      'man' || 'male' => 'Male',
-      _ => '',
-    };
+    gender = ProfileFormOptions.normalizeGender(_baseProfile.gender);
     interests = Set<String>.of(
       ProfileInterestPolicy.visible(_baseProfile.interests),
     );
     _retiredInterests = ProfileInterestPolicy.retired(_baseProfile.interests);
-    lifestyle = Map<String, String>.of(_baseProfile.lifestyle);
+    lifestyle = ProfileFormOptions.normalizeLifestyleSelections(
+      _baseProfile.lifestyle,
+    );
     languages = ProfileFormOptions.parseLanguages(lifestyle['Languages']);
     final prompt = _baseProfile.prompts.entries
         .where((entry) => entry.value.trim().isNotEmpty)
@@ -37,6 +46,7 @@ class ProfileFormController extends ChangeNotifier {
     promptTitle = prompt?.key ?? ProfileFormOptions.promptTitles.first;
     _originalPromptTitle = prompt?.key;
     promptAnswer = TextEditingController(text: prompt?.value ?? '');
+    promptEditorActive = false;
     for (final controller in _textControllers) {
       controller.addListener(_handleTextChanged);
     }
@@ -48,6 +58,7 @@ class ProfileFormController extends ChangeNotifier {
   late final TextEditingController profession;
   late final TextEditingController company;
   late final TextEditingController education;
+  late final TextEditingController customEducation;
   late final TextEditingController city;
   late final TextEditingController bio;
   late final TextEditingController datingIntention;
@@ -60,6 +71,7 @@ class ProfileFormController extends ChangeNotifier {
   late String promptTitle;
   late List<String> _retiredInterests;
   String? _originalPromptTitle;
+  late bool promptEditorActive;
   bool saving = false;
   bool dirty = false;
 
@@ -68,6 +80,7 @@ class ProfileFormController extends ChangeNotifier {
     profession,
     company,
     education,
+    customEducation,
     city,
     bio,
     datingIntention,
@@ -83,18 +96,15 @@ class ProfileFormController extends ChangeNotifier {
       updatedLifestyle['Languages'] = storedLanguages;
     }
     final prompts = Map<String, String>.of(_baseProfile.prompts);
-    if (_originalPromptTitle != null && _originalPromptTitle != promptTitle) {
-      prompts.remove(_originalPromptTitle);
-    }
-    if (promptAnswer.text.trim().isEmpty) {
-      prompts.remove(promptTitle);
-    } else {
-      prompts[promptTitle] = promptAnswer.text.trim();
+    if (promptEditorActive) {
+      if (_originalPromptTitle != null) prompts.remove(_originalPromptTitle);
+      final answer = promptAnswer.text.trim();
+      if (answer.isNotEmpty) prompts[promptTitle] = answer;
     }
     return _baseProfile.copyWith(
       name: name.text.trim(),
       birthdate: birthDate == null ? '' : AmoraDateOfBirth.format(birthDate!),
-      gender: gender,
+      gender: ProfileFormOptions.storedGenderValue(gender),
       bio: bio.text.trim(),
       profession: profession.text.trim(),
       company: company.text.trim(),
@@ -106,6 +116,23 @@ class ProfileFormController extends ChangeNotifier {
       prompts: prompts,
     );
   }
+
+  Map<String, String> get savedPrompts => Map.unmodifiable({
+    for (final entry in _baseProfile.prompts.entries)
+      if (entry.value.trim().isNotEmpty) entry.key: entry.value.trim(),
+  });
+
+  String? get promptEditingOriginalTitle => _originalPromptTitle;
+
+  Iterable<String> get availablePromptTitles =>
+      ProfileFormOptions.promptTitles.where(
+        (title) =>
+            !savedPrompts.containsKey(title) || title == _originalPromptTitle,
+      );
+
+  bool get canAddPrompt =>
+      savedPrompts.length < ProfileFormOptions.maximumProfilePrompts &&
+      availablePromptTitles.isNotEmpty;
 
   void _handleTextChanged() => markDirty();
 
@@ -124,9 +151,39 @@ class ProfileFormController extends ChangeNotifier {
     markDirty();
   }
 
+  void setEducation(String value) {
+    education.text = value;
+    markDirty();
+  }
+
   void setPromptTitle(String value) {
     promptTitle = value;
     markDirty();
+  }
+
+  void beginAddPrompt(String title) {
+    if (!canAddPrompt || !availablePromptTitles.contains(title)) return;
+    _originalPromptTitle = null;
+    promptTitle = title;
+    promptAnswer.clear();
+    promptEditorActive = true;
+    markDirty();
+  }
+
+  void beginEditPrompt(String title) {
+    final answer = savedPrompts[title];
+    if (answer == null) return;
+    _originalPromptTitle = title;
+    promptTitle = title;
+    promptAnswer.text = answer;
+    promptEditorActive = true;
+    notifyListeners();
+  }
+
+  void cancelPromptEditing() {
+    promptEditorActive = false;
+    _originalPromptTitle = null;
+    notifyListeners();
   }
 
   void setLanguages(Set<String> values) {
@@ -153,20 +210,43 @@ class ProfileFormController extends ChangeNotifier {
     final refreshed = repository.profile;
     _baseProfile = refreshed;
     _retiredInterests = ProfileInterestPolicy.retired(refreshed.interests);
-    lifestyle = Map<String, String>.of(refreshed.lifestyle);
+    lifestyle = ProfileFormOptions.normalizeLifestyleSelections(
+      refreshed.lifestyle,
+    );
     languages = ProfileFormOptions.parseLanguages(lifestyle['Languages']);
     notifyListeners();
   }
 
   Future<UserProfile> save() async {
     if (saving) return draftProfile;
+    if (education.text == 'Other') {
+      final trimmedCustomEducation = customEducation.text.trim();
+      if (trimmedCustomEducation != customEducation.text) {
+        customEducation.value = TextEditingValue(
+          text: trimmedCustomEducation,
+          selection: TextSelection.collapsed(
+            offset: trimmedCustomEducation.length,
+          ),
+        );
+      }
+    }
+    if (promptEditorActive) {
+      final trimmedPrompt = promptAnswer.text.trim();
+      if (trimmedPrompt != promptAnswer.text) {
+        promptAnswer.value = TextEditingValue(
+          text: trimmedPrompt,
+          selection: TextSelection.collapsed(offset: trimmedPrompt.length),
+        );
+      }
+    }
     saving = true;
     notifyListeners();
     final updated = draftProfile;
     try {
       await repository.savePersisted(updated);
       _baseProfile = updated;
-      _originalPromptTitle = promptTitle;
+      _originalPromptTitle = null;
+      promptEditorActive = false;
       dirty = false;
       return updated;
     } finally {

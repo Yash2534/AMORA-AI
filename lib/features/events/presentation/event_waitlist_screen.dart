@@ -1,13 +1,18 @@
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
+import 'package:amora_ai/features/events/domain/event_models.dart';
+import 'package:amora_ai/features/events/presentation/controllers/event_participation_controller.dart';
 import 'package:amora_ai/features/events/presentation/widgets/events_widgets.dart';
 import 'package:flutter/material.dart';
 
 class EventWaitlistScreen extends StatefulWidget {
-  const EventWaitlistScreen({super.key});
+  const EventWaitlistScreen({super.key, this.event, this.controller});
 
   static const routeName = '/event-waitlist';
+
+  final EventModel? event;
+  final EventParticipationController? controller;
 
   @override
   State<EventWaitlistScreen> createState() => _EventWaitlistScreenState();
@@ -15,8 +20,41 @@ class EventWaitlistScreen extends StatefulWidget {
 
 class _EventWaitlistScreenState extends State<EventWaitlistScreen> {
   bool _notify = true;
-  bool _joined = true;
-  int _position = 4;
+  bool _argumentsRead = false;
+  EventModel? _event;
+
+  EventParticipationController get _controller =>
+      widget.controller ?? EventParticipationController.instance;
+
+  bool get _joined =>
+      _event != null &&
+      _controller.statusFor(_event!.id) == TicketStatus.waitlisted;
+
+  @override
+  void initState() {
+    super.initState();
+    _event = widget.event;
+    _controller.addListener(_handleStateChanged);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_argumentsRead) return;
+    _argumentsRead = true;
+    final arguments = ModalRoute.of(context)?.settings.arguments;
+    if (_event == null && arguments is EventModel) _event = arguments;
+  }
+
+  @override
+  void dispose() {
+    _controller.removeListener(_handleStateChanged);
+    super.dispose();
+  }
+
+  void _handleStateChanged() {
+    if (mounted) setState(() {});
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -71,33 +109,28 @@ class _EventWaitlistScreenState extends State<EventWaitlistScreen> {
                         size: 34,
                       ),
                       const SizedBox(height: 12),
-                      const Text(
-                        'Your position',
-                        style: TextStyle(
-                          color: AppColors.text,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
                       Text(
-                        _joined ? '#$_position' : 'Not joined',
+                        _event?.title ?? 'Waitlist unavailable',
+                        textAlign: TextAlign.center,
                         style: const TextStyle(
                           color: AppColors.primary,
-                          fontSize: 44,
+                          fontSize: 20,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 8),
                       Text(
-                        _joined
-                            ? '${_position - 1} members ahead · High chance by Friday'
-                            : 'Rejoin whenever it feels right.',
+                        _event == null
+                            ? 'Open a waitlisted event to manage it.'
+                            : _joined
+                            ? 'You’re on the waitlist'
+                            : 'You are no longer on this waitlist.',
                         textAlign: TextAlign.center,
                         style: const TextStyle(
                           color: AppColors.text,
-                          fontSize: 14,
+                          fontSize: 15,
                           height: 1.4,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],
@@ -135,24 +168,21 @@ class _EventWaitlistScreenState extends State<EventWaitlistScreen> {
                 ),
                 const SizedBox(height: 18),
                 AppPrimaryButton(
-                  label: _joined ? 'Leave Waitlist' : 'Rejoin Waitlist',
+                  label: _joined ? 'Leave Waitlist' : 'Back to events',
                   icon: _joined
                       ? Icons.logout_rounded
-                      : Icons.hourglass_top_rounded,
+                      : Icons.arrow_back_rounded,
                   variant: _joined
                       ? AppPrimaryButtonVariant.outlined
                       : AppPrimaryButtonVariant.primary,
                   onPressed: () {
-                    setState(() {
-                      _joined = !_joined;
-                      if (_joined) _position = 4;
-                    });
-                    showEventSnack(
-                      context,
-                      _joined
-                          ? 'Waitlist joined'
-                          : 'You left the event waitlist',
-                    );
+                    final event = _event;
+                    if (_joined && event != null) {
+                      _controller.leaveWaitlist(event.id);
+                      showEventSnack(context, 'You left the event waitlist');
+                    } else {
+                      Navigator.of(context).maybePop();
+                    }
                   },
                 ),
               ],

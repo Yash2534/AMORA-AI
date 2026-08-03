@@ -1,18 +1,16 @@
-import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
-import 'package:amora_ai/core/widgets/premium_card.dart';
+import 'package:amora_ai/features/subscription/domain/amoraa_membership_status.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
-import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
-import 'package:amora_ai/features/profile/domain/profile_form_options.dart';
-import 'package:amora_ai/features/profile/domain/profile_interest_policy.dart';
-import 'package:amora_ai/features/profile/presentation/profile_edit_screen.dart';
-import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_story_image.dart';
 import 'package:amora_ai/features/discover/presentation/discover_screen.dart';
+import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
+import 'package:amora_ai/features/profile/presentation/profile_edit_screen.dart';
+import 'package:amora_ai/features/profile/presentation/widgets/amoraa_public_profile_details.dart';
 import 'package:flutter/material.dart';
 
 class ProfilePreviewScreen extends StatefulWidget {
   const ProfilePreviewScreen({super.key});
+
   static const routeName = '/profile-preview';
 
   @override
@@ -26,11 +24,13 @@ class _ProfilePreviewScreenState extends State<ProfilePreviewScreen> {
   void initState() {
     super.initState();
     _repository.addListener(_refresh);
+    AmoraaMembershipStatus.listenable.addListener(_refresh);
   }
 
   @override
   void dispose() {
     _repository.removeListener(_refresh);
+    AmoraaMembershipStatus.listenable.removeListener(_refresh);
     super.dispose();
   }
 
@@ -40,18 +40,18 @@ class _ProfilePreviewScreenState extends State<ProfilePreviewScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final profile = _repository.profile;
-    final photos = _repository.currentPhotos;
-    final primary =
-        photos.where((photo) => photo.isPrimary).firstOrNull ??
-        (photos.isEmpty ? null : photos.first);
-    final visibleInterests = ProfileInterestPolicy.visible(profile.interests);
+    final publicProfile = AmoraaPublicProfileData.fromProfile(
+      _repository.profile,
+      _repository.currentPhotos,
+      isAadhaarVerified: false,
+      isPremium: AmoraaMembershipStatus.isPremiumActive,
+    );
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Profile preview'),
+        title: const Text('Profile Preview'),
         leading: IconButton(
-          tooltip: 'Return to profile completion',
+          tooltip: 'Back',
           onPressed: () => Navigator.of(context).maybePop(),
           icon: const Icon(Icons.arrow_back_rounded),
         ),
@@ -62,90 +62,23 @@ class _ProfilePreviewScreenState extends State<ProfilePreviewScreen> {
           maxWidth: 720,
           child: CustomScrollView(
             key: const Key('profile-preview-scroll'),
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             slivers: [
               SliverPadding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 96),
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 48),
                 sliver: SliverList.list(
                   children: [
-                    AmoraaProfileStoryImage(
-                      image: primary?.source ?? profile.primaryPhoto,
-                      photo: primary,
-                      initials: profile.name.isEmpty
-                          ? 'AM'
-                          : profile.name.substring(0, 1),
-                      semanticLabel: 'Primary profile photo',
-                    ),
-                    const SizedBox(height: 20),
-                    Text(
-                      profile.age == null
-                          ? profile.name
-                          : '${profile.name}, ${profile.age}',
-                      style: AmoraTextStyles.headlineLarge,
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      '${profile.location} • ${ProfileFormOptions.normalizeDatingIntention(profile.datingIntention)}',
-                      style: AmoraTextStyles.bodyMedium.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    _PreviewSection(
-                      title: 'About me',
-                      child: Text(profile.bio),
-                    ),
-                    if (visibleInterests.isNotEmpty)
-                      _PreviewSection(
-                        title: 'Interests',
-                        child: Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            for (final interest in visibleInterests)
-                              Chip(label: Text(interest)),
-                          ],
+                    Semantics(
+                      header: true,
+                      child: Text(
+                        'See how your profile appears to others.',
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          color: AppColors.text.withValues(alpha: .68),
                         ),
                       ),
-                    for (final prompt in profile.prompts.entries)
-                      if (prompt.value.trim().isNotEmpty)
-                        _PreviewSection(
-                          title: prompt.key,
-                          child: Text(
-                            prompt.value,
-                            style: AmoraTextStyles.titleMedium,
-                          ),
-                        ),
-                    for (var index = 0; index < photos.length; index++)
-                      if (!photos[index].isPrimary) ...[
-                        AmoraaProfileStoryImage(
-                          image: photos[index].source,
-                          photo: photos[index],
-                          initials: 'AM',
-                          semanticLabel: 'Profile photo ${index + 1}',
-                        ),
-                        const SizedBox(height: 20),
-                      ],
-                    if (profile.lifestyle.isNotEmpty)
-                      _PreviewSection(
-                        title: 'Lifestyle',
-                        child: Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            for (final entry in profile.lifestyle.entries)
-                              if (entry.key == 'Languages')
-                                for (final language
-                                    in ProfileFormOptions.parseLanguages(
-                                      entry.value,
-                                    ))
-                                  Chip(label: Text(language))
-                              else
-                                Chip(
-                                  label: Text('${entry.key}: ${entry.value}'),
-                                ),
-                          ],
-                        ),
-                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    AmoraaPublicProfileDetails(profile: publicProfile),
                   ],
                 ),
               ),
@@ -185,36 +118,6 @@ class _ProfilePreviewScreenState extends State<ProfilePreviewScreen> {
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-extension _FirstOrNull<T> on Iterable<T> {
-  T? get firstOrNull {
-    final iterator = this.iterator;
-    return iterator.moveNext() ? iterator.current : null;
-  }
-}
-
-class _PreviewSection extends StatelessWidget {
-  const _PreviewSection({required this.title, required this.child});
-  final String title;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: PremiumCard(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(title, style: AmoraTextStyles.titleLarge),
-            const SizedBox(height: 10),
-            child,
-          ],
         ),
       ),
     );

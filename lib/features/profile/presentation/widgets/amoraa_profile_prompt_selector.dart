@@ -3,6 +3,33 @@ import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 
+Future<void> showAmoraaProfilePromptPicker(
+  BuildContext context, {
+  required String selectedPrompt,
+  required Iterable<String> options,
+  required ValueChanged<String> onSelected,
+}) {
+  final available = <String>{...options};
+  if (selectedPrompt.isNotEmpty) available.add(selectedPrompt);
+  return showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    backgroundColor: AppColors.surface,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    ),
+    builder: (sheetContext) => _PromptPickerSheet(
+      selectedPrompt: selectedPrompt,
+      options: available.toList(growable: false),
+      onSelected: (value) {
+        onSelected(value);
+        Navigator.of(sheetContext).pop();
+      },
+    ),
+  );
+}
+
 class AmoraaProfilePromptSelector extends StatelessWidget {
   const AmoraaProfilePromptSelector({
     super.key,
@@ -32,7 +59,12 @@ class AmoraaProfilePromptSelector extends StatelessWidget {
         ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
-          onTap: () => _openPicker(context),
+          onTap: () => showAmoraaProfilePromptPicker(
+            context,
+            selectedPrompt: selectedPrompt,
+            options: options,
+            onSelected: onSelected,
+          ),
           child: ConstrainedBox(
             constraints: const BoxConstraints(minHeight: 72),
             child: Padding(
@@ -85,28 +117,6 @@ class AmoraaProfilePromptSelector extends StatelessWidget {
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  Future<void> _openPicker(BuildContext context) {
-    final available = <String>{...options};
-    if (selectedPrompt.isNotEmpty) available.add(selectedPrompt);
-    return showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      backgroundColor: AppColors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (_) => _PromptPickerSheet(
-        selectedPrompt: selectedPrompt,
-        options: available.toList(growable: false),
-        onSelected: (value) {
-          onSelected(value);
-          Navigator.of(context).pop();
-        },
       ),
     );
   }

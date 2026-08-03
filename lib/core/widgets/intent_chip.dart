@@ -61,12 +61,3 @@ class IntentChip extends StatelessWidget {
     );
   }
 }
-
-const relationshipIntentions = [
-  '💍 Marriage Minded',
-  '❤️ Long-Term Relationship',
-  '☕ Meaningful Dating',
-  '✨ Exploring Possibilities',
-  '🤝 Friendship First',
-  '🌿 Casual Connection',
-];

@@ -1,3 +1,4 @@
+import 'package:amora_ai/core/widgets/amoraa_select_field.dart';
 import 'package:amora_ai/features/notifications/presentation/notifications_hub_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -81,7 +82,7 @@ void main() {
     expect(find.text('/notification-preferences destination'), findsOneWidget);
   });
 
-  testWidgets('filters are horizontal and Unread updates the local feed', (
+  testWidgets('compact selector filters Unread notifications locally', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(320, 760));
@@ -89,12 +90,17 @@ void main() {
 
     await pumpNotifications(tester);
     final rail = find.byKey(const ValueKey('notification-filter-rail'));
-    final list = tester.widget<ListView>(
-      find.descendant(of: rail, matching: find.byType(ListView)),
+    expect(
+      find.descendant(
+        of: rail,
+        matching: find.byType(AmoraaCompactSelect<String>),
+      ),
+      findsOneWidget,
     );
-    expect(list.scrollDirection, Axis.horizontal);
 
-    await tester.tap(find.byKey(const ValueKey('notification-filter-Unread')));
+    await tester.tap(rail);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('amoraa-select-option-Unread')));
     await tester.pumpAndSettle();
     expect(find.text('Kavya liked your profile'), findsOneWidget);
     expect(find.text('Nisha viewed your profile'), findsNothing);

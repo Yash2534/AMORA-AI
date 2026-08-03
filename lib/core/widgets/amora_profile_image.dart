@@ -1,8 +1,7 @@
 import 'dart:typed_data';
 
+import 'package:amora_ai/core/constants/app_images.dart';
 import 'package:amora_ai/core/widgets/premium_image.dart';
-import 'package:amora_ai/core/widgets/profile_photo_file_provider_stub.dart'
-    if (dart.library.io) 'package:amora_ai/core/widgets/profile_photo_file_provider_io.dart';
 import 'package:flutter/material.dart';
 
 class AmoraProfileImage extends StatelessWidget {
@@ -40,45 +39,24 @@ class AmoraProfileImage extends StatelessWidget {
     final cacheHeight = height == null
         ? null
         : (height! * devicePixelRatio).round();
+    final fallbackAsset = assetPath.trim().startsWith('assets/')
+        ? assetPath
+        : AppImages.fallbackProfile;
 
-    final source = assetPath.trim().isNotEmpty ? assetPath : imageUrl;
-    final localProvider = memoryBytes == null
-        ? localProfilePhotoFileProvider(source)
-        : null;
-    final fallback = PremiumImage(
+    return PremiumImage(
       imageUrl: imageUrl,
       assetPath: assetPath,
-      fallbackAsset: assetPath,
+      memoryBytes: memoryBytes,
+      fallbackAsset: fallbackAsset,
       initials: initials,
-      width: width,
-      height: height,
       fit: fit,
       alignment: alignment,
       borderRadius: borderRadius ?? BorderRadius.zero,
+      width: width,
+      height: height,
       cacheWidth: cacheWidth,
       cacheHeight: cacheHeight,
-    );
-    final image = memoryBytes != null || localProvider != null
-        ? ClipRRect(
-            borderRadius: borderRadius ?? BorderRadius.zero,
-            child: Image(
-              image: memoryBytes != null
-                  ? MemoryImage(memoryBytes!)
-                  : localProvider!,
-              width: width,
-              height: height,
-              fit: fit,
-              alignment: alignment,
-              filterQuality: FilterQuality.medium,
-              errorBuilder: (_, _, _) => fallback,
-            ),
-          )
-        : fallback;
-
-    return Semantics(
-      image: true,
-      label: semanticLabel ?? 'Profile photo',
-      child: ExcludeSemantics(child: image),
+      semanticLabel: semanticLabel ?? 'Profile photo',
     );
   }
 }

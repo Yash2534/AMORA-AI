@@ -1,6 +1,7 @@
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
+import 'package:amora_ai/core/widgets/amoraa_select_field.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/legal/presentation/community_guidelines_screen.dart';
 import 'package:amora_ai/features/safety/presentation/report_flow_screen.dart';
@@ -378,46 +379,22 @@ class FaqCategoryBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 48,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: FaqCategory.values.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 8),
-        itemBuilder: (context, index) {
-          final category = FaqCategory.values[index];
-          final active = category == selected;
-          return Semantics(
-            selected: active,
-            button: true,
-            label: '${category.label} help topics',
-            child: ChoiceChip(
-              key: ValueKey('faq-category-${category.name}'),
-              selected: active,
-              showCheckmark: false,
-              avatar: Icon(
-                category.icon,
-                size: 18,
-                color: active ? AppColors.surface : AppColors.secondary,
-              ),
-              label: Text(category.label),
-              onSelected: (_) => onSelected(category),
-              selectedColor: AppColors.primary,
-              backgroundColor: AppColors.surface,
-              side: BorderSide(
-                color: active ? AppColors.primary : AppColors.secondary,
-              ),
-              labelStyle: TextStyle(
-                color: active ? AppColors.surface : AppColors.text,
-                fontWeight: FontWeight.w600,
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-            ),
-          );
-        },
-      ),
+    return AmoraaCompactSelect<FaqCategory>(
+      key: const ValueKey('faq-category-selector'),
+      label: 'Help category',
+      value: selected,
+      prefixIcon: selected.icon,
+      options: [
+        for (final category in FaqCategory.values)
+          AmoraaSelectOption(
+            value: category,
+            label: category.label,
+            icon: category.icon,
+          ),
+      ],
+      onChanged: (category) {
+        if (category != null) onSelected(category);
+      },
     );
   }
 }

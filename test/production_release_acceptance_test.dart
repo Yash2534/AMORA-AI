@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:amora_ai/core/theme/amora_theme.dart';
+import 'package:amora_ai/core/widgets/amoraa_select_field.dart';
 import 'package:amora_ai/features/profile/presentation/photo_manager_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_completion_screen.dart';
 import 'package:amora_ai/features/settings/presentation/notification_preferences_screen.dart';
@@ -75,7 +76,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Height, Languages & Religion'), findsOneWidget);
     expect(find.textContaining('details remain'), findsWidgets);
-    expect(find.byType(DropdownButtonFormField<String>), findsWidgets);
+    expect(find.byType(AmoraaSelectField<String>), findsWidgets);
     expect(find.text('Children'), findsNothing);
     expect(tester.takeException(), isNull);
   });

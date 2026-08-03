@@ -35,6 +35,7 @@ import 'package:amora_ai/features/profile/presentation/photo_manager_screen.dart
 import 'package:amora_ai/features/profile/presentation/profile_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_setup_screen.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
+import 'package:amora_ai/features/profile/domain/profile_form_options.dart';
 import 'package:amora_ai/features/profile/domain/profile_interest_policy.dart';
 import 'package:amora_ai/features/subscription/presentation/subscription_screen.dart';
 import 'package:flutter/material.dart';
@@ -278,11 +279,8 @@ class _AmoraHomeScreenState extends State<AmoraHomeScreen> {
                     Align(
                       alignment: Alignment.bottomCenter,
                       child: Padding(
-                        padding: EdgeInsets.fromLTRB(
-                          16,
-                          0,
-                          16,
-                          FloatingBottomNav.bottomMargin + bottomInset,
+                        padding: EdgeInsets.only(
+                          bottom: FloatingBottomNav.bottomMargin + bottomInset,
                         ),
                         child: const FloatingBottomNav(
                           activeTab: AmoraNavTab.discover,
@@ -361,6 +359,7 @@ class _HomeTopBar extends StatelessWidget {
       animation: repository,
       builder: (context, _) {
         final profile = repository.profile;
+        final city = ProfileFormOptions.normalizeCity(profile.location);
         return Row(
           children: [
             _RoundAvatar(
@@ -390,7 +389,9 @@ class _HomeTopBar extends StatelessWidget {
                   ),
                   const SizedBox(height: AmoraSpacing.space4),
                   Text(
-                    '${profile.location} matches with real intent',
+                    city.isEmpty
+                        ? 'Matches with real intent'
+                        : '$city matches with real intent',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: AmoraTextStyles.bodyMedium.copyWith(

@@ -121,34 +121,71 @@ void main() {
     await tester.tap(career);
     await tester.pumpAndSettle();
 
-    final graduate = find.byKey(const ValueKey('filter-option-Graduate'));
-    final mba = find.byKey(const ValueKey('filter-option-MBA'));
-    await tester.ensureVisible(graduate);
-    await tester.tap(graduate);
+    final selector = find.byKey(const ValueKey('filters-education-selector'));
+    await tester.ensureVisible(selector);
+    await tester.tap(selector);
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey('amoraa-select-option-Undergraduate')),
+    );
     await tester.pumpAndSettle();
     expect(find.text('8 preferences selected'), findsOneWidget);
     expect(find.text('+4 more'), findsOneWidget);
 
-    await tester.tap(mba);
+    await tester.tap(selector);
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey('amoraa-select-option-Postgraduate')),
+    );
     await tester.pumpAndSettle();
     expect(find.text('8 preferences selected'), findsOneWidget);
-    final selectedEducation = tester
-        .widgetList<Semantics>(find.byType(Semantics))
-        .where(
-          (widget) =>
-              widget.properties.label == 'MBA, selected' &&
-              widget.properties.selected == true,
-        );
-    final previousEducation = tester
-        .widgetList<Semantics>(find.byType(Semantics))
-        .where(
-          (widget) =>
-              widget.properties.label == 'Graduate, not selected' &&
-              widget.properties.selected == false,
-        );
-    expect(selectedEducation, isNotEmpty);
-    expect(previousEducation, isNotEmpty);
+    expect(
+      find.descendant(of: selector, matching: find.text('Postgraduate')),
+      findsOneWidget,
+    );
+    expect(find.text('Undergraduate'), findsNothing);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('shared Smoking options include Yes and remain single-select', (
+    tester,
+  ) async {
+    await pumpFilters(tester, size: const Size(430, 850));
+    final habits = find.byKey(const ValueKey('filters-section-toggle-habits'));
+    await tester.ensureVisible(habits);
+    await tester.tap(habits);
+    await tester.pumpAndSettle();
+
+    final selector = find.byKey(const ValueKey('filters-smoking-selector'));
+    await tester.ensureVisible(selector);
+    await tester.tap(selector);
+    await tester.pumpAndSettle();
+
+    final yes = find.byKey(const ValueKey('amoraa-select-option-Yes'));
+    await tester.ensureVisible(yes);
+    await tester.tap(yes);
+    await tester.pumpAndSettle();
+    expect(
+      find.descendant(of: selector, matching: find.text('Yes')),
+      findsOneWidget,
+    );
+
+    await tester.tap(selector);
+    await tester.pumpAndSettle();
+    final sometimes = find.byKey(
+      const ValueKey('amoraa-select-option-Sometimes'),
+    );
+    await tester.ensureVisible(sometimes);
+    await tester.tap(sometimes);
+    await tester.pumpAndSettle();
+    expect(
+      find.descendant(of: selector, matching: find.text('Sometimes')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: selector, matching: find.text('Yes')),
+      findsNothing,
+    );
   });
 
   testWidgets('city selector contains exactly four single-select choices', (
@@ -158,45 +195,73 @@ void main() {
 
     expect(
       approvedFilterCities,
-      orderedEquals(<String>['Ahmedabad', 'Gandhinagar', 'Surat', 'Vadodara']),
+      orderedEquals(<String>['Gandhinagar', 'Ahmedabad', 'Surat', 'Vadodara']),
     );
     expect(find.byKey(const ValueKey('filters-city-search')), findsNothing);
     final cityControl = find.byKey(const ValueKey('filters-city-control'));
     expect(cityControl, findsOneWidget);
+    final citySelector = find.byKey(const ValueKey('filters-city-selector'));
+    await tester.ensureVisible(citySelector);
+    await tester.tap(citySelector);
+    await tester.pumpAndSettle();
     for (final city in approvedFilterCities) {
-      final cityFinder = find.byKey(ValueKey('filter-option-$city'));
-      await tester.ensureVisible(cityFinder);
+      final cityFinder = find.byKey(ValueKey('amoraa-select-option-$city'));
       expect(cityFinder, findsOneWidget);
     }
     for (final city in <String>['Rajkot', 'Mumbai', 'Pune', 'Other']) {
       expect(
-        find.descendant(of: cityControl, matching: find.text(city)),
+        find.descendant(
+          of: find.byKey(const ValueKey('amoraa-select-sheet')),
+          matching: find.text(city),
+        ),
         findsNothing,
       );
     }
 
-    final surat = find.byKey(const ValueKey('filter-option-Surat'));
-    await tester.ensureVisible(surat);
+    final surat = find.byKey(const ValueKey('amoraa-select-option-Surat'));
     await tester.tap(surat);
     await tester.pumpAndSettle();
-    final selectedCity = tester
-        .widgetList<Semantics>(find.byType(Semantics))
-        .where(
-          (widget) =>
-              widget.properties.label == 'Surat, selected' &&
-              widget.properties.selected == true,
-        );
-    final previousCity = tester
-        .widgetList<Semantics>(find.byType(Semantics))
-        .where(
-          (widget) =>
-              widget.properties.label == 'Ahmedabad, not selected' &&
-              widget.properties.selected == false,
-        );
-    expect(selectedCity, isNotEmpty);
-    expect(previousCity, isNotEmpty);
+    expect(
+      find.descendant(of: citySelector, matching: find.text('Surat')),
+      findsOneWidget,
+    );
     expect(find.text('7 preferences selected'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Education Other requires trimmed custom text inline', (
+    tester,
+  ) async {
+    await pumpFilters(tester, size: const Size(430, 850));
+    final career = find.byKey(const ValueKey('filters-section-toggle-career'));
+    await tester.ensureVisible(career);
+    await tester.tap(career);
+    await tester.pumpAndSettle();
+
+    final selector = find.byKey(const ValueKey('filters-education-selector'));
+    await tester.ensureVisible(selector);
+    await tester.tap(selector);
+    await tester.pumpAndSettle();
+    final other = find.byKey(const ValueKey('amoraa-select-option-Other'));
+    await tester.scrollUntilVisible(
+      other,
+      160,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.tap(other);
+    await tester.pumpAndSettle();
+
+    final custom = find.byKey(const ValueKey('filters-custom-education-field'));
+    expect(custom, findsOneWidget);
+    await tester.enterText(custom, '   ');
+    await tester.tap(find.byKey(const ValueKey('filters-apply-button')));
+    await tester.pumpAndSettle();
+    expect(find.text('Specify education'), findsNWidgets(2));
+
+    await tester.enterText(custom, '  Montessori training  ');
+    await tester.tap(find.byKey(const ValueKey('filters-apply-button')));
+    await tester.pumpAndSettle();
+    expect(find.text('Discover route'), findsOneWidget);
   });
 
   testWidgets('height wheel converts units, applies locally, and resets', (
@@ -262,7 +327,7 @@ void main() {
       warnIfMissed: false,
     );
     await tester.pumpAndSettle();
-    expect(find.text('Education'), findsOneWidget);
+    expect(find.text('Education'), findsWidgets);
 
     await tester.tap(find.byKey(const ValueKey('filters-bottom-reset')));
     await tester.pumpAndSettle();

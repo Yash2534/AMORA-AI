@@ -1,4 +1,5 @@
 import 'package:amora_ai/core/constants/app_images.dart';
+import 'package:amora_ai/features/profile/domain/profile_form_options.dart';
 import 'package:flutter/material.dart';
 
 class ImageRepository {
@@ -452,24 +453,7 @@ const _lastNames = [
   'Saxena',
   'Banerjee',
 ];
-const _profileCities = [
-  'Ahmedabad',
-  'Gandhinagar',
-  'Vadodara',
-  'Surat',
-  'Rajkot',
-  'Mumbai',
-  'Pune',
-  'Delhi',
-  'Bengaluru',
-  'Hyderabad',
-  'Jaipur',
-  'Indore',
-  'Chandigarh',
-  'Kochi',
-  'Lucknow',
-  'Nagpur',
-];
+const _profileCities = ProfileFormOptions.cities;
 const _femaleProfessions = [
   'UX Designer',
   'Architect',
@@ -506,29 +490,8 @@ const _maleProfessions = [
   'Film Editor',
   'Pilot',
 ];
-const _education = [
-  'CEPT University',
-  'IIM Ahmedabad',
-  'NID Ahmedabad',
-  'Mumbai University',
-  'Delhi University',
-  'Symbiosis Pune',
-  'Christ University',
-  'MS University',
-  'NIFT Mumbai',
-  'Manipal University',
-  'Ashoka University',
-  'BITS Pilani',
-];
-const _intentions = [
-  'Meaningful Dating',
-  'Long-Term Relationship',
-  'Marriage Minded',
-  'Intentional Dating',
-  'Friendship First',
-  'Exploring Possibilities',
-  'Serious Dating',
-];
+const _education = ProfileFormOptions.education;
+const _intentions = ProfileFormOptions.datingIntentions;
 const _personalities = [
   'INFJ',
   'ENFJ',
@@ -539,38 +502,7 @@ const _personalities = [
   'ENTP',
   'ISTJ',
 ];
-const _interests = [
-  'Coffee Dates',
-  'Architecture',
-  'Garba Nights',
-  'Heritage Walks',
-  'Design',
-  'Fitness Partner',
-  'Road Trips',
-  'Foodie Partner',
-  'Live Concert',
-  'Event Buddy',
-  'Music',
-  'Family Values',
-  'Art Cafe',
-  'Desserts',
-  'Board Games',
-  'Fine Dining',
-  'Travel',
-  'Museums',
-  'Indie Music',
-  'Book Cafe',
-  'Startup Talks',
-  'Temple Visit',
-  'Cycling',
-  'Books',
-  'Street Food',
-  'AI',
-  'Poetry',
-  'Filter Coffee',
-  'Cooking',
-  'Mindfulness',
-];
+final _interests = ProfileFormOptions.interests;
 const _bioOpeners = [
   'I like people who are kind when nobody is watching.',
   'My weekdays are ambitious and my weekends are intentionally slow.',
@@ -663,8 +595,8 @@ const _fitness = [
   'Weekend sports',
   'Balanced',
 ];
-const _smoking = ['Never', 'No', 'Occasionally'];
-const _drinking = ['Never', 'Socially', 'Rarely'];
+const _smoking = ProfileFormOptions.smokingOptions;
+const _drinking = ProfileFormOptions.drinkingOptions;
 const _children = [
   'Open to children',
   'Wants children',

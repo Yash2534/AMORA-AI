@@ -77,6 +77,7 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
     return Scaffold(
       body: SafeArea(
         child: ResponsiveMobileFrame(
+          maxWidth: 820,
           child: LayoutBuilder(
             builder: (context, constraints) => SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(
@@ -178,54 +179,72 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
   }
 
   Future<void> _addPhoto() async {
+    if (_picking) return;
     if (_repository.profile.photos.length >= 6) {
       return _snack('Maximum 6 photos allowed');
     }
-    final source = await showModalBottomSheet<AmoraMediaSource>(
-      context: context,
-      useSafeArea: true,
-      showDragHandle: true,
-      builder: (context) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text('Add a profile photo', style: AmoraTextStyles.headlineSmall),
-              const SizedBox(height: AmoraSpacing.space8),
-              Text(
-                'Choose a clear JPEG, PNG, or WebP image up to 12 MB.',
-                style: AmoraTextStyles.bodyMedium,
-              ),
-              const SizedBox(height: AmoraSpacing.space16),
-              ListTile(
-                leading: const Icon(Icons.camera_alt_rounded),
-                title: const Text('Take a photo'),
-                subtitle: const Text('Camera permission is requested next'),
-                onTap: () => Navigator.of(context).pop(AmoraMediaSource.camera),
-              ),
-              ListTile(
-                leading: const Icon(Icons.photo_library_rounded),
-                title: const Text('Choose from photo library'),
-                subtitle: const Text('Select an existing photo'),
-                onTap: () =>
-                    Navigator.of(context).pop(AmoraMediaSource.gallery),
-              ),
-            ],
+    setState(() => _picking = true);
+    try {
+      final source = await showModalBottomSheet<AmoraMediaSource>(
+        context: context,
+        useSafeArea: true,
+        showDragHandle: true,
+        builder: (context) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'Add a profile photo',
+                  style: AmoraTextStyles.headlineSmall,
+                ),
+                const SizedBox(height: AmoraSpacing.space8),
+                Text(
+                  'Choose a clear JPEG, PNG, or WebP image up to 12 MB.',
+                  style: AmoraTextStyles.bodyMedium,
+                ),
+                const SizedBox(height: AmoraSpacing.space16),
+                ListTile(
+                  leading: const Icon(Icons.camera_alt_rounded),
+                  title: const Text('Take a photo'),
+                  subtitle: const Text('Camera permission is requested next'),
+                  onTap: () =>
+                      Navigator.of(context).pop(AmoraMediaSource.camera),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.photo_library_rounded),
+                  title: const Text('Choose from photo library'),
+                  subtitle: const Text('Select an existing photo'),
+                  onTap: () =>
+                      Navigator.of(context).pop(AmoraMediaSource.gallery),
+                ),
+              ],
+            ),
           ),
         ),
-      ),
-    );
-    if (!mounted || source == null) return;
-    await _pickPhoto(source);
+      );
+      if (!mounted || source == null) return;
+      await _performPick(source);
+    } finally {
+      if (mounted) setState(() => _picking = false);
+    }
   }
 
   Future<void> _pickPhoto(AmoraMediaSource source) async {
+    if (_picking) return;
     setState(() => _picking = true);
+    try {
+      await _performPick(source);
+    } finally {
+      if (mounted) setState(() => _picking = false);
+    }
+  }
+
+  Future<void> _performPick(AmoraMediaSource source) async {
     final result = await widget.mediaPicker.pickImage(source: source);
     if (!mounted) return;
-    setState(() => _picking = false);
 
     final media = result.media;
     if (media == null) {
@@ -237,22 +256,44 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
       );
       return;
     }
+    final selectedBytes = media.bytes;
+    final selectedMimeType = AmoraImageValidation.supportedMimeType(
+      selectedBytes,
+    );
+    if (selectedBytes.isEmpty ||
+        selectedMimeType == null ||
+        selectedMimeType != media.mimeType) {
+      _snack('That photo could not be read. Choose another image.');
+      return;
+    }
     final croppedPhoto = await Navigator.of(context).push<String>(
       MaterialPageRoute<String>(
         builder: (_) => ProfilePhotoCropPreviewScreen(
           sourceDataUri: media.dataUri,
+          sourceBytes: selectedBytes,
           previewRenderer: widget.cropPreviewRenderer,
         ),
       ),
     );
     if (!mounted || croppedPhoto == null) return;
+    final croppedBytes = _decodeDataUri(croppedPhoto);
+    final croppedMimeType = croppedBytes == null
+        ? null
+        : AmoraImageValidation.supportedMimeType(croppedBytes);
+    if (croppedBytes == null ||
+        croppedMimeType == null ||
+        croppedBytes.lengthInBytes > DeviceAmoraMediaPicker.maximumImageBytes) {
+      _snack('The prepared photo is invalid. Please choose another image.');
+      return;
+    }
     final uploadState = widget.photoUploader == null
         ? ProfilePhotoUploadState.localOnly
         : ProfilePhotoUploadState.uploading;
     _repository.addPhotoInSession(
       croppedPhoto,
       uploadState: uploadState,
-      bytes: _decodeDataUri(croppedPhoto),
+      bytes: croppedBytes,
+      mimeType: croppedMimeType,
     );
     _snack('Photo added to your profile.');
     if (widget.photoUploader != null) {
@@ -274,7 +315,7 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
     );
     try {
       final remoteUrl = await uploader(localSource);
-      if (remoteUrl.trim().isEmpty) {
+      if (!_validRemoteUrl(remoteUrl)) {
         throw StateError('The upload returned no photo URL');
       }
       _repository.replacePhotoSourceInSession(localSource, remoteUrl);
@@ -348,6 +389,13 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
 
   void _snack(String message) {
     showAmoraSnackBar(context, message: message);
+  }
+
+  bool _validRemoteUrl(String value) {
+    final uri = Uri.tryParse(value.trim());
+    return uri != null &&
+        (uri.scheme == 'http' || uri.scheme == 'https') &&
+        uri.host.isNotEmpty;
   }
 }
 
@@ -666,11 +714,37 @@ class _AddPhotoTile extends StatelessWidget {
           ),
           child: Center(
             child: loading
-                ? const CircularProgressIndicator()
-                : const Icon(
-                    Icons.add_photo_alternate_rounded,
-                    color: AppColors.primaryPurple,
-                    size: AmoraIconSizes.large,
+                ? const Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.hourglass_top_rounded,
+                        color: AppColors.primaryPurple,
+                        size: AmoraIconSizes.large,
+                      ),
+                      SizedBox(height: AmoraSpacing.space8),
+                      Text(
+                        'Opening picker...',
+                        textAlign: TextAlign.center,
+                        style: AmoraTextStyles.labelSmall,
+                      ),
+                    ],
+                  )
+                : const Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.add_photo_alternate_rounded,
+                        color: AppColors.primaryPurple,
+                        size: AmoraIconSizes.large,
+                      ),
+                      SizedBox(height: AmoraSpacing.space8),
+                      Text(
+                        'Add photo',
+                        textAlign: TextAlign.center,
+                        style: AmoraTextStyles.labelMedium,
+                      ),
+                    ],
                   ),
           ),
         ),
@@ -831,10 +905,12 @@ class ProfilePhotoCropPreviewScreen extends StatefulWidget {
   const ProfilePhotoCropPreviewScreen({
     super.key,
     required this.sourceDataUri,
+    required this.sourceBytes,
     this.previewRenderer,
   });
 
   final String sourceDataUri;
+  final Uint8List sourceBytes;
   final ProfilePhotoCropRenderer? previewRenderer;
 
   @override
@@ -847,7 +923,14 @@ class _ProfilePhotoCropPreviewScreenState
   static const _cropRatio = 4 / 5;
   final _captureKey = GlobalKey();
   final _transformationController = TransformationController();
+  late final Uint8List _sourceBytes;
   bool _usingPhoto = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _sourceBytes = Uint8List.fromList(widget.sourceBytes);
+  }
 
   @override
   void dispose() {
@@ -890,6 +973,7 @@ class _ProfilePhotoCropPreviewScreenState
                     key: const ValueKey('photo-crop-canvas'),
                     captureKey: _captureKey,
                     sourceDataUri: widget.sourceDataUri,
+                    sourceBytes: _sourceBytes,
                     transformationController: _transformationController,
                     aspectRatio: _cropRatio,
                   ),
@@ -924,19 +1008,24 @@ class _ProfilePhotoCropPreviewScreenState
       if (widget.previewRenderer case final renderer?) {
         final result = await renderer(_captureKey);
         if (!mounted) return;
-        if (_decodeDataUri(result) == null) {
+        final renderedBytes = _decodeDataUri(result);
+        if (renderedBytes == null ||
+            AmoraImageValidation.supportedMimeType(renderedBytes) == null ||
+            renderedBytes.lengthInBytes >
+                DeviceAmoraMediaPicker.maximumImageBytes) {
           throw StateError('The prepared photo is invalid');
         }
         Navigator.of(context).pop(result);
         return;
       }
-      final sourceBytes = _decodeDataUri(widget.sourceDataUri);
-      if (sourceBytes == null || sourceBytes.isEmpty) {
+      if (_sourceBytes.isEmpty ||
+          AmoraImageValidation.supportedMimeType(_sourceBytes) == null) {
         throw StateError('The selected photo is invalid');
       }
-      await precacheImage(MemoryImage(sourceBytes), context);
+      await precacheImage(MemoryImage(_sourceBytes), context);
       if (!mounted) return;
       final deviceRatio = MediaQuery.devicePixelRatioOf(context);
+      await WidgetsBinding.instance.endOfFrame;
       await WidgetsBinding.instance.endOfFrame;
       final boundary = _captureKey.currentContext?.findRenderObject();
       if (boundary is! RenderRepaintBoundary) {
@@ -967,25 +1056,27 @@ class _CropCanvas extends StatelessWidget {
     super.key,
     required this.captureKey,
     required this.sourceDataUri,
+    required this.sourceBytes,
     required this.transformationController,
     required this.aspectRatio,
   });
 
   final GlobalKey captureKey;
   final String sourceDataUri;
+  final Uint8List sourceBytes;
   final TransformationController transformationController;
   final double aspectRatio;
 
   @override
   Widget build(BuildContext context) {
-    final bytes = _decodeDataUri(sourceDataUri);
     final photo = ProfilePhotoViewData(
       id: 'crop-photo',
       source: sourceDataUri,
       order: 0,
       isPrimary: false,
       uploadState: ProfilePhotoUploadState.localOnly,
-      bytes: bytes,
+      bytes: sourceBytes,
+      mimeType: AmoraImageValidation.supportedMimeType(sourceBytes),
     );
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -1011,8 +1102,6 @@ class _CropCanvas extends StatelessWidget {
                   clipBehavior: Clip.hardEdge,
                   child: AmoraaProfilePhotoView(
                     photo: photo,
-                    width: width,
-                    height: height,
                     fit: BoxFit.cover,
                     borderRadius: BorderRadius.zero,
                     semanticLabel: 'Adjustable profile photo crop',

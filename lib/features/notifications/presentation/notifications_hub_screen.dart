@@ -3,6 +3,7 @@ import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/premium_asset_image.dart';
+import 'package:amora_ai/core/widgets/amoraa_select_field.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/chat/presentation/chat_detail_screen.dart';
 import 'package:amora_ai/features/chat/data/local_chat_repository.dart';
@@ -12,7 +13,6 @@ import 'package:amora_ai/features/profile/presentation/profile_detail_screen.dar
 import 'package:amora_ai/features/settings/presentation/notification_preferences_screen.dart';
 import 'package:amora_ai/features/subscription/presentation/subscription_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/physics.dart';
 
 class NotificationsHubScreen extends StatefulWidget {
   const NotificationsHubScreen({super.key});
@@ -504,145 +504,24 @@ class _NotificationFilterRail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
+    return Padding(
       key: const ValueKey('notification-filter-rail'),
-      height: 52,
-      child: ListView.separated(
-        padding: const EdgeInsets.fromLTRB(16, 6, 16, 4),
-        scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(
-          parent: AlwaysScrollableScrollPhysics(),
-        ),
-        itemCount: filters.length,
-        separatorBuilder: (context, index) =>
-            const SizedBox(width: AmoraSpacing.space8),
-        itemBuilder: (context, index) {
-          final filter = filters[index];
-          return _NotificationFilterChip(
-            key: ValueKey('notification-filter-$filter'),
-            label: filter,
-            selected: selected == filter,
-            onTap: () => onSelected(filter),
-          );
+      padding: const EdgeInsets.fromLTRB(16, 6, 16, 4),
+      child: AmoraaCompactSelect<String>(
+        label: 'Notification filter',
+        value: selected,
+        prefixIcon: _notificationFilterIcon(selected),
+        options: [
+          for (final filter in filters)
+            AmoraaSelectOption(
+              value: filter,
+              label: filter,
+              icon: _notificationFilterIcon(filter),
+            ),
+        ],
+        onChanged: (filter) {
+          if (filter != null) onSelected(filter);
         },
-      ),
-    );
-  }
-}
-
-class _NotificationFilterChip extends StatefulWidget {
-  const _NotificationFilterChip({
-    super.key,
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  State<_NotificationFilterChip> createState() =>
-      _NotificationFilterChipState();
-}
-
-class _NotificationFilterChipState extends State<_NotificationFilterChip>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _scale;
-
-  @override
-  void initState() {
-    super.initState();
-    _scale = AnimationController.unbounded(vsync: this, value: 1);
-  }
-
-  @override
-  void dispose() {
-    _scale.dispose();
-    super.dispose();
-  }
-
-  void _animate(double target) {
-    _scale.animateWith(
-      SpringSimulation(
-        const SpringDescription(mass: .8, stiffness: 500, damping: 30),
-        _scale.value,
-        target,
-        0,
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Listener(
-      onPointerDown: (_) => _animate(.95),
-      onPointerUp: (_) => _animate(1),
-      onPointerCancel: (_) => _animate(1),
-      child: ScaleTransition(
-        scale: _scale,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 240),
-          curve: Curves.easeOutCubic,
-          decoration: ShapeDecoration(
-            color: widget.selected ? AppColors.primary : AppColors.surface,
-            shape: StadiumBorder(
-              side: BorderSide(
-                color: widget.selected
-                    ? AppColors.primary
-                    : AppColors.secondary,
-              ),
-            ),
-            shadows: [
-              BoxShadow(
-                color: AppColors.primary.withValues(alpha: .06),
-                blurRadius: 12,
-                spreadRadius: -6,
-                offset: const Offset(0, 6),
-              ),
-            ],
-          ),
-          child: Material(
-            color: widget.selected ? AppColors.primary : AppColors.surface,
-            shape: const StadiumBorder(),
-            clipBehavior: Clip.antiAlias,
-            child: InkWell(
-              onTap: widget.onTap,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AmoraSpacing.space16,
-                ),
-                child: Center(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        _notificationFilterIcon(widget.label),
-                        size: 17,
-                        color: widget.selected
-                            ? AppColors.surface
-                            : AppColors.secondary,
-                      ),
-                      const SizedBox(width: 7),
-                      Text(
-                        widget.label,
-                        style: AmoraTextStyles.labelMedium.copyWith(
-                          color: widget.selected
-                              ? AppColors.surface
-                              : AppColors.text,
-                          fontWeight: widget.selected
-                              ? FontWeight.w700
-                              : FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
       ),
     );
   }

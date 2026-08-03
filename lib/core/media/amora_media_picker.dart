@@ -25,13 +25,39 @@ class AmoraPickedMedia {
     required this.dataUri,
     required this.name,
     required this.byteLength,
-    this.bytes,
+    required this.bytes,
+    required this.mimeType,
   });
 
   final String dataUri;
   final String name;
   final int byteLength;
-  final Uint8List? bytes;
+  final Uint8List bytes;
+  final String mimeType;
+}
+
+abstract final class AmoraImageValidation {
+  static String? supportedMimeType(Uint8List bytes) {
+    if (bytes.length >= 3 &&
+        bytes[0] == 0xff &&
+        bytes[1] == 0xd8 &&
+        bytes[2] == 0xff) {
+      return 'image/jpeg';
+    }
+    if (bytes.length >= 8 &&
+        bytes[0] == 0x89 &&
+        bytes[1] == 0x50 &&
+        bytes[2] == 0x4e &&
+        bytes[3] == 0x47) {
+      return 'image/png';
+    }
+    if (bytes.length >= 12 &&
+        String.fromCharCodes(bytes.sublist(0, 4)) == 'RIFF' &&
+        String.fromCharCodes(bytes.sublist(8, 12)) == 'WEBP') {
+      return 'image/webp';
+    }
+    return null;
+  }
 }
 
 class AmoraMediaPickResult {
@@ -115,7 +141,7 @@ class DeviceAmoraMediaPicker implements AmoraMediaPicker {
         );
       }
 
-      final mimeType = _supportedMimeType(bytes);
+      final mimeType = AmoraImageValidation.supportedMimeType(bytes);
       if (mimeType == null) {
         return const AmoraMediaPickResult.failure(
           AmoraMediaIssue.invalidImage,
@@ -129,6 +155,7 @@ class DeviceAmoraMediaPicker implements AmoraMediaPicker {
           name: file.name,
           byteLength: bytes.lengthInBytes,
           bytes: bytes,
+          mimeType: mimeType,
         ),
       );
     } on PlatformException catch (error) {
@@ -203,28 +230,6 @@ class DeviceAmoraMediaPicker implements AmoraMediaPicker {
       AmoraMediaIssue.failed,
       'The image picker could not be opened. Try again.',
     );
-  }
-
-  String? _supportedMimeType(Uint8List bytes) {
-    if (bytes.length >= 3 &&
-        bytes[0] == 0xff &&
-        bytes[1] == 0xd8 &&
-        bytes[2] == 0xff) {
-      return 'image/jpeg';
-    }
-    if (bytes.length >= 8 &&
-        bytes[0] == 0x89 &&
-        bytes[1] == 0x50 &&
-        bytes[2] == 0x4e &&
-        bytes[3] == 0x47) {
-      return 'image/png';
-    }
-    if (bytes.length >= 12 &&
-        String.fromCharCodes(bytes.sublist(0, 4)) == 'RIFF' &&
-        String.fromCharCodes(bytes.sublist(8, 12)) == 'WEBP') {
-      return 'image/webp';
-    }
-    return null;
   }
 
   @override

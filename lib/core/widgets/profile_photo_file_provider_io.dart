@@ -9,12 +9,20 @@ ImageProvider<Object>? localProfilePhotoFileProvider(String source) {
       value.startsWith('http://') ||
       value.startsWith('https://') ||
       value.startsWith('blob:') ||
+      value.startsWith('content://') ||
       value.startsWith('assets/')) {
     return null;
   }
-  final path = value.startsWith('file://')
-      ? Uri.parse(value).toFilePath(windows: Platform.isWindows)
-      : value;
+  late final String path;
+  try {
+    path = value.startsWith('file://')
+        ? Uri.parse(value).toFilePath(windows: Platform.isWindows)
+        : value;
+  } on FormatException {
+    return null;
+  } on UnsupportedError {
+    return null;
+  }
   if (!File(path).isAbsolute) return null;
   return FileImage(File(path));
 }

@@ -1,37 +1,38 @@
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
+import 'package:amora_ai/features/profile/domain/profile_form_options.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-const int minimumSupportedHeightCm = 137;
-const int maximumSupportedHeightCm = 213;
-const int defaultHeightWheelCm = 165;
+const int minimumSupportedHeightCm =
+    ProfileFormOptions.minimumSupportedHeightCm;
+const int maximumSupportedHeightCm =
+    ProfileFormOptions.maximumSupportedHeightCm;
+const int defaultHeightWheelCm = ProfileFormOptions.defaultHeightCm;
 
 enum HeightDisplayUnit { feet, centimeters }
 
-int heightInchesToCentimeters(int inches) => (inches * 2.54).round();
+enum HeightPickerPurpose { minimumPreference, profileHeight }
+
+int heightInchesToCentimeters(int inches) =>
+    ProfileFormOptions.heightInchesToCentimeters(inches);
 
 int heightCentimetersToNearestInches(int centimeters) =>
-    (centimeters / 2.54).round();
+    ProfileFormOptions.heightCentimetersToNearestInches(centimeters);
 
-String formatHeightFeet(int centimeters) {
-  final inches = heightCentimetersToNearestInches(centimeters);
-  return '${inches ~/ 12}\'${inches % 12}"';
-}
+String formatHeightFeet(int centimeters) =>
+    ProfileFormOptions.formatHeightFeet(centimeters);
 
-String formatHeightCentimeters(int centimeters) => '$centimeters cm';
+String formatHeightCentimeters(int centimeters) =>
+    ProfileFormOptions.formatHeightCentimeters(centimeters);
 
 String minimumHeightSummary(int? centimeters) =>
-    centimeters == null ? 'Any height' : '${formatHeightFeet(centimeters)}+';
+    ProfileFormOptions.formatMinimumHeight(centimeters);
 
-String heightSemanticsLabel(int centimeters) {
-  final inches = heightCentimetersToNearestInches(centimeters);
-  final feet = inches ~/ 12;
-  final remainingInches = inches % 12;
-  return 'Selected height, $feet feet $remainingInches inches';
-}
+String heightSemanticsLabel(int centimeters) =>
+    ProfileFormOptions.heightSemanticsLabel(centimeters);
 
 class MinimumHeightPickerResult {
   const MinimumHeightPickerResult(this.minimumCentimeters);
@@ -45,11 +46,13 @@ class AmoraaMinimumHeightPicker extends StatefulWidget {
     required this.initialMinimumCentimeters,
     required this.onClose,
     required this.onApply,
+    this.purpose = HeightPickerPurpose.minimumPreference,
   });
 
   final int? initialMinimumCentimeters;
   final VoidCallback onClose;
   final ValueChanged<int?> onApply;
+  final HeightPickerPurpose purpose;
 
   @override
   State<AmoraaMinimumHeightPicker> createState() =>
@@ -73,6 +76,9 @@ class _AmoraaMinimumHeightPickerState extends State<AmoraaMinimumHeightPicker> {
   late FixedExtentScrollController _wheelController;
   int? _lastHapticIndex;
 
+  bool get _isMinimumPreference =>
+      widget.purpose == HeightPickerPurpose.minimumPreference;
+
   List<int> get _values =>
       _unit == HeightDisplayUnit.feet ? _inchValues : _centimeterValues;
 
@@ -90,7 +96,8 @@ class _AmoraaMinimumHeightPickerState extends State<AmoraaMinimumHeightPicker> {
   @override
   void initState() {
     super.initState();
-    _unrestricted = widget.initialMinimumCentimeters == null;
+    _unrestricted =
+        _isMinimumPreference && widget.initialMinimumCentimeters == null;
     _selectedCentimeters =
         (widget.initialMinimumCentimeters ?? defaultHeightWheelCm).clamp(
           minimumSupportedHeightCm,
@@ -117,7 +124,7 @@ class _AmoraaMinimumHeightPickerState extends State<AmoraaMinimumHeightPicker> {
     );
 
     return Material(
-      key: const ValueKey('minimum-height-picker'),
+      key: ValueKey('${widget.purpose.name}-height-picker'),
       color: AppColors.surface,
       borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
       clipBehavior: Clip.antiAlias,
@@ -148,7 +155,9 @@ class _AmoraaMinimumHeightPickerState extends State<AmoraaMinimumHeightPicker> {
                             ),
                           ),
                           Text(
-                            'Minimum preference',
+                            _isMinimumPreference
+                                ? 'Minimum preference'
+                                : 'Profile detail',
                             style: AmoraTextStyles.labelMedium.copyWith(
                               color: AppColors.text.withValues(alpha: .66),
                             ),
@@ -166,7 +175,9 @@ class _AmoraaMinimumHeightPickerState extends State<AmoraaMinimumHeightPicker> {
                 ),
                 const SizedBox(height: AmoraSpacing.space8),
                 Text(
-                  'Choose the minimum height preference for matches.',
+                  _isMinimumPreference
+                      ? 'Choose the minimum height preference for matches.'
+                      : 'Choose the height shown on your profile.',
                   style: AmoraTextStyles.bodyMedium.copyWith(
                     color: AppColors.text.withValues(alpha: .74),
                   ),
@@ -185,7 +196,9 @@ class _AmoraaMinimumHeightPickerState extends State<AmoraaMinimumHeightPicker> {
                   child: Text(
                     _unrestricted
                         ? 'Any height — scroll to choose a minimum.'
-                        : 'Showing matches at ${minimumHeightSummary(_selectedCentimeters)}.',
+                        : _isMinimumPreference
+                        ? 'Showing matches at ${minimumHeightSummary(_selectedCentimeters)}.'
+                        : 'Profile height: ${ProfileFormOptions.formatProfileHeight(_selectedCentimeters)}.',
                     key: ValueKey(
                       'height-status-$_unrestricted-$_selectedCentimeters',
                     ),
@@ -198,16 +211,18 @@ class _AmoraaMinimumHeightPickerState extends State<AmoraaMinimumHeightPicker> {
                 const SizedBox(height: AmoraSpacing.space12),
                 Row(
                   children: [
-                    SizedBox(
-                      height: 52,
-                      child: TextButton.icon(
-                        key: const ValueKey('height-picker-reset'),
-                        onPressed: () => setState(() => _unrestricted = true),
-                        icon: const Icon(Icons.restart_alt_rounded),
-                        label: const Text('Reset'),
+                    if (_isMinimumPreference) ...[
+                      SizedBox(
+                        height: 52,
+                        child: TextButton.icon(
+                          key: const ValueKey('height-picker-reset'),
+                          onPressed: () => setState(() => _unrestricted = true),
+                          icon: const Icon(Icons.restart_alt_rounded),
+                          label: const Text('Reset'),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: AmoraSpacing.space12),
+                      const SizedBox(width: AmoraSpacing.space12),
+                    ],
                     Expanded(
                       child: SizedBox(
                         height: 52,
@@ -216,7 +231,11 @@ class _AmoraaMinimumHeightPickerState extends State<AmoraaMinimumHeightPicker> {
                           onPressed: () => widget.onApply(
                             _unrestricted ? null : _selectedCentimeters,
                           ),
-                          child: const Text('Apply Height'),
+                          child: Text(
+                            _isMinimumPreference
+                                ? 'Apply Height'
+                                : 'Save Height',
+                          ),
                         ),
                       ),
                     ),
