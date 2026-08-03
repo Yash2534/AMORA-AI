@@ -8,8 +8,11 @@ import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
 import 'package:amora_ai/features/profile/domain/profile_completion_calculator.dart';
+import 'package:amora_ai/features/profile/presentation/controllers/profile_form_controller.dart';
 import 'package:amora_ai/features/profile/presentation/kyc_verification_screen.dart';
+import 'package:amora_ai/features/profile/presentation/photo_manager_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_screen.dart';
+import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_fields.dart';
 import 'package:flutter/material.dart';
 
 /// A progress dashboard. The full editor deliberately lives elsewhere.
@@ -26,10 +29,19 @@ class ProfileCompletionScreen extends StatefulWidget {
 class _ProfileCompletionScreenState extends State<ProfileCompletionScreen> {
   final _repository = LocalProfileRepository.instance;
   final Set<ProfileCompletionSectionId> _expanded = {};
+  final Set<ProfileCompletionSectionId> _showValidation = {};
+  final Map<ProfileCompletionSectionId, GlobalKey<FormState>> _formKeys = {
+    for (final id in ProfileCompletionSectionId.values) id: GlobalKey(),
+  };
+  final Map<ProfileCompletionSectionId, String> _saveErrors = {};
+  late final ProfileFormController _controller;
+  ProfileCompletionSectionId? _savingSection;
 
   @override
   void initState() {
     super.initState();
+    _controller = ProfileFormController(repository: _repository)
+      ..addListener(_refresh);
     _repository.addListener(_refresh);
     final next = _repository.profile.completionResult.recommendedNext;
     if (next != null) _expanded.add(next.id);
@@ -38,6 +50,9 @@ class _ProfileCompletionScreenState extends State<ProfileCompletionScreen> {
   @override
   void dispose() {
     _repository.removeListener(_refresh);
+    _controller
+      ..removeListener(_refresh)
+      ..dispose();
     super.dispose();
   }
 
@@ -106,6 +121,10 @@ class _ProfileCompletionScreenState extends State<ProfileCompletionScreen> {
                         section: section,
                         expanded: _expanded.contains(section.id),
                         onTap: () => _toggle(section.id),
+                        editor: _editorFor(section.id),
+                        saving: _savingSection == section.id,
+                        error: _saveErrors[section.id],
+                        onSave: () => _saveSection(section.id),
                       ),
                       const SizedBox(height: AmoraSpacing.space12),
                     ],
@@ -142,6 +161,96 @@ class _ProfileCompletionScreenState extends State<ProfileCompletionScreen> {
         _expanded.remove(id);
       }
     });
+  }
+
+  Widget _editorFor(ProfileCompletionSectionId id) {
+    final showValidation = _showValidation.contains(id);
+    final profile = _controller.draftProfile;
+    final editor = switch (id) {
+      ProfileCompletionSectionId.photos => AmoraaProfilePhotoSection(
+        profile: profile,
+        showError: showValidation,
+        onManage: _openPhotoManager,
+      ),
+      ProfileCompletionSectionId.basicDetails => AmoraaBasicDetailsSection(
+        controller: _controller,
+        showValidation: showValidation,
+      ),
+      ProfileCompletionSectionId.workEducation => AmoraaWorkEducationSection(
+        controller: _controller,
+      ),
+      ProfileCompletionSectionId.locationIntentions =>
+        AmoraaLocationIntentionsSection(controller: _controller),
+      ProfileCompletionSectionId.identityDetails =>
+        AmoraaIdentityDetailsSelector(
+          controller: _controller,
+          showValidation: showValidation,
+        ),
+      ProfileCompletionSectionId.bio => AmoraaProfileBioField(
+        controller: _controller.bio,
+      ),
+      ProfileCompletionSectionId.interests => AmoraaInterestsSelector(
+        controller: _controller,
+        showValidation: showValidation,
+      ),
+      ProfileCompletionSectionId.lifestyle => AmoraaLifestyleSelector(
+        controller: _controller,
+        showValidation: showValidation,
+      ),
+      ProfileCompletionSectionId.prompt => AmoraaProfilePromptField(
+        controller: _controller,
+        showValidation: showValidation,
+      ),
+    };
+    return Form(key: _formKeys[id], child: editor);
+  }
+
+  Future<void> _openPhotoManager() async {
+    await Navigator.of(context).pushNamed(PhotoManagerScreen.routeName);
+    if (!mounted) return;
+    _controller.refreshExternalProfile();
+  }
+
+  Future<void> _saveSection(ProfileCompletionSectionId id) async {
+    if (_savingSection != null) return;
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _showValidation.add(id);
+      _saveErrors.remove(id);
+    });
+    final formValid = _formKeys[id]?.currentState?.validate() ?? true;
+    final draft = _controller.draftProfile;
+    final section = draft.completionResult.sections.firstWhere(
+      (candidate) => candidate.id == id,
+    );
+    if (!formValid || !section.isComplete) {
+      setState(() {
+        _saveErrors[id] =
+            '${section.title} still needs ${section.missingFields} ${section.missingFields == 1 ? 'detail' : 'details'}.';
+      });
+      return;
+    }
+    setState(() => _savingSection = id);
+    try {
+      await _controller.save();
+      if (!mounted) return;
+      setState(() {
+        _savingSection = null;
+        _showValidation.remove(id);
+        _saveErrors.remove(id);
+      });
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(content: Text('${section.title} saved successfully.')),
+        );
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _savingSection = null;
+        _saveErrors[id] = 'Could not save this section. Please retry.';
+      });
+    }
   }
 
   void _backToProfile() {
@@ -340,11 +449,19 @@ class _CompletionSectionCard extends StatelessWidget {
     required this.section,
     required this.expanded,
     required this.onTap,
+    required this.editor,
+    required this.saving,
+    required this.error,
+    required this.onSave,
   });
 
   final ProfileSectionProgress section;
   final bool expanded;
   final VoidCallback onTap;
+  final Widget editor;
+  final bool saving;
+  final String? error;
+  final VoidCallback onSave;
 
   @override
   Widget build(BuildContext context) {
@@ -354,55 +471,63 @@ class _CompletionSectionCard extends StatelessWidget {
       padding: EdgeInsets.zero,
       child: Column(
         children: [
-          InkWell(
-            borderRadius: BorderRadius.circular(20),
-            onTap: onTap,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(minHeight: 72),
-              child: Padding(
-                padding: const EdgeInsets.all(AmoraSpacing.space16),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: section.isComplete
-                            ? AppColors.tertiary
-                            : AppColors.background,
-                        borderRadius: BorderRadius.circular(15),
+          Semantics(
+            button: true,
+            expanded: expanded,
+            label: '${section.title}, ${section.statusLabel}',
+            child: InkWell(
+              borderRadius: BorderRadius.circular(20),
+              onTap: onTap,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 72),
+                child: Padding(
+                  padding: const EdgeInsets.all(AmoraSpacing.space16),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: section.isComplete
+                              ? AppColors.tertiary
+                              : AppColors.background,
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                        child: Icon(
+                          section.isComplete
+                              ? Icons.check_rounded
+                              : _sectionIcon(section.id),
+                          color: AppColors.primary,
+                        ),
                       ),
-                      child: Icon(
-                        section.isComplete
-                            ? Icons.check_rounded
-                            : _sectionIcon(section.id),
-                        color: AppColors.primary,
-                      ),
-                    ),
-                    const SizedBox(width: AmoraSpacing.space12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(section.title, style: AmoraTextStyles.cardTitle),
-                          const SizedBox(height: 2),
-                          Text(
-                            section.statusLabel,
-                            style: AmoraTextStyles.caption.copyWith(
-                              color: AppColors.textSecondary,
+                      const SizedBox(width: AmoraSpacing.space12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              section.title,
+                              style: AmoraTextStyles.cardTitle,
                             ),
-                          ),
-                        ],
+                            const SizedBox(height: 2),
+                            Text(
+                              section.statusLabel,
+                              style: AmoraTextStyles.caption.copyWith(
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    AnimatedRotation(
-                      turns: expanded ? .5 : 0,
-                      duration: reduceMotion
-                          ? Duration.zero
-                          : const Duration(milliseconds: 220),
-                      child: const Icon(Icons.expand_more_rounded),
-                    ),
-                  ],
+                      AnimatedRotation(
+                        turns: expanded ? .5 : 0,
+                        duration: reduceMotion
+                            ? Duration.zero
+                            : const Duration(milliseconds: 220),
+                        child: const Icon(Icons.expand_more_rounded),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -420,21 +545,48 @@ class _CompletionSectionCard extends StatelessWidget {
                       AmoraSpacing.space16,
                       AmoraSpacing.space16,
                     ),
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(AmoraSpacing.space12),
-                      decoration: BoxDecoration(
-                        color: AppColors.background,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Text(
-                        section.isComplete
-                            ? '${section.description} This section is complete.'
-                            : '${section.description} ${section.missingFields} ${section.missingFields == 1 ? 'detail remains' : 'details remain'}. Use Edit Profile when you are ready to update it.',
-                        style: AmoraTextStyles.bodyMedium.copyWith(
-                          color: AppColors.textSecondary,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(AmoraSpacing.space12),
+                          decoration: BoxDecoration(
+                            color: AppColors.background,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Text(
+                            section.isComplete
+                                ? '${section.description} This section is complete.'
+                                : '${section.description} ${section.missingFields} ${section.missingFields == 1 ? 'detail remains' : 'details remain'}.',
+                            style: AmoraTextStyles.bodyMedium.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
                         ),
-                      ),
+                        const SizedBox(height: AmoraSpacing.space16),
+                        editor,
+                        if (error case final message?) ...[
+                          const SizedBox(height: AmoraSpacing.space8),
+                          Semantics(
+                            liveRegion: true,
+                            child: Text(
+                              message,
+                              style: AmoraTextStyles.bodySmall.copyWith(
+                                color: Theme.of(context).colorScheme.error,
+                              ),
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: AmoraSpacing.space16),
+                        AppPrimaryButton(
+                          key: ValueKey('completion-save-${section.id.name}'),
+                          label: saving ? 'Saving' : 'Save Section',
+                          icon: Icons.check_rounded,
+                          isLoading: saving,
+                          onPressed: saving ? null : onSave,
+                        ),
+                      ],
                     ),
                   )
                 : const SizedBox.shrink(),

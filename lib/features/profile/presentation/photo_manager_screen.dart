@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
@@ -18,28 +19,31 @@ import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 
 typedef ProfilePhotoCropRenderer = Future<String> Function(GlobalKey cropKey);
+typedef ProfilePhotoUploader = Future<String> Function(String localSource);
 
 class PhotoManagerScreen extends StatefulWidget {
   const PhotoManagerScreen({
     super.key,
     this.mediaPicker = const DeviceAmoraMediaPicker(),
     this.cropPreviewRenderer,
+    this.photoUploader,
   });
 
   static const routeName = '/photo-manager';
 
   final AmoraMediaPicker mediaPicker;
   final ProfilePhotoCropRenderer? cropPreviewRenderer;
+  final ProfilePhotoUploader? photoUploader;
 
   @override
   State<PhotoManagerScreen> createState() => _PhotoManagerScreenState();
 }
 
 class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
-  late List<String> _photos;
-  late int _primary;
+  final _repository = LocalProfileRepository.instance;
   bool _picking = false;
   bool _saving = false;
   String? _saveError;
@@ -47,13 +51,22 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
   @override
   void initState() {
     super.initState();
-    final profile = LocalProfileRepository.instance.profile;
-    _photos = List<String>.of(profile.photos);
-    _primary = profile.primaryPhotoIndex;
+    _repository.addListener(_refresh);
+  }
+
+  @override
+  void dispose() {
+    _repository.removeListener(_refresh);
+    super.dispose();
+  }
+
+  void _refresh() {
+    if (mounted) setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
+    final photos = _repository.currentPhotos;
     return Scaffold(
       body: SafeArea(
         child: ResponsiveMobileFrame(
@@ -74,7 +87,7 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
                     children: [
                       Expanded(
                         child: Text(
-                          '${_photos.length} of 6 photos',
+                          '${photos.length} of 6 photos',
                           style: AmoraTextStyles.titleMedium,
                         ),
                       ),
@@ -92,67 +105,17 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
                     ],
                   ),
                   const SizedBox(height: AmoraSpacing.space12),
-                  SizedBox(
-                    key: const ValueKey('horizontal-photo-gallery'),
-                    height: 206,
-                    child: Row(
-                      children: [
-                        if (_photos.length < 6) ...[
-                          SizedBox(
-                            key: const ValueKey('add-photo-card'),
-                            width: 112,
-                            child: _AddPhotoTile(
-                              onTap: _picking ? null : _addPhoto,
-                              loading: _picking,
-                            ),
-                          ),
-                          const SizedBox(width: AmoraSpacing.space12),
-                        ],
-                        Expanded(
-                          child: ReorderableListView.builder(
-                            scrollDirection: Axis.horizontal,
-                            buildDefaultDragHandles: false,
-                            physics: const BouncingScrollPhysics(),
-                            itemCount: _photos.length,
-                            onReorderItem: _reorder,
-                            proxyDecorator: (child, index, animation) {
-                              return AnimatedBuilder(
-                                animation: animation,
-                                builder: (context, _) => Transform.scale(
-                                  scale: 1 + animation.value * .04,
-                                  child: Material(
-                                    color: AppColors.transparent,
-                                    elevation: animation.value * 8,
-                                    borderRadius: AmoraRadius.card,
-                                    child: child,
-                                  ),
-                                ),
-                              );
-                            },
-                            itemBuilder: (context, index) {
-                              final photo = _photos[index];
-                              return Padding(
-                                key: ValueKey('photo-$photo'),
-                                padding: const EdgeInsets.only(
-                                  right: AmoraSpacing.space12,
-                                ),
-                                child: SizedBox(
-                                  width: 144,
-                                  child: _PhotoTile(
-                                    index: index,
-                                    photo: photo,
-                                    primary: _primary == index,
-                                    onPrimary: () =>
-                                        setState(() => _primary = index),
-                                    onDelete: () => _delete(index),
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
+                  _PhotoGrid(
+                    key: const ValueKey('profile-photo-grid'),
+                    photos: photos,
+                    showAddTile: photos.length < 6,
+                    adding: _picking,
+                    onAdd: _picking ? null : _addPhoto,
+                    onOpen: _openPreview,
+                    onPrimary: _repository.setPrimaryPhotoInSession,
+                    onDelete: _delete,
+                    onRetry: _retryUpload,
+                    onReorder: _repository.reorderPhotosInSession,
                   ),
                   const SizedBox(height: AmoraSpacing.space16),
                   const PremiumCard(
@@ -208,7 +171,9 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
   }
 
   Future<void> _addPhoto() async {
-    if (_photos.length >= 6) return _snack('Maximum 6 photos allowed');
+    if (_repository.profile.photos.length >= 6) {
+      return _snack('Maximum 6 photos allowed');
+    }
     final source = await showModalBottomSheet<AmoraMediaSource>(
       context: context,
       useSafeArea: true,
@@ -274,47 +239,69 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
       ),
     );
     if (!mounted || croppedPhoto == null) return;
-    setState(() {
-      _photos.add(croppedPhoto);
-      if (_photos.length == 1) _primary = 0;
-    });
-    _snack('Photo added. Save changes to keep it.');
+    final uploadState = widget.photoUploader == null
+        ? ProfilePhotoUploadState.localOnly
+        : ProfilePhotoUploadState.uploading;
+    _repository.addPhotoInSession(croppedPhoto, uploadState: uploadState);
+    _snack('Photo added to your profile.');
+    if (widget.photoUploader != null) {
+      unawaited(_uploadPhoto(croppedPhoto));
+    }
   }
 
   void _delete(int index) {
-    setState(() {
-      _photos.removeAt(index);
-      if (_photos.isEmpty) {
-        _primary = 0;
-      } else if (index < _primary) {
-        _primary--;
-      } else if (index == _primary) {
-        _primary = index.clamp(0, _photos.length - 1).toInt();
-      } else {
-        _primary = _primary.clamp(0, _photos.length - 1).toInt();
-      }
-    });
+    _repository.removePhotoInSession(index);
     _snack('Photo removed');
   }
 
-  void _reorder(int oldIndex, int newIndex) {
-    if (oldIndex >= _photos.length) return;
-    if (newIndex > _photos.length) newIndex = _photos.length;
-    if (oldIndex == newIndex) return;
-    setState(() {
-      final primaryPhoto = _photos[_primary];
-      final item = _photos.removeAt(oldIndex);
-      _photos.insert(newIndex, item);
-      _primary = _photos.indexOf(primaryPhoto);
-      if (_primary < 0) {
-        _primary = 0;
+  Future<void> _uploadPhoto(String localSource) async {
+    final uploader = widget.photoUploader;
+    if (uploader == null) return;
+    _repository.setPhotoUploadState(
+      localSource,
+      ProfilePhotoUploadState.uploading,
+    );
+    try {
+      final remoteUrl = await uploader(localSource);
+      if (remoteUrl.trim().isEmpty) {
+        throw StateError('The upload returned no photo URL');
       }
-    });
-    _snack('Photo order updated');
+      _repository.replacePhotoSourceInSession(localSource, remoteUrl);
+      final profile = _repository.profile;
+      await _repository.updatePhotosPersisted(
+        profile.photos,
+        profile.primaryPhotoIndex,
+      );
+    } catch (_) {
+      _repository.setPhotoUploadState(
+        localSource,
+        ProfilePhotoUploadState.failed,
+      );
+      if (mounted) {
+        _snack('Upload failed. Your local photo is still available.');
+      }
+    }
+  }
+
+  void _retryUpload(String source) {
+    if (widget.photoUploader == null) return;
+    unawaited(_uploadPhoto(source));
+  }
+
+  Future<void> _openPreview(int initialIndex) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ProfilePhotoViewerScreen(
+          photos: _repository.currentPhotos,
+          initialIndex: initialIndex,
+        ),
+      ),
+    );
   }
 
   Future<void> _saveChanges() async {
-    if (_photos.length < 2) {
+    final profile = _repository.profile;
+    if (profile.photos.length < 2) {
       _snack('Add at least two profile photos before saving');
       return;
     }
@@ -323,9 +310,9 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
       _saveError = null;
     });
     try {
-      await LocalProfileRepository.instance.updatePhotosPersisted(
-        _photos,
-        _primary,
+      await _repository.updatePhotosPersisted(
+        profile.photos,
+        profile.primaryPhotoIndex,
       );
       if (!mounted) return;
       AmoraSession.completeProfileStep(40);
@@ -383,92 +370,291 @@ class _Header extends StatelessWidget {
   }
 }
 
-class _PhotoTile extends StatelessWidget {
-  const _PhotoTile({
-    required this.index,
-    required this.photo,
-    required this.primary,
+class _PhotoGrid extends StatelessWidget {
+  const _PhotoGrid({
+    super.key,
+    required this.photos,
+    required this.showAddTile,
+    required this.adding,
+    required this.onAdd,
+    required this.onOpen,
     required this.onPrimary,
     required this.onDelete,
+    required this.onRetry,
+    required this.onReorder,
   });
 
-  final int index;
-  final String photo;
-  final bool primary;
-  final VoidCallback onPrimary;
-  final VoidCallback onDelete;
+  final List<ProfilePhotoViewData> photos;
+  final bool showAddTile;
+  final bool adding;
+  final VoidCallback? onAdd;
+  final ValueChanged<int> onOpen;
+  final ValueChanged<int> onPrimary;
+  final ValueChanged<int> onDelete;
+  final ValueChanged<String> onRetry;
+  final void Function(int oldIndex, int newIndex) onReorder;
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        Positioned.fill(
-          child: AmoraProfileImage(
-            imageUrl: photo,
-            assetPath: photo,
-            initials: 'AM',
-            borderRadius: AmoraRadius.card,
-            semanticLabel: primary ? 'Primary profile photo' : 'Profile photo',
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns = constraints.maxWidth >= 560 ? 3 : 2;
+        final spacing = AmoraSpacing.space12;
+        final tileWidth =
+            (constraints.maxWidth - spacing * (columns - 1)) / columns;
+        return GridView.builder(
+          physics: const NeverScrollableScrollPhysics(),
+          shrinkWrap: true,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: columns,
+            crossAxisSpacing: spacing,
+            mainAxisSpacing: spacing,
+            childAspectRatio: 4 / 5,
           ),
-        ),
-        Positioned(
-          left: 6,
-          top: 6,
-          child: ActionChip(
-            label: Text(primary ? 'Primary' : 'Set'),
-            onPressed: onPrimary,
-          ),
-        ),
-        Positioned(
-          right: 4,
-          bottom: 4,
-          child: Row(
-            children: [
-              ReorderableDragStartListener(
-                index: index,
-                child: const SizedBox.square(
-                  dimension: 42,
-                  child: Icon(Icons.drag_indicator_rounded, size: 20),
+          itemCount: photos.length + (showAddTile ? 1 : 0),
+          itemBuilder: (context, index) {
+            if (showAddTile && index == photos.length) {
+              return _AddPhotoTile(
+                key: const ValueKey('add-photo-card'),
+                onTap: onAdd,
+                loading: adding,
+              );
+            }
+            final photo = photos[index];
+            final tile = _PhotoTile(
+              key: ValueKey(photo.id),
+              photo: photo,
+              onOpen: () => onOpen(index),
+              onPrimary: () => onPrimary(index),
+              onDelete: () => onDelete(index),
+              onRetry: () => onRetry(photo.source),
+            );
+            return DragTarget<String>(
+              onWillAcceptWithDetails: (details) => details.data != photo.id,
+              onAcceptWithDetails: (details) {
+                final oldIndex = photos.indexWhere(
+                  (candidate) => candidate.id == details.data,
+                );
+                if (oldIndex >= 0) onReorder(oldIndex, index);
+              },
+              builder: (context, candidates, _) => AnimatedContainer(
+                duration: MediaQuery.disableAnimationsOf(context)
+                    ? Duration.zero
+                    : const Duration(milliseconds: 200),
+                decoration: BoxDecoration(
+                  borderRadius: AmoraRadius.card,
+                  border: candidates.isEmpty
+                      ? null
+                      : Border.all(color: AppColors.secondary, width: 2),
+                ),
+                child: LongPressDraggable<String>(
+                  data: photo.id,
+                  feedback: Material(
+                    color: AppColors.transparent,
+                    elevation: 8,
+                    borderRadius: AmoraRadius.card,
+                    child: SizedBox(
+                      width: tileWidth,
+                      height: tileWidth / (4 / 5),
+                      child: _PhotoTile(
+                        photo: photo,
+                        onOpen: () {},
+                        onPrimary: () {},
+                        onDelete: () {},
+                        onRetry: () {},
+                      ),
+                    ),
+                  ),
+                  childWhenDragging: Opacity(opacity: .35, child: tile),
+                  child: tile,
                 ),
               ),
-              IconButton.filledTonal(
-                tooltip: 'Delete',
-                onPressed: onDelete,
-                icon: const Icon(Icons.delete_outline_rounded, size: 18),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _PhotoTile extends StatelessWidget {
+  const _PhotoTile({
+    super.key,
+    required this.photo,
+    required this.onOpen,
+    required this.onPrimary,
+    required this.onDelete,
+    required this.onRetry,
+  });
+
+  final ProfilePhotoViewData photo;
+  final VoidCallback onOpen;
+  final VoidCallback onPrimary;
+  final VoidCallback onDelete;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final status = switch (photo.uploadState) {
+      ProfilePhotoUploadState.uploading => 'uploading',
+      ProfilePhotoUploadState.failed => 'upload failed',
+      ProfilePhotoUploadState.localOnly => 'saved on this device',
+      _ => 'ready',
+    };
+    return Semantics(
+      button: true,
+      label:
+          'Profile photo ${photo.order + 1}, ${photo.isPrimary ? 'primary, ' : ''}$status',
+      child: Material(
+        color: AppColors.surface,
+        borderRadius: AmoraRadius.card,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onOpen,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              AmoraProfileImage(
+                imageUrl: photo.source,
+                assetPath: photo.source,
+                initials: 'AM',
+                fit: BoxFit.cover,
+                borderRadius: AmoraRadius.card,
+                semanticLabel: 'Profile photo ${photo.order + 1}',
               ),
+              if (photo.uploadState == ProfilePhotoUploadState.uploading)
+                const Align(
+                  alignment: Alignment.topCenter,
+                  child: LinearProgressIndicator(minHeight: 3),
+                ),
+              Positioned(
+                left: AmoraSpacing.space8,
+                top: AmoraSpacing.space8,
+                child: _PhotoStatusBadge(photo: photo),
+              ),
+              Positioned(
+                right: 2,
+                top: 2,
+                child: IconButton.filledTonal(
+                  tooltip: photo.isPrimary
+                      ? 'Primary photo'
+                      : 'Set as primary photo',
+                  onPressed: photo.isPrimary ? null : onPrimary,
+                  icon: Icon(
+                    photo.isPrimary
+                        ? Icons.star_rounded
+                        : Icons.star_outline_rounded,
+                    size: 19,
+                  ),
+                ),
+              ),
+              Positioned(
+                left: 2,
+                bottom: 2,
+                child: const SizedBox.square(
+                  dimension: 48,
+                  child: Icon(Icons.drag_indicator_rounded, size: 21),
+                ),
+              ),
+              Positioned(
+                right: 2,
+                bottom: 2,
+                child: IconButton.filledTonal(
+                  tooltip: 'Delete photo',
+                  onPressed: onDelete,
+                  icon: const Icon(Icons.delete_outline_rounded, size: 19),
+                ),
+              ),
+              if (photo.uploadState == ProfilePhotoUploadState.failed)
+                Positioned(
+                  left: AmoraSpacing.space8,
+                  right: AmoraSpacing.space8,
+                  bottom: 50,
+                  child: FilledButton.tonalIcon(
+                    onPressed: onRetry,
+                    icon: const Icon(Icons.refresh_rounded, size: 18),
+                    label: const Text('Retry'),
+                  ),
+                ),
             ],
           ),
         ),
-      ],
+      ),
+    );
+  }
+}
+
+class _PhotoStatusBadge extends StatelessWidget {
+  const _PhotoStatusBadge({required this.photo});
+
+  final ProfilePhotoViewData photo;
+
+  @override
+  Widget build(BuildContext context) {
+    final (icon, label) = photo.isPrimary
+        ? (Icons.star_rounded, 'Primary')
+        : switch (photo.uploadState) {
+            ProfilePhotoUploadState.uploading => (
+              Icons.cloud_upload_rounded,
+              'Uploading',
+            ),
+            ProfilePhotoUploadState.failed => (
+              Icons.error_outline_rounded,
+              'Failed',
+            ),
+            ProfilePhotoUploadState.localOnly => (
+              Icons.phone_android_rounded,
+              'On device',
+            ),
+            _ => (Icons.check_rounded, 'Ready'),
+          };
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: AppColors.surface.withValues(alpha: .92),
+        borderRadius: BorderRadius.circular(99),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: AppColors.primary),
+          const SizedBox(width: 4),
+          Text(label, style: AmoraTextStyles.labelSmall),
+        ],
+      ),
     );
   }
 }
 
 class _AddPhotoTile extends StatelessWidget {
-  const _AddPhotoTile({required this.onTap, required this.loading});
+  const _AddPhotoTile({super.key, required this.onTap, required this.loading});
 
   final VoidCallback? onTap;
   final bool loading;
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: AmoraRadius.card,
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: AmoraRadius.card,
-          border: Border.all(color: AppColors.borderGray),
-        ),
-        child: Center(
-          child: loading
-              ? const CircularProgressIndicator()
-              : const Icon(
-                  Icons.add_photo_alternate_rounded,
-                  color: AppColors.primaryPurple,
-                  size: AmoraIconSizes.large,
-                ),
+    return Semantics(
+      button: true,
+      label: loading ? 'Selecting profile photo' : 'Add profile photo',
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: AmoraRadius.card,
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: AmoraRadius.card,
+            border: Border.all(color: AppColors.borderGray),
+          ),
+          child: Center(
+            child: loading
+                ? const CircularProgressIndicator()
+                : const Icon(
+                    Icons.add_photo_alternate_rounded,
+                    color: AppColors.primaryPurple,
+                    size: AmoraIconSizes.large,
+                  ),
+          ),
         ),
       ),
     );
@@ -493,6 +679,135 @@ class _Tip extends StatelessWidget {
       ],
     ),
   );
+}
+
+class ProfilePhotoViewerScreen extends StatefulWidget {
+  const ProfilePhotoViewerScreen({
+    super.key,
+    required this.photos,
+    required this.initialIndex,
+  });
+
+  final List<ProfilePhotoViewData> photos;
+  final int initialIndex;
+
+  @override
+  State<ProfilePhotoViewerScreen> createState() =>
+      _ProfilePhotoViewerScreenState();
+}
+
+class _ProfilePhotoViewerScreenState extends State<ProfilePhotoViewerScreen> {
+  late final PageController _pageController;
+  late int _index;
+
+  @override
+  void initState() {
+    super.initState();
+    _index = widget.initialIndex.clamp(0, widget.photos.length - 1);
+    _pageController = PageController(initialPage: _index);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    return Scaffold(
+      key: const ValueKey('photo-full-preview'),
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        leading: IconButton(
+          key: const ValueKey('photo-preview-close'),
+          tooltip: 'Close photo preview',
+          onPressed: () => Navigator.of(context).pop(),
+          icon: const Icon(Icons.close_rounded),
+        ),
+        title: Text('${_index + 1} of ${widget.photos.length}'),
+      ),
+      body: SafeArea(
+        top: false,
+        child: CallbackShortcuts(
+          bindings: {
+            const SingleActivator(LogicalKeyboardKey.arrowLeft): () =>
+                _move(-1, reduceMotion),
+            const SingleActivator(LogicalKeyboardKey.arrowRight): () =>
+                _move(1, reduceMotion),
+          },
+          child: Focus(
+            autofocus: true,
+            child: Stack(
+              children: [
+                PageView.builder(
+                  controller: _pageController,
+                  itemCount: widget.photos.length,
+                  onPageChanged: (value) => setState(() => _index = value),
+                  itemBuilder: (context, index) {
+                    final photo = widget.photos[index];
+                    return Padding(
+                      padding: const EdgeInsets.all(AmoraSpacing.space20),
+                      child: InteractiveViewer(
+                        minScale: 1,
+                        maxScale: 4,
+                        child: Center(
+                          child: AmoraProfileImage(
+                            key: ValueKey('photo-preview-${photo.id}'),
+                            imageUrl: photo.source,
+                            assetPath: photo.source,
+                            initials: 'AM',
+                            fit: BoxFit.contain,
+                            semanticLabel:
+                                'Full profile photo ${index + 1}${photo.isPrimary ? ', primary' : ''}',
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                if (widget.photos.length > 1) ...[
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: IconButton.filledTonal(
+                      tooltip: 'Previous photo',
+                      onPressed: _index == 0
+                          ? null
+                          : () => _move(-1, reduceMotion),
+                      icon: const Icon(Icons.chevron_left_rounded),
+                    ),
+                  ),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: IconButton.filledTonal(
+                      tooltip: 'Next photo',
+                      onPressed: _index == widget.photos.length - 1
+                          ? null
+                          : () => _move(1, reduceMotion),
+                      icon: const Icon(Icons.chevron_right_rounded),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _move(int delta, bool reduceMotion) {
+    final next = (_index + delta).clamp(0, widget.photos.length - 1);
+    if (next == _index) return;
+    _pageController.animateToPage(
+      next,
+      duration: reduceMotion
+          ? Duration.zero
+          : const Duration(milliseconds: 240),
+      curve: Curves.easeOutCubic,
+    );
+  }
 }
 
 enum _PhotoCropStage { adjust, preview }

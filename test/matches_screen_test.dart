@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:amora_ai/core/data/image_repository.dart';
 import 'package:amora_ai/features/matches/presentation/matches_screen.dart';
-import 'package:amora_ai/features/matches/presentation/widgets/amora_compatibility_slider.dart';
+import 'package:amora_ai/features/matches/presentation/widgets/amoraa_inline_compatibility_filter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -32,35 +32,35 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  Future<Slider> openCompatibilityFilter(WidgetTester tester) async {
-    await tester.tap(
-      find.byKey(const ValueKey('ai-compatibility-filter-button')),
-    );
-    await tester.pumpAndSettle();
-    return tester.widget<Slider>(
-      find.byKey(const ValueKey('minimum-compatibility-slider')),
-    );
-  }
-
-  testWidgets('renders the premium AI hierarchy without overflow at 320px', (
+  testWidgets('renders the inline filter without a modal at 320px', (
     tester,
   ) async {
     await pumpMatches(tester, size: const Size(320, 760));
 
     expect(find.byType(AiMatchesAppBar), findsOneWidget);
     expect(find.text('Curated for you'), findsOneWidget);
-    expect(find.byType(AmoraCompatibilitySlider), findsNothing);
+    expect(find.text('Best Matches'), findsWidgets);
+    expect(find.byType(AmoraaInlineCompatibilityFilter), findsOneWidget);
     expect(
       find.byKey(const ValueKey('ai-compatibility-filter-button')),
-      findsOneWidget,
+      findsNothing,
     );
-    await openCompatibilityFilter(tester);
-    expect(find.byType(AmoraCompatibilitySlider), findsOneWidget);
     expect(
       find.byKey(const ValueKey('minimum-compatibility-slider')),
       findsOneWidget,
     );
-    expect(find.text('70% and above'), findsOneWidget);
+    expect(find.text('70%+'), findsOneWidget);
+    expect(find.text('Recommended Matches'), findsOneWidget);
+    expect(
+      find.text(
+        'Showing recommended matches with 70% compatibility or higher.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.byType(BottomSheet), findsNothing);
+    expect(find.text('Apply'), findsNothing);
+    expect(find.text('0%'), findsNothing);
+    expect(find.text('100%'), findsNothing);
     expect(find.byKey(const ValueKey('ai-match-filter-bar')), findsOneWidget);
     expect(find.text('Featured recommendation'), findsOneWidget);
     expect(find.byType(FeaturedAiMatchCard), findsOneWidget);
@@ -75,7 +75,7 @@ void main() {
             widget is Semantics &&
             widget.properties.label ==
                 '${featured.profile.score} percent compatibility, '
-                    '${compatibilityLabel(featured.profile.score)}',
+                    '${compatibilityCardLabel(featured.profile.score)}',
       ),
       findsOneWidget,
     );
@@ -83,48 +83,85 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  test('compatibility labels use one centralized mapping', () {
-    expect(compatibilityLabel(100), 'Excellent Match');
-    expect(compatibilityLabel(90), 'Excellent Match');
-    expect(compatibilityLabel(89), 'Highly Compatible');
-    expect(compatibilityLabel(80), 'Highly Compatible');
-    expect(compatibilityLabel(79), 'Great Match');
-    expect(compatibilityLabel(70), 'Great Match');
-    expect(compatibilityLabel(69), 'Good Match');
-    expect(compatibilityLabel(60), 'Good Match');
-    expect(compatibilityLabel(59), 'Potential Match');
-    expect(compatibilityLabel(-10), 'Potential Match');
+  test('compatibility labels and limits use one centralized mapping', () {
+    expect(minimumCompatibilityThreshold, 50);
+    expect(maximumCompatibilityThreshold, 95);
+    expect(compatibilityThresholdStep, 5);
+    expect(defaultCompatibilityThreshold, 70);
+
+    expect(compatibilityFilterLabel(50), 'Open Matches');
+    expect(compatibilityFilterLabel(59), 'Open Matches');
+    expect(compatibilityFilterLabel(60), 'Good Matches');
+    expect(compatibilityFilterLabel(69), 'Good Matches');
+    expect(compatibilityFilterLabel(70), 'Recommended Matches');
+    expect(compatibilityFilterLabel(79), 'Recommended Matches');
+    expect(compatibilityFilterLabel(80), 'Highly Compatible');
+    expect(compatibilityFilterLabel(89), 'Highly Compatible');
+    expect(compatibilityFilterLabel(90), 'Best Matches');
+    expect(compatibilityFilterLabel(95), 'Best Matches');
+
+    expect(compatibilityCardLabel(92), 'Best Match');
+    expect(compatibilityCardLabel(84), 'Highly Compatible');
+    expect(compatibilityCardLabel(76), 'Recommended Match');
+    expect(compatibilityCardLabel(68), 'Good Match');
+    expect(compatibilityCardLabel(55), 'Open Match');
   });
 
   test('AI Matches source contains no fixed 98 percent presentation', () {
     final screenSource = File(
       'lib/features/matches/presentation/matches_screen.dart',
     ).readAsStringSync();
-    final sliderSource = File(
+    final inlineFilterSource = File(
+      'lib/features/matches/presentation/widgets/'
+      'amoraa_inline_compatibility_filter.dart',
+    ).readAsStringSync();
+    final oldSlider = File(
       'lib/features/matches/presentation/widgets/'
       'amora_compatibility_slider.dart',
-    ).readAsStringSync();
+    );
 
     expect(screenSource, isNot(contains("'98%'")));
     expect(screenSource, isNot(contains('"98%"')));
-    expect(sliderSource, isNot(contains("'98%'")));
-    expect(sliderSource, isNot(contains('"98%"')));
+    expect(inlineFilterSource, isNot(contains("'98%'")));
+    expect(inlineFilterSource, isNot(contains('"98%"')));
     expect(screenSource, isNot(contains('_CompatibilityRingPainter')));
+    expect(screenSource, isNot(contains('_CompatibilityFilterSheet')));
+    expect(screenSource, isNot(contains('_showCompatibilityFilter')));
+    expect(oldSlider.existsSync(), isFalse);
   });
 
-  testWidgets('slider filters locally and keeps scores descending', (
+  testWidgets('slider uses 50 to 95 in five-point steps', (tester) async {
+    await pumpMatches(tester);
+
+    final slider = tester.widget<Slider>(
+      find.byKey(const ValueKey('minimum-compatibility-slider')),
+    );
+    expect(slider.value, defaultCompatibilityThreshold);
+    expect(slider.min, minimumCompatibilityThreshold);
+    expect(slider.max, maximumCompatibilityThreshold);
+    expect(slider.divisions, 9);
+    expect(slider.semanticFormatterCallback!(70), contains('70 percent'));
+  });
+
+  testWidgets('slider filters immediately and keeps scores descending', (
     tester,
   ) async {
     await pumpMatches(tester);
 
-    final slider = await openCompatibilityFilter(tester);
+    final slider = tester.widget<Slider>(
+      find.byKey(const ValueKey('minimum-compatibility-slider')),
+    );
     expect(slider.value, defaultCompatibilityThreshold);
     slider.onChanged!(90);
     await tester.pumpAndSettle();
 
-    expect(find.text('90% and above'), findsOneWidget);
-    await tester.tap(find.byKey(const ValueKey('compatibility-filter-apply')));
-    await tester.pumpAndSettle();
+    expect(find.text('90%+'), findsOneWidget);
+    expect(find.text('Best Matches'), findsWidgets);
+    expect(
+      find.text('Showing best matches with 90% compatibility or higher.'),
+      findsOneWidget,
+    );
+    expect(find.text('Apply'), findsNothing);
     final scores = tester
         .widgetList<AiMatchImage>(find.byType(AiMatchImage))
         .map((image) => image.profile.score)
@@ -134,32 +171,63 @@ void main() {
     expect(scores, orderedEquals([...scores]..sort((a, b) => b.compareTo(a))));
     for (final score in scores) {
       expect(find.text('$score%'), findsWidgets);
-      expect(find.text(compatibilityLabel(score)), findsWidgets);
+      expect(find.text(compatibilityCardLabel(score)), findsWidgets);
     }
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('empty threshold state can lower the filter', (tester) async {
+  testWidgets('compact reset returns to 70 percent and hides at default', (
+    tester,
+  ) async {
     await pumpMatches(tester);
-    final slider = await openCompatibilityFilter(tester);
-    slider.onChanged!(100);
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const ValueKey('compatibility-filter-apply')));
+    expect(
+      find.byKey(const ValueKey('compatibility-filter-reset')),
+      findsNothing,
+    );
+    tester
+        .widget<Slider>(
+          find.byKey(const ValueKey('minimum-compatibility-slider')),
+        )
+        .onChanged!(85);
     await tester.pumpAndSettle();
 
-    expect(find.text('No matches above 100% yet'), findsOneWidget);
+    expect(find.text('85%+'), findsOneWidget);
     expect(
-      find.text(
-        'Try lowering the compatibility filter to discover more people.',
-      ),
+      find.byKey(const ValueKey('compatibility-filter-reset')),
       findsOneWidget,
     );
-    await tester.tap(find.text('Lower filter'));
+    await tester.tap(find.byKey(const ValueKey('compatibility-filter-reset')));
     await tester.pumpAndSettle();
 
     expect(find.text('70%+'), findsOneWidget);
-    expect(find.byType(FeaturedAiMatchCard), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('compatibility-filter-reset')),
+      findsNothing,
+    );
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('empty threshold state offers the required 70 percent CTA', (
+    tester,
+  ) async {
+    var lowered = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AiMatchesThresholdEmptyState(
+            onLowerFilter: () => lowered = true,
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('No matches at this level yet'), findsOneWidget);
+    expect(
+      find.text('Try lowering the compatibility filter to see more people.'),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('Lower to 70%'));
+    expect(lowered, isTrue);
   });
 
   testWidgets('keyboard arrows adjust the compatibility threshold', (
@@ -167,7 +235,6 @@ void main() {
   ) async {
     await pumpMatches(tester, size: const Size(1024, 768));
 
-    await openCompatibilityFilter(tester);
     final sliderFinder = find.byKey(
       const ValueKey('minimum-compatibility-slider'),
     );
@@ -175,7 +242,7 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
     await tester.pumpAndSettle();
 
-    expect(find.text('80% and above'), findsOneWidget);
+    expect(find.text('75%+'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -185,18 +252,13 @@ void main() {
     for (final width in <double>[320, 360, 390, 430, 600, 768, 1024]) {
       await pumpMatches(tester, size: Size(width, width >= 600 ? 900 : 760));
 
-      expect(find.byType(AmoraCompatibilitySlider), findsNothing);
+      expect(find.byType(AmoraaInlineCompatibilityFilter), findsOneWidget);
       expect(find.text('70%+'), findsOneWidget);
       expect(find.byType(FeaturedAiMatchCard), findsOneWidget);
-      await openCompatibilityFilter(tester);
       expect(
-        tester.getSize(find.byType(AmoraCompatibilitySlider)).width,
+        tester.getSize(find.byType(AmoraaInlineCompatibilityFilter)).width,
         lessThanOrEqualTo(width),
       );
-      await tester.tap(
-        find.byKey(const ValueKey('compatibility-filter-close')),
-      );
-      await tester.pumpAndSettle();
       expect(tester.takeException(), isNull, reason: 'Overflow at $width px');
     }
   });

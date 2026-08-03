@@ -75,25 +75,17 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Height, Languages & Religion'), findsOneWidget);
     expect(find.textContaining('details remain'), findsWidgets);
-    expect(find.byType(TextFormField), findsNothing);
+    expect(find.byType(DropdownButtonFormField<String>), findsWidgets);
     expect(find.text('Children'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Photo Manager uses one horizontal reorderable gallery', (
-    tester,
-  ) async {
+  testWidgets('Photo Manager uses one responsive photo grid', (tester) async {
     await pumpScreen(tester, const PhotoManagerScreen());
 
-    expect(
-      find.byKey(const ValueKey('horizontal-photo-gallery')),
-      findsOneWidget,
-    );
-    final gallery = tester.widget<ReorderableListView>(
-      find.byType(ReorderableListView),
-    );
-    expect(gallery.scrollDirection, Axis.horizontal);
-    expect(find.byType(ReorderableListView), findsOneWidget);
+    expect(find.byKey(const ValueKey('profile-photo-grid')), findsOneWidget);
+    expect(find.byType(GridView), findsOneWidget);
+    expect(find.byType(LongPressDraggable<String>), findsWidgets);
     expect(tester.takeException(), isNull);
   });
 

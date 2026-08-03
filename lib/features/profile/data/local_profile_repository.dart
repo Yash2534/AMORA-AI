@@ -195,6 +195,32 @@ class UserProfile {
 // profile entity: UserProfile.
 typedef LocalProfileDraft = UserProfile;
 
+enum ProfilePhotoUploadState { bundled, uploaded, localOnly, uploading, failed }
+
+@immutable
+class ProfilePhotoViewData {
+  const ProfilePhotoViewData({
+    required this.id,
+    required this.source,
+    required this.order,
+    required this.isPrimary,
+    required this.uploadState,
+  });
+
+  final String id;
+  final String source;
+  final int order;
+  final bool isPrimary;
+  final ProfilePhotoUploadState uploadState;
+
+  bool get isLocal => switch (uploadState) {
+    ProfilePhotoUploadState.localOnly ||
+    ProfilePhotoUploadState.uploading ||
+    ProfilePhotoUploadState.failed => true,
+    _ => false,
+  };
+}
+
 class LocalProfileRepository extends ChangeNotifier {
   LocalProfileRepository._();
 
@@ -203,6 +229,27 @@ class LocalProfileRepository extends ChangeNotifier {
 
   UserProfile _profile = _defaultProfile;
   UserProfile get profile => _profile;
+  final Map<String, String> _photoIds = {};
+  final Map<String, ProfilePhotoUploadState> _photoStates = {};
+  int _nextPhotoId = 0;
+
+  List<ProfilePhotoViewData> get currentPhotos =>
+      List.unmodifiable(<ProfilePhotoViewData>[
+        for (var index = 0; index < _profile.photos.length; index++)
+          ProfilePhotoViewData(
+            id: _photoIds.putIfAbsent(
+              _profile.photos[index],
+              () => 'profile-photo-${_nextPhotoId++}',
+            ),
+            source: _profile.photos[index],
+            order: index,
+            isPrimary: index == _profile.primaryPhotoIndex,
+            uploadState: _photoStates.putIfAbsent(
+              _profile.photos[index],
+              () => _initialPhotoState(_profile.photos[index]),
+            ),
+          ),
+      ]);
 
   Future<void> initialize() async {
     try {
@@ -237,6 +284,80 @@ class LocalProfileRepository extends ChangeNotifier {
             : primaryPhotoIndex.clamp(0, photos.length - 1),
       ),
     );
+  }
+
+  void updatePhotosInSession(List<String> photos, int primaryPhotoIndex) {
+    _apply(
+      _profile.copyWith(
+        photos: photos,
+        primaryPhotoIndex: photos.isEmpty
+            ? 0
+            : primaryPhotoIndex.clamp(0, photos.length - 1),
+      ),
+    );
+  }
+
+  void addPhotoInSession(
+    String source, {
+    ProfilePhotoUploadState uploadState = ProfilePhotoUploadState.localOnly,
+  }) {
+    if (source.trim().isEmpty || _profile.photos.contains(source)) return;
+    _photoIds[source] = 'profile-photo-${_nextPhotoId++}';
+    _photoStates[source] = uploadState;
+    final photos = [..._profile.photos, source];
+    updatePhotosInSession(
+      photos,
+      photos.length == 1 ? 0 : _profile.primaryPhotoIndex,
+    );
+  }
+
+  void setPrimaryPhotoInSession(int index) {
+    if (index < 0 || index >= _profile.photos.length) return;
+    updatePhotosInSession(_profile.photos, index);
+  }
+
+  void removePhotoInSession(int index) {
+    if (index < 0 || index >= _profile.photos.length) return;
+    final photos = List<String>.of(_profile.photos);
+    final removed = photos.removeAt(index);
+    _photoIds.remove(removed);
+    _photoStates.remove(removed);
+    var primary = _profile.primaryPhotoIndex;
+    if (photos.isEmpty) {
+      primary = 0;
+    } else if (index < primary) {
+      primary--;
+    } else if (index == primary) {
+      primary = index.clamp(0, photos.length - 1);
+    }
+    updatePhotosInSession(photos, primary);
+  }
+
+  void reorderPhotosInSession(int oldIndex, int newIndex) {
+    if (oldIndex < 0 || oldIndex >= _profile.photos.length) return;
+    final photos = List<String>.of(_profile.photos);
+    final primarySource = photos[_profile.primaryPhotoIndex];
+    final target = newIndex.clamp(0, photos.length - 1);
+    final photo = photos.removeAt(oldIndex);
+    photos.insert(target, photo);
+    updatePhotosInSession(photos, photos.indexOf(primarySource));
+  }
+
+  void setPhotoUploadState(String source, ProfilePhotoUploadState uploadState) {
+    if (!_profile.photos.contains(source)) return;
+    _photoStates[source] = uploadState;
+    notifyListeners();
+  }
+
+  void replacePhotoSourceInSession(String localSource, String remoteUrl) {
+    final index = _profile.photos.indexOf(localSource);
+    if (index < 0 || remoteUrl.trim().isEmpty) return;
+    final photos = List<String>.of(_profile.photos)..[index] = remoteUrl;
+    final id = _photoIds.remove(localSource);
+    _photoStates.remove(localSource);
+    if (id != null) _photoIds[remoteUrl] = id;
+    _photoStates[remoteUrl] = ProfilePhotoUploadState.uploaded;
+    updatePhotosInSession(photos, _profile.primaryPhotoIndex);
   }
 
   Future<void> updatePhotosPersisted(
@@ -296,6 +417,9 @@ class LocalProfileRepository extends ChangeNotifier {
           ? 0
           : value.primaryPhotoIndex.clamp(0, photos.length - 1),
     );
+    final activeSources = photos.toSet();
+    _photoIds.removeWhere((source, _) => !activeSources.contains(source));
+    _photoStates.removeWhere((source, _) => !activeSources.contains(source));
     notifyListeners();
   }
 
@@ -323,6 +447,9 @@ class LocalProfileRepository extends ChangeNotifier {
   @visibleForTesting
   Future<void> resetForTesting([UserProfile? profile]) async {
     _profile = profile ?? _defaultProfile;
+    _photoIds.clear();
+    _photoStates.clear();
+    _nextPhotoId = 0;
     notifyListeners();
     try {
       final preferences = await SharedPreferences.getInstance();
@@ -331,6 +458,20 @@ class LocalProfileRepository extends ChangeNotifier {
       // Tests without a shared_preferences platform implementation still use
       // the deterministic in-memory profile above.
     }
+  }
+
+  static ProfilePhotoUploadState _initialPhotoState(String source) {
+    final value = source.trim().toLowerCase();
+    if (value.startsWith('http://') || value.startsWith('https://')) {
+      return ProfilePhotoUploadState.uploaded;
+    }
+    if (value.startsWith('data:image/') ||
+        value.startsWith('file://') ||
+        RegExp(r'^[a-z]:[\\/]').hasMatch(value) ||
+        value.startsWith('/')) {
+      return ProfilePhotoUploadState.localOnly;
+    }
+    return ProfilePhotoUploadState.bundled;
   }
 }
 

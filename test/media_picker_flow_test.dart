@@ -144,7 +144,8 @@ void main() {
     expect(find.text('Preview Photo'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('photo-crop-use-button')));
     await tester.pumpAndSettle();
-    expect(find.text('Photo added. Save changes to keep it.'), findsOneWidget);
+    expect(find.text('Photo added to your profile.'), findsOneWidget);
+    expect(find.byKey(const ValueKey('profile-photo-grid')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

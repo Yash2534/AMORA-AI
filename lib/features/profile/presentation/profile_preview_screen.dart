@@ -11,13 +11,36 @@ import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_st
 import 'package:amora_ai/features/discover/presentation/discover_screen.dart';
 import 'package:flutter/material.dart';
 
-class ProfilePreviewScreen extends StatelessWidget {
+class ProfilePreviewScreen extends StatefulWidget {
   const ProfilePreviewScreen({super.key});
   static const routeName = '/profile-preview';
 
   @override
+  State<ProfilePreviewScreen> createState() => _ProfilePreviewScreenState();
+}
+
+class _ProfilePreviewScreenState extends State<ProfilePreviewScreen> {
+  final _repository = LocalProfileRepository.instance;
+
+  @override
+  void initState() {
+    super.initState();
+    _repository.addListener(_refresh);
+  }
+
+  @override
+  void dispose() {
+    _repository.removeListener(_refresh);
+    super.dispose();
+  }
+
+  void _refresh() {
+    if (mounted) setState(() {});
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final profile = LocalProfileRepository.instance.profile;
+    final profile = _repository.profile;
     final visibleInterests = ProfileInterestPolicy.visible(profile.interests);
     return Scaffold(
       backgroundColor: AppColors.background,

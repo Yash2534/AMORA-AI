@@ -9,7 +9,7 @@ import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/chat/data/local_chat_repository.dart';
 import 'package:amora_ai/features/chat/presentation/chat_detail_screen.dart';
 import 'package:amora_ai/features/discover/presentation/discover_action_controller.dart';
-import 'package:amora_ai/features/matches/presentation/widgets/amora_compatibility_slider.dart';
+import 'package:amora_ai/features/matches/presentation/widgets/amoraa_inline_compatibility_filter.dart';
 import 'package:amora_ai/features/profile/domain/profile_interest_policy.dart';
 import 'package:amora_ai/features/profile/presentation/profile_detail_screen.dart';
 import 'package:flutter/material.dart';
@@ -155,25 +155,31 @@ class _MatchesScreenState extends State<MatchesScreen> {
                                 AmoraSpacing.space12,
                               ),
                               sliver: SliverToBoxAdapter(
-                                child: Row(
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
                                   children: [
-                                    Expanded(
-                                      child: Text(
-                                        'Best Matches',
-                                        style: AmoraTextStyles.sectionTitle,
-                                      ),
+                                    Text(
+                                      'Best Matches',
+                                      style: AmoraTextStyles.sectionTitle,
                                     ),
-                                    const SizedBox(width: AmoraSpacing.space12),
-                                    OutlinedButton.icon(
-                                      key: const ValueKey(
-                                        'ai-compatibility-filter-button',
+                                    const SizedBox(
+                                      height: AmoraSpacing.space12,
+                                    ),
+                                    AmoraaInlineCompatibilityFilter(
+                                      value: _compatibilityThreshold,
+                                      onChanged: (value) {
+                                        if (value == _compatibilityThreshold) {
+                                          return;
+                                        }
+                                        setState(
+                                          () => _compatibilityThreshold = value,
+                                        );
+                                      },
+                                      onReset: () => setState(
+                                        () => _compatibilityThreshold =
+                                            defaultCompatibilityThreshold,
                                       ),
-                                      onPressed: _showCompatibilityFilter,
-                                      icon: const Icon(
-                                        Icons.tune_rounded,
-                                        size: 19,
-                                      ),
-                                      label: Text('$_compatibilityThreshold%+'),
                                     ),
                                   ],
                                 ),
@@ -211,7 +217,6 @@ class _MatchesScreenState extends State<MatchesScreen> {
                               SliverFillRemaining(
                                 hasScrollBody: false,
                                 child: AiMatchesThresholdEmptyState(
-                                  threshold: _compatibilityThreshold,
                                   onLowerFilter: () => setState(
                                     () => _compatibilityThreshold =
                                         defaultCompatibilityThreshold,
@@ -630,32 +635,6 @@ class _MatchesScreenState extends State<MatchesScreen> {
     );
   }
 
-  Future<void> _showCompatibilityFilter() async {
-    var draftThreshold = _compatibilityThreshold;
-    final selected = await showModalBottomSheet<int>(
-      context: context,
-      useSafeArea: true,
-      isScrollControlled: true,
-      backgroundColor: AppColors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
-      ),
-      builder: (sheetContext) => StatefulBuilder(
-        builder: (context, setSheetState) => _CompatibilityFilterSheet(
-          value: draftThreshold,
-          onChanged: (value) => setSheetState(() => draftThreshold = value),
-          onReset: () => setSheetState(
-            () => draftThreshold = defaultCompatibilityThreshold,
-          ),
-          onClose: () => Navigator.pop(sheetContext),
-          onApply: () => Navigator.pop(sheetContext, draftThreshold),
-        ),
-      ),
-    );
-    if (!mounted || selected == null) return;
-    setState(() => _compatibilityThreshold = selected);
-  }
-
   void _showRecommendationInfo() {
     showModalBottomSheet<void>(
       context: context,
@@ -699,83 +678,6 @@ class _MatchesScreenState extends State<MatchesScreen> {
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _CompatibilityFilterSheet extends StatelessWidget {
-  const _CompatibilityFilterSheet({
-    required this.value,
-    required this.onChanged,
-    required this.onReset,
-    required this.onClose,
-    required this.onApply,
-  });
-
-  final int value;
-  final ValueChanged<int> onChanged;
-  final VoidCallback onReset;
-  final VoidCallback onClose;
-  final VoidCallback onApply;
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      top: false,
-      child: SingleChildScrollView(
-        padding: EdgeInsets.fromLTRB(
-          AmoraSpacing.space20,
-          AmoraSpacing.space12,
-          AmoraSpacing.space20,
-          AmoraSpacing.space20 + MediaQuery.viewInsetsOf(context).bottom,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const _SheetHandle(),
-            const SizedBox(height: AmoraSpacing.space12),
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Compatibility Filter',
-                    style: AmoraTextStyles.bottomSheetTitle,
-                  ),
-                ),
-                IconButton(
-                  key: const ValueKey('compatibility-filter-close'),
-                  tooltip: 'Close compatibility filter',
-                  onPressed: onClose,
-                  icon: const Icon(Icons.close_rounded),
-                ),
-              ],
-            ),
-            const SizedBox(height: AmoraSpacing.space8),
-            AmoraCompatibilitySlider(value: value, onChanged: onChanged),
-            const SizedBox(height: AmoraSpacing.space16),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    key: const ValueKey('compatibility-filter-reset'),
-                    onPressed: onReset,
-                    child: const Text('Reset'),
-                  ),
-                ),
-                const SizedBox(width: AmoraSpacing.space12),
-                Expanded(
-                  child: FilledButton(
-                    key: const ValueKey('compatibility-filter-apply'),
-                    onPressed: onApply,
-                    child: const Text('Apply'),
-                  ),
-                ),
-              ],
-            ),
-          ],
         ),
       ),
     );
@@ -1433,7 +1335,7 @@ class AiCompatibilityBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final safeScore = score.clamp(0, 100);
-    final label = compatibilityLabel(safeScore);
+    final label = compatibilityCardLabel(safeScore);
     return Semantics(
       label: '$safeScore percent compatibility, $label',
       child: Container(
@@ -2375,23 +2277,17 @@ class AiMatchesFilteredEmptyState extends StatelessWidget {
 }
 
 class AiMatchesThresholdEmptyState extends StatelessWidget {
-  const AiMatchesThresholdEmptyState({
-    super.key,
-    required this.threshold,
-    required this.onLowerFilter,
-  });
+  const AiMatchesThresholdEmptyState({super.key, required this.onLowerFilter});
 
-  final int threshold;
   final VoidCallback onLowerFilter;
 
   @override
   Widget build(BuildContext context) {
     return _AiMatchesStateLayout(
       icon: Icons.tune_rounded,
-      title: 'No matches above $threshold% yet',
-      description:
-          'Try lowering the compatibility filter to discover more people.',
-      actionLabel: 'Lower filter',
+      title: 'No matches at this level yet',
+      description: 'Try lowering the compatibility filter to see more people.',
+      actionLabel: 'Lower to 70%',
       onAction: onLowerFilter,
     );
   }

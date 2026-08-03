@@ -9,11 +9,9 @@ import 'package:amora_ai/features/profile/domain/profile_form_validators.dart';
 import 'package:amora_ai/features/profile/presentation/controllers/profile_form_controller.dart';
 import 'package:amora_ai/features/profile/presentation/profile_completion_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_edit_screen.dart';
-import 'package:amora_ai/features/profile/presentation/widgets/amoraa_dating_intention_selector.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_language_selector.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_fields.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_form.dart';
-import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_prompt_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -104,18 +102,6 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  Future<void> expandAllCompletionSections(WidgetTester tester) async {
-    for (final section in ProfileCompletionSectionId.values) {
-      final sectionCard = find.byKey(
-        ValueKey<String>('completion-section-${section.name}'),
-      );
-      await tester.ensureVisible(sectionCard);
-      await tester.pumpAndSettle();
-      await tester.tap(sectionCard);
-      await tester.pumpAndSettle();
-    }
-  }
-
   Future<void> openCompletionSection(WidgetTester tester, String title) async {
     final sectionTitle = find.text(title);
     await tester.scrollUntilVisible(
@@ -194,43 +180,18 @@ void main() {
     );
   });
 
-  testWidgets('Completion is a dashboard while Edit owns shared fields', (
-    tester,
-  ) async {
-    await repository.resetForTesting(completeProfile());
-    await pumpFlow(
-      tester,
-      const ProfileCompletionScreen(),
-      size: const Size(430, 5000),
-    );
-    await expandAllCompletionSections(tester);
+  testWidgets('Completion opens approved shared fields inline', (tester) async {
+    await repository.resetForTesting(blankProfile());
+    await pumpFlow(tester, const ProfileCompletionScreen());
 
-    final sharedTypes = <Type>[
-      AmoraaProfilePhotoSection,
-      AmoraaBasicDetailsSection,
-      AmoraaWorkEducationSection,
-      AmoraaLocationIntentionsSection,
-      AmoraaIdentityDetailsSelector,
-      AmoraaProfileBioField,
-      AmoraaInterestsSelector,
-      AmoraaLifestyleSelector,
-      AmoraaProfilePromptField,
-      AmoraaLanguageSelector,
-      AmoraaProfilePromptSelector,
-      AmoraaDatingIntentionSelector,
-    ];
-    for (final type in sharedTypes) {
-      expect(find.byType(type), findsNothing, reason: 'Dashboard: $type');
-    }
+    await openCompletionSection(tester, 'Basic Details');
+    expect(find.byType(AmoraaBasicDetailsSection), findsOneWidget);
+    expect(find.byKey(const ValueKey('profile-name-field')), findsOneWidget);
+    expect(find.text('Edit destination'), findsNothing);
 
-    await pumpFlow(
-      tester,
-      const ProfileEditScreen(),
-      size: const Size(430, 5000),
-    );
-    for (final type in sharedTypes) {
-      expect(find.byType(type), findsOneWidget, reason: 'Edit: $type');
-    }
+    await openCompletionSection(tester, 'Height, Languages & Religion');
+    expect(find.byType(AmoraaIdentityDetailsSelector), findsOneWidget);
+    expect(find.byType(AmoraaLanguageSelector), findsOneWidget);
   });
 
   testWidgets('Completion progress follows the profile source of truth', (
@@ -248,14 +209,31 @@ void main() {
     expect(find.text('Edit destination'), findsNothing);
   });
 
-  testWidgets('Completion never writes profile fields or opens Edit', (
+  testWidgets('Completion saves an inline section and refreshes progress', (
     tester,
   ) async {
     await repository.resetForTesting(blankProfile());
     await pumpFlow(tester, const ProfileCompletionScreen());
-    await openCompletionSection(tester, 'Basic Details');
-    expect(find.byKey(const ValueKey('profile-name-field')), findsNothing);
-    expect(repository.profile.name, isEmpty);
+    await openCompletionSection(tester, 'Bio');
+    const bio =
+        'A thoughtful profile introduction with enough detail to be complete.';
+    await tester.enterText(
+      find.byKey(const ValueKey('profile-bio-field')),
+      bio,
+    );
+    await tester.tap(find.byKey(const ValueKey('completion-save-bio')));
+    await tester.pumpAndSettle();
+
+    expect(repository.profile.bio, bio);
+    expect(repository.profile.completionPercent, 10);
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('completion-progress-header')),
+      -400,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('10%'), findsOneWidget);
+    expect(find.text('Bio saved successfully.'), findsOneWidget);
     expect(find.text('Edit destination'), findsNothing);
   });
 
@@ -320,7 +298,7 @@ void main() {
     tester,
   ) async {
     await repository.resetForTesting(completeProfile());
-    for (final width in <double>[320, 360, 390, 430, 600, 768, 1024]) {
+    for (final width in <double>[320, 360, 390, 412, 430, 600, 768, 1024]) {
       for (final screen in const <Widget>[
         ProfileCompletionScreen(),
         ProfileEditScreen(),

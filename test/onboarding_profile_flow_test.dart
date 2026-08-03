@@ -315,7 +315,7 @@ void main() {
     expect(complete.completionPercent, 100);
   });
 
-  testWidgets('profile completion uses its dedicated progress dashboard', (
+  testWidgets('profile completion uses its dashboard with inline editing', (
     tester,
   ) async {
     profiles.startNewProfile('New Member');
@@ -335,7 +335,11 @@ void main() {
     );
     await tester.tap(find.text('Basic Details').first);
     await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey('profile-name-field')), findsNothing);
+    expect(find.byKey(const ValueKey('profile-name-field')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('completion-save-basicDetails')),
+      findsOneWidget,
+    );
     expect(find.textContaining('details remain'), findsWidgets);
     await tester.scrollUntilVisible(
       find.byKey(const ValueKey('profile-completion-primary-button')),

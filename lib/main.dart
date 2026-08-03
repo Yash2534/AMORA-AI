@@ -73,6 +73,17 @@ Future<void> main() async {
   runApp(const MyApp());
 }
 
+String resolveAmoraInitialRoute(String platformRoute) {
+  final hashIndex = platformRoute.indexOf('#');
+  final normalized = hashIndex >= 0
+      ? platformRoute.substring(hashIndex + 1)
+      : platformRoute;
+  if (normalized == ProfileCompletionScreen.routeName) {
+    return ProfileCompletionScreen.routeName;
+  }
+  return AmoraSplashScreen.routeName;
+}
+
 class MyApp extends StatefulWidget {
   const MyApp({super.key});
 
@@ -100,7 +111,9 @@ class _MyAppState extends State<MyApp> {
         debugShowCheckedModeBanner: false,
         theme: AmoraTheme.light(),
         themeMode: themeMode,
-        initialRoute: AmoraSplashScreen.routeName,
+        initialRoute: resolveAmoraInitialRoute(
+          WidgetsBinding.instance.platformDispatcher.defaultRouteName,
+        ),
         routes: {
           AmoraSplashScreen.routeName: (_) => AmoraSplashScreen(
             resolveInitialRoute: () => AmoraSession.isLoggedIn.value
