@@ -139,9 +139,11 @@ void main() {
 
     expect(picker.sources, [AmoraMediaSource.gallery]);
     expect(find.text('Crop Photo'), findsOneWidget);
-    await tester.tap(find.byKey(const ValueKey('photo-crop-review-button')));
-    await tester.pumpAndSettle();
-    expect(find.text('Preview Photo'), findsOneWidget);
+    expect(find.text('Preview Photo'), findsNothing);
+    expect(
+      find.byKey(const ValueKey('photo-crop-review-button')),
+      findsNothing,
+    );
     await tester.tap(find.byKey(const ValueKey('photo-crop-use-button')));
     await tester.pumpAndSettle();
     expect(find.text('Photo added to your profile.'), findsOneWidget);

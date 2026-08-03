@@ -3,7 +3,8 @@ import 'dart:math' as math;
 
 import 'package:amora_ai/core/constants/app_images.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
-import 'package:amora_ai/core/widgets/amora_profile_image.dart';
+import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
+import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_photo_view.dart';
 import 'package:flutter/material.dart';
 
 class AmoraaProfileStoryImage extends StatefulWidget {
@@ -13,11 +14,13 @@ class AmoraaProfileStoryImage extends StatefulWidget {
     required this.semanticLabel,
     this.initials = 'AM',
     this.aspectRatio,
+    this.photo,
   });
 
   final String image;
   final String semanticLabel;
   final String initials;
+  final ProfilePhotoViewData? photo;
 
   /// Optional known ratio, primarily useful when image metadata is already
   /// available. Otherwise the widget resolves the existing image provider.
@@ -53,6 +56,8 @@ class _AmoraaProfileStoryImageState extends State<AmoraaProfileStoryImage> {
   void didUpdateWidget(covariant AmoraaProfileStoryImage oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.image != widget.image ||
+        oldWidget.photo?.bytes != widget.photo?.bytes ||
+        oldWidget.photo?.source != widget.photo?.source ||
         oldWidget.aspectRatio != widget.aspectRatio) {
       _removeListener();
       _resolvedRatio = AmoraaProfileStoryImage.minimumAspectRatio;
@@ -107,10 +112,16 @@ class _AmoraaProfileStoryImageState extends State<AmoraaProfileStoryImage> {
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(24),
-                  child: AmoraProfileImage(
-                    imageUrl: widget.image,
-                    assetPath: widget.image,
-                    initials: widget.initials,
+                  child: AmoraaProfilePhotoView(
+                    photo:
+                        widget.photo ??
+                        ProfilePhotoViewData(
+                          id: 'profile-story-${widget.image.hashCode}',
+                          source: widget.image,
+                          order: 0,
+                          isPrimary: false,
+                          uploadState: ProfilePhotoUploadState.bundled,
+                        ),
                     fit: BoxFit.cover,
                     alignment: const Alignment(0, -0.12),
                     borderRadius: BorderRadius.circular(24),
@@ -126,7 +137,7 @@ class _AmoraaProfileStoryImageState extends State<AmoraaProfileStoryImage> {
   }
 
   void _resolveRatio() {
-    final provider = _providerFor(widget.image);
+    final provider = _providerFor(widget.photo, widget.image);
     if (provider == null) return;
     final stream = provider.resolve(createLocalImageConfiguration(context));
     final listener = ImageStreamListener((image, _) {
@@ -142,8 +153,14 @@ class _AmoraaProfileStoryImageState extends State<AmoraaProfileStoryImage> {
     stream.addListener(listener);
   }
 
-  ImageProvider<Object>? _providerFor(String source) {
-    final value = source.trim();
+  ImageProvider<Object>? _providerFor(
+    ProfilePhotoViewData? photo,
+    String source,
+  ) {
+    if (photo?.bytes case final bytes? when bytes.isNotEmpty) {
+      return MemoryImage(bytes);
+    }
+    final value = (photo?.source ?? source).trim();
     if (value.startsWith('data:image/')) {
       final comma = value.indexOf(',');
       if (comma < 0) return null;

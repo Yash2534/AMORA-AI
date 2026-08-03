@@ -1,12 +1,10 @@
 import 'dart:math' as math;
 
 import 'package:amora_ai/core/access/amora_access.dart';
-import 'package:amora_ai/core/constants/app_images.dart';
 import 'package:amora_ai/core/theme/amora_gradients.dart';
 import 'package:amora_ai/core/theme/amora_shadows.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
-import 'package:amora_ai/core/widgets/amora_profile_image.dart';
 import 'package:amora_ai/core/widgets/amora_screen_title.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/floating_bottom_nav.dart';
@@ -24,6 +22,7 @@ import 'package:amora_ai/features/profile/presentation/profile_completion_metric
 import 'package:amora_ai/features/profile/presentation/profile_completion_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_edit_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_preview_screen.dart';
+import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_photo_view.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/profile_photo_gallery.dart';
 import 'package:amora_ai/features/settings/presentation/managed_profiles_screen.dart';
 import 'package:amora_ai/features/settings/presentation/profile_settings_screen.dart';
@@ -1297,6 +1296,18 @@ class _ProfilePortrait extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final photos = LocalProfileRepository.instance.currentPhotos;
+    final primary =
+        photos.where((photo) => photo.isPrimary).firstOrNull ??
+        (photos.isEmpty
+            ? ProfilePhotoViewData(
+                id: 'profile-hero-fallback',
+                source: profile.primaryPhoto,
+                order: 0,
+                isPrimary: true,
+                uploadState: ProfilePhotoUploadState.bundled,
+              )
+            : photos.first);
     return Hero(
       tag: 'current-user-primary-photo',
       child: Semantics(
@@ -1316,10 +1327,8 @@ class _ProfilePortrait extends StatelessWidget {
             padding: const EdgeInsets.all(3),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(20),
-              child: AmoraProfileImage(
-                imageUrl: profile.primaryPhoto,
-                assetPath: profile.primaryPhoto,
-                initials: AppImages.initialsForName(profile.name),
+              child: AmoraaProfilePhotoView(
+                photo: primary,
                 fit: BoxFit.cover,
                 alignment: const Alignment(0, -.1),
                 borderRadius: BorderRadius.circular(20),
@@ -1330,6 +1339,13 @@ class _ProfilePortrait extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+extension _FirstOrNull<T> on Iterable<T> {
+  T? get firstOrNull {
+    final iterator = this.iterator;
+    return iterator.moveNext() ? iterator.current : null;
   }
 }
 

@@ -10,13 +10,13 @@ import 'package:amora_ai/core/theme/amora_icons.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
-import 'package:amora_ai/core/widgets/amora_profile_image.dart';
 import 'package:amora_ai/core/widgets/amora_screen_title.dart';
 import 'package:amora_ai/core/widgets/amora_snackbar.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
+import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_photo_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -30,6 +30,7 @@ class PhotoManagerScreen extends StatefulWidget {
     this.mediaPicker = const DeviceAmoraMediaPicker(),
     this.cropPreviewRenderer,
     this.photoUploader,
+    this.openPickerOnStart = false,
   });
 
   static const routeName = '/photo-manager';
@@ -37,6 +38,7 @@ class PhotoManagerScreen extends StatefulWidget {
   final AmoraMediaPicker mediaPicker;
   final ProfilePhotoCropRenderer? cropPreviewRenderer;
   final ProfilePhotoUploader? photoUploader;
+  final bool openPickerOnStart;
 
   @override
   State<PhotoManagerScreen> createState() => _PhotoManagerScreenState();
@@ -52,6 +54,11 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
   void initState() {
     super.initState();
     _repository.addListener(_refresh);
+    if (widget.openPickerOnStart) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _addPhoto();
+      });
+    }
   }
 
   @override
@@ -188,7 +195,7 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
               Text('Add a profile photo', style: AmoraTextStyles.headlineSmall),
               const SizedBox(height: AmoraSpacing.space8),
               Text(
-                'Choose a clear JPEG, PNG, WebP, HEIC, or HEIF image up to 12 MB.',
+                'Choose a clear JPEG, PNG, or WebP image up to 12 MB.',
                 style: AmoraTextStyles.bodyMedium,
               ),
               const SizedBox(height: AmoraSpacing.space16),
@@ -242,7 +249,11 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
     final uploadState = widget.photoUploader == null
         ? ProfilePhotoUploadState.localOnly
         : ProfilePhotoUploadState.uploading;
-    _repository.addPhotoInSession(croppedPhoto, uploadState: uploadState);
+    _repository.addPhotoInSession(
+      croppedPhoto,
+      uploadState: uploadState,
+      bytes: _decodeDataUri(croppedPhoto),
+    );
     _snack('Photo added to your profile.');
     if (widget.photoUploader != null) {
       unawaited(_uploadPhoto(croppedPhoto));
@@ -276,6 +287,7 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
       _repository.setPhotoUploadState(
         localSource,
         ProfilePhotoUploadState.failed,
+        errorMessage: 'Upload failed. Retry when you are ready.',
       );
       if (mounted) {
         _snack('Upload failed. Your local photo is still available.');
@@ -316,7 +328,14 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
       );
       if (!mounted) return;
       AmoraSession.completeProfileStep(40);
-      _snack('Photo changes saved on this device');
+      final hasSessionOnlyPhoto = _repository.currentPhotos.any(
+        (photo) => photo.isLocal,
+      );
+      _snack(
+        hasSessionOnlyPhoto
+            ? 'Photo changes are available for this session. Upload is unavailable.'
+            : 'Photo changes saved on this device',
+      );
       Navigator.of(context).pop(true);
     } catch (_) {
       if (!mounted) return;
@@ -514,13 +533,12 @@ class _PhotoTile extends StatelessWidget {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              AmoraProfileImage(
-                imageUrl: photo.source,
-                assetPath: photo.source,
-                initials: 'AM',
+              AmoraaProfilePhotoView(
+                photo: photo,
                 fit: BoxFit.cover,
                 borderRadius: AmoraRadius.card,
                 semanticLabel: 'Profile photo ${photo.order + 1}',
+                showTransferState: false,
               ),
               if (photo.uploadState == ProfilePhotoUploadState.uploading)
                 const Align(
@@ -753,14 +771,13 @@ class _ProfilePhotoViewerScreenState extends State<ProfilePhotoViewerScreen> {
                         minScale: 1,
                         maxScale: 4,
                         child: Center(
-                          child: AmoraProfileImage(
+                          child: AmoraaProfilePhotoView(
                             key: ValueKey('photo-preview-${photo.id}'),
-                            imageUrl: photo.source,
-                            assetPath: photo.source,
-                            initials: 'AM',
+                            photo: photo,
                             fit: BoxFit.contain,
                             semanticLabel:
                                 'Full profile photo ${index + 1}${photo.isPrimary ? ', primary' : ''}',
+                            showTransferState: false,
                           ),
                         ),
                       ),
@@ -810,8 +827,6 @@ class _ProfilePhotoViewerScreenState extends State<ProfilePhotoViewerScreen> {
   }
 }
 
-enum _PhotoCropStage { adjust, preview }
-
 class ProfilePhotoCropPreviewScreen extends StatefulWidget {
   const ProfilePhotoCropPreviewScreen({
     super.key,
@@ -832,9 +847,7 @@ class _ProfilePhotoCropPreviewScreenState
   static const _cropRatio = 4 / 5;
   final _captureKey = GlobalKey();
   final _transformationController = TransformationController();
-  _PhotoCropStage _stage = _PhotoCropStage.adjust;
-  String? _previewDataUri;
-  bool _renderingPreview = false;
+  bool _usingPhoto = false;
 
   @override
   void dispose() {
@@ -844,27 +857,18 @@ class _ProfilePhotoCropPreviewScreenState
 
   @override
   Widget build(BuildContext context) {
-    final reduceMotion = MediaQuery.disableAnimationsOf(context);
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
         leading: IconButton(
-          tooltip: _stage == _PhotoCropStage.preview
-              ? 'Back to crop'
-              : 'Cancel photo crop',
-          onPressed: _stage == _PhotoCropStage.preview
-              ? () => setState(() => _stage = _PhotoCropStage.adjust)
-              : () => Navigator.of(context).pop(),
+          tooltip: 'Cancel photo crop',
+          onPressed: _usingPhoto ? null : () => Navigator.of(context).pop(),
           icon: const Icon(Icons.arrow_back_rounded),
         ),
         titleSpacing: 0,
-        title: AmoraScreenTitle(
-          title: _stage == _PhotoCropStage.adjust
-              ? 'Crop Photo'
-              : 'Preview Photo',
-          subtitle: _stage == _PhotoCropStage.adjust
-              ? 'Drag and zoom to frame your profile'
-              : 'Review before adding this photo',
+        title: const AmoraScreenTitle(
+          title: 'Crop Photo',
+          subtitle: 'Drag and zoom to frame your profile',
         ),
       ),
       body: SafeArea(
@@ -882,67 +886,30 @@ class _ProfilePhotoCropPreviewScreenState
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Expanded(
-                  child: AnimatedSwitcher(
-                    duration: reduceMotion
-                        ? Duration.zero
-                        : const Duration(milliseconds: 240),
-                    switchInCurve: Curves.easeOutCubic,
-                    switchOutCurve: Curves.easeInCubic,
-                    child: _stage == _PhotoCropStage.adjust
-                        ? _CropCanvas(
-                            key: const ValueKey('photo-crop-canvas'),
-                            captureKey: _captureKey,
-                            sourceDataUri: widget.sourceDataUri,
-                            transformationController: _transformationController,
-                            aspectRatio: _cropRatio,
-                          )
-                        : _PhotoPreview(
-                            key: const ValueKey('photo-crop-preview'),
-                            dataUri: _previewDataUri!,
-                            aspectRatio: _cropRatio,
-                          ),
+                  child: _CropCanvas(
+                    key: const ValueKey('photo-crop-canvas'),
+                    captureKey: _captureKey,
+                    sourceDataUri: widget.sourceDataUri,
+                    transformationController: _transformationController,
+                    aspectRatio: _cropRatio,
                   ),
                 ),
                 const SizedBox(height: AmoraSpacing.space16),
-                if (_stage == _PhotoCropStage.adjust) ...[
-                  Text(
-                    'Use two fingers or the mouse wheel to zoom. Drag to reposition.',
-                    textAlign: TextAlign.center,
-                    style: AmoraTextStyles.caption.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
+                Text(
+                  'Use two fingers or the mouse wheel to zoom. Drag to reposition.',
+                  textAlign: TextAlign.center,
+                  style: AmoraTextStyles.caption.copyWith(
+                    color: AppColors.textSecondary,
                   ),
-                  const SizedBox(height: AmoraSpacing.space12),
-                  AppPrimaryButton(
-                    key: const ValueKey('photo-crop-review-button'),
-                    label: _renderingPreview ? 'Creating Preview' : 'Preview',
-                    icon: Icons.visibility_rounded,
-                    isLoading: _renderingPreview,
-                    onPressed: _renderingPreview ? null : _createPreview,
-                  ),
-                ] else ...[
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          key: const ValueKey('photo-crop-adjust-button'),
-                          onPressed: () =>
-                              setState(() => _stage = _PhotoCropStage.adjust),
-                          child: const Text('Adjust'),
-                        ),
-                      ),
-                      const SizedBox(width: AmoraSpacing.space12),
-                      Expanded(
-                        child: FilledButton(
-                          key: const ValueKey('photo-crop-use-button'),
-                          onPressed: () =>
-                              Navigator.of(context).pop(_previewDataUri),
-                          child: const Text('Use Photo'),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                ),
+                const SizedBox(height: AmoraSpacing.space12),
+                AppPrimaryButton(
+                  key: const ValueKey('photo-crop-use-button'),
+                  label: _usingPhoto ? 'Preparing Photo' : 'Use Photo',
+                  icon: Icons.check_rounded,
+                  isLoading: _usingPhoto,
+                  onPressed: _usingPhoto ? null : _usePhoto,
+                ),
               ],
             ),
           ),
@@ -951,15 +918,24 @@ class _ProfilePhotoCropPreviewScreenState
     );
   }
 
-  Future<void> _createPreview() async {
-    setState(() => _renderingPreview = true);
+  Future<void> _usePhoto() async {
+    setState(() => _usingPhoto = true);
     try {
       if (widget.previewRenderer case final renderer?) {
-        final preview = await renderer(_captureKey);
+        final result = await renderer(_captureKey);
         if (!mounted) return;
-        _showPreview(preview);
+        if (_decodeDataUri(result) == null) {
+          throw StateError('The prepared photo is invalid');
+        }
+        Navigator.of(context).pop(result);
         return;
       }
+      final sourceBytes = _decodeDataUri(widget.sourceDataUri);
+      if (sourceBytes == null || sourceBytes.isEmpty) {
+        throw StateError('The selected photo is invalid');
+      }
+      await precacheImage(MemoryImage(sourceBytes), context);
+      if (!mounted) return;
       final deviceRatio = MediaQuery.devicePixelRatioOf(context);
       await WidgetsBinding.instance.endOfFrame;
       final boundary = _captureKey.currentContext?.findRenderObject();
@@ -974,23 +950,15 @@ class _ProfilePhotoCropPreviewScreenState
       if (byteData == null) throw StateError('Crop preview could not be read');
       final bytes = byteData.buffer.asUint8List();
       if (!mounted) return;
-      _showPreview('data:image/png;base64,${base64Encode(bytes)}');
+      Navigator.of(context).pop('data:image/png;base64,${base64Encode(bytes)}');
     } catch (_) {
       if (!mounted) return;
-      setState(() => _renderingPreview = false);
+      setState(() => _usingPhoto = false);
       showAmoraSnackBar(
         context,
-        message: 'Preview could not be created. Please try again.',
+        message: 'The photo could not be prepared. Please try again.',
       );
     }
-  }
-
-  void _showPreview(String dataUri) {
-    setState(() {
-      _previewDataUri = dataUri;
-      _renderingPreview = false;
-      _stage = _PhotoCropStage.preview;
-    });
   }
 }
 
@@ -1010,6 +978,15 @@ class _CropCanvas extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bytes = _decodeDataUri(sourceDataUri);
+    final photo = ProfilePhotoViewData(
+      id: 'crop-photo',
+      source: sourceDataUri,
+      order: 0,
+      isPrimary: false,
+      uploadState: ProfilePhotoUploadState.localOnly,
+      bytes: bytes,
+    );
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = math.min(
@@ -1032,15 +1009,14 @@ class _CropCanvas extends StatelessWidget {
                   panEnabled: true,
                   scaleEnabled: true,
                   clipBehavior: Clip.hardEdge,
-                  child: AmoraProfileImage(
-                    imageUrl: sourceDataUri,
-                    assetPath: sourceDataUri,
-                    initials: 'AM',
+                  child: AmoraaProfilePhotoView(
+                    photo: photo,
                     width: width,
                     height: height,
                     fit: BoxFit.cover,
                     borderRadius: BorderRadius.zero,
                     semanticLabel: 'Adjustable profile photo crop',
+                    showTransferState: false,
                   ),
                 ),
               ),
@@ -1052,37 +1028,15 @@ class _CropCanvas extends StatelessWidget {
   }
 }
 
-class _PhotoPreview extends StatelessWidget {
-  const _PhotoPreview({
-    super.key,
-    required this.dataUri,
-    required this.aspectRatio,
-  });
-
-  final String dataUri;
-  final double aspectRatio;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final width = math.min(
-          math.min(constraints.maxWidth, 440.0),
-          constraints.maxHeight * aspectRatio,
-        );
-        return Center(
-          child: AmoraProfileImage(
-            imageUrl: dataUri,
-            assetPath: dataUri,
-            initials: 'AM',
-            width: width,
-            height: width / aspectRatio,
-            fit: BoxFit.cover,
-            borderRadius: BorderRadius.circular(24),
-            semanticLabel: 'Profile photo preview',
-          ),
-        );
-      },
-    );
+Uint8List? _decodeDataUri(String value) {
+  final source = value.trim();
+  if (!source.startsWith('data:image/')) return null;
+  final comma = source.indexOf(',');
+  if (comma < 0 || comma == source.length - 1) return null;
+  try {
+    final bytes = base64Decode(source.substring(comma + 1));
+    return bytes.isEmpty ? null : bytes;
+  } on FormatException {
+    return null;
   }
 }

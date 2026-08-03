@@ -1,12 +1,14 @@
+import 'dart:convert';
+
 import 'package:amora_ai/core/media/amora_media_picker.dart';
 import 'package:amora_ai/core/theme/amora_theme.dart';
-import 'package:amora_ai/core/widgets/amora_profile_image.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
 import 'package:amora_ai/features/profile/presentation/photo_manager_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_completion_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_edit_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_preview_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_screen.dart';
+import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_photo_view.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_story_image.dart';
 import 'package:amora_ai/main.dart' as app;
 import 'package:flutter/material.dart';
@@ -76,6 +78,20 @@ void main() {
     expect(find.text('Photo Manager'), findsOneWidget);
   });
 
+  testWidgets('Edit Profile Add Photo opens the shared picker flow', (
+    tester,
+  ) async {
+    await _pump(tester, const ProfileEditScreen());
+
+    final addPhoto = find.byKey(const ValueKey('profile-add-photo-action'));
+    await tester.ensureVisible(addPhoto);
+    await tester.tap(addPhoto);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Photo Manager'), findsOneWidget);
+    expect(find.text('Add a profile photo'), findsOneWidget);
+  });
+
   testWidgets('local photo synchronizes immediately with Profile', (
     tester,
   ) async {
@@ -91,8 +107,10 @@ void main() {
 
     expect(
       tester
-          .widgetList<AmoraProfileImage>(find.byType(AmoraProfileImage))
-          .where((image) => image.imageUrl == _localPhoto),
+          .widgetList<AmoraaProfilePhotoView>(
+            find.byType(AmoraaProfilePhotoView),
+          )
+          .where((image) => image.photo.source == _localPhoto),
       isNotEmpty,
     );
   });
@@ -145,6 +163,59 @@ void main() {
     );
   });
 
+  testWidgets('shared renderer prioritizes web-safe memory bytes', (
+    tester,
+  ) async {
+    final bytes = base64Decode(_localPhoto.split(',').last);
+    await _pump(
+      tester,
+      Center(
+        child: SizedBox(
+          width: 120,
+          height: 150,
+          child: AmoraaProfilePhotoView(
+            photo: ProfilePhotoViewData(
+              id: 'memory-photo',
+              source: r'C:\browser\local-photo.png',
+              order: 0,
+              isPrimary: true,
+              uploadState: ProfilePhotoUploadState.localOnly,
+              bytes: bytes,
+            ),
+            semanticLabel: 'Memory profile photo',
+          ),
+        ),
+      ),
+    );
+
+    final image = tester.widget<Image>(find.byType(Image));
+    expect(image.image, isA<MemoryImage>());
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('blank photo source uses the clean fallback', (tester) async {
+    await _pump(
+      tester,
+      const SizedBox(
+        width: 120,
+        height: 150,
+        child: AmoraaProfilePhotoView(
+          photo: ProfilePhotoViewData(
+            id: 'blank-photo',
+            source: '',
+            order: 0,
+            isPrimary: false,
+            uploadState: ProfilePhotoUploadState.localOnly,
+          ),
+          semanticLabel: 'Fallback profile photo',
+        ),
+      ),
+    );
+
+    expect(find.byType(AmoraaProfilePhotoView), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('every Photo Manager tile opens the full preview', (
     tester,
   ) async {
@@ -177,8 +248,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Choose from photo library'));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const ValueKey('photo-crop-review-button')));
-    await tester.pumpAndSettle();
+    expect(find.text('Preview Photo'), findsNothing);
     await tester.tap(find.byKey(const ValueKey('photo-crop-use-button')));
     await tester.pumpAndSettle();
 
@@ -189,9 +259,55 @@ void main() {
     expect(find.text('Retry'), findsOneWidget);
     expect(
       tester
-          .widgetList<AmoraProfileImage>(find.byType(AmoraProfileImage))
-          .where((image) => image.imageUrl == _localPhoto),
+          .widgetList<AmoraaProfilePhotoView>(
+            find.byType(AmoraaProfilePhotoView),
+          )
+          .where((image) => image.photo.source == _localPhoto),
       isNotEmpty,
+    );
+  });
+
+  testWidgets('upload success preserves identity and replaces the source', (
+    tester,
+  ) async {
+    const remotePhoto = 'https://images.example/new-profile.jpg';
+    final picker = _FakePhotoPicker();
+    await _pump(
+      tester,
+      PhotoManagerScreen(
+        mediaPicker: picker,
+        cropPreviewRenderer: (_) async => _localPhoto,
+        photoUploader: (_) async => remotePhoto,
+      ),
+    );
+
+    await tester.tap(find.byIcon(Icons.add_photo_alternate_rounded));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Choose from photo library'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('photo-crop-use-button')));
+    await tester.pumpAndSettle();
+
+    final uploaded = repository.currentPhotos.singleWhere(
+      (photo) => photo.source == remotePhoto,
+    );
+    expect(uploaded.uploadState, ProfilePhotoUploadState.uploaded);
+    expect(uploaded.bytes, isNotEmpty);
+    expect(uploaded.order, repository.profile.photos.indexOf(remotePhoto));
+  });
+
+  testWidgets('Profile Completion photo section opens the shared photo UI', (
+    tester,
+  ) async {
+    await _pump(tester, const ProfileCompletionScreen());
+    final section = find.byKey(const ValueKey('completion-section-photos'));
+    await tester.ensureVisible(section);
+    await tester.tap(section);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('profile-add-photo-action')),
+      findsOneWidget,
     );
   });
 

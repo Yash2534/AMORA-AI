@@ -25,11 +25,13 @@ class AmoraPickedMedia {
     required this.dataUri,
     required this.name,
     required this.byteLength,
+    this.bytes,
   });
 
   final String dataUri;
   final String name;
   final int byteLength;
+  final Uint8List? bytes;
 }
 
 class AmoraMediaPickResult {
@@ -100,6 +102,12 @@ class DeviceAmoraMediaPicker implements AmoraMediaPicker {
       }
 
       final bytes = await file.readAsBytes();
+      if (bytes.isEmpty) {
+        return const AmoraMediaPickResult.failure(
+          AmoraMediaIssue.invalidImage,
+          'That image is empty. Choose another JPEG, PNG, or WebP image.',
+        );
+      }
       if (bytes.lengthInBytes > maximumImageBytes) {
         return const AmoraMediaPickResult.failure(
           AmoraMediaIssue.tooLarge,
@@ -107,11 +115,11 @@ class DeviceAmoraMediaPicker implements AmoraMediaPicker {
         );
       }
 
-      final mimeType = _supportedMimeType(file, bytes);
+      final mimeType = _supportedMimeType(bytes);
       if (mimeType == null) {
         return const AmoraMediaPickResult.failure(
           AmoraMediaIssue.invalidImage,
-          'Choose a valid JPEG, PNG, WebP, HEIC, or HEIF image.',
+          'Choose a valid JPEG, PNG, or WebP image.',
         );
       }
 
@@ -120,6 +128,7 @@ class DeviceAmoraMediaPicker implements AmoraMediaPicker {
           dataUri: 'data:$mimeType;base64,${base64Encode(bytes)}',
           name: file.name,
           byteLength: bytes.lengthInBytes,
+          bytes: bytes,
         ),
       );
     } on PlatformException catch (error) {
@@ -196,24 +205,7 @@ class DeviceAmoraMediaPicker implements AmoraMediaPicker {
     );
   }
 
-  String? _supportedMimeType(XFile file, Uint8List bytes) {
-    final declared = file.mimeType?.toLowerCase();
-    const supported = {
-      'image/jpeg',
-      'image/png',
-      'image/webp',
-      'image/heic',
-      'image/heif',
-    };
-    if (declared != null && supported.contains(declared)) return declared;
-
-    final name = file.name.toLowerCase();
-    if (name.endsWith('.jpg') || name.endsWith('.jpeg')) return 'image/jpeg';
-    if (name.endsWith('.png')) return 'image/png';
-    if (name.endsWith('.webp')) return 'image/webp';
-    if (name.endsWith('.heic')) return 'image/heic';
-    if (name.endsWith('.heif')) return 'image/heif';
-
+  String? _supportedMimeType(Uint8List bytes) {
     if (bytes.length >= 3 &&
         bytes[0] == 0xff &&
         bytes[1] == 0xd8 &&

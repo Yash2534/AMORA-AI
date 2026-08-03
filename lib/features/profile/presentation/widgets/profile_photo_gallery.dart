@@ -1,8 +1,8 @@
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
-import 'package:amora_ai/core/widgets/amora_profile_image.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
+import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_photo_view.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
@@ -55,6 +55,7 @@ class _ProfilePhotoGalleryState extends State<ProfilePhotoGallery> {
   @override
   Widget build(BuildContext context) {
     final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    final sharedPhotos = LocalProfileRepository.instance.currentPhotos;
     final primaryIndex = widget.profile.photos.isEmpty
         ? -1
         : widget.profile.primaryPhotoIndex.clamp(
@@ -95,6 +96,18 @@ class _ProfilePhotoGalleryState extends State<ProfilePhotoGallery> {
               }
 
               final photo = widget.profile.photos[index];
+              final shared = sharedPhotos
+                  .where((candidate) => candidate.source == photo)
+                  .firstOrNull;
+              final viewPhoto =
+                  shared ??
+                  ProfilePhotoViewData(
+                    id: 'profile-gallery-$index',
+                    source: photo,
+                    order: index,
+                    isPrimary: index == primaryIndex,
+                    uploadState: ProfilePhotoUploadState.bundled,
+                  );
               return TweenAnimationBuilder<double>(
                 key: ValueKey('profile-gallery-photo-$index-$photo'),
                 duration: reduceMotion
@@ -110,7 +123,7 @@ class _ProfilePhotoGalleryState extends State<ProfilePhotoGallery> {
                   ),
                 ),
                 child: _ProfilePhotoCard(
-                  photo: photo,
+                  photo: viewPhoto,
                   index: index,
                   primary: index == primaryIndex,
                 ),
@@ -130,7 +143,7 @@ class _ProfilePhotoCard extends StatelessWidget {
     required this.primary,
   });
 
-  final String photo;
+  final ProfilePhotoViewData photo;
   final int index;
   final bool primary;
 
@@ -162,10 +175,8 @@ class _ProfilePhotoCard extends StatelessWidget {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              AmoraProfileImage(
-                imageUrl: photo,
-                assetPath: photo,
-                initials: 'AM',
+              AmoraaProfilePhotoView(
+                photo: photo,
                 fit: BoxFit.cover,
                 alignment: const Alignment(0, -0.12),
                 borderRadius: AmoraRadius.card,
@@ -184,6 +195,13 @@ class _ProfilePhotoCard extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+extension _FirstOrNull<T> on Iterable<T> {
+  T? get firstOrNull {
+    final iterator = this.iterator;
+    return iterator.moveNext() ? iterator.current : null;
   }
 }
 

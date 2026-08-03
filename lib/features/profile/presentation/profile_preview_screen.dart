@@ -41,6 +41,10 @@ class _ProfilePreviewScreenState extends State<ProfilePreviewScreen> {
   @override
   Widget build(BuildContext context) {
     final profile = _repository.profile;
+    final photos = _repository.currentPhotos;
+    final primary =
+        photos.where((photo) => photo.isPrimary).firstOrNull ??
+        (photos.isEmpty ? null : photos.first);
     final visibleInterests = ProfileInterestPolicy.visible(profile.interests);
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -64,7 +68,8 @@ class _ProfilePreviewScreenState extends State<ProfilePreviewScreen> {
                 sliver: SliverList.list(
                   children: [
                     AmoraaProfileStoryImage(
-                      image: profile.primaryPhoto,
+                      image: primary?.source ?? profile.primaryPhoto,
+                      photo: primary,
                       initials: profile.name.isEmpty
                           ? 'AM'
                           : profile.name.substring(0, 1),
@@ -110,10 +115,11 @@ class _ProfilePreviewScreenState extends State<ProfilePreviewScreen> {
                             style: AmoraTextStyles.titleMedium,
                           ),
                         ),
-                    for (var index = 0; index < profile.photos.length; index++)
-                      if (index != profile.primaryPhotoIndex) ...[
+                    for (var index = 0; index < photos.length; index++)
+                      if (!photos[index].isPrimary) ...[
                         AmoraaProfileStoryImage(
-                          image: profile.photos[index],
+                          image: photos[index].source,
+                          photo: photos[index],
                           initials: 'AM',
                           semanticLabel: 'Profile photo ${index + 1}',
                         ),
@@ -182,6 +188,13 @@ class _ProfilePreviewScreenState extends State<ProfilePreviewScreen> {
         ),
       ),
     );
+  }
+}
+
+extension _FirstOrNull<T> on Iterable<T> {
+  T? get firstOrNull {
+    final iterator = this.iterator;
+    return iterator.moveNext() ? iterator.current : null;
   }
 }
 

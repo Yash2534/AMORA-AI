@@ -148,8 +148,8 @@ class _AmoraaProfileFormState extends State<AmoraaProfileForm> {
                           child: AmoraaProfilePhotoSection(
                             profile: profile,
                             showError: _showValidation,
-                            onManage: () =>
-                                _openNamed(PhotoManagerScreen.routeName),
+                            onManage: _openPhotoManager,
+                            onAdd: () => _openPhotoManager(openPicker: true),
                           ),
                         ),
                         _EditSection(
@@ -276,6 +276,19 @@ class _AmoraaProfileFormState extends State<AmoraaProfileForm> {
 
   Future<void> _openNamed(String route) async {
     await Navigator.of(context).pushNamed(route);
+    if (mounted) _controller.refreshExternalProfile();
+  }
+
+  Future<void> _openPhotoManager({bool openPicker = false}) async {
+    if (openPicker) {
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => const PhotoManagerScreen(openPickerOnStart: true),
+        ),
+      );
+    } else {
+      await Navigator.of(context).pushNamed(PhotoManagerScreen.routeName);
+    }
     if (mounted) _controller.refreshExternalProfile();
   }
 

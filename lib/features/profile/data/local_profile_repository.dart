@@ -195,7 +195,14 @@ class UserProfile {
 // profile entity: UserProfile.
 typedef LocalProfileDraft = UserProfile;
 
-enum ProfilePhotoUploadState { bundled, uploaded, localOnly, uploading, failed }
+enum ProfilePhotoUploadState {
+  bundled,
+  uploaded,
+  localOnly,
+  uploading,
+  failed,
+  deleting,
+}
 
 @immutable
 class ProfilePhotoViewData {
@@ -205,6 +212,8 @@ class ProfilePhotoViewData {
     required this.order,
     required this.isPrimary,
     required this.uploadState,
+    this.bytes,
+    this.errorMessage,
   });
 
   final String id;
@@ -212,6 +221,30 @@ class ProfilePhotoViewData {
   final int order;
   final bool isPrimary;
   final ProfilePhotoUploadState uploadState;
+  final Uint8List? bytes;
+  final String? errorMessage;
+
+  String? get remoteUrl {
+    final value = source.trim();
+    return value.startsWith('http://') || value.startsWith('https://')
+        ? value
+        : null;
+  }
+
+  String? get dataUri {
+    final value = source.trim();
+    return value.startsWith('data:image/') ? value : null;
+  }
+
+  String? get localPath {
+    final value = source.trim();
+    if (value.startsWith('file://') ||
+        RegExp(r'^[a-zA-Z]:[\\/]').hasMatch(value) ||
+        value.startsWith('/')) {
+      return value;
+    }
+    return null;
+  }
 
   bool get isLocal => switch (uploadState) {
     ProfilePhotoUploadState.localOnly ||
@@ -231,6 +264,8 @@ class LocalProfileRepository extends ChangeNotifier {
   UserProfile get profile => _profile;
   final Map<String, String> _photoIds = {};
   final Map<String, ProfilePhotoUploadState> _photoStates = {};
+  final Map<String, Uint8List> _photoBytes = {};
+  final Map<String, String> _photoErrors = {};
   int _nextPhotoId = 0;
 
   List<ProfilePhotoViewData> get currentPhotos =>
@@ -248,6 +283,8 @@ class LocalProfileRepository extends ChangeNotifier {
               _profile.photos[index],
               () => _initialPhotoState(_profile.photos[index]),
             ),
+            bytes: _photoBytes[_profile.photos[index]],
+            errorMessage: _photoErrors[_profile.photos[index]],
           ),
       ]);
 
@@ -300,10 +337,12 @@ class LocalProfileRepository extends ChangeNotifier {
   void addPhotoInSession(
     String source, {
     ProfilePhotoUploadState uploadState = ProfilePhotoUploadState.localOnly,
+    Uint8List? bytes,
   }) {
     if (source.trim().isEmpty || _profile.photos.contains(source)) return;
     _photoIds[source] = 'profile-photo-${_nextPhotoId++}';
     _photoStates[source] = uploadState;
+    if (bytes != null && bytes.isNotEmpty) _photoBytes[source] = bytes;
     final photos = [..._profile.photos, source];
     updatePhotosInSession(
       photos,
@@ -343,9 +382,18 @@ class LocalProfileRepository extends ChangeNotifier {
     updatePhotosInSession(photos, photos.indexOf(primarySource));
   }
 
-  void setPhotoUploadState(String source, ProfilePhotoUploadState uploadState) {
+  void setPhotoUploadState(
+    String source,
+    ProfilePhotoUploadState uploadState, {
+    String? errorMessage,
+  }) {
     if (!_profile.photos.contains(source)) return;
     _photoStates[source] = uploadState;
+    if (errorMessage == null || errorMessage.trim().isEmpty) {
+      _photoErrors.remove(source);
+    } else {
+      _photoErrors[source] = errorMessage.trim();
+    }
     notifyListeners();
   }
 
@@ -354,8 +402,11 @@ class LocalProfileRepository extends ChangeNotifier {
     if (index < 0 || remoteUrl.trim().isEmpty) return;
     final photos = List<String>.of(_profile.photos)..[index] = remoteUrl;
     final id = _photoIds.remove(localSource);
+    final bytes = _photoBytes.remove(localSource);
     _photoStates.remove(localSource);
+    _photoErrors.remove(localSource);
     if (id != null) _photoIds[remoteUrl] = id;
+    if (bytes != null && bytes.isNotEmpty) _photoBytes[remoteUrl] = bytes;
     _photoStates[remoteUrl] = ProfilePhotoUploadState.uploaded;
     updatePhotosInSession(photos, _profile.primaryPhotoIndex);
   }
@@ -420,12 +471,39 @@ class LocalProfileRepository extends ChangeNotifier {
     final activeSources = photos.toSet();
     _photoIds.removeWhere((source, _) => !activeSources.contains(source));
     _photoStates.removeWhere((source, _) => !activeSources.contains(source));
+    _photoBytes.removeWhere((source, _) => !activeSources.contains(source));
+    _photoErrors.removeWhere((source, _) => !activeSources.contains(source));
     notifyListeners();
   }
 
   Future<void> _persist() async {
     final preferences = await SharedPreferences.getInstance();
-    await preferences.setString(_storageKey, jsonEncode(_profile.toJson()));
+    final primarySource = _profile.photos.isEmpty
+        ? null
+        : _profile.photos[_profile.primaryPhotoIndex];
+    final durablePhotos = currentPhotos
+        .where(
+          (photo) =>
+              photo.uploadState != ProfilePhotoUploadState.localOnly &&
+              photo.uploadState != ProfilePhotoUploadState.uploading &&
+              photo.uploadState != ProfilePhotoUploadState.failed,
+        )
+        .map((photo) => photo.source)
+        .toList(growable: false);
+    final selectedDurableIndex = primarySource == null
+        ? -1
+        : durablePhotos.indexOf(primarySource);
+    final durablePrimaryIndex = selectedDurableIndex < 0
+        ? 0
+        : selectedDurableIndex;
+    final durableProfile = _profile.copyWith(
+      photos: durablePhotos,
+      primaryPhotoIndex: durablePrimaryIndex,
+    );
+    await preferences.setString(
+      _storageKey,
+      jsonEncode(durableProfile.toJson()),
+    );
   }
 
   Future<void> _persistSafely() async {
@@ -449,6 +527,8 @@ class LocalProfileRepository extends ChangeNotifier {
     _profile = profile ?? _defaultProfile;
     _photoIds.clear();
     _photoStates.clear();
+    _photoBytes.clear();
+    _photoErrors.clear();
     _nextPhotoId = 0;
     notifyListeners();
     try {

@@ -2,12 +2,12 @@ import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/amora_dob_field.dart';
-import 'package:amora_ai/core/widgets/amora_profile_image.dart';
 import 'package:amora_ai/features/onboarding/data/gujarat_cities.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
 import 'package:amora_ai/features/profile/domain/profile_form_options.dart';
 import 'package:amora_ai/features/profile/domain/profile_form_validators.dart';
 import 'package:amora_ai/features/profile/presentation/controllers/profile_form_controller.dart';
+import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_photo_view.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_dating_intention_selector.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_language_selector.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_prompt_selector.dart';
@@ -19,16 +19,19 @@ class AmoraaProfilePhotoSection extends StatelessWidget {
     super.key,
     required this.profile,
     required this.onManage,
+    this.onAdd,
     this.showError = false,
   });
 
   final UserProfile profile;
   final VoidCallback onManage;
+  final VoidCallback? onAdd;
   final bool showError;
 
   @override
   Widget build(BuildContext context) {
     final error = showError ? ProfileFormValidators.photos(profile) : null;
+    final sharedPhotos = LocalProfileRepository.instance.currentPhotos;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -36,8 +39,8 @@ class AmoraaProfilePhotoSection extends StatelessWidget {
           _InlineEmptyState(
             icon: Icons.add_a_photo_rounded,
             label: 'Add at least two profile photos',
-            actionLabel: 'Open Photo Manager',
-            onAction: onManage,
+            actionLabel: 'Add Photo',
+            onAction: onAdd ?? onManage,
           )
         else
           SizedBox(
@@ -51,12 +54,23 @@ class AmoraaProfilePhotoSection extends StatelessWidget {
                   const SizedBox(width: AmoraSpacing.space12),
               itemBuilder: (context, index) {
                 final primary = index == profile.primaryPhotoIndex;
+                final source = profile.photos[index];
+                final photo = sharedPhotos
+                    .where((candidate) => candidate.source == source)
+                    .firstOrNull;
+                final viewPhoto =
+                    photo ??
+                    ProfilePhotoViewData(
+                      id: 'profile-form-photo-$index',
+                      source: source,
+                      order: index,
+                      isPrimary: primary,
+                      uploadState: ProfilePhotoUploadState.bundled,
+                    );
                 return Stack(
                   children: [
-                    AmoraProfileImage(
-                      imageUrl: profile.photos[index],
-                      assetPath: profile.photos[index],
-                      initials: 'AM',
+                    AmoraaProfilePhotoView(
+                      photo: viewPhoto,
                       width: 98,
                       height: 128,
                       fit: BoxFit.cover,
@@ -93,13 +107,23 @@ class AmoraaProfilePhotoSection extends StatelessWidget {
             ),
           ),
         const SizedBox(height: AmoraSpacing.space12),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: TextButton.icon(
-            onPressed: onManage,
-            icon: const Icon(Icons.photo_library_outlined),
-            label: const Text('Manage photos'),
-          ),
+        Wrap(
+          spacing: AmoraSpacing.space8,
+          runSpacing: AmoraSpacing.space8,
+          children: [
+            if (profile.photos.isNotEmpty && profile.photos.length < 6)
+              TextButton.icon(
+                key: const ValueKey('profile-add-photo-action'),
+                onPressed: onAdd ?? onManage,
+                icon: const Icon(Icons.add_photo_alternate_rounded),
+                label: const Text('Add Photo'),
+              ),
+            TextButton.icon(
+              onPressed: onManage,
+              icon: const Icon(Icons.photo_library_outlined),
+              label: const Text('Manage photos'),
+            ),
+          ],
         ),
         if (error != null) _FormError(error),
       ],
@@ -591,5 +615,12 @@ class _FormError extends StatelessWidget {
         style: AmoraTextStyles.bodySmall.copyWith(color: AppColors.primary),
       ),
     );
+  }
+}
+
+extension _FirstOrNull<T> on Iterable<T> {
+  T? get firstOrNull {
+    final iterator = this.iterator;
+    return iterator.moveNext() ? iterator.current : null;
   }
 }

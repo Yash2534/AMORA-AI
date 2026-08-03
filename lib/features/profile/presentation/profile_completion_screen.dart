@@ -1,7 +1,6 @@
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
-import 'package:amora_ai/core/widgets/amora_profile_image.dart';
 import 'package:amora_ai/core/widgets/amora_screen_title.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
@@ -13,6 +12,7 @@ import 'package:amora_ai/features/profile/presentation/kyc_verification_screen.d
 import 'package:amora_ai/features/profile/presentation/photo_manager_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_screen.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_fields.dart';
+import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_photo_view.dart';
 import 'package:flutter/material.dart';
 
 /// A progress dashboard. The full editor deliberately lives elsewhere.
@@ -171,6 +171,7 @@ class _ProfileCompletionScreenState extends State<ProfileCompletionScreen> {
         profile: profile,
         showError: showValidation,
         onManage: _openPhotoManager,
+        onAdd: () => _openPhotoManager(openPicker: true),
       ),
       ProfileCompletionSectionId.basicDetails => AmoraaBasicDetailsSection(
         controller: _controller,
@@ -205,8 +206,16 @@ class _ProfileCompletionScreenState extends State<ProfileCompletionScreen> {
     return Form(key: _formKeys[id], child: editor);
   }
 
-  Future<void> _openPhotoManager() async {
-    await Navigator.of(context).pushNamed(PhotoManagerScreen.routeName);
+  Future<void> _openPhotoManager({bool openPicker = false}) async {
+    if (openPicker) {
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => const PhotoManagerScreen(openPickerOnStart: true),
+        ),
+      );
+    } else {
+      await Navigator.of(context).pushNamed(PhotoManagerScreen.routeName);
+    }
     if (!mounted) return;
     _controller.refreshExternalProfile();
   }
@@ -274,6 +283,18 @@ class _CompletionDashboardHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    final photos = LocalProfileRepository.instance.currentPhotos;
+    final primary =
+        photos.where((photo) => photo.isPrimary).firstOrNull ??
+        (photos.isEmpty
+            ? ProfilePhotoViewData(
+                id: 'completion-photo-fallback',
+                source: profile.primaryPhoto,
+                order: 0,
+                isPrimary: true,
+                uploadState: ProfilePhotoUploadState.bundled,
+              )
+            : photos.first);
     return PremiumCard(
       key: const ValueKey('completion-progress-header'),
       radius: 24,
@@ -305,12 +326,8 @@ class _CompletionDashboardHeader extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  AmoraProfileImage(
-                    imageUrl: profile.primaryPhoto,
-                    assetPath: profile.primaryPhoto,
-                    initials: profile.name.trim().isEmpty
-                        ? 'AM'
-                        : profile.name.trim().substring(0, 1),
+                  AmoraaProfilePhotoView(
+                    photo: primary,
                     width: 58,
                     height: 66,
                     borderRadius: BorderRadius.circular(18),
@@ -331,6 +348,13 @@ class _CompletionDashboardHeader extends StatelessWidget {
         },
       ),
     );
+  }
+}
+
+extension _FirstOrNull<T> on Iterable<T> {
+  T? get firstOrNull {
+    final iterator = this.iterator;
+    return iterator.moveNext() ? iterator.current : null;
   }
 }
 
