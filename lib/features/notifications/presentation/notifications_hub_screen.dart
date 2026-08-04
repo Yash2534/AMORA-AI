@@ -2,8 +2,8 @@ import 'package:amora_ai/core/data/image_repository.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
+import 'package:amora_ai/core/widgets/amora_filter_chip.dart';
 import 'package:amora_ai/core/widgets/premium_asset_image.dart';
-import 'package:amora_ai/core/widgets/amoraa_select_field.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/chat/presentation/chat_detail_screen.dart';
 import 'package:amora_ai/features/chat/data/local_chat_repository.dart';
@@ -507,20 +507,16 @@ class _NotificationFilterRail extends StatelessWidget {
     return Padding(
       key: const ValueKey('notification-filter-rail'),
       padding: const EdgeInsets.fromLTRB(16, 6, 16, 4),
-      child: AmoraaCompactSelect<String>(
-        label: 'Notification filter',
-        value: selected,
-        prefixIcon: _notificationFilterIcon(selected),
-        options: [
-          for (final filter in filters)
-            AmoraaSelectOption(
-              value: filter,
-              label: filter,
-              icon: _notificationFilterIcon(filter),
-            ),
-        ],
-        onChanged: (filter) {
-          if (filter != null) onSelected(filter);
+      child: AmoraaHorizontalFilterBar<String>(
+        options: filters,
+        selectedValues: {selected},
+        multiSelect: false,
+        labelBuilder: (filter) => filter,
+        iconBuilder: _notificationFilterIcon,
+        optionKeyPrefix: 'notification-filter',
+        showCheckmark: true,
+        onChanged: (selection) {
+          if (selection.isNotEmpty) onSelected(selection.single);
         },
       ),
     );

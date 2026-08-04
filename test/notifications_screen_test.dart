@@ -1,3 +1,4 @@
+import 'package:amora_ai/core/widgets/amora_filter_chip.dart';
 import 'package:amora_ai/core/widgets/amoraa_select_field.dart';
 import 'package:amora_ai/features/notifications/presentation/notifications_hub_screen.dart';
 import 'package:flutter/material.dart';
@@ -82,7 +83,7 @@ void main() {
     expect(find.text('/notification-preferences destination'), findsOneWidget);
   });
 
-  testWidgets('compact selector filters Unread notifications locally', (
+  testWidgets('horizontal filter bar filters Unread notifications locally', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(320, 760));
@@ -93,15 +94,66 @@ void main() {
     expect(
       find.descendant(
         of: rail,
-        matching: find.byType(AmoraaCompactSelect<String>),
+        matching: find.byType(AmoraaHorizontalFilterBar<String>),
       ),
       findsOneWidget,
     );
+    expect(
+      find.descendant(
+        of: rail,
+        matching: find.byType(AmoraaCompactSelect<String>),
+      ),
+      findsNothing,
+    );
+    expect(
+      find.descendant(of: rail, matching: find.byIcon(Icons.arrow_drop_down)),
+      findsNothing,
+    );
 
-    await tester.tap(rail);
+    const filters = <String>[
+      'All',
+      'Unread',
+      'Matches',
+      'Messages',
+      'Likes',
+      'Super Likes',
+      'Events',
+      'Profile Views',
+      'Verification',
+      'Security',
+      'Payments',
+      'Offers',
+    ];
+    final bar = tester.widget<AmoraaHorizontalFilterBar<String>>(
+      find.byType(AmoraaHorizontalFilterBar<String>),
+    );
+    expect(bar.options, filters);
+    expect(bar.multiSelect, isFalse);
+    expect(bar.showCheckmark, isTrue);
+    final allChip = find.byKey(const ValueKey('notification-filter-All'));
+    final unreadChip = find.byKey(const ValueKey('notification-filter-Unread'));
+    expect(tester.getCenter(allChip).dy, tester.getCenter(unreadChip).dy);
+    final scroller = find.byKey(const ValueKey('notification-filter-scroll'));
+    expect(scroller, findsOneWidget);
+    expect(tester.widget<ListView>(scroller).scrollDirection, Axis.horizontal);
+
+    await tester.tap(unreadChip);
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const ValueKey('amoraa-select-option-Unread')));
+    expect(tester.widget<AmoraFilterChip>(allChip).selected, isFalse);
+    expect(tester.widget<AmoraFilterChip>(unreadChip).selected, isTrue);
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('notification-filter-Offers')),
+      320,
+      scrollable: find.descendant(
+        of: scroller,
+        matching: find.byType(Scrollable),
+      ),
+    );
     await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('notification-filter-Offers')),
+      findsOneWidget,
+    );
     expect(find.text('Kavya liked your profile'), findsOneWidget);
     expect(find.text('Nisha viewed your profile'), findsNothing);
 
