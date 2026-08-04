@@ -1,9 +1,11 @@
 import 'package:amora_ai/core/theme/app_colors.dart';
+import 'package:amora_ai/core/theme/amora_spacing.dart';
+import 'package:amora_ai/core/theme/amora_text_styles.dart';
+import 'package:amora_ai/core/widgets/amora_filter_chip.dart';
 import 'package:amora_ai/core/widgets/amora_snackbar.dart';
 import 'package:amora_ai/core/widgets/amora_screen_title.dart';
 import 'package:amora_ai/core/widgets/amoraa_adaptive_image.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
-import 'package:amora_ai/core/widgets/amoraa_select_field.dart';
 import 'package:amora_ai/core/widgets/premium_avatar.dart';
 import 'package:amora_ai/core/widgets/premium_image.dart';
 import 'package:amora_ai/core/widgets/premium_motion.dart';
@@ -335,56 +337,27 @@ class EventCategoryBar extends StatelessWidget {
   const EventCategoryBar({
     super.key,
     required this.categories,
-    required this.selected,
-    required this.onSelected,
+    required this.selectedValues,
+    required this.onChanged,
   });
 
   final List<String> categories;
-  final String selected;
-  final ValueChanged<String> onSelected;
+  final Set<String> selectedValues;
+  final ValueChanged<Set<String>> onChanged;
 
   @override
   Widget build(BuildContext context) {
-    return AmoraaCompactSelect<String>(
+    return AmoraaHorizontalFilterBar<String>(
       key: const ValueKey('event-category-selector'),
-      label: 'Event category',
-      value: selected,
-      prefixIcon: _categoryIcon(selected),
-      options: [
-        for (final category in categories)
-          AmoraaSelectOption(
-            value: category,
-            label: category,
-            icon: _categoryIcon(category),
-          ),
-      ],
-      onChanged: (category) {
-        if (category != null) onSelected(category);
-      },
+      options: categories,
+      selectedValues: selectedValues,
+      multiSelect: true,
+      labelBuilder: (category) => category,
+      optionKeyPrefix: 'event-category',
+      showCheckmark: true,
+      onChanged: onChanged,
     );
   }
-}
-
-IconData _categoryIcon(String category) {
-  final value = category.toLowerCase();
-  if (value.contains('coffee')) return Icons.coffee_rounded;
-  if (value.contains('dinner')) return Icons.dinner_dining_rounded;
-  if (value.contains('wellness')) return Icons.self_improvement_rounded;
-  if (value.contains('culture')) return Icons.museum_rounded;
-  if (value.contains('music') || value.contains('garba')) {
-    return Icons.music_note_rounded;
-  }
-  if (value.contains('travel') || value.contains('outdoor')) {
-    return Icons.landscape_rounded;
-  }
-  if (value.contains('speed')) return Icons.groups_rounded;
-  if (value.contains('circle')) return Icons.groups_rounded;
-  if (value.contains('near')) return Icons.near_me_rounded;
-  if (value.contains('week')) return Icons.date_range_rounded;
-  if (value.contains('member') || value.contains('premium')) {
-    return Icons.auto_awesome_rounded;
-  }
-  return Icons.explore_rounded;
 }
 
 class EventImagePanel extends StatelessWidget {
@@ -931,6 +904,178 @@ class StandardEventCard extends EventCard {
   }) : super(horizontal: false);
 }
 
+class AmoraaRecommendedEventCard extends StatelessWidget {
+  const AmoraaRecommendedEventCard({
+    super.key,
+    required this.event,
+    required this.status,
+    required this.onOpen,
+    required this.onJoin,
+  });
+
+  static const double imageHeight = 176;
+  static const double dateBadgeWidth = 56;
+  static const double dateBadgeHeight = 62;
+  static const double contentPadding = AmoraSpacing.space16;
+  static const double titleGap = AmoraSpacing.space12;
+  static const double baseHeight = 456;
+
+  final EventModel event;
+  final TicketStatus? status;
+  final VoidCallback onOpen;
+  final VoidCallback onJoin;
+
+  @override
+  Widget build(BuildContext context) {
+    final statusLabel = switch (status) {
+      TicketStatus.upcoming => 'Joined',
+      TicketStatus.attended => 'Attended',
+      TicketStatus.waitlisted => 'Waitlist',
+      TicketStatus.cancelled => 'Cancelled',
+      null => 'Open to join',
+    };
+    return Semantics(
+      container: true,
+      label:
+          '${event.title}. ${event.date}. ${event.time}. ${event.venue}. ${event.category}. $statusLabel.',
+      child: KeyedSubtree(
+        key: ValueKey('event-card-${event.id}'),
+        child: Material(
+          color: AppColors.surface,
+          elevation: 1.5,
+          shadowColor: AppColors.primary.withValues(alpha: .12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(26),
+            side: BorderSide(color: AppColors.tertiary.withValues(alpha: .5)),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: onOpen,
+            child: Padding(
+              padding: const EdgeInsets.all(contentPadding),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  EventImagePanel(
+                    key: ValueKey('recommended-event-image-${event.id}'),
+                    event: event,
+                    height: imageHeight,
+                    radius: 19,
+                    child: Padding(
+                      padding: const EdgeInsets.all(AmoraSpacing.space12),
+                      child: Align(
+                        alignment: Alignment.topLeft,
+                        child: EventStatusBadge(status: status),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: AmoraSpacing.space16),
+                  Expanded(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        EventDateBadge(
+                          key: ValueKey('event-date-${event.id}'),
+                          date: event.date,
+                          width: dateBadgeWidth,
+                          height: dateBadgeHeight,
+                        ),
+                        const SizedBox(width: titleGap),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                event.title,
+                                key: ValueKey('event-title-${event.id}'),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.left,
+                                style: AmoraTextStyles.cardTitle.copyWith(
+                                  height: 1.3,
+                                ),
+                              ),
+                              const SizedBox(height: 14),
+                              _RecommendedEventMetadataRow(
+                                key: ValueKey('event-time-${event.id}'),
+                                icon: Icons.schedule_rounded,
+                                text: event.time,
+                              ),
+                              const SizedBox(height: 10),
+                              _RecommendedEventMetadataRow(
+                                key: ValueKey('event-venue-${event.id}'),
+                                icon: Icons.place_rounded,
+                                text: event.venue,
+                                maxLines: 2,
+                              ),
+                              const SizedBox(height: 10),
+                              Text(
+                                event.category,
+                                key: ValueKey('event-category-${event.id}'),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.left,
+                                style: AmoraTextStyles.accentText,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  EventJoinButton(
+                    key: ValueKey('recommended-event-action-${event.id}'),
+                    eventTitle: event.title,
+                    status: status,
+                    onPressed: onJoin,
+                    compact: true,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RecommendedEventMetadataRow extends StatelessWidget {
+  const _RecommendedEventMetadataRow({
+    super.key,
+    required this.icon,
+    required this.text,
+    this.maxLines = 1,
+  });
+
+  final IconData icon;
+  final String text;
+  final int maxLines;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Icon(icon, size: 18, color: AppColors.secondary),
+        const SizedBox(width: AmoraSpacing.space8),
+        Expanded(
+          child: Text(
+            text,
+            maxLines: maxLines,
+            overflow: TextOverflow.ellipsis,
+            style: AmoraTextStyles.metadata.copyWith(
+              color: AppColors.text,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class CompactEventCard extends EventCard {
   const CompactEventCard({
     super.key,
@@ -1348,11 +1493,16 @@ class _EventCardDetails extends StatelessWidget {
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            EventDateBadge(date: event.date),
+            EventDateBadge(
+              key: ValueKey('event-date-${event.id}'),
+              date: event.date,
+            ),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
                 event.title,
+                key: ValueKey('event-title-${event.id}'),
+                textAlign: TextAlign.left,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
@@ -1366,34 +1516,47 @@ class _EventCardDetails extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 10),
-        EventMetadataRow(
-          icon: Icons.schedule_rounded,
-          text: event.time,
-          compact: true,
-        ),
-        const SizedBox(height: 6),
-        EventMetadataRow(
-          icon: Icons.place_rounded,
-          text: event.venue,
-          compact: true,
-        ),
-        if (showDistance) ...[
-          const SizedBox(height: 6),
-          EventMetadataRow(
-            icon: Icons.near_me_rounded,
-            text: event.distance,
-            compact: true,
-          ),
-        ],
-        const SizedBox(height: 4),
-        Text(
-          event.category,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            color: AppColors.secondary,
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
+        Padding(
+          key: ValueKey('event-metadata-${event.id}'),
+          padding: EdgeInsets.zero,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              EventMetadataRow(
+                key: ValueKey('event-time-${event.id}'),
+                icon: Icons.schedule_rounded,
+                text: event.time,
+                compact: true,
+              ),
+              const SizedBox(height: 6),
+              EventMetadataRow(
+                key: ValueKey('event-venue-${event.id}'),
+                icon: Icons.place_rounded,
+                text: event.venue,
+                compact: true,
+              ),
+              if (showDistance) ...[
+                const SizedBox(height: 6),
+                EventMetadataRow(
+                  icon: Icons.near_me_rounded,
+                  text: event.distance,
+                  compact: true,
+                ),
+              ],
+              const SizedBox(height: 4),
+              Text(
+                event.category,
+                key: ValueKey('event-category-${event.id}'),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.left,
+                style: const TextStyle(
+                  color: AppColors.secondary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
           ),
         ),
       ],
@@ -1402,9 +1565,16 @@ class _EventCardDetails extends StatelessWidget {
 }
 
 class EventDateBadge extends StatelessWidget {
-  const EventDateBadge({super.key, required this.date});
+  const EventDateBadge({
+    super.key,
+    required this.date,
+    this.width = 46,
+    this.height,
+  });
 
   final String date;
+  final double width;
+  final double? height;
 
   @override
   Widget build(BuildContext context) {
@@ -1414,13 +1584,15 @@ class EventDateBadge extends StatelessWidget {
     return Semantics(
       label: date,
       child: Container(
-        width: 46,
+        width: width,
+        height: height,
         padding: const EdgeInsets.symmetric(vertical: 7),
         decoration: BoxDecoration(
           color: AppColors.background,
           borderRadius: BorderRadius.circular(14),
         ),
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
               month.toUpperCase(),

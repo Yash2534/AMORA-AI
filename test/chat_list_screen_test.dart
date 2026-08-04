@@ -1,4 +1,6 @@
 import 'package:amora_ai/core/data/amora_dummy_data.dart';
+import 'package:amora_ai/core/widgets/amora_filter_chip.dart';
+import 'package:amora_ai/core/widgets/amoraa_select_field.dart';
 import 'package:amora_ai/core/widgets/floating_bottom_nav.dart';
 import 'package:amora_ai/features/chat/presentation/chat_list_screen.dart';
 import 'package:flutter/material.dart';
@@ -35,6 +37,13 @@ void main() {
     expect(find.byTooltip('More'), findsNothing);
     expect(find.text('Active now'), findsOneWidget);
     expect(find.byKey(const ValueKey('chats-filter-bar')), findsOneWidget);
+    expect(find.byType(AmoraaCompactSelect<ChatInboxFilter>), findsNothing);
+    expect(
+      tester
+          .widget<ListView>(find.byKey(const ValueKey('chats-filter-scroll')))
+          .scrollDirection,
+      Axis.horizontal,
+    );
     expect(find.text('Conversations'), findsOneWidget);
     expect(find.byType(ConversationTile), findsWidgets);
     expect(find.textContaining('Date invite'), findsNothing);
@@ -80,9 +89,7 @@ void main() {
       (chat) => chat.unread > 0,
     );
 
-    await tester.tap(find.byKey(const ValueKey('chats-filter-bar')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const ValueKey('amoraa-select-option-Unread')));
+    await tester.tap(find.byKey(const ValueKey('chats-filter-Unread')));
     await tester.pumpAndSettle();
 
     expect(find.byKey(ValueKey('conversation-${readChat.id}')), findsNothing);
@@ -91,6 +98,60 @@ void main() {
       findsOneWidget,
     );
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('chat filters remain one-line and single-select', (tester) async {
+    await pumpChats(tester);
+
+    final optionFinders = [
+      for (final label in const ['All', 'Unread', 'Online'])
+        find.byKey(ValueKey('chats-filter-$label')),
+    ];
+    final centerLines = optionFinders
+        .map((finder) => tester.getCenter(finder).dy)
+        .toList();
+    expect(centerLines.toSet(), hasLength(1));
+    expect(
+      tester.widget<AmoraFilterChip>(optionFinders.first).selected,
+      isTrue,
+    );
+
+    await tester.tap(optionFinders[1]);
+    await tester.pumpAndSettle();
+    await tester.tap(optionFinders[2]);
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<AmoraFilterChip>(optionFinders[0]).selected, isFalse);
+    expect(tester.widget<AmoraFilterChip>(optionFinders[1]).selected, isFalse);
+    expect(tester.widget<AmoraFilterChip>(optionFinders[2]).selected, isTrue);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('chat filter rail stays horizontal at supported widths', (
+    tester,
+  ) async {
+    for (final width in const [
+      320.0,
+      360.0,
+      390.0,
+      412.0,
+      430.0,
+      600.0,
+      768.0,
+      1024.0,
+    ]) {
+      await pumpChats(tester, size: Size(width, 900));
+      final rail = find.byKey(const ValueKey('chats-filter-scroll'));
+      expect(tester.widget<ListView>(rail).scrollDirection, Axis.horizontal);
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('chats-filter-Online')),
+      );
+      expect(
+        tester.takeException(),
+        isNull,
+        reason: 'Chat filter overflowed at ${width.toInt()} px',
+      );
+    }
   });
 
   testWidgets('conversation tap preserves the existing chat-detail route', (

@@ -10,6 +10,9 @@ class ProfileFormNavigationTargets {
 
   final Map<ProfileFormFieldId, FocusNode> _focusNodes = {
     ProfileFormFieldId.name: FocusNode(debugLabel: 'profile-name-focus'),
+    ProfileFormFieldId.occupation: FocusNode(
+      debugLabel: 'profile-custom-occupation-focus',
+    ),
     ProfileFormFieldId.bio: FocusNode(debugLabel: 'profile-bio-focus'),
     ProfileFormFieldId.profilePrompt: FocusNode(
       debugLabel: 'profile-prompt-focus',

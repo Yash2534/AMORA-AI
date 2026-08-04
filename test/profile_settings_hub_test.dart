@@ -207,7 +207,7 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('Safety Center'), findsOneWidget);
-    expect(find.text('Aadhaar & selfie verification'), findsOneWidget);
+    expect(find.text('Aadhaar & selfie verification'), findsNothing);
     expect(find.text('Verified Profile'), findsNothing);
     expect(find.text('Photo Verification'), findsNothing);
     expect(tester.takeException(), isNull);

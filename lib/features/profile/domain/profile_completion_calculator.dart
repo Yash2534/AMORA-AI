@@ -181,7 +181,7 @@ abstract final class ProfileCompletionCalculator {
       'Select your gender',
     );
     add(
-      ProfileFormOptions.normalizeOccupation(input.profession).isEmpty,
+      !ProfileFormOptions.isValidStoredOccupation(input.profession),
       ProfileFormFieldId.occupation,
       'Add your occupation',
     );
@@ -284,7 +284,7 @@ abstract final class ProfileCompletionCalculator {
         title: 'Work & Education',
         description: 'Share your occupation and education.',
         completedFields: [
-          ProfileFormOptions.normalizeOccupation(input.profession).isNotEmpty,
+          ProfileFormOptions.isValidStoredOccupation(input.profession),
           ProfileFormOptions.normalizeEducation(input.education).isNotEmpty,
         ].where((value) => value).length,
         totalFields: 2,

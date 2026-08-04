@@ -8,6 +8,7 @@ import 'package:amora_ai/features/chat/data/local_chat_repository.dart';
 import 'package:amora_ai/features/onboarding/data/local_onboarding_repository.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
 import 'package:amora_ai/features/settings/presentation/account_action_screens.dart';
+import 'package:amora_ai/features/settings/presentation/widgets/amoraa_delete_account_flow.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -47,6 +48,28 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+  }
+
+  Future<void> tapVisible(WidgetTester tester, Finder finder) async {
+    await tester.ensureVisible(finder);
+    await tester.pumpAndSettle();
+    await tester.tap(finder);
+    await tester.pump();
+  }
+
+  Future<void> selectDeleteReason(WidgetTester tester, String reasonCode) =>
+      tapVisible(tester, find.byKey(ValueKey('delete-reason-$reasonCode')));
+
+  Future<void> continueToFinalConfirmation(WidgetTester tester) async {
+    await tapVisible(
+      tester,
+      find.byKey(const ValueKey('delete-reason-continue')),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('delete-account-final-step')),
+      findsOneWidget,
+    );
   }
 
   testWidgets('deactivation is reversible and never fakes service success', (
@@ -102,43 +125,164 @@ void main() {
     expect(AmoraSession.isLoggedIn.value, isTrue);
   });
 
-  testWidgets('permanent deletion requires a deliberate second confirmation', (
+  test('delete reasons have the exact centralized labels and mappings', () {
+    expect(deleteAccountReasons.map((reason) => reason.label), const [
+      'I found someone',
+      'I\u2019m taking a break',
+      'I\u2019m not finding the right matches',
+      'Privacy concerns',
+      'Too many notifications',
+      'App experience issues',
+      'Other',
+    ]);
+    expect(deleteAccountReasons.map((reason) => reason.code), const [
+      'found_someone',
+      'taking_a_break',
+      'not_finding_matches',
+      'privacy_concerns',
+      'too_many_notifications',
+      'app_experience_issues',
+      'other',
+    ]);
+    expect(
+      deleteAccountReasons.where((reason) => reason.label == 'Other'),
+      hasLength(1),
+    );
+  });
+
+  testWidgets('typed keyword confirmation is absent and a reason is required', (
     tester,
   ) async {
     await pumpAction(tester, const DeleteAccountInformationScreen());
 
-    expect(find.text('Delete your account permanently?'), findsOneWidget);
-    expect(find.textContaining('cannot be undone'), findsOneWidget);
+    expect(find.text('Why are you deleting your account?'), findsOneWidget);
+    expect(find.textContaining('Type DELETE'), findsNothing);
+    expect(find.textContaining('Enter DELETE'), findsNothing);
+    expect(find.byType(TextField), findsNothing);
+    expect(find.byType(TextFormField), findsNothing);
     expect(find.text('Delete Permanently'), findsNothing);
 
-    await tester.tap(find.byKey(const ValueKey('settings-delete-continue')));
-    await tester.pump();
-    expect(find.text('Type DELETE to continue'), findsOneWidget);
-
-    final deleteButton = tester.widget<AppPrimaryButton>(
-      find.byKey(const ValueKey('settings-delete-permanently')),
+    final continueButton = tester.widget<AppPrimaryButton>(
+      find.byKey(const ValueKey('delete-reason-continue')),
     );
-    expect(deleteButton.onPressed, isNull);
+    expect(continueButton.onPressed, isNull);
   });
 
-  testWidgets('missing or failed deletion service preserves session and data', (
+  testWidgets('reason selection is single-select and enables Continue', (
+    tester,
+  ) async {
+    await pumpAction(tester, const DeleteAccountInformationScreen());
+
+    await selectDeleteReason(tester, 'found_someone');
+    expect(find.byIcon(Icons.radio_button_checked_rounded), findsOneWidget);
+    await selectDeleteReason(tester, 'privacy_concerns');
+    expect(find.byIcon(Icons.radio_button_checked_rounded), findsOneWidget);
+
+    final continueButton = tester.widget<AppPrimaryButton>(
+      find.byKey(const ValueKey('delete-reason-continue')),
+    );
+    expect(continueButton.onPressed, isNotNull);
+    await continueToFinalConfirmation(tester);
+    expect(find.text('Delete your account permanently?'), findsOneWidget);
+    expect(find.text('Privacy concerns'), findsOneWidget);
+    expect(find.text('Delete Permanently'), findsOneWidget);
+  });
+
+  testWidgets('Other requires trimmed non-empty details and preserves text', (
+    tester,
+  ) async {
+    await pumpAction(tester, const DeleteAccountInformationScreen());
+
+    await selectDeleteReason(tester, 'other');
+    final field = find.byKey(const ValueKey('delete-other-reason-field'));
+    expect(field, findsOneWidget);
+    await tester.enterText(field, '   ');
+    await tester.pump();
+    expect(
+      tester
+          .widget<AppPrimaryButton>(
+            find.byKey(const ValueKey('delete-reason-continue')),
+          )
+          .onPressed,
+      isNull,
+    );
+
+    await tester.enterText(field, '  Moving away from the service  ');
+    await tester.pump();
+    expect(
+      tester
+          .widget<AppPrimaryButton>(
+            find.byKey(const ValueKey('delete-reason-continue')),
+          )
+          .onPressed,
+      isNotNull,
+    );
+
+    await selectDeleteReason(tester, 'found_someone');
+    expect(field, findsNothing);
+    await selectDeleteReason(tester, 'other');
+    expect(
+      tester.widget<TextFormField>(field).controller?.text,
+      '  Moving away from the service  ',
+    );
+    await continueToFinalConfirmation(tester);
+    expect(find.text('Moving away from the service'), findsOneWidget);
+  });
+
+  testWidgets('failed deletion keeps session, data, and selected reason', (
     tester,
   ) async {
     final nameBefore = profiles.profile.name;
-    await pumpAction(tester, const DeleteAccountInformationScreen());
-    await tester.tap(find.byKey(const ValueKey('settings-delete-continue')));
-    await tester.pump();
-    await tester.enterText(
-      find.byKey(const ValueKey('settings-delete-confirmation-field')),
-      'DELETE',
+    var calls = 0;
+    await pumpAction(
+      tester,
+      DeleteAccountInformationScreen(
+        onDeleteAccount: () async {
+          calls += 1;
+          return false;
+        },
+      ),
     );
-    await tester.pump();
-    await tester.tap(find.byKey(const ValueKey('settings-delete-permanently')));
-    await tester.pump();
+    await selectDeleteReason(tester, 'privacy_concerns');
+    await continueToFinalConfirmation(tester);
+    await tapVisible(
+      tester,
+      find.byKey(const ValueKey('settings-delete-permanently')),
+    );
+    await tester.pumpAndSettle();
 
-    expect(find.textContaining('no delete-account service'), findsOneWidget);
+    expect(calls, 1);
+    expect(find.text('Couldn\u2019t delete your account'), findsOneWidget);
+    expect(find.text('Privacy concerns'), findsOneWidget);
+    expect(find.text('Try Again'), findsOneWidget);
     expect(AmoraSession.isLoggedIn.value, isTrue);
     expect(profiles.profile.name, nameBefore);
+  });
+
+  testWidgets('delete submission blocks duplicates', (tester) async {
+    final result = Completer<bool>();
+    var calls = 0;
+    await pumpAction(
+      tester,
+      DeleteAccountInformationScreen(
+        onDeleteAccount: () {
+          calls += 1;
+          return result.future;
+        },
+      ),
+    );
+    await selectDeleteReason(tester, 'found_someone');
+    await continueToFinalConfirmation(tester);
+    final submit = find.byKey(const ValueKey('settings-delete-permanently'));
+    await tester.tap(submit);
+    await tester.pump();
+    await tester.tap(submit);
+    await tester.pump();
+    expect(calls, 1);
+
+    result.complete(false);
+    await tester.pumpAndSettle();
+    expect(AmoraSession.isLoggedIn.value, isTrue);
   });
 
   testWidgets('confirmed server deletion clears local state then logs out', (
@@ -154,14 +298,12 @@ void main() {
         },
       ),
     );
-    await tester.tap(find.byKey(const ValueKey('settings-delete-continue')));
-    await tester.pump();
-    await tester.enterText(
-      find.byKey(const ValueKey('settings-delete-confirmation-field')),
-      'DELETE',
+    await selectDeleteReason(tester, 'app_experience_issues');
+    await continueToFinalConfirmation(tester);
+    await tapVisible(
+      tester,
+      find.byKey(const ValueKey('settings-delete-permanently')),
     );
-    await tester.pump();
-    await tester.tap(find.byKey(const ValueKey('settings-delete-permanently')));
     await tester.pumpAndSettle();
 
     expect(calls, 1);
@@ -177,6 +319,13 @@ void main() {
     await pumpAction(
       tester,
       const DeactivateAccountScreen(),
+      size: const Size(320, 700),
+    );
+    expect(tester.takeException(), isNull);
+
+    await pumpAction(
+      tester,
+      const DeleteAccountInformationScreen(),
       size: const Size(320, 700),
     );
     expect(tester.takeException(), isNull);

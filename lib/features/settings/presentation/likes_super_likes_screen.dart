@@ -1,8 +1,10 @@
+import 'package:amora_ai/core/data/image_repository.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
+import 'package:amora_ai/core/widgets/amoraa_confirm_action_sheet.dart';
 import 'package:amora_ai/features/discover/presentation/discover_screen.dart';
 import 'package:amora_ai/features/profile/presentation/controllers/profile_relationship_controller.dart';
 import 'package:amora_ai/features/profile/presentation/profile_detail_screen.dart';
@@ -101,52 +103,89 @@ class _LikesSuperLikesScreenState extends State<LikesSuperLikesScreen> {
                 ),
               ),
               Expanded(
-                child: profiles.isEmpty
-                    ? _ReactionEmptyState(
-                        type: _selected,
-                        onDiscover: () => Navigator.of(
-                          context,
-                        ).pushNamed(DiscoverScreen.routeName),
-                      )
-                    : ListView.separated(
-                        padding: const EdgeInsets.fromLTRB(
-                          AmoraSpacing.space20,
-                          AmoraSpacing.space8,
-                          AmoraSpacing.space20,
-                          AmoraSpacing.space32,
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 220),
+                  switchInCurve: Curves.easeOutCubic,
+                  switchOutCurve: Curves.easeInCubic,
+                  child: profiles.isEmpty
+                      ? _ReactionEmptyState(
+                          key: ValueKey('reaction-empty-${_selected.name}'),
+                          type: _selected,
+                          onDiscover: () => Navigator.of(
+                            context,
+                          ).pushNamed(DiscoverScreen.routeName),
+                        )
+                      : ListView.separated(
+                          key: ValueKey(
+                            'reaction-${_selected.name}-${profiles.map((profile) => profile.id).join('-')}',
+                          ),
+                          padding: const EdgeInsets.fromLTRB(
+                            AmoraSpacing.space20,
+                            AmoraSpacing.space8,
+                            AmoraSpacing.space20,
+                            AmoraSpacing.space32,
+                          ),
+                          itemCount: profiles.length,
+                          separatorBuilder: (_, _) =>
+                              const SizedBox(height: AmoraSpacing.space12),
+                          itemBuilder: (context, index) {
+                            final profile = profiles[index];
+                            final isLike =
+                                _selected == ProfileReactionType.like;
+                            return ManagedProfileCard(
+                              key: ValueKey(
+                                '${isLike ? 'liked' : 'super-liked'}-${profile.id}',
+                              ),
+                              profile: profile,
+                              actionLabel: isLike
+                                  ? 'Unlike'
+                                  : 'Remove Super Like',
+                              actionSemanticLabel:
+                                  (isLike
+                                          ? AmoraaProfileAction.unlike
+                                          : AmoraaProfileAction.removeSuperLike)
+                                      .semanticLabel(
+                                        amoraaProfileActionName(profile.name),
+                                      ),
+                              actionIcon: isLike
+                                  ? Icons.heart_broken_rounded
+                                  : Icons.star_border_rounded,
+                              onAction: () =>
+                                  _confirmRemoval(profile, isLike: isLike),
+                              onOpen: () => Navigator.of(context).pushNamed(
+                                ProfileDetailScreen.routeName,
+                                arguments: profile,
+                              ),
+                            );
+                          },
                         ),
-                        itemCount: profiles.length,
-                        separatorBuilder: (_, _) =>
-                            const SizedBox(height: AmoraSpacing.space12),
-                        itemBuilder: (context, index) {
-                          final profile = profiles[index];
-                          final isLike = _selected == ProfileReactionType.like;
-                          return ManagedProfileCard(
-                            key: ValueKey(
-                              '${isLike ? 'liked' : 'super-liked'}-${profile.id}',
-                            ),
-                            profile: profile,
-                            actionLabel: isLike
-                                ? 'Remove Like'
-                                : 'Remove Super Like',
-                            actionIcon: isLike
-                                ? Icons.heart_broken_rounded
-                                : Icons.star_border_rounded,
-                            onAction: () => isLike
-                                ? _source.removeLike(profile.id)
-                                : _source.removeSuperLike(profile.id),
-                            onOpen: () => Navigator.of(context).pushNamed(
-                              ProfileDetailScreen.routeName,
-                              arguments: profile,
-                            ),
-                          );
-                        },
-                      ),
+                ),
               ),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  Future<void> _confirmRemoval(
+    DummyProfile profile, {
+    required bool isLike,
+  }) async {
+    final action = isLike
+        ? AmoraaProfileAction.unlike
+        : AmoraaProfileAction.removeSuperLike;
+    await showAmoraaProfileActionConfirmation(
+      context: context,
+      action: action,
+      profileName: profile.name,
+      onConfirm: () {
+        if (isLike) {
+          _source.removeLike(profile.id);
+        } else {
+          _source.removeSuperLike(profile.id);
+        }
+      },
     );
   }
 }
@@ -240,15 +279,19 @@ class _ReactionSegmentItem extends StatelessWidget {
                   ),
                   const SizedBox(width: 6),
                   Flexible(
-                    child: Text(
-                      label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AmoraTextStyles.labelMedium.copyWith(
-                        color: AppColors.text,
-                        fontWeight: selected
-                            ? FontWeight.w800
-                            : FontWeight.w600,
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 220),
+                      child: Text(
+                        label,
+                        key: ValueKey(label),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AmoraTextStyles.labelMedium.copyWith(
+                          color: AppColors.text,
+                          fontWeight: selected
+                              ? FontWeight.w800
+                              : FontWeight.w600,
+                        ),
                       ),
                     ),
                   ),
@@ -263,7 +306,11 @@ class _ReactionSegmentItem extends StatelessWidget {
 }
 
 class _ReactionEmptyState extends StatelessWidget {
-  const _ReactionEmptyState({required this.type, required this.onDiscover});
+  const _ReactionEmptyState({
+    super.key,
+    required this.type,
+    required this.onDiscover,
+  });
 
   final ProfileReactionType type;
   final VoidCallback onDiscover;

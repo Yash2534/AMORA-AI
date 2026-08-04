@@ -1,5 +1,7 @@
+import 'package:amora_ai/core/data/image_repository.dart';
 import 'package:amora_ai/features/chat/data/local_chat_repository.dart';
 import 'package:amora_ai/features/chat/presentation/chat_detail_screen.dart';
+import 'package:amora_ai/features/chat/presentation/widgets/chat_presence_avatar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -24,7 +26,46 @@ void main() {
             name: ChatDetailScreen.routeName,
             arguments: ChatDetailArgs(conversationId: conversationId),
           ),
-          builder: (_) => const ChatDetailScreen(),
+          builder: (_) => ChatDetailScreen(key: ValueKey(conversationId)),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+  }
+
+  Future<void> pumpHeader(
+    WidgetTester tester, {
+    required DummyProfile profile,
+    required bool online,
+    required String status,
+    Size size = const Size(320, 568),
+    double textScale = 1,
+    VoidCallback? onBack,
+    VoidCallback? onMore,
+    VoidCallback? onProfileTap,
+  }) async {
+    await tester.binding.setSurfaceSize(size);
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MediaQuery(
+          data: MediaQueryData(
+            size: size,
+            textScaler: TextScaler.linear(textScale),
+          ),
+          child: Scaffold(
+            body: Align(
+              alignment: Alignment.topCenter,
+              child: ChatHeader(
+                profile: profile,
+                online: online,
+                status: status,
+                onBack: onBack ?? () {},
+                onMore: onMore ?? () {},
+                onProfileTap: onProfileTap ?? () {},
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -37,10 +78,183 @@ void main() {
     final conversation = repository.conversations[1];
     await pumpConversation(tester, conversation.id);
 
-    expect(find.text(conversation.user.name.split(' ').first), findsOneWidget);
+    expect(find.text(conversation.user.name), findsOneWidget);
+    expect(
+      find.text(
+        conversation.online
+            ? 'Online'
+            : conversation.user.status.trim().isEmpty
+            ? 'Offline'
+            : conversation.user.status.trim(),
+      ),
+      findsOneWidget,
+    );
     expect(find.text(conversation.messages.first.text), findsOneWidget);
     expect(find.text(repository.conversations.first.user.name), findsNothing);
     expect(repository.hasActiveConversationSubscriptions, isTrue);
+  });
+
+  testWidgets('shared header keeps identity directly beside Back', (
+    tester,
+  ) async {
+    final profile = repository.conversations.first.user;
+    var backTaps = 0;
+    var moreTaps = 0;
+    var profileTaps = 0;
+    await pumpHeader(
+      tester,
+      profile: profile,
+      online: true,
+      status: 'Online',
+      onBack: () => backTaps++,
+      onMore: () => moreTaps++,
+      onProfileTap: () => profileTaps++,
+    );
+
+    final back = tester.getRect(find.byKey(const ValueKey('chat-header-back')));
+    final avatar = tester.getRect(
+      find.byKey(const ValueKey('chat-header-avatar')),
+    );
+    final identity = tester.getRect(
+      find.byKey(const ValueKey('chat-header-name-status')),
+    );
+    final more = tester.getRect(find.byKey(const ValueKey('chat-header-more')));
+    expect(back.left, lessThan(avatar.left));
+    expect(avatar.left - back.right, inInclusiveRange(0, 8));
+    expect(avatar.right, lessThan(identity.left));
+    expect(identity.left - avatar.right, closeTo(10, .1));
+    expect(identity.right, lessThanOrEqualTo(more.left));
+    expect(more.right, closeTo(320, .1));
+
+    final column = tester.widget<Column>(
+      find.byKey(const ValueKey('chat-header-name-status')),
+    );
+    expect(column.crossAxisAlignment, CrossAxisAlignment.start);
+    final avatarWidget = tester.widget<ChatPresenceAvatar>(
+      find.byKey(const ValueKey('chat-header-avatar')),
+    );
+    expect(avatarWidget.radius, 20);
+    expect(avatarWidget.showVerified, isFalse);
+
+    await tester.tap(find.byTooltip('Back'));
+    await tester.tap(find.byTooltip('More chat options'));
+    await tester.tap(find.byKey(const ValueKey('chat-header-identity')));
+    expect(backTaps, 1);
+    expect(moreTaps, 1);
+    expect(profileTaps, 1);
+  });
+
+  testWidgets('long identity and 1.3 text scale stay compact at 320px', (
+    tester,
+  ) async {
+    final profile = _renamedProfile(
+      repository.conversations.first.user,
+      'Alexandria Priyadarshini Verylongsurname',
+    );
+    await pumpHeader(
+      tester,
+      profile: profile,
+      online: false,
+      status: 'Last active recently',
+      textScale: 1.3,
+    );
+
+    final name = tester.widget<Text>(
+      find.byKey(const ValueKey('chat-header-name')),
+    );
+    final status = tester.widget<Text>(
+      find.byKey(const ValueKey('chat-header-status')),
+    );
+    expect(name.maxLines, 1);
+    expect(name.overflow, TextOverflow.ellipsis);
+    expect(name.textAlign, TextAlign.left);
+    expect(status.maxLines, 1);
+    expect(status.overflow, TextOverflow.ellipsis);
+    expect(tester.getSize(find.byType(ChatHeader)).height, 72);
+    expect(find.byTooltip('More chat options'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('verified badge and online dot each render once', (tester) async {
+    final profile = repository.conversations
+        .map((conversation) => conversation.user)
+        .firstWhere((user) => user.verified);
+    await pumpHeader(tester, profile: profile, online: true, status: 'Online');
+
+    expect(find.byKey(const ValueKey('chat-header-verified')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('chat-presence-online-indicator')),
+      findsOneWidget,
+    );
+    expect(
+      find.bySemanticsLabel(RegExp('verified', caseSensitive: false)),
+      findsOneWidget,
+    );
+    final avatarSemantics = tester.widget<Semantics>(
+      find
+          .descendant(
+            of: find.byKey(const ValueKey('chat-header-avatar')),
+            matching: find.byType(Semantics),
+          )
+          .first,
+    );
+    expect(avatarSemantics.properties.label, contains(profile.name));
+  });
+
+  testWidgets('typing text does not change shared header height', (
+    tester,
+  ) async {
+    final profile = repository.conversations.first.user;
+    await pumpHeader(tester, profile: profile, online: true, status: 'Online');
+    final normalHeight = tester.getSize(find.byType(ChatHeader)).height;
+
+    await pumpHeader(
+      tester,
+      profile: profile,
+      online: true,
+      status: 'Typingâ€¦',
+    );
+    expect(find.text('Typingâ€¦'), findsOneWidget);
+    expect(tester.getSize(find.byType(ChatHeader)).height, normalHeight);
+  });
+
+  testWidgets('every conversation uses the same dynamic ChatHeader', (
+    tester,
+  ) async {
+    final conversations = repository.conversations.take(2).toList();
+    for (final conversation in conversations) {
+      await pumpHeader(
+        tester,
+        profile: conversation.user,
+        online: conversation.online,
+        status: conversation.online
+            ? 'Online'
+            : conversation.user.status.trim().isEmpty
+            ? 'Offline'
+            : conversation.user.status.trim(),
+      );
+      expect(find.byType(ChatHeader), findsOneWidget);
+      expect(find.text(conversation.user.name), findsOneWidget);
+      expect(find.byKey(const ValueKey('chat-header-avatar')), findsOneWidget);
+    }
+  });
+
+  testWidgets('existing overflow menu actions remain available', (
+    tester,
+  ) async {
+    await pumpConversation(tester, repository.conversations.first.id);
+    await tester.tap(find.byTooltip('More chat options'));
+    await tester.pumpAndSettle();
+
+    for (final action in const [
+      'View Profile',
+      'Mute Conversation',
+      'Report User',
+      'Block User',
+      'Read Receipts',
+    ]) {
+      expect(find.text(action), findsOneWidget);
+    }
   });
 
   testWidgets('text and emoji-only messages are queued in selected thread', (
@@ -182,3 +396,44 @@ void main() {
     expect(messages.last.status, ChatMessageStatus.queued);
   });
 }
+
+DummyProfile _renamedProfile(DummyProfile source, String name) => DummyProfile(
+  id: source.id,
+  gender: source.gender,
+  name: name,
+  age: source.age,
+  city: source.city,
+  profession: source.profession,
+  education: source.education,
+  distance: source.distance,
+  score: source.score,
+  intent: source.intent,
+  personality: source.personality,
+  status: source.status,
+  bio: source.bio,
+  interests: source.interests,
+  imageUrl: source.imageUrl,
+  gallery: source.gallery,
+  languages: source.languages,
+  verification: source.verification,
+  lifestyle: source.lifestyle,
+  promptAnswers: source.promptAnswers,
+  travelPreference: source.travelPreference,
+  musicTaste: source.musicTaste,
+  foodPreference: source.foodPreference,
+  weekendPlan: source.weekendPlan,
+  petPreference: source.petPreference,
+  coffeePreference: source.coffeePreference,
+  religion: source.religion,
+  community: source.community,
+  height: source.height,
+  fitnessLevel: source.fitnessLevel,
+  smoking: source.smoking,
+  drinking: source.drinking,
+  children: source.children,
+  loveLanguage: source.loveLanguage,
+  greenFlags: source.greenFlags,
+  redFlags: source.redFlags,
+  familyValues: source.familyValues,
+  dateIdeas: source.dateIdeas,
+);

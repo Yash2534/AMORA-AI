@@ -29,7 +29,7 @@ void main() {
     'Bio',
     'Interests',
     'Lifestyle',
-    'Profile Prompt',
+    'Profile prompts',
     'Verification',
   ];
 
@@ -194,6 +194,52 @@ void main() {
     expect(find.byType(AmoraaLanguageSelector), findsOneWidget);
   });
 
+  testWidgets('Edit and Completion use the same vertical prompts section', (
+    tester,
+  ) async {
+    final profile = completeProfile().copyWith(
+      prompts: const {
+        'My ideal Sunday is...': 'Coffee and a long walk.',
+        'A green flag I value is...': 'Kind, direct communication.',
+      },
+    );
+    await repository.resetForTesting(profile);
+
+    await pumpFlow(
+      tester,
+      const ProfileCompletionScreen(),
+      size: const Size(430, 5000),
+    );
+    expect(find.byType(AmoraaProfilePromptsSection), findsOneWidget);
+    expect(find.byType(AmoraaEditableProfilePromptCard), findsNWidgets(2));
+    expect(find.text('Profile prompts'), findsOneWidget);
+    expect(
+      find.text('Thoughtful openings for a real conversation.'),
+      findsOneWidget,
+    );
+    final completionPrompts = find.byKey(
+      const ValueKey('completion-section-prompt'),
+    );
+    expect(
+      find.descendant(
+        of: completionPrompts,
+        matching: find.byIcon(Icons.expand_more_rounded),
+      ),
+      findsNothing,
+    );
+
+    await pumpFlow(
+      tester,
+      const ProfileEditScreen(),
+      size: const Size(430, 8000),
+    );
+    expect(find.byType(AmoraaProfilePromptsSection), findsOneWidget);
+    expect(find.byType(AmoraaEditableProfilePromptCard), findsNWidgets(2));
+    expect(find.widgetWithText(TextButton, 'Edit'), findsNWidgets(2));
+    expect(find.text('Like'), findsNothing);
+    expect(find.text('Reply'), findsNothing);
+  });
+
   testWidgets('Completion progress follows the profile source of truth', (
     tester,
   ) async {
@@ -254,6 +300,84 @@ void main() {
       expect(find.text('Profile changes saved'), findsOneWidget);
     },
   );
+
+  testWidgets('Edit Profile saves a custom Other occupation', (tester) async {
+    await repository.resetForTesting(completeProfile());
+    await pumpFlow(
+      tester,
+      const ProfileEditScreen(),
+      size: const Size(390, 1600),
+    );
+
+    final selector = find.byKey(const ValueKey('profile-occupation-field'));
+    await tester.ensureVisible(selector);
+    await tester.tap(selector);
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('amoraa-select-search')),
+      'Other',
+    );
+    await tester.pumpAndSettle();
+    final other = find.byKey(const ValueKey('amoraa-select-option-Other'));
+    await tester.tap(other);
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('profile-custom-occupation-field')),
+      '  Business Consultant  ',
+    );
+    await tester.tap(find.byKey(const ValueKey('profile-save-button')));
+    await tester.pumpAndSettle();
+
+    expect(repository.profile.profession, 'Business Consultant');
+    expect(find.text('Profile changes saved'), findsOneWidget);
+  });
+
+  testWidgets('Completion saves Other only after valid custom occupation', (
+    tester,
+  ) async {
+    await repository.resetForTesting(
+      blankProfile().copyWith(education: 'Postgraduate'),
+    );
+    await pumpFlow(tester, const ProfileCompletionScreen());
+    await openCompletionSection(tester, 'Work & Education');
+
+    final selector = find.byKey(const ValueKey('profile-occupation-field'));
+    await tester.tap(selector);
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('amoraa-select-search')),
+      'Other',
+    );
+    await tester.pumpAndSettle();
+    final other = find.byKey(const ValueKey('amoraa-select-option-Other'));
+    await tester.tap(other);
+    await tester.pumpAndSettle();
+
+    final save = find.byKey(const ValueKey('completion-save-workEducation'));
+    await tester.ensureVisible(save);
+    await tester.tap(save);
+    await tester.pumpAndSettle();
+    expect(repository.profile.profession, isEmpty);
+    expect(find.text('Please enter your occupation.'), findsOneWidget);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('profile-custom-occupation-field')),
+      'Freelancer',
+    );
+    await tester.tap(save);
+    await tester.pumpAndSettle();
+
+    expect(repository.profile.profession, 'Freelancer');
+    expect(
+      repository.profile.completionResult.sections
+          .firstWhere(
+            (section) => section.id == ProfileCompletionSectionId.workEducation,
+          )
+          .isComplete,
+      isTrue,
+    );
+    expect(find.text('Work & Education saved successfully.'), findsOneWidget);
+  });
 
   test('one prompt and all approved fields produce centralized completion', () {
     final profile = completeProfile();

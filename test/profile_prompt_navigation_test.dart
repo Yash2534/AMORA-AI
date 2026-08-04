@@ -106,6 +106,19 @@ void main() {
 
       final first = find.byKey(const ValueKey('saved-profile-prompt-0'));
       final second = find.byKey(const ValueKey('saved-profile-prompt-1'));
+      expect(find.byType(AmoraaProfilePromptsSection), findsOneWidget);
+      expect(find.byType(AmoraaEditableProfilePromptCard), findsNWidgets(2));
+      expect(find.text('Profile prompts'), findsOneWidget);
+      expect(
+        find.text('Thoughtful openings for a real conversation.'),
+        findsOneWidget,
+      );
+      expect(find.text('“Coffee and a long walk.”'), findsOneWidget);
+      expect(find.widgetWithText(TextButton, 'Edit'), findsNWidgets(2));
+      expect(find.text('Like'), findsNothing);
+      expect(find.text('Reply'), findsNothing);
+      expect(find.byType(DropdownButtonFormField<String>), findsNothing);
+      expect(find.byType(DropdownMenu<String>), findsNothing);
       expect(first, findsOneWidget);
       expect(second, findsOneWidget);
       expect(
@@ -113,6 +126,11 @@ void main() {
         greaterThan(tester.getBottomLeft(first).dy),
       );
       expect(tester.getSize(first).width, tester.getSize(second).width);
+      expect(
+        tester.getSize(first).width,
+        tester.getSize(find.byType(AmoraaProfilePromptField)).width,
+      );
+      expect(tester.getSize(first).height, lessThan(240));
 
       await tester.tap(find.byKey(const ValueKey('add-profile-prompt')));
       await tester.pumpAndSettle();
@@ -152,6 +170,55 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets('prompt cards respect dynamic count and adapt to long content', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(320, 760));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    const shortPrompt = MapEntry('My ideal Sunday is...', '“Already quoted”');
+    const longPrompt = MapEntry(
+      'A thoughtful opening that naturally wraps across the available card width',
+      'A detailed answer that keeps wrapping naturally across several lines without clipping, overlapping the Edit action, or creating a large fixed blank area.',
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AmoraTheme.light(),
+        home: Scaffold(
+          body: MediaQuery(
+            data: const MediaQueryData(
+              size: Size(320, 760),
+              textScaler: TextScaler.linear(1.3),
+            ),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: AmoraaProfilePromptsSection(
+                prompts: const [shortPrompt, longPrompt],
+                onEditPrompt: (_) {},
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final cards = find.byType(AmoraaEditableProfilePromptCard);
+    expect(cards, findsNWidgets(2));
+    expect(find.text('“Already quoted”'), findsOneWidget);
+    expect(find.text('““Already quoted””'), findsNothing);
+    expect(
+      tester.getSize(cards.at(1)).height,
+      greaterThan(tester.getSize(cards.at(0)).height),
+    );
+    expect(
+      tester.getTopLeft(cards.at(1)).dy,
+      greaterThan(tester.getBottomLeft(cards.at(0)).dy),
+    );
+    expect(find.widgetWithText(TextButton, 'Edit'), findsNWidgets(2));
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets(
     'Completion expands and scrolls to every requested pending field',

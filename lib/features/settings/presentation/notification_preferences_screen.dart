@@ -1,13 +1,16 @@
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
+import 'package:amora_ai/core/permissions/amoraa_permission_service.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:flutter/material.dart';
 
 class NotificationPreferencesScreen extends StatefulWidget {
-  const NotificationPreferencesScreen({super.key});
+  const NotificationPreferencesScreen({super.key, this.permissionService});
+
+  final AmoraaPermissionService? permissionService;
 
   static const routeName = '/notification-preferences';
 
@@ -18,6 +21,7 @@ class NotificationPreferencesScreen extends StatefulWidget {
 
 class _NotificationPreferencesScreenState
     extends State<NotificationPreferencesScreen> {
+  late final AmoraaPermissionService _permissionService;
   final Map<String, bool> _categories = {
     'New matches': true,
     'Messages': true,
@@ -27,7 +31,7 @@ class _NotificationPreferencesScreenState
     'Safety updates': true,
   };
   final Map<String, bool> _channels = {
-    'Push notifications': true,
+    'Push notifications': false,
     'Email': true,
     'SMS': false,
   };
@@ -70,6 +74,14 @@ class _NotificationPreferencesScreenState
     'Email': (Icons.alternate_email_rounded, 'A useful record in your inbox.'),
     'SMS': (Icons.sms_rounded, 'Only essential updates by text message.'),
   };
+
+  @override
+  void initState() {
+    super.initState();
+    _permissionService =
+        widget.permissionService ?? AmoraaPermissionService.instance;
+    _syncNotificationPermission();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -119,12 +131,15 @@ class _NotificationPreferencesScreenState
                       children: [
                         for (final entry in _channels.entries)
                           _PreferenceToggle(
+                            key: ValueKey(
+                              'notification-channel-${entry.key.toLowerCase().replaceAll(' ', '-')}',
+                            ),
                             icon: _channelMeta[entry.key]!.$1,
                             title: entry.key,
                             description: _channelMeta[entry.key]!.$2,
                             value: entry.value,
                             onChanged: (value) =>
-                                setState(() => _channels[entry.key] = value),
+                                _changeChannel(entry.key, value),
                           ),
                       ],
                     ),
@@ -160,6 +175,32 @@ class _NotificationPreferencesScreenState
     );
     if (next == null) return;
     setState(() => from ? _from = next : _to = next);
+  }
+
+  Future<void> _syncNotificationPermission() async {
+    final result = await _permissionService.notificationPermissionStatus();
+    if (!mounted) return;
+    setState(() => _channels['Push notifications'] = result.allowsFeature);
+  }
+
+  Future<void> _changeChannel(String channel, bool value) async {
+    if (channel != 'Push notifications' || !value) {
+      setState(() => _channels[channel] = value);
+      return;
+    }
+    final result = await _permissionService.requestNotificationPermission();
+    if (!mounted) return;
+    if (result.allowsFeature) {
+      setState(() => _channels[channel] = true);
+      return;
+    }
+    setState(() => _channels[channel] = false);
+    await showAmoraaPermissionFeedback(
+      context,
+      category: AmoraaPermissionCategory.notifications,
+      result: result,
+      service: _permissionService,
+    );
   }
 
   void _save() {
@@ -320,6 +361,7 @@ class _PreferenceGroup extends StatelessWidget {
 
 class _PreferenceToggle extends StatelessWidget {
   const _PreferenceToggle({
+    super.key,
     required this.icon,
     required this.title,
     required this.description,

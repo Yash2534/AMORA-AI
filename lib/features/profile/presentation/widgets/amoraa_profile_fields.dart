@@ -34,8 +34,10 @@ class AmoraaProfilePhotoSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final error = showError ? ProfileFormValidators.photos(profile) : null;
     final sharedPhotos = LocalProfileRepository.instance.currentPhotos;
+    final error = showError
+        ? ProfileFormValidators.photos(profile, photoStates: sharedPhotos)
+        : null;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -235,24 +237,46 @@ class AmoraaWorkEducationSection extends StatelessWidget {
           label: 'Occupation',
           targets: navigationTargets,
           highlightedField: highlightedField,
-          child: AmoraaSearchableSelect<String>(
-            key: const ValueKey('profile-occupation-field'),
-            value: controller.profession.text.isEmpty
-                ? null
-                : controller.profession.text,
-            label: 'Occupation',
-            hintText: 'Select occupation',
-            searchHint: 'Search occupation',
-            prefixIcon: Icons.work_rounded,
-            isRequired: true,
-            validator: ProfileFormValidators.requiredText,
-            options: [
-              for (final value in ProfileFormOptions.occupations)
-                AmoraaSelectOption(value: value, label: value),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              AmoraaSearchableSelect<String>(
+                key: const ValueKey('profile-occupation-field'),
+                value: controller.profession.text.isEmpty
+                    ? null
+                    : controller.profession.text,
+                label: 'Occupation',
+                hintText: 'Select occupation',
+                searchHint: 'Search occupation',
+                prefixIcon: Icons.work_rounded,
+                isRequired: true,
+                validator: ProfileFormValidators.requiredText,
+                options: [
+                  for (final value in ProfileFormOptions.occupations)
+                    AmoraaSelectOption(value: value, label: value),
+                ],
+                onChanged: (value) {
+                  if (value != null) controller.setOccupation(value);
+                },
+              ),
+              if (controller.profession.text == 'Other') ...[
+                const SizedBox(height: AmoraSpacing.space12),
+                AmoraaCustomOptionField(
+                  fieldKey: const ValueKey('profile-custom-occupation-field'),
+                  label: 'Specify occupation',
+                  hintText: 'Enter your occupation',
+                  controller: controller.customOccupation,
+                  focusNode: navigationTargets?.focusNodeFor(
+                    ProfileFormFieldId.occupation,
+                  ),
+                  maxLength: ProfileFormOptions.customOccupationMaxLength,
+                  validator: (value) => ProfileFormValidators.customOccupation(
+                    controller.profession.text,
+                    value,
+                  ),
+                ),
+              ],
             ],
-            onChanged: (value) {
-              if (value != null) controller.profession.text = value;
-            },
           ),
         ),
         const SizedBox(height: AmoraSpacing.space12),
@@ -291,28 +315,59 @@ class AmoraaWorkEducationSection extends StatelessWidget {
         ),
         if (controller.education.text == 'Other') ...[
           const SizedBox(height: AmoraSpacing.space12),
-          TextFormField(
-            key: const ValueKey('profile-custom-education-field'),
+          AmoraaCustomOptionField(
+            fieldKey: const ValueKey('profile-custom-education-field'),
+            label: 'Specify education',
+            hintText: 'Enter your education',
             controller: controller.customEducation,
             maxLength: ProfileFormOptions.customEducationMaxLength,
-            inputFormatters: [
-              LengthLimitingTextInputFormatter(
-                ProfileFormOptions.customEducationMaxLength,
-              ),
-            ],
             validator: (value) => ProfileFormValidators.customEducation(
               controller.education.text,
               value,
             ),
-            decoration: const InputDecoration(
-              labelText: 'Specify education',
-              hintText: 'Enter your education',
-              prefixIcon: Icon(Icons.edit_note_rounded),
-              counterText: '',
-            ),
           ),
         ],
       ],
+    );
+  }
+}
+
+class AmoraaCustomOptionField extends StatelessWidget {
+  const AmoraaCustomOptionField({
+    super.key,
+    required this.fieldKey,
+    required this.label,
+    required this.hintText,
+    required this.controller,
+    required this.maxLength,
+    required this.validator,
+    this.focusNode,
+  });
+
+  final Key fieldKey;
+  final String label;
+  final String hintText;
+  final TextEditingController controller;
+  final int maxLength;
+  final FormFieldValidator<String> validator;
+  final FocusNode? focusNode;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextFormField(
+      key: fieldKey,
+      controller: controller,
+      focusNode: focusNode,
+      maxLength: maxLength,
+      inputFormatters: [LengthLimitingTextInputFormatter(maxLength)],
+      textInputAction: TextInputAction.next,
+      validator: validator,
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hintText,
+        prefixIcon: const Icon(Icons.edit_note_rounded),
+        counterText: '',
+      ),
     );
   }
 }
@@ -711,93 +766,91 @@ class AmoraaProfilePromptField extends StatelessWidget {
       label: 'Profile Prompts',
       targets: navigationTargets,
       highlightedField: highlightedField,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          for (var index = 0; index < saved.length; index++) ...[
-            _SavedProfilePromptCard(
-              key: ValueKey('saved-profile-prompt-$index'),
-              prompt: saved[index].key,
-              answer: saved[index].value,
-              editing:
-                  controller.promptEditorActive &&
-                  controller.promptEditingOriginalTitle == saved[index].key,
-              onEdit: () {
-                controller.beginEditPrompt(saved[index].key);
-                _focusPromptAnswer();
-              },
-            ),
-            const SizedBox(height: AmoraSpacing.space12),
-          ],
-          if (controller.promptEditorActive) ...[
-            Semantics(
-              container: true,
-              label: 'Profile prompt editor',
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  AmoraaProfilePromptSelector(
-                    selectedPrompt: controller.promptTitle,
-                    options: {
-                      ...controller.availablePromptTitles,
-                      controller.promptTitle,
-                    },
-                    onSelected: controller.setPromptTitle,
-                  ),
-                  const SizedBox(height: AmoraSpacing.space12),
-                  TextFormField(
-                    key: const ValueKey('profile-prompt-answer-field'),
-                    controller: controller.promptAnswer,
-                    focusNode: navigationTargets?.focusNodeFor(
-                      ProfileFormFieldId.profilePrompt,
+      child: AmoraaProfilePromptsSection(
+        prompts: saved,
+        editingPromptTitle: controller.promptEditorActive
+            ? controller.promptEditingOriginalTitle
+            : null,
+        onEditPrompt: (prompt) {
+          controller.beginEditPrompt(prompt);
+          _focusPromptAnswer();
+        },
+        footer: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (controller.promptEditorActive) ...[
+              Semantics(
+                container: true,
+                label: 'Profile prompt editor',
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    AmoraaProfilePromptSelector(
+                      selectedPrompt: controller.promptTitle,
+                      options: {
+                        ...controller.availablePromptTitles,
+                        controller.promptTitle,
+                      },
+                      onSelected: controller.setPromptTitle,
                     ),
-                    minLines: 3,
-                    maxLines: 6,
-                    maxLength: ProfileFormOptions.profilePromptAnswerMaxLength,
-                    inputFormatters: [
-                      LengthLimitingTextInputFormatter(
-                        ProfileFormOptions.profilePromptAnswerMaxLength,
+                    const SizedBox(height: AmoraSpacing.space12),
+                    TextFormField(
+                      key: const ValueKey('profile-prompt-answer-field'),
+                      controller: controller.promptAnswer,
+                      focusNode: navigationTargets?.focusNodeFor(
+                        ProfileFormFieldId.profilePrompt,
                       ),
-                    ],
-                    validator: ProfileFormValidators.promptAnswer,
-                    autovalidateMode: showValidation
-                        ? AutovalidateMode.always
-                        : AutovalidateMode.onUserInteraction,
-                    decoration: const InputDecoration(
-                      labelText: 'Your answer',
-                      hintText: 'Write a specific, warm answer',
-                      counterText: '',
+                      minLines: 3,
+                      maxLines: 6,
+                      maxLength:
+                          ProfileFormOptions.profilePromptAnswerMaxLength,
+                      inputFormatters: [
+                        LengthLimitingTextInputFormatter(
+                          ProfileFormOptions.profilePromptAnswerMaxLength,
+                        ),
+                      ],
+                      validator: ProfileFormValidators.promptAnswer,
+                      autovalidateMode: showValidation
+                          ? AutovalidateMode.always
+                          : AutovalidateMode.onUserInteraction,
+                      decoration: const InputDecoration(
+                        labelText: 'Your answer',
+                        hintText: 'Write a specific, warm answer',
+                        counterText: '',
+                      ),
                     ),
-                  ),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton(
-                      key: const ValueKey('cancel-profile-prompt-edit'),
-                      onPressed: controller.cancelPromptEditing,
-                      child: const Text('Cancel'),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        key: const ValueKey('cancel-profile-prompt-edit'),
+                        onPressed: controller.cancelPromptEditing,
+                        child: const Text('Cancel'),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ] else if (controller.canAddPrompt)
-            OutlinedButton.icon(
-              key: const ValueKey('add-profile-prompt'),
-              onPressed: () => showAmoraaProfilePromptPicker(
-                context,
-                selectedPrompt: '',
-                options: controller.availablePromptTitles,
-                onSelected: (prompt) {
-                  controller.beginAddPrompt(prompt);
-                  _focusPromptAnswer();
-                },
+            ] else if (controller.canAddPrompt)
+              OutlinedButton.icon(
+                key: const ValueKey('add-profile-prompt'),
+                onPressed: () => showAmoraaProfilePromptPicker(
+                  context,
+                  selectedPrompt: '',
+                  options: controller.availablePromptTitles,
+                  onSelected: (prompt) {
+                    controller.beginAddPrompt(prompt);
+                    _focusPromptAnswer();
+                  },
+                ),
+                icon: const Icon(Icons.add_rounded),
+                label: const Text('Add Prompt'),
               ),
-              icon: const Icon(Icons.add_rounded),
-              label: const Text('Add Prompt'),
-            ),
-          if (showValidation && saved.isEmpty && !controller.promptEditorActive)
-            const _FormError('Complete one profile prompt'),
-        ],
+            if (showValidation &&
+                saved.isEmpty &&
+                !controller.promptEditorActive)
+              const _FormError('Complete one profile prompt'),
+          ],
+        ),
       ),
     );
   }
@@ -811,16 +864,100 @@ class AmoraaProfilePromptField extends StatelessWidget {
   }
 }
 
-class _SavedProfilePromptCard extends StatelessWidget {
-  const _SavedProfilePromptCard({
+class AmoraaProfilePromptsSection extends StatelessWidget {
+  const AmoraaProfilePromptsSection({
     super.key,
-    required this.prompt,
+    required this.prompts,
+    required this.onEditPrompt,
+    this.editingPromptTitle,
+    this.footer,
+  });
+
+  final List<MapEntry<String, String>> prompts;
+  final ValueChanged<String> onEditPrompt;
+  final String? editingPromptTitle;
+  final Widget? footer;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      container: true,
+      label: 'Profile prompts. Thoughtful openings for a real conversation.',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const _ProfilePromptsHeader(),
+          if (prompts.isNotEmpty) const SizedBox(height: AmoraSpacing.space16),
+          for (var index = 0; index < prompts.length; index++) ...[
+            AmoraaEditableProfilePromptCard(
+              key: ValueKey('saved-profile-prompt-$index'),
+              promptTitle: prompts[index].key,
+              answer: prompts[index].value,
+              editing: editingPromptTitle == prompts[index].key,
+              onEdit: () => onEditPrompt(prompts[index].key),
+            ),
+            if (index != prompts.length - 1)
+              const SizedBox(height: AmoraSpacing.space12),
+          ],
+          if (footer != null) ...[
+            if (prompts.isNotEmpty)
+              const SizedBox(height: AmoraSpacing.space16),
+            footer!,
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ProfilePromptsHeader extends StatelessWidget {
+  const _ProfilePromptsHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: AmoraSpacing.minimumTouchTarget,
+          height: AmoraSpacing.minimumTouchTarget,
+          decoration: BoxDecoration(
+            color: AppColors.tertiary.withValues(alpha: .55),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: const Icon(Icons.forum_outlined, color: AppColors.primary),
+        ),
+        const SizedBox(width: AmoraSpacing.space12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Profile prompts', style: AmoraTextStyles.titleLarge),
+              const SizedBox(height: AmoraSpacing.space4),
+              Text(
+                'Thoughtful openings for a real conversation.',
+                style: AmoraTextStyles.bodyMedium.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class AmoraaEditableProfilePromptCard extends StatelessWidget {
+  const AmoraaEditableProfilePromptCard({
+    super.key,
+    required this.promptTitle,
     required this.answer,
     required this.editing,
     required this.onEdit,
   });
 
-  final String prompt;
+  final String promptTitle;
   final String answer;
   final bool editing;
   final VoidCallback onEdit;
@@ -829,31 +966,51 @@ class _SavedProfilePromptCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Semantics(
       container: true,
-      label: 'Prompt, $prompt. Answer, $answer${editing ? '. Editing' : ''}',
+      explicitChildNodes: true,
+      label:
+          'Profile prompt, $promptTitle. Answer, $answer${editing ? '. Editing' : ''}',
       child: SizedBox(
         width: double.infinity,
         child: PremiumCard(
-          radius: 18,
-          padding: const EdgeInsets.all(AmoraSpacing.space16),
+          radius: 24,
+          padding: const EdgeInsets.all(AmoraSpacing.space24),
+          borderColor: AppColors.secondary,
+          shadowOpacity: 0,
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Prompt', style: AmoraTextStyles.labelMedium),
-              const SizedBox(height: AmoraSpacing.space4),
-              Text(prompt, style: AmoraTextStyles.titleMedium),
+              Text(
+                promptTitle,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.left,
+                style: AmoraTextStyles.bodyMedium.copyWith(
+                  color: AppColors.secondary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
               const SizedBox(height: AmoraSpacing.space12),
-              Text('Answer', style: AmoraTextStyles.labelMedium),
-              const SizedBox(height: AmoraSpacing.space4),
-              Text(answer, style: AmoraTextStyles.bodyMedium),
-              const SizedBox(height: AmoraSpacing.space8),
+              Text(
+                _profilePromptAnswerWithQuotes(answer),
+                textAlign: TextAlign.left,
+                style: AmoraTextStyles.titleMedium.copyWith(
+                  color: AppColors.primary,
+                  height: 1.45,
+                ),
+              ),
+              const SizedBox(height: AmoraSpacing.space12),
               Align(
-                alignment: Alignment.centerRight,
-                child: TextButton.icon(
-                  onPressed: onEdit,
-                  icon: Icon(
-                    editing ? Icons.edit_rounded : Icons.edit_outlined,
+                alignment: Alignment.bottomRight,
+                child: Semantics(
+                  button: true,
+                  label: 'Edit profile prompt: $promptTitle',
+                  child: TextButton.icon(
+                    onPressed: onEdit,
+                    icon: Icon(
+                      editing ? Icons.edit_rounded : Icons.edit_outlined,
+                    ),
+                    label: const Text('Edit'),
                   ),
-                  label: Text(editing ? 'Editing' : 'Edit'),
                 ),
               ),
             ],
@@ -862,6 +1019,21 @@ class _SavedProfilePromptCard extends StatelessWidget {
       ),
     );
   }
+}
+
+String _profilePromptAnswerWithQuotes(String answer) {
+  final value = answer.trim();
+  if (value.length >= 2) {
+    final first = value[0];
+    final last = value[value.length - 1];
+    if ((first == '“' && last == '”') ||
+        (first == '"' && last == '"') ||
+        (first == '‘' && last == '’') ||
+        (first == "'" && last == "'")) {
+      return value;
+    }
+  }
+  return '“$value”';
 }
 
 class AmoraaVerificationSection extends StatelessWidget {

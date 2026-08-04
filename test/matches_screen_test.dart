@@ -1,6 +1,8 @@
 import 'dart:io';
 
 import 'package:amora_ai/core/data/image_repository.dart';
+import 'package:amora_ai/core/widgets/amora_filter_chip.dart';
+import 'package:amora_ai/core/widgets/amoraa_select_field.dart';
 import 'package:amora_ai/features/matches/presentation/matches_screen.dart';
 import 'package:amora_ai/features/matches/presentation/widgets/amoraa_inline_compatibility_filter.dart';
 import 'package:flutter/material.dart';
@@ -62,6 +64,15 @@ void main() {
     expect(find.text('0%'), findsNothing);
     expect(find.text('100%'), findsNothing);
     expect(find.byKey(const ValueKey('ai-match-filter-bar')), findsOneWidget);
+    expect(find.byType(AmoraaCompactSelect<AiMatchFilter>), findsNothing);
+    expect(
+      tester
+          .widget<ListView>(
+            find.byKey(const ValueKey('ai-match-filter-scroll')),
+          )
+          .scrollDirection,
+      Axis.horizontal,
+    );
     expect(find.text('Featured recommendation'), findsOneWidget);
     expect(find.byType(FeaturedAiMatchCard), findsOneWidget);
     expect(find.text('View Profile'), findsWidgets);
@@ -240,12 +251,20 @@ void main() {
   testWidgets('selector and cards remain responsive at supported widths', (
     tester,
   ) async {
-    for (final width in <double>[320, 360, 390, 430, 600, 768, 1024]) {
+    for (final width in <double>[320, 360, 390, 412, 430, 600, 768, 1024]) {
       await pumpMatches(tester, size: Size(width, width >= 600 ? 900 : 760));
 
       expect(find.byType(AmoraaInlineCompatibilityFilter), findsOneWidget);
       expect(find.text('70%+'), findsOneWidget);
       expect(find.byType(FeaturedAiMatchCard), findsOneWidget);
+      expect(
+        tester
+            .widget<ListView>(
+              find.byKey(const ValueKey('ai-match-filter-scroll')),
+            )
+            .scrollDirection,
+        Axis.horizontal,
+      );
       expect(
         tester.getSize(find.byType(AmoraaInlineCompatibilityFilter)).width,
         lessThanOrEqualTo(width),
@@ -282,21 +301,37 @@ void main() {
   testWidgets('supported filters use existing profile fields', (tester) async {
     await pumpMatches(tester);
 
-    await tester.tap(find.byKey(const ValueKey('ai-match-filter-bar')));
+    await tester.tap(find.byKey(const ValueKey('ai-match-filter-Best Match')));
     await tester.pumpAndSettle();
-    await tester.tap(
-      find.byKey(const ValueKey('amoraa-select-option-Best Match')),
+    expect(
+      tester
+          .widget<AmoraFilterChip>(
+            find.byKey(const ValueKey('ai-match-filter-Best Match')),
+          )
+          .selected,
+      isTrue,
     );
-    await tester.pumpAndSettle();
     expect(find.byType(FeaturedAiMatchCard), findsOneWidget);
     expect(find.text('More recommendations'), findsNothing);
 
-    await tester.tap(find.byKey(const ValueKey('ai-match-filter-bar')));
+    await tester.tap(find.byKey(const ValueKey('ai-match-filter-Active Now')));
     await tester.pumpAndSettle();
-    await tester.tap(
-      find.byKey(const ValueKey('amoraa-select-option-Active Now')),
+    expect(
+      tester
+          .widget<AmoraFilterChip>(
+            find.byKey(const ValueKey('ai-match-filter-Best Match')),
+          )
+          .selected,
+      isFalse,
     );
-    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<AmoraFilterChip>(
+            find.byKey(const ValueKey('ai-match-filter-Active Now')),
+          )
+          .selected,
+      isTrue,
+    );
     final visible = tester.widget<FeaturedAiMatchCard>(
       find.byType(FeaturedAiMatchCard),
     );

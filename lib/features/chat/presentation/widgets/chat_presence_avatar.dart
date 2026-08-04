@@ -86,6 +86,7 @@ class ChatPresenceAvatar extends StatelessWidget {
                 right: 0,
                 bottom: 0,
                 child: Container(
+                  key: const ValueKey('chat-presence-online-indicator'),
                   width: 12,
                   height: 12,
                   decoration: BoxDecoration(

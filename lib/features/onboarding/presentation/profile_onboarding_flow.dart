@@ -168,7 +168,7 @@ class _ProfileOnboardingFlowState extends State<ProfileOnboardingFlow> {
       2 => state.interestedIn.any(
         (value) => ProfileFormOptions.normalizeGender(value).isNotEmpty,
       ),
-      3 => state.relationshipGoal != null,
+      3 => state.selectedRelationshipGoals.isNotEmpty,
       4 => ProfileFormOptions.cities.contains(_cityController.text.trim()),
       5 => LocalProfileRepository.instance.profile.photos.length >= 2,
       _ => false,
@@ -227,7 +227,7 @@ class _ProfileOnboardingFlowState extends State<ProfileOnboardingFlow> {
           customValue: onboarding.customGender,
         ),
         location: onboarding.city,
-        datingIntention: onboarding.relationshipGoal,
+        datingIntention: onboarding.primaryRelationshipGoal,
       ),
     );
   }
@@ -899,27 +899,47 @@ class _GenderQuestion extends StatelessWidget {
       title: 'How do you identify?',
       supporting: 'Choose the language that feels right for you.',
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          AmoraaSelectField<String>(
-            key: const ValueKey('onboarding-gender-selector'),
-            label: 'Gender',
-            value: normalizedGender.isEmpty ? null : normalizedGender,
-            hintText: 'Select how you identify',
-            supportingText: 'Choose the language that feels right for you.',
-            prefixIcon: Icons.person_rounded,
-            isRequired: true,
-            options: [
-              for (final option in ProfileFormOptions.genderOptions)
-                AmoraaSelectOption(value: option, label: option),
+          Text('Gender', style: AmoraTextStyles.titleMedium),
+          const SizedBox(height: AmoraSpacing.space4),
+          Text(
+            'Select how you identify',
+            style: AmoraTextStyles.bodyMedium.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: AmoraSpacing.space16),
+          Column(
+            key: const ValueKey('onboarding-gender-cards'),
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (
+                var index = 0;
+                index < ProfileFormOptions.genderOptions.length;
+                index++
+              ) ...[
+                _GenderOptionCard(
+                  key: ValueKey(
+                    'onboarding-gender-option-${ProfileFormOptions.genderOptions[index]}',
+                  ),
+                  label: ProfileFormOptions.genderOptions[index],
+                  selected:
+                      normalizedGender ==
+                      ProfileFormOptions.genderOptions[index],
+                  onTap: () => onChanged(
+                    state.copyWith(
+                      gender: ProfileFormOptions.genderOptions[index],
+                    ),
+                  ),
+                ),
+                if (index < ProfileFormOptions.genderOptions.length - 1)
+                  const SizedBox(height: AmoraSpacing.space12),
+              ],
             ],
-            onChanged: (option) {
-              if (option != null) {
-                onChanged(state.copyWith(gender: option));
-              }
-            },
           ),
           if (normalizedGender == 'Other') ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: AmoraSpacing.space12),
             TextField(
               key: const ValueKey('onboarding-custom-gender'),
               controller: customController,
@@ -939,6 +959,112 @@ class _GenderQuestion extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _GenderOptionCard extends StatelessWidget {
+  const _GenderOptionCard({
+    super.key,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    const borderRadius = BorderRadius.all(Radius.circular(AmoraRadius.large));
+    return Semantics(
+      container: true,
+      button: true,
+      checked: selected,
+      inMutuallyExclusiveGroup: true,
+      label: '$label, ${selected ? 'selected' : 'unselected'}',
+      onTap: onTap,
+      child: ExcludeSemantics(
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOutCubic,
+          constraints: const BoxConstraints(minHeight: 56),
+          decoration: BoxDecoration(
+            color: selected
+                ? AppColors.secondary.withValues(alpha: .08)
+                : AppColors.surface,
+            borderRadius: borderRadius,
+            border: Border.all(
+              color: selected
+                  ? AppColors.secondary
+                  : AppColors.tertiary.withValues(alpha: .72),
+              width: selected ? 2 : 1,
+            ),
+          ),
+          child: Material(
+            color: AppColors.transparent,
+            borderRadius: borderRadius,
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: onTap,
+              borderRadius: borderRadius,
+              focusColor: AppColors.secondary.withValues(alpha: .14),
+              hoverColor: AppColors.secondary.withValues(alpha: .08),
+              splashColor: AppColors.tertiary.withValues(alpha: .32),
+              highlightColor: AppColors.tertiary.withValues(alpha: .18),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AmoraSpacing.space20,
+                  vertical: AmoraSpacing.space16,
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(label, style: AmoraTextStyles.titleMedium),
+                    ),
+                    const SizedBox(width: AmoraSpacing.space16),
+                    _GenderRadioIndicator(selected: selected),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GenderRadioIndicator extends StatelessWidget {
+  const _GenderRadioIndicator({required this.selected});
+
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      key: ValueKey(selected ? 'selected-radio' : 'unselected-radio'),
+      duration: const Duration(milliseconds: 180),
+      width: 24,
+      height: 24,
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: selected ? AppColors.secondary : AppColors.surface,
+        border: Border.all(
+          color: selected ? AppColors.secondary : AppColors.textMuted,
+          width: 2,
+        ),
+      ),
+      child: selected
+          ? const DecoratedBox(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.surface,
+              ),
+            )
+          : null,
     );
   }
 }
@@ -985,36 +1111,189 @@ class _RelationshipQuestion extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final selected = ProfileFormOptions.normalizeDatingIntention(
-      state.relationshipGoal,
-    );
+    final selected = state.selectedRelationshipGoals;
     return _QuestionFrame(
       icon: Icons.favorite_rounded,
       title: 'What are you looking for?',
       supporting: 'This helps people understand your intention from the start.',
-      child: AmoraaSelectField<String>(
-        key: const ValueKey('onboarding-relationship-selector'),
-        label: 'Dating Intention',
-        value: selected.isEmpty ? null : selected,
-        hintText: 'Select your intention',
-        supportingText:
-            'This helps people understand your intention from the start.',
-        prefixIcon: Icons.favorite_rounded,
-        isRequired: true,
-        options: [
-          for (final option in ProfileFormOptions.datingIntentions)
-            AmoraaSelectOption(
-              value: option,
-              label: option,
+      child: Column(
+        key: const ValueKey('onboarding-relationship-cards'),
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Dating Intention',
+                  style: AmoraTextStyles.titleMedium,
+                ),
+              ),
+              if (selected.isNotEmpty)
+                Text(
+                  '${selected.length} selected',
+                  key: const ValueKey('onboarding-relationship-count'),
+                  style: AmoraTextStyles.labelMedium.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: AmoraSpacing.space12),
+          for (
+            var index = 0;
+            index < ProfileFormOptions.datingIntentions.length;
+            index++
+          ) ...[
+            _DatingIntentionCard(
+              key: ValueKey(
+                'onboarding-relationship-option-${ProfileFormOptions.datingIntentions[index]}',
+              ),
+              label: ProfileFormOptions.datingIntentions[index],
               description:
-                  ProfileFormOptions.datingIntentionDescriptions[option],
+                  ProfileFormOptions
+                      .datingIntentionDescriptions[ProfileFormOptions
+                      .datingIntentions[index]] ??
+                  '',
+              selected: selected.contains(
+                ProfileFormOptions.datingIntentions[index],
+              ),
+              onTap: () {
+                final updated = Set<String>.of(selected);
+                final option = ProfileFormOptions.datingIntentions[index];
+                updated.contains(option)
+                    ? updated.remove(option)
+                    : updated.add(option);
+                final currentPrimary =
+                    ProfileFormOptions.normalizeDatingIntention(
+                      state.relationshipGoal,
+                    );
+                final primary = updated.contains(currentPrimary)
+                    ? currentPrimary
+                    : ProfileFormOptions.datingIntentions
+                          .where(updated.contains)
+                          .firstOrNull;
+                onChanged(
+                  state.copyWith(
+                    relationshipGoals: updated,
+                    relationshipGoal: primary,
+                    clearRelationshipGoal: primary == null,
+                  ),
+                );
+              },
             ),
+            if (index < ProfileFormOptions.datingIntentions.length - 1)
+              const SizedBox(height: AmoraSpacing.space12),
+          ],
         ],
-        onChanged: (value) {
-          if (value != null) {
-            onChanged(state.copyWith(relationshipGoal: value));
-          }
-        },
+      ),
+    );
+  }
+}
+
+class _DatingIntentionCard extends StatelessWidget {
+  const _DatingIntentionCard({
+    super.key,
+    required this.label,
+    required this.description,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final String description;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    const borderRadius = BorderRadius.all(Radius.circular(AmoraRadius.large));
+    return Semantics(
+      container: true,
+      button: true,
+      checked: selected,
+      label: '$label, ${selected ? 'selected' : 'unselected'}',
+      onTap: onTap,
+      child: ExcludeSemantics(
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOutCubic,
+          constraints: const BoxConstraints(minHeight: 64),
+          decoration: BoxDecoration(
+            color: selected
+                ? AppColors.secondary.withValues(alpha: .08)
+                : AppColors.surface,
+            borderRadius: borderRadius,
+            border: Border.all(
+              color: selected
+                  ? AppColors.secondary
+                  : AppColors.tertiary.withValues(alpha: .72),
+              width: selected ? 2 : 1,
+            ),
+          ),
+          child: Material(
+            color: AppColors.transparent,
+            borderRadius: borderRadius,
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: onTap,
+              borderRadius: borderRadius,
+              focusColor: AppColors.secondary.withValues(alpha: .14),
+              hoverColor: AppColors.secondary.withValues(alpha: .08),
+              splashColor: AppColors.tertiary.withValues(alpha: .32),
+              highlightColor: AppColors.tertiary.withValues(alpha: .18),
+              child: Padding(
+                padding: const EdgeInsets.all(AmoraSpacing.space16),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(label, style: AmoraTextStyles.titleMedium),
+                          if (description.isNotEmpty) ...[
+                            const SizedBox(height: AmoraSpacing.space4),
+                            Text(
+                              description,
+                              style: AmoraTextStyles.bodySmall.copyWith(
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: AmoraSpacing.space12),
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      width: 24,
+                      height: 24,
+                      decoration: BoxDecoration(
+                        color: selected
+                            ? AppColors.secondary
+                            : AppColors.surface,
+                        borderRadius: BorderRadius.circular(AmoraRadius.small),
+                        border: Border.all(
+                          color: selected
+                              ? AppColors.secondary
+                              : AppColors.textMuted,
+                          width: 2,
+                        ),
+                      ),
+                      child: selected
+                          ? const Icon(
+                              Icons.check_rounded,
+                              key: ValueKey('selected-intention-checkmark'),
+                              size: 18,
+                              color: AppColors.surface,
+                            )
+                          : null,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

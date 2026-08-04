@@ -16,6 +16,7 @@ abstract final class ProfileFormOptions {
     'Business Owner',
     'Marketing',
     'Finance',
+    'Other',
   ];
 
   static const education = <String>[
@@ -101,6 +102,7 @@ abstract final class ProfileFormOptions {
   static const genderOptions = genders;
 
   static const int customEducationMaxLength = 80;
+  static const int customOccupationMaxLength = 60;
 
   static const minimumSupportedHeightCm = 137;
   static const maximumSupportedHeightCm = 213;
@@ -337,14 +339,52 @@ abstract final class ProfileFormOptions {
 
   static String normalizeOccupation(String? storedValue) {
     final value = storedValue?.trim() ?? '';
+    if (value.isEmpty) return '';
     if (occupations.contains(value)) return value;
     return switch (value.toLowerCase()) {
       'flutter engineer' => 'Software Engineer',
       'product designer' || 'creative professional' => 'Designer',
       'marketing professional' => 'Marketing',
       'chartered accountant' => 'Finance',
+      'other' => 'Other',
       _ => '',
     };
+  }
+
+  static String occupationSelectionFromStored(String? storedValue) {
+    final value = storedValue?.trim() ?? '';
+    if (value.isEmpty) return '';
+    final normalized = normalizeOccupation(value);
+    return normalized.isEmpty ? 'Other' : normalized;
+  }
+
+  static String customOccupationFromStored(String? storedValue) {
+    final value = storedValue?.trim() ?? '';
+    if (value.isEmpty || value.toLowerCase() == 'other') return '';
+    return normalizeOccupation(value).isEmpty ? value : '';
+  }
+
+  static String storedOccupationValue(
+    String? frontendValue, {
+    String customValue = '',
+  }) {
+    final selected = normalizeOccupation(frontendValue);
+    if (selected == 'Other') return customValue.trim();
+    return selected;
+  }
+
+  static String displayOccupation(String? storedValue) {
+    final value = storedValue?.trim() ?? '';
+    if (value.isEmpty || value.toLowerCase() == 'other') return '';
+    final normalized = normalizeOccupation(value);
+    return normalized.isEmpty ? value : normalized;
+  }
+
+  static bool isValidStoredOccupation(String? storedValue) {
+    final value = displayOccupation(storedValue);
+    if (value.isEmpty) return false;
+    final normalized = normalizeOccupation(storedValue);
+    return normalized.isNotEmpty || value.length <= customOccupationMaxLength;
   }
 
   static String normalizeReligion(String? storedValue) =>

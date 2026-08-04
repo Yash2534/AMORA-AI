@@ -82,6 +82,7 @@ void main() {
       'Business Owner',
       'Marketing',
       'Finance',
+      'Other',
     ]);
     expect(ProfileFormOptions.languages, const [
       'Gujarati',
@@ -203,6 +204,26 @@ void main() {
       ProfileFormOptions.normalizeOccupation('Product Designer'),
       'Designer',
     );
+    expect(ProfileFormOptions.normalizeOccupation('Photographer'), isEmpty);
+    expect(
+      ProfileFormOptions.occupationSelectionFromStored('Photographer'),
+      'Other',
+    );
+    expect(
+      ProfileFormOptions.customOccupationFromStored('Photographer'),
+      'Photographer',
+    );
+    expect(
+      ProfileFormOptions.storedOccupationValue(
+        'Other',
+        customValue: '  Photographer  ',
+      ),
+      'Photographer',
+    );
+    expect(
+      ProfileFormOptions.displayOccupation('Photographer'),
+      'Photographer',
+    );
     expect(
       ProfileFormOptions.normalizeEducation('Bachelor’s Degree'),
       'Undergraduate',
@@ -276,12 +297,27 @@ void main() {
     },
   );
 
+  test('custom Occupation validation and completion use one mapping', () {
+    expect(ProfileFormValidators.customOccupation('Designer', ''), isNull);
+    expect(
+      ProfileFormValidators.customOccupation('Other', '   '),
+      'Please enter your occupation.',
+    );
+    expect(
+      ProfileFormValidators.customOccupation('Other', '  Photographer  '),
+      isNull,
+    );
+    expect(ProfileFormOptions.isValidStoredOccupation('Other'), isFalse);
+    expect(ProfileFormOptions.isValidStoredOccupation('Photographer'), isTrue);
+  });
+
   test('legacy values load safely without mutating persisted profile data', () {
     final repository = LocalProfileRepository.instance;
     final original = repository.profile;
     addTearDown(() => repository.resetForTesting(original));
     final legacy = original.copyWith(
       education: 'Nirma University',
+      profession: 'Photographer',
       location: 'Rajkot',
       gender: 'Woman',
     );
@@ -291,6 +327,8 @@ void main() {
     addTearDown(controller.dispose);
     expect(controller.education.text, 'Other');
     expect(controller.customEducation.text, 'Nirma University');
+    expect(controller.profession.text, 'Other');
+    expect(controller.customOccupation.text, 'Photographer');
     expect(controller.city.text, isEmpty);
     expect(controller.gender, 'Female');
     expect(repository.profile.toJson(), legacy.toJson());

@@ -3,8 +3,8 @@ import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/amora_bottom_sheet.dart';
+import 'package:amora_ai/core/widgets/amora_filter_chip.dart';
 import 'package:amora_ai/core/widgets/amora_screen_title.dart';
-import 'package:amora_ai/core/widgets/amoraa_select_field.dart';
 import 'package:amora_ai/core/widgets/floating_bottom_nav.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/chat/presentation/chat_detail_screen.dart';
@@ -741,18 +741,14 @@ class ChatFilterBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AmoraaCompactSelect<ChatInboxFilter>(
+    return AmoraaHorizontalFilterBar<ChatInboxFilter>(
       key: const ValueKey('chats-filter-bar'),
-      label: 'Chat filter',
-      value: selected,
-      prefixIcon: Icons.filter_alt_outlined,
-      options: [
-        for (final filter in ChatInboxFilter.values)
-          AmoraaSelectOption(value: filter, label: _filterLabel(filter)),
-      ],
-      onChanged: (filter) {
-        if (filter != null) onSelected(filter);
-      },
+      options: ChatInboxFilter.values,
+      selectedValues: <ChatInboxFilter>{selected},
+      multiSelect: false,
+      labelBuilder: _filterLabel,
+      optionKeyPrefix: 'chats-filter',
+      onChanged: (filters) => onSelected(filters.single),
     );
   }
 }

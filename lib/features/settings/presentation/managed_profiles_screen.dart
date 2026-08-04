@@ -4,6 +4,7 @@ import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/amora_profile_image.dart';
 import 'package:amora_ai/core/widgets/amoraa_identity_badge.dart';
+import 'package:amora_ai/core/widgets/amoraa_confirm_action_sheet.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/discover/presentation/discover_screen.dart';
@@ -33,9 +34,16 @@ class SavedProfilesScreen extends StatelessWidget {
         emptyActionLabel: 'Discover profiles',
         onEmptyAction: () =>
             Navigator.of(context).pushNamed(DiscoverScreen.routeName),
-        actionLabel: 'Remove saved profile',
+        actionLabel: 'Unsave Profile',
+        actionSemanticLabel: (profile) => AmoraaProfileAction.unsave
+            .semanticLabel(amoraaProfileActionName(profile.name)),
         actionIcon: Icons.bookmark_remove_rounded,
-        onAction: (profile) => source.removeSaved(profile.id),
+        onAction: (profile) => showAmoraaProfileActionConfirmation(
+          context: context,
+          action: AmoraaProfileAction.unsave,
+          profileName: profile.name,
+          onConfirm: () => source.removeSaved(profile.id),
+        ),
       ),
     );
   }
@@ -60,9 +68,16 @@ class BlockedProfilesScreen extends StatelessWidget {
         profiles: source.blockedProfiles,
         emptyTitle: 'No blocked profiles',
         emptyMessage: 'Profiles you block will appear here.',
-        actionLabel: 'Unblock profile',
+        actionLabel: 'Unblock Profile',
+        actionSemanticLabel: (profile) => AmoraaProfileAction.unblock
+            .semanticLabel(amoraaProfileActionName(profile.name)),
         actionIcon: Icons.lock_open_rounded,
-        onAction: (profile) => source.unblockProfile(profile.id),
+        onAction: (profile) => showAmoraaProfileActionConfirmation(
+          context: context,
+          action: AmoraaProfileAction.unblock,
+          profileName: profile.name,
+          onConfirm: () => source.unblockProfile(profile.id),
+        ),
       ),
     );
   }
@@ -78,6 +93,7 @@ class ManagedProfilesScreen extends StatelessWidget {
     required this.emptyTitle,
     required this.emptyMessage,
     required this.actionLabel,
+    required this.actionSemanticLabel,
     required this.actionIcon,
     required this.onAction,
     this.emptyActionLabel,
@@ -91,6 +107,7 @@ class ManagedProfilesScreen extends StatelessWidget {
   final String emptyTitle;
   final String emptyMessage;
   final String actionLabel;
+  final String Function(DummyProfile profile) actionSemanticLabel;
   final IconData actionIcon;
   final ValueChanged<DummyProfile> onAction;
   final String? emptyActionLabel;
@@ -105,42 +122,52 @@ class ManagedProfilesScreen extends StatelessWidget {
         top: false,
         child: ResponsiveMobileFrame(
           maxWidth: 720,
-          child: profiles.isEmpty
-              ? _ManagedProfilesEmptyState(
-                  icon: icon,
-                  title: emptyTitle,
-                  message: emptyMessage,
-                  actionLabel: emptyActionLabel,
-                  onAction: onEmptyAction,
-                )
-              : ListView(
-                  padding: const EdgeInsets.fromLTRB(
-                    AmoraSpacing.space20,
-                    AmoraSpacing.space16,
-                    AmoraSpacing.space20,
-                    AmoraSpacing.space32,
-                  ),
-                  children: [
-                    Text(title, style: AmoraTextStyles.headlineLarge),
-                    const SizedBox(height: AmoraSpacing.space8),
-                    Text(
-                      subtitle,
-                      style: AmoraTextStyles.bodyMedium.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 220),
+            switchInCurve: Curves.easeOutCubic,
+            switchOutCurve: Curves.easeInCubic,
+            child: profiles.isEmpty
+                ? _ManagedProfilesEmptyState(
+                    key: ValueKey('managed-empty-$title'),
+                    icon: icon,
+                    title: emptyTitle,
+                    message: emptyMessage,
+                    actionLabel: emptyActionLabel,
+                    onAction: onEmptyAction,
+                  )
+                : ListView(
+                    key: ValueKey(
+                      'managed-$title-${profiles.map((profile) => profile.id).join('-')}',
                     ),
-                    const SizedBox(height: AmoraSpacing.space20),
-                    for (final profile in profiles) ...[
-                      ManagedProfileCard(
-                        profile: profile,
-                        actionLabel: actionLabel,
-                        actionIcon: actionIcon,
-                        onAction: () => onAction(profile),
+                    padding: const EdgeInsets.fromLTRB(
+                      AmoraSpacing.space20,
+                      AmoraSpacing.space16,
+                      AmoraSpacing.space20,
+                      AmoraSpacing.space32,
+                    ),
+                    children: [
+                      Text(title, style: AmoraTextStyles.headlineLarge),
+                      const SizedBox(height: AmoraSpacing.space8),
+                      Text(
+                        subtitle,
+                        style: AmoraTextStyles.bodyMedium.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
                       ),
-                      const SizedBox(height: AmoraSpacing.space12),
+                      const SizedBox(height: AmoraSpacing.space20),
+                      for (final profile in profiles) ...[
+                        ManagedProfileCard(
+                          profile: profile,
+                          actionLabel: actionLabel,
+                          actionSemanticLabel: actionSemanticLabel(profile),
+                          actionIcon: actionIcon,
+                          onAction: () => onAction(profile),
+                        ),
+                        const SizedBox(height: AmoraSpacing.space12),
+                      ],
                     ],
-                  ],
-                ),
+                  ),
+          ),
         ),
       ),
     );
@@ -152,6 +179,7 @@ class ManagedProfileCard extends StatelessWidget {
     super.key,
     required this.profile,
     required this.actionLabel,
+    required this.actionSemanticLabel,
     required this.actionIcon,
     required this.onAction,
     this.onOpen,
@@ -159,6 +187,7 @@ class ManagedProfileCard extends StatelessWidget {
 
   final DummyProfile profile;
   final String actionLabel;
+  final String actionSemanticLabel;
   final IconData actionIcon;
   final VoidCallback onAction;
   final VoidCallback? onOpen;
@@ -167,7 +196,7 @@ class ManagedProfileCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Semantics(
       container: true,
-      label: '${profile.name}, $actionLabel available',
+      label: '${profile.name}, $actionSemanticLabel available',
       child: PremiumCard(
         key: key ?? ValueKey('managed-profile-${profile.id}'),
         padding: EdgeInsets.zero,
@@ -233,7 +262,7 @@ class ManagedProfileCard extends StatelessWidget {
                 ),
                 IconButton(
                   key: ValueKey('$actionLabel-${profile.id}'),
-                  tooltip: '$actionLabel ${profile.name}',
+                  tooltip: actionSemanticLabel,
                   onPressed: onAction,
                   icon: Icon(actionIcon),
                 ),
@@ -248,6 +277,7 @@ class ManagedProfileCard extends StatelessWidget {
 
 class _ManagedProfilesEmptyState extends StatelessWidget {
   const _ManagedProfilesEmptyState({
+    super.key,
     required this.icon,
     required this.title,
     required this.message,

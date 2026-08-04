@@ -255,6 +255,11 @@ void main() {
   ) async {
     await tester.binding.setSurfaceSize(const Size(390, 844));
     addTearDown(() => tester.binding.setSurfaceSize(null));
+    LocalProfileRepository.instance.save(
+      original.copyWith(
+        interests: const ['Coffee', 'Cooking', 'Road trips', 'Yoga', 'Reading'],
+      ),
+    );
 
     await tester.pumpWidget(
       MaterialApp(theme: AmoraTheme.light(), home: const ProfileEditScreen()),

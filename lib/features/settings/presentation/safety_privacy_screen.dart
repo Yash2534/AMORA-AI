@@ -5,7 +5,6 @@ import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/legal/presentation/community_guidelines_screen.dart';
 import 'package:amora_ai/features/profile/presentation/controllers/profile_relationship_controller.dart';
-import 'package:amora_ai/features/profile/presentation/kyc_verification_screen.dart';
 import 'package:amora_ai/features/settings/presentation/managed_profiles_screen.dart';
 import 'package:amora_ai/features/support/presentation/faq_support_screen.dart';
 import 'package:flutter/material.dart';
@@ -88,29 +87,6 @@ class SafetyPrivacyScreen extends StatelessWidget {
                     sliver: SliverList.list(
                       children: [
                         _SafetyOverview(blockedCount: blockedCount),
-                        const SizedBox(height: AmoraSpacing.space24),
-                        _SafetySection(
-                          title: 'Identity verification',
-                          supportingText:
-                              'Aadhaar and selfie checks are completed together in the existing secure flow.',
-                          child: _SafetyActionGroup(
-                            children: [
-                              _SafetyActionRow(
-                                key: const ValueKey(
-                                  'safety-identity-verification',
-                                ),
-                                icon: Icons.fingerprint_rounded,
-                                title: 'Aadhaar & selfie verification',
-                                description:
-                                    'Your current verification result is unavailable. AMORAA will not show a verified status without a confirmed result.',
-                                status: 'Unavailable',
-                                onTap: () => Navigator.of(
-                                  context,
-                                ).pushNamed(KycVerificationScreen.routeName),
-                              ),
-                            ],
-                          ),
-                        ),
                         const SizedBox(height: AmoraSpacing.space24),
                         const _SafetySection(
                           title: 'Privacy & visibility',

@@ -2,7 +2,6 @@ import 'package:amora_ai/core/data/image_repository.dart';
 import 'package:amora_ai/core/theme/amora_theme.dart';
 import 'package:amora_ai/features/legal/presentation/community_guidelines_screen.dart';
 import 'package:amora_ai/features/profile/presentation/controllers/profile_relationship_controller.dart';
-import 'package:amora_ai/features/profile/presentation/kyc_verification_screen.dart';
 import 'package:amora_ai/features/settings/presentation/managed_profiles_screen.dart';
 import 'package:amora_ai/features/settings/presentation/safety_privacy_screen.dart';
 import 'package:amora_ai/features/support/presentation/faq_support_screen.dart';
@@ -19,9 +18,6 @@ void main() {
       child: MaterialApp(
         theme: AmoraTheme.light(),
         routes: {
-          KycVerificationScreen.routeName: (_) => const Scaffold(
-            body: Center(child: Text('Combined KYC destination')),
-          ),
           BlockedProfilesScreen.routeName: (_) =>
               const Scaffold(body: Center(child: Text('Blocked destination'))),
           CommunityGuidelinesScreen.routeName: (_) => const Scaffold(
@@ -63,7 +59,7 @@ void main() {
     expect(find.textContaining('Document ID'), findsNothing);
   });
 
-  testWidgets('uses one canonical combined verification destination', (
+  testWidgets('omits the identity verification section and its spacing', (
     tester,
   ) async {
     final controller = ProfileRelationshipController();
@@ -71,16 +67,27 @@ void main() {
 
     await tester.pumpWidget(subject(controller: controller));
 
-    expect(find.text('Aadhaar & selfie verification'), findsOneWidget);
+    expect(find.text('Identity verification'), findsNothing);
+    expect(find.text('Aadhaar & selfie verification'), findsNothing);
+    expect(
+      find.text(
+        'Aadhaar and selfie checks are completed together in the existing secure flow.',
+      ),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey('safety-identity-verification')),
+      findsNothing,
+    );
     expect(find.text('Verified Profile'), findsNothing);
     expect(find.text('Face Verification'), findsNothing);
     expect(find.text('Photo Verification'), findsNothing);
 
-    await tester.tap(
-      find.byKey(const ValueKey('safety-identity-verification')),
+    final overviewBottom = tester.getBottomLeft(
+      find.byKey(const ValueKey('safety-overview')),
     );
-    await tester.pumpAndSettle();
-    expect(find.text('Combined KYC destination'), findsOneWidget);
+    final privacyTop = tester.getTopLeft(find.text('Privacy & visibility'));
+    expect(privacyTop.dy - overviewBottom.dy, 24);
   });
 
   testWidgets('blocked profile count comes from shared user-driven state', (

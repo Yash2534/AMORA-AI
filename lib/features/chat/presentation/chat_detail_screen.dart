@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:amora_ai/core/data/image_repository.dart';
 import 'package:amora_ai/core/theme/amora_icon_sizes.dart';
 import 'package:amora_ai/core/theme/amora_icons.dart';
+import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/amora_bottom_sheet.dart';
 import 'package:amora_ai/core/widgets/amora_snackbar.dart';
@@ -138,6 +139,11 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           ChatHeader(
             profile: _profile,
             online: _online,
+            status: _online
+                ? 'Online'
+                : _profile.status.trim().isEmpty
+                ? 'Offline'
+                : _profile.status.trim(),
             onBack: _goBack,
             onMore: _showMoreSheet,
             onProfileTap: () => Navigator.of(
@@ -383,23 +389,30 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     );
   }
 
-  void _showBlockDialog() {
-    showBlockConfirmationDialog(context: context, userName: _profile.name).then(
-      (blocked) {
-        if (blocked != true || !mounted) return;
-        ProfileRelationshipController.instance.blockProfile(_profile);
+  Future<void> _showBlockDialog() async {
+    if (_conversation?.canMessage == false ||
+        ProfileRelationshipController.instance.isBlocked(_profile.id)) {
+      return;
+    }
+    final blocked = await showBlockConfirmationDialog(
+      context: context,
+      userName: _profile.name,
+      onConfirm: () async {
         final conversationId = _conversationId;
         if (conversationId != null) {
-          unawaited(
-            _repository.setMessagingAvailability(
-              conversationId,
-              canMessage: false,
-              reason: 'You blocked this member. Messaging is disabled.',
-            ),
+          await _repository.setMessagingAvailability(
+            conversationId,
+            canMessage: false,
+            reason: 'You blocked this member. Messaging is disabled.',
           );
         }
-        showBlockedUserSuccessSheet(context: context, userName: _profile.name);
+        ProfileRelationshipController.instance.blockProfile(_profile);
       },
+    );
+    if (blocked != true || !mounted) return;
+    await showBlockedUserSuccessSheet(
+      context: context,
+      userName: _profile.name,
     );
   }
 
@@ -413,6 +426,7 @@ class ChatHeader extends StatelessWidget {
     super.key,
     required this.profile,
     required this.online,
+    required this.status,
     required this.onBack,
     required this.onMore,
     required this.onProfileTap,
@@ -420,6 +434,7 @@ class ChatHeader extends StatelessWidget {
 
   final DummyProfile profile;
   final bool online;
+  final String status;
   final VoidCallback onBack;
   final VoidCallback onMore;
   final VoidCallback onProfileTap;
@@ -433,62 +448,85 @@ class ChatHeader extends StatelessWidget {
       child: SizedBox(
         height: 72,
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             _HeaderIconButton(
+              key: const ValueKey('chat-header-back'),
               tooltip: 'Back',
               icon: Icons.arrow_back_rounded,
               onPressed: onBack,
             ),
+            const SizedBox(width: 4),
             Expanded(
               child: Semantics(
+                container: true,
+                explicitChildNodes: true,
                 button: true,
-                label: 'Open ${profile.name} profile',
+                label:
+                    'Open ${profile.name} profile${profile.verified ? ', verified' : ''}, $status',
                 child: InkWell(
+                  key: const ValueKey('chat-header-identity'),
+                  excludeFromSemantics: true,
                   onTap: onProfileTap,
                   borderRadius: BorderRadius.circular(18),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 6),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         ChatPresenceAvatar(
+                          key: const ValueKey('chat-header-avatar'),
                           profile: profile,
-                          radius: 21,
+                          radius: 20,
                           online: online,
+                          showVerified: false,
                         ),
                         const SizedBox(width: 10),
-                        Flexible(
+                        Expanded(
                           child: Column(
+                            key: const ValueKey('chat-header-name-status'),
+                            mainAxisSize: MainAxisSize.min,
                             mainAxisAlignment: MainAxisAlignment.center,
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                              Row(
+                                children: [
+                                  Flexible(
+                                    child: Text(
+                                      profile.name,
+                                      key: const ValueKey('chat-header-name'),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      textAlign: TextAlign.left,
+                                      style: AmoraTextStyles.titleMedium
+                                          .copyWith(
+                                            color: AppColors.text,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                    ),
+                                  ),
+                                  if (profile.verified) ...[
+                                    const SizedBox(width: 4),
+                                    const Icon(
+                                      Icons.verified_rounded,
+                                      key: ValueKey('chat-header-verified'),
+                                      size: 16,
+                                      color: AppColors.secondary,
+                                    ),
+                                  ],
+                                ],
+                              ),
+                              const SizedBox(height: 2),
                               Text(
-                                profile.name.split(' ').first,
+                                status,
+                                key: const ValueKey('chat-header-status'),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: AppColors.text,
-                                  fontSize: 20,
-                                  height: 1.15,
-                                  fontWeight: FontWeight.w700,
+                                textAlign: TextAlign.left,
+                                style: AmoraTextStyles.bodySmall.copyWith(
+                                  color: AppColors.text.withValues(alpha: .66),
+                                  fontWeight: FontWeight.w500,
                                 ),
                               ),
-                              if (online) ...[
-                                const SizedBox(height: 3),
-                                Text(
-                                  'Online',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: AppColors.text.withValues(
-                                      alpha: .66,
-                                    ),
-                                    fontSize: 12,
-                                    height: 1.2,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
                             ],
                           ),
                         ),
@@ -498,8 +536,10 @@ class ChatHeader extends StatelessWidget {
                 ),
               ),
             ),
+            const SizedBox(width: 4),
             _HeaderIconButton(
-              tooltip: 'More',
+              key: const ValueKey('chat-header-more'),
+              tooltip: 'More chat options',
               icon: Icons.more_horiz_rounded,
               onPressed: onMore,
             ),
@@ -512,6 +552,7 @@ class ChatHeader extends StatelessWidget {
 
 class _HeaderIconButton extends StatelessWidget {
   const _HeaderIconButton({
+    super.key,
     required this.tooltip,
     required this.icon,
     required this.onPressed,

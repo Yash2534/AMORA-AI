@@ -277,6 +277,7 @@ class _AmoraaProfileFormState extends State<AmoraaProfileForm> {
                             id: ProfileCompletionSectionId.prompt,
                             icon: Icons.forum_outlined,
                             title: 'Profile Prompt',
+                            unframed: true,
                             child: AmoraaProfilePromptField(
                               controller: _controller,
                               showValidation: _showValidation,
@@ -325,22 +326,31 @@ class _AmoraaProfileFormState extends State<AmoraaProfileForm> {
     });
     final profile = _controller.draftProfile;
     _formKey.currentState?.validate();
-    final errors = ProfileFormValidators.editableProfile(profile);
+    final errors = ProfileFormValidators.editableProfile(
+      profile,
+      photoStates: _controller.repository.currentPhotos,
+    );
     final customEducationError = ProfileFormValidators.customEducation(
       _controller.education.text,
       _controller.customEducation.text,
+    );
+    final customOccupationError = ProfileFormValidators.customOccupation(
+      _controller.profession.text,
+      _controller.customOccupation.text,
     );
     final promptError = _controller.promptEditorActive
         ? ProfileFormValidators.promptAnswer(_controller.promptAnswer.text)
         : null;
     if (errors.isNotEmpty ||
+        customOccupationError != null ||
         customEducationError != null ||
         promptError != null ||
         _controller.saving) {
       final firstInvalid = _firstInvalidEditableField(profile);
       final message = errors.isNotEmpty
           ? errors.first
-          : customEducationError ??
+          : customOccupationError ??
+                customEducationError ??
                 promptError ??
                 'Review the highlighted profile field.';
       setState(() => _validationSummary = message);
@@ -375,12 +385,12 @@ class _AmoraaProfileFormState extends State<AmoraaProfileForm> {
         null) {
       return ProfileFormFieldId.gender;
     }
-    if (ProfileFormValidators.approvedSelection(
-          profile.profession,
-          ProfileFormOptions.occupations,
-          'occupation',
-        ) !=
-        null) {
+    if (ProfileFormValidators.storedOccupation(profile.profession) != null ||
+        ProfileFormValidators.customOccupation(
+              _controller.profession.text,
+              _controller.customOccupation.text,
+            ) !=
+            null) {
       return ProfileFormFieldId.occupation;
     }
     if (ProfileFormValidators.approvedSelection(
@@ -406,6 +416,16 @@ class _AmoraaProfileFormState extends State<AmoraaProfileForm> {
     }
     if (ProfileFormValidators.bio(profile.bio) != null) {
       return ProfileFormFieldId.bio;
+    }
+    if (ProfileFormValidators.photos(
+          profile,
+          photoStates: _controller.repository.currentPhotos,
+        ) !=
+        null) {
+      return ProfileFormFieldId.photos;
+    }
+    if (ProfileFormValidators.interests(profile) != null) {
+      return ProfileFormFieldId.interests;
     }
     if (_controller.promptEditorActive &&
         ProfileFormValidators.promptAnswer(_controller.promptAnswer.text) !=
@@ -521,15 +541,30 @@ class _EditSection extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.child,
+    this.unframed = false,
   });
 
   final ProfileCompletionSectionId? id;
   final IconData icon;
   final String title;
   final Widget child;
+  final bool unframed;
 
   @override
   Widget build(BuildContext context) {
+    if (unframed) {
+      return KeyedSubtree(
+        key: ValueKey('edit-section-${id?.name ?? 'verification'}'),
+        child: Padding(
+          padding: const EdgeInsets.only(
+            bottom: AmoraSpacing.space16,
+            left: AmoraSpacing.space4,
+            right: AmoraSpacing.space4,
+          ),
+          child: child,
+        ),
+      );
+    }
     return Padding(
       padding: const EdgeInsets.only(bottom: AmoraSpacing.space16),
       child: PremiumCard(

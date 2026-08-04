@@ -4,6 +4,7 @@ import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
 import 'package:amora_ai/features/profile/domain/profile_form_options.dart';
 import 'package:amora_ai/features/profile/presentation/controllers/profile_form_controller.dart';
 import 'package:amora_ai/features/profile/presentation/profile_screen.dart';
+import 'package:amora_ai/features/profile/presentation/profile_preview_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_section_editor_screen.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_dating_intention_selector.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_language_selector.dart';
@@ -111,6 +112,95 @@ void main() {
       await tester.pumpAndSettle();
       expect(custom, findsNothing);
       expect(controller.customEducation.text, 'Montessori training');
+    },
+  );
+
+  testWidgets(
+    'Occupation Other is inline, validated, restored, and stored as text',
+    (tester) async {
+      await repository.resetForTesting(
+        originalProfile.copyWith(profession: ''),
+      );
+      final controller = ProfileFormController(repository: repository);
+      addTearDown(controller.dispose);
+      final formKey = GlobalKey<FormState>();
+      await pump(
+        tester,
+        SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Form(
+            key: formKey,
+            child: ListenableBuilder(
+              listenable: controller,
+              builder: (context, _) =>
+                  AmoraaWorkEducationSection(controller: controller),
+            ),
+          ),
+        ),
+        size: const Size(320, 700),
+      );
+
+      final selector = find.byKey(const ValueKey('profile-occupation-field'));
+      await tester.tap(selector);
+      await tester.pumpAndSettle();
+      final other = find.byKey(const ValueKey('amoraa-select-option-Other'));
+      await tester.scrollUntilVisible(
+        other,
+        160,
+        scrollable: find.byType(Scrollable).last,
+      );
+      await tester.tap(other);
+      await tester.pumpAndSettle();
+
+      final custom = find.byKey(
+        const ValueKey('profile-custom-occupation-field'),
+      );
+      expect(custom, findsOneWidget);
+      expect(find.bySemanticsLabel('Specify occupation'), findsOneWidget);
+      expect(formKey.currentState!.validate(), isFalse);
+      await tester.pump();
+      expect(find.text('Please enter your occupation.'), findsOneWidget);
+
+      await tester.enterText(custom, '   ');
+      expect(formKey.currentState!.validate(), isFalse);
+      await tester.enterText(custom, '  Photographer  ');
+      expect(formKey.currentState!.validate(), isTrue);
+      await controller.save();
+      expect(controller.customOccupation.text, 'Photographer');
+      expect(repository.profile.profession, 'Photographer');
+      expect(
+        repository.profile.completionResult.sections
+            .firstWhere((section) => section.title == 'Work & Education')
+            .completedFields,
+        greaterThanOrEqualTo(1),
+      );
+
+      await tester.tap(selector);
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const ValueKey('amoraa-select-search')),
+        'Designer',
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const ValueKey('amoraa-select-option-Designer')),
+      );
+      await tester.pumpAndSettle();
+      expect(custom, findsNothing);
+      expect(controller.customOccupation.text, 'Photographer');
+
+      await tester.tap(selector);
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const ValueKey('amoraa-select-search')),
+        'Other',
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(other);
+      await tester.pumpAndSettle();
+      expect(custom, findsOneWidget);
+      expect(find.text('Photographer'), findsOneWidget);
+      expect(tester.takeException(), isNull);
     },
   );
 
@@ -373,6 +463,28 @@ void main() {
 
     expect(find.byType(ProfilePhotoGallery), findsOneWidget);
     expect(find.text('English • Hindi • Gujarati'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Profile and Preview display custom occupation text', (
+    tester,
+  ) async {
+    await repository.resetForTesting(
+      originalProfile.copyWith(profession: 'Photographer'),
+    );
+    await pump(
+      tester,
+      const ProfileScreen(showNavigation: false),
+      size: const Size(430, 5000),
+    );
+    expect(find.text('Photographer'), findsOneWidget);
+
+    await pump(
+      tester,
+      const ProfilePreviewScreen(),
+      size: const Size(430, 5000),
+    );
+    expect(find.text('Photographer'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

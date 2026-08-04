@@ -533,6 +533,13 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('discover-undo-button')));
     await tester.pumpAndSettle();
+    expect(find.text('Unlike ${firstProfile.name}?'), findsOneWidget);
+    expect(
+      find.text('This profile will be removed from your Likes list.'),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('Unlike'));
+    await tester.pumpAndSettle();
     expect(
       find.byKey(ValueKey('discover-profile-card-${firstProfile.id}')),
       findsOneWidget,

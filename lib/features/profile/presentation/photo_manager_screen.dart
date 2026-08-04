@@ -565,9 +565,22 @@ class _PhotoTile extends StatelessWidget {
     final status = switch (photo.uploadState) {
       ProfilePhotoUploadState.uploading => 'uploading',
       ProfilePhotoUploadState.failed => 'upload failed',
-      ProfilePhotoUploadState.localOnly => 'saved on this device',
       _ => 'ready',
     };
+    final statusBadge = photo.isPrimary
+        ? (Icons.star_rounded, 'Primary')
+        : switch (photo.uploadState) {
+            ProfilePhotoUploadState.uploading => (
+              Icons.cloud_upload_rounded,
+              'Uploading',
+            ),
+            ProfilePhotoUploadState.failed => (
+              Icons.error_outline_rounded,
+              'Failed',
+            ),
+            ProfilePhotoUploadState.localOnly => null,
+            _ => (Icons.check_rounded, 'Ready'),
+          };
     return Semantics(
       button: true,
       label:
@@ -593,11 +606,12 @@ class _PhotoTile extends StatelessWidget {
                   alignment: Alignment.topCenter,
                   child: LinearProgressIndicator(minHeight: 3),
                 ),
-              Positioned(
-                left: AmoraSpacing.space8,
-                top: AmoraSpacing.space8,
-                child: _PhotoStatusBadge(photo: photo),
-              ),
+              if (statusBadge case (final icon, final label))
+                Positioned(
+                  left: AmoraSpacing.space8,
+                  top: AmoraSpacing.space8,
+                  child: _PhotoStatusBadge(icon: icon, label: label),
+                ),
               Positioned(
                 right: 2,
                 top: 2,
@@ -651,29 +665,13 @@ class _PhotoTile extends StatelessWidget {
 }
 
 class _PhotoStatusBadge extends StatelessWidget {
-  const _PhotoStatusBadge({required this.photo});
+  const _PhotoStatusBadge({required this.icon, required this.label});
 
-  final ProfilePhotoViewData photo;
+  final IconData icon;
+  final String label;
 
   @override
   Widget build(BuildContext context) {
-    final (icon, label) = photo.isPrimary
-        ? (Icons.star_rounded, 'Primary')
-        : switch (photo.uploadState) {
-            ProfilePhotoUploadState.uploading => (
-              Icons.cloud_upload_rounded,
-              'Uploading',
-            ),
-            ProfilePhotoUploadState.failed => (
-              Icons.error_outline_rounded,
-              'Failed',
-            ),
-            ProfilePhotoUploadState.localOnly => (
-              Icons.phone_android_rounded,
-              'On device',
-            ),
-            _ => (Icons.check_rounded, 'Ready'),
-          };
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: BoxDecoration(

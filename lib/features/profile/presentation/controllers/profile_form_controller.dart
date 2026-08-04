@@ -10,7 +10,14 @@ class ProfileFormController extends ChangeNotifier {
     _baseProfile = this.repository.profile;
     name = TextEditingController(text: _baseProfile.name);
     profession = TextEditingController(
-      text: ProfileFormOptions.normalizeOccupation(_baseProfile.profession),
+      text: ProfileFormOptions.occupationSelectionFromStored(
+        _baseProfile.profession,
+      ),
+    );
+    customOccupation = TextEditingController(
+      text: ProfileFormOptions.customOccupationFromStored(
+        _baseProfile.profession,
+      ),
     );
     company = TextEditingController(text: _baseProfile.company);
     education = TextEditingController(
@@ -56,6 +63,7 @@ class ProfileFormController extends ChangeNotifier {
   late UserProfile _baseProfile;
   late final TextEditingController name;
   late final TextEditingController profession;
+  late final TextEditingController customOccupation;
   late final TextEditingController company;
   late final TextEditingController education;
   late final TextEditingController customEducation;
@@ -78,6 +86,7 @@ class ProfileFormController extends ChangeNotifier {
   List<TextEditingController> get _textControllers => [
     name,
     profession,
+    customOccupation,
     company,
     education,
     customEducation,
@@ -106,7 +115,10 @@ class ProfileFormController extends ChangeNotifier {
       birthdate: birthDate == null ? '' : AmoraDateOfBirth.format(birthDate!),
       gender: ProfileFormOptions.storedGenderValue(gender),
       bio: bio.text.trim(),
-      profession: profession.text.trim(),
+      profession: ProfileFormOptions.storedOccupationValue(
+        profession.text,
+        customValue: customOccupation.text,
+      ),
       company: company.text.trim(),
       education: education.text.trim(),
       location: city.text.trim(),
@@ -153,6 +165,11 @@ class ProfileFormController extends ChangeNotifier {
 
   void setEducation(String value) {
     education.text = value;
+    markDirty();
+  }
+
+  void setOccupation(String value) {
+    profession.text = value;
     markDirty();
   }
 
@@ -219,6 +236,17 @@ class ProfileFormController extends ChangeNotifier {
 
   Future<UserProfile> save() async {
     if (saving) return draftProfile;
+    if (profession.text == 'Other') {
+      final trimmedCustomOccupation = customOccupation.text.trim();
+      if (trimmedCustomOccupation != customOccupation.text) {
+        customOccupation.value = TextEditingValue(
+          text: trimmedCustomOccupation,
+          selection: TextSelection.collapsed(
+            offset: trimmedCustomOccupation.length,
+          ),
+        );
+      }
+    }
     if (education.text == 'Other') {
       final trimmedCustomEducation = customEducation.text.trim();
       if (trimmedCustomEducation != customEducation.text) {

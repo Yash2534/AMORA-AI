@@ -1,11 +1,13 @@
+import 'package:amora_ai/core/data/image_repository.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/features/subscription/domain/amoraa_membership_status.dart';
-import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/discover/presentation/discover_screen.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
+import 'package:amora_ai/features/profile/presentation/profile_detail_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_edit_screen.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_public_profile_details.dart';
+import 'package:amora_ai/features/profile/presentation/widgets/amoraa_public_profile_view.dart';
 import 'package:flutter/material.dart';
 
 class ProfilePreviewScreen extends StatefulWidget {
@@ -19,6 +21,8 @@ class ProfilePreviewScreen extends StatefulWidget {
 
 class _ProfilePreviewScreenState extends State<ProfilePreviewScreen> {
   final _repository = LocalProfileRepository.instance;
+  final _galleryController = PageController();
+  int _photoIndex = 0;
 
   @override
   void initState() {
@@ -31,6 +35,7 @@ class _ProfilePreviewScreenState extends State<ProfilePreviewScreen> {
   void dispose() {
     _repository.removeListener(_refresh);
     AmoraaMembershipStatus.listenable.removeListener(_refresh);
+    _galleryController.dispose();
     super.dispose();
   }
 
@@ -46,6 +51,9 @@ class _ProfilePreviewScreenState extends State<ProfilePreviewScreen> {
       isAadhaarVerified: false,
       isPremium: AmoraaMembershipStatus.isPremiumActive,
     );
+    final displayProfile = publicProfile.toPublicDisplayProfile();
+    final photos = publicProfile.orderedPhotos;
+    if (_photoIndex >= photos.length) _photoIndex = 0;
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -58,31 +66,30 @@ class _ProfilePreviewScreenState extends State<ProfilePreviewScreen> {
       ),
       body: SafeArea(
         top: false,
-        child: ResponsiveMobileFrame(
-          maxWidth: 720,
-          child: CustomScrollView(
-            key: const Key('profile-preview-scroll'),
-            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-            slivers: [
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 48),
-                sliver: SliverList.list(
-                  children: [
-                    Semantics(
-                      header: true,
-                      child: Text(
-                        'See how your profile appears to others.',
-                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          color: AppColors.text.withValues(alpha: .68),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    AmoraaPublicProfileDetails(profile: publicProfile),
-                  ],
-                ),
-              ),
-            ],
+        child: AmoraaPublicProfileView(
+          mode: PublicProfileViewMode.preview,
+          scrollKey: const Key('profile-preview-scroll'),
+          galleryBuilder: (context, height, desktop) => ProfileMediaGallery(
+            key: const ValueKey('profile-media-gallery'),
+            height: height,
+            profile: displayProfile,
+            photos: photos,
+            controller: _galleryController,
+            selectedIndex: _photoIndex,
+            mode: PublicProfileViewMode.preview,
+            saved: false,
+            onPageChanged: (index) => setState(() => _photoIndex = index),
+            onBack: () {},
+            onSave: () {},
+            onMore: () {},
+            onOpen: (index) =>
+                _openFullScreenGallery(displayProfile, photos, index),
+            onDoubleTap: null,
+          ),
+          story: ProfileStory(
+            profile: displayProfile,
+            mode: PublicProfileViewMode.preview,
+            blocked: false,
           ),
         ),
       ),
@@ -118,6 +125,23 @@ class _ProfilePreviewScreenState extends State<ProfilePreviewScreen> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  void _openFullScreenGallery(
+    DummyProfile profile,
+    List<ProfilePhotoViewData> photos,
+    int initialIndex,
+  ) {
+    Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        fullscreenDialog: true,
+        builder: (_) => AmoraaProfileFullscreenGallery(
+          profile: profile,
+          photos: photos,
+          initialIndex: initialIndex,
         ),
       ),
     );

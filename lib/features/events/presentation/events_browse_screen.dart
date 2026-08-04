@@ -67,7 +67,7 @@ class _EventsMemberExperienceState extends State<EventsMemberExperience> {
 
   Timer? _loadingTimer;
   var _loading = true;
-  var _selectedCategory = _allCategory;
+  Set<String> _selectedCategories = <String>{};
   var _didPrecache = false;
 
   EventParticipationController get _controller =>
@@ -80,11 +80,16 @@ class _EventsMemberExperienceState extends State<EventsMemberExperience> {
   String get _city => events.isEmpty ? '' : events.first.city;
 
   List<EventModel> get _filteredEvents {
-    if (_selectedCategory == _allCategory) {
+    if (_selectedCategories.isEmpty ||
+        _selectedCategories.contains(_allCategory)) {
       return events;
     }
     return events
-        .where((event) => _matchesCategory(event, _selectedCategory))
+        .where(
+          (event) => _selectedCategories.any(
+            (category) => _matchesCategory(event, category),
+          ),
+        )
         .toList(growable: false);
   }
 
@@ -188,9 +193,10 @@ class _EventsMemberExperienceState extends State<EventsMemberExperience> {
               const SizedBox(height: 16),
               EventCategoryBar(
                 categories: _categories,
-                selected: _selectedCategory,
-                onSelected: (category) =>
-                    setState(() => _selectedCategory = category),
+                selectedValues: _selectedCategories,
+                onChanged: (categories) => setState(
+                  () => _selectedCategories = Set<String>.of(categories),
+                ),
               ),
               const SizedBox(height: 24),
               if (featured != null) ...[
@@ -217,6 +223,7 @@ class _EventsMemberExperienceState extends State<EventsMemberExperience> {
                 ),
                 const SizedBox(height: 12),
                 _EventRail(
+                  key: const ValueKey('recommended-event-rail'),
                   events: recommended,
                   participation: _participation,
                   onOpen: _openDetail,
@@ -442,7 +449,7 @@ class _EventsMemberExperienceState extends State<EventsMemberExperience> {
     return terms.any(normalized.contains);
   }
 
-  void _showAll() => setState(() => _selectedCategory = _allCategory);
+  void _showAll() => setState(_selectedCategories.clear);
 
   void _showSearch() {
     showSearch<EventModel?>(
@@ -600,6 +607,7 @@ class _EventsHeaderDelegate extends SliverPersistentHeaderDelegate {
 
 class _EventRail extends StatelessWidget {
   const _EventRail({
+    super.key,
     required this.events,
     required this.participation,
     required this.onOpen,
@@ -617,8 +625,12 @@ class _EventRail extends StatelessWidget {
   Widget build(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
     final itemWidth = width >= 700 ? 330.0 : (width - 64).clamp(260.0, 328.0);
+    final textScale = MediaQuery.textScalerOf(context).scale(1);
+    final recommendedHeight =
+        AmoraaRecommendedEventCard.baseHeight +
+        ((textScale - 1).clamp(0.0, .3) * 120);
     return SizedBox(
-      height: showDistance ? 174 : 418,
+      height: showDistance ? 174 : recommendedHeight,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: events.length,
@@ -635,7 +647,7 @@ class _EventRail extends StatelessWidget {
                     onJoin: () => onJoin(event),
                     showDistance: true,
                   )
-                : StandardEventCard(
+                : AmoraaRecommendedEventCard(
                     event: event,
                     status: participation[event.id],
                     onOpen: () => onOpen(event),

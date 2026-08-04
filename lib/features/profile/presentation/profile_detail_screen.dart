@@ -4,14 +4,17 @@ import 'package:amora_ai/core/data/image_repository.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
-import 'package:amora_ai/core/widgets/amora_profile_image.dart';
 import 'package:amora_ai/core/widgets/amora_super_like_animation.dart';
+import 'package:amora_ai/core/widgets/amoraa_confirm_action_sheet.dart';
+import 'package:amora_ai/core/widgets/amoraa_identity_badge.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
-import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/profile/domain/profile_interest_policy.dart';
 import 'package:amora_ai/features/profile/domain/profile_form_options.dart';
+import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
 import 'package:amora_ai/features/profile/presentation/controllers/profile_relationship_controller.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_rose_gift_sheet.dart';
+import 'package:amora_ai/features/profile/presentation/widgets/amoraa_public_profile_view.dart';
+import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_photo_view.dart';
 import 'package:amora_ai/features/chat/data/local_chat_repository.dart';
 import 'package:amora_ai/features/chat/presentation/chat_detail_screen.dart';
 import 'package:amora_ai/features/discover/presentation/browse_grid_screen.dart';
@@ -69,15 +72,24 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
   bool get _superLiked =>
       ProfileRelationshipController.instance.isSuperLiked(_profile.id);
 
-  List<String> get _photos {
+  List<ProfilePhotoViewData> get _photos {
     final seen = <String>{};
-    final photos = <String>[];
+    final sources = <String>[];
     for (final photo in <String>[_profile.imageUrl, ..._profile.gallery]) {
       final value = photo.trim();
-      if (value.isNotEmpty && seen.add(value)) photos.add(value);
+      if (value.isNotEmpty && seen.add(value)) sources.add(value);
     }
-    if (photos.isEmpty) photos.add(_profile.fallbackAsset);
-    return photos;
+    if (sources.isEmpty) sources.add(_profile.fallbackAsset);
+    return <ProfilePhotoViewData>[
+      for (var index = 0; index < sources.length; index++)
+        ProfilePhotoViewData(
+          id: 'viewed-${_profile.id}-$index',
+          source: sources[index],
+          order: index,
+          isPrimary: index == 0,
+          uploadState: ProfilePhotoUploadState.bundled,
+        ),
+    ];
   }
 
   @override
@@ -116,118 +128,17 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: ResponsiveMobileFrame(
-          maxWidth: 1080,
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final desktop = constraints.maxWidth >= 760;
-              final horizontalPadding = desktop
-                  ? AmoraSpacing.space24
-                  : constraints.maxWidth < 360
-                  ? AmoraSpacing.space16
-                  : AmoraSpacing.space20;
-              return Stack(
-                children: [
-                  SingleChildScrollView(
-                    key: const ValueKey('profile-detail-scroll'),
-                    physics: const BouncingScrollPhysics(
-                      parent: AlwaysScrollableScrollPhysics(),
-                    ),
-                    padding: EdgeInsets.fromLTRB(
-                      horizontalPadding,
-                      desktop ? AmoraSpacing.space24 : 0,
-                      horizontalPadding,
-                      ProfileActionBar.contentInset,
-                    ),
-                    child: desktop
-                        ? _buildDesktop(context, constraints)
-                        : _buildMobile(context, constraints),
-                  ),
-                  Align(
-                    alignment: Alignment.bottomCenter,
-                    child: Padding(
-                      padding: EdgeInsets.fromLTRB(
-                        horizontalPadding,
-                        0,
-                        horizontalPadding,
-                        AmoraSpacing.space8,
-                      ),
-                      child: ProfileActionBar(
-                        liked: _liked,
-                        superLiked: _superLiked,
-                        superLikeSending: _superLikeSending,
-                        giftSending: _giftSheetOpen,
-                        onGift: _showRoseGift,
-                        onLike: _toggleLike,
-                        onSuperLike: _sendSuperLike,
-                        onMessage: _startChat,
-                      ),
-                    ),
-                  ),
-                  Positioned.fill(
-                    child: IgnorePointer(
-                      child: AmoraSuperLikeAnimation(
-                        animation: _superLikeAnimation,
-                        profileName: _profile.name,
-                      ),
-                    ),
-                  ),
-                ],
-              );
-            },
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMobile(BuildContext context, BoxConstraints constraints) {
-    final galleryHeight = (constraints.maxHeight * .62).clamp(420.0, 620.0);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        ProfileMediaGallery(
-          key: const ValueKey('profile-media-gallery'),
-          height: galleryHeight,
-          profile: _profile,
-          photos: _photos,
-          controller: _galleryController,
-          selectedIndex: _photoIndex,
-          saved: _saved,
-          onPageChanged: (index) => setState(() => _photoIndex = index),
-          onBack: _goBack,
-          onSave: _toggleSave,
-          onMore: _showReportSheet,
-          onOpen: _openFullScreenGallery,
-          onDoubleTap: _toggleLike,
-        ),
-        const SizedBox(height: AmoraSpacing.space20),
-        _ProfileStory(
-          profile: _profile,
-          blocked: _blocked,
-          onPromptReply: _replyToPrompt,
-          onWhyMatched: _openWhyMatched,
-          onReport: _showReportSheet,
-          onBlock: _showBlockDialog,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDesktop(BuildContext context, BoxConstraints constraints) {
-    final galleryHeight = (constraints.maxHeight - 48).clamp(560.0, 760.0);
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          flex: 10,
-          child: ProfileMediaGallery(
+        child: AmoraaPublicProfileView(
+          mode: PublicProfileViewMode.otherUser,
+          scrollKey: const ValueKey('profile-detail-scroll'),
+          galleryBuilder: (context, height, desktop) => ProfileMediaGallery(
             key: const ValueKey('profile-media-gallery'),
-            height: galleryHeight,
+            height: height,
             profile: _profile,
             photos: _photos,
             controller: _galleryController,
             selectedIndex: _photoIndex,
+            mode: PublicProfileViewMode.otherUser,
             saved: _saved,
             onPageChanged: (index) => setState(() => _photoIndex = index),
             onBack: _goBack,
@@ -236,20 +147,34 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
             onOpen: _openFullScreenGallery,
             onDoubleTap: _toggleLike,
           ),
-        ),
-        const SizedBox(width: AmoraSpacing.space24),
-        Expanded(
-          flex: 11,
-          child: _ProfileStory(
+          story: ProfileStory(
             profile: _profile,
+            mode: PublicProfileViewMode.otherUser,
             blocked: _blocked,
             onPromptReply: _replyToPrompt,
             onWhyMatched: _openWhyMatched,
             onReport: _showReportSheet,
             onBlock: _showBlockDialog,
           ),
+          interactionBar: ProfileActionBar(
+            profileName: _profile.name,
+            liked: _liked,
+            superLiked: _superLiked,
+            superLikeSending: _superLikeSending,
+            giftSending: _giftSheetOpen,
+            onGift: _showRoseGift,
+            onLike: _toggleLike,
+            onSuperLike: _sendSuperLike,
+            onMessage: _startChat,
+          ),
+          interactionOverlay: IgnorePointer(
+            child: AmoraSuperLikeAnimation(
+              animation: _superLikeAnimation,
+              profileName: _profile.name,
+            ),
+          ),
         ),
-      ],
+      ),
     );
   }
 
@@ -262,13 +187,34 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
     }
   }
 
-  void _toggleLike() {
-    ProfileRelationshipController.instance.toggleLiked(_profile);
-    _snack(_liked ? 'Profile liked successfully' : 'Like removed');
+  Future<void> _toggleLike() async {
+    final relationships = ProfileRelationshipController.instance;
+    if (_liked) {
+      final removed = await showAmoraaProfileActionConfirmation(
+        context: context,
+        action: AmoraaProfileAction.unlike,
+        profileName: _profile.name,
+        onConfirm: () => relationships.removeLike(_profile.id),
+      );
+      if (removed == true && mounted) _snack('Like removed');
+      return;
+    }
+    relationships.likeProfile(_profile);
+    _snack('Profile liked successfully');
   }
 
   Future<void> _sendSuperLike() async {
-    if (_superLikeSending || _superLiked) return;
+    if (_superLikeSending) return;
+    if (_superLiked) {
+      await showAmoraaProfileActionConfirmation(
+        context: context,
+        action: AmoraaProfileAction.removeSuperLike,
+        profileName: _profile.name,
+        onConfirm: () =>
+            ProfileRelationshipController.instance.removeSuperLike(_profile.id),
+      );
+      return;
+    }
     if (AmoraSession.isGuest) {
       await _requireAuth(_sendSuperLike);
       return;
@@ -417,12 +363,22 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
     );
   }
 
-  void _toggleSave() {
+  Future<void> _toggleSave() async {
     if (AmoraSession.isGuest) {
-      _requireAuth(_toggleSave);
+      await _requireAuth(_toggleSave);
       return;
     }
-    ProfileRelationshipController.instance.toggleSaved(_profile);
+    final relationships = ProfileRelationshipController.instance;
+    if (_saved) {
+      await showAmoraaProfileActionConfirmation(
+        context: context,
+        action: AmoraaProfileAction.unsave,
+        profileName: _profile.name,
+        onConfirm: () => relationships.removeSaved(_profile.id),
+      );
+      return;
+    }
+    relationships.saveProfile(_profile);
   }
 
   void _openWhyMatched() {
@@ -441,7 +397,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
     Navigator.of(context).push<void>(
       MaterialPageRoute<void>(
         fullscreenDialog: true,
-        builder: (_) => _FullScreenGallery(
+        builder: (_) => AmoraaProfileFullscreenGallery(
           profile: _profile,
           photos: _photos,
           initialIndex: initialIndex,
@@ -522,13 +478,18 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
       );
   }
 
-  void _showBlockDialog() {
-    showBlockConfirmationDialog(context: context, userName: _profile.name).then(
-      (blocked) {
-        if (blocked != true || !mounted) return;
-        ProfileRelationshipController.instance.blockProfile(_profile);
-        showBlockedUserSuccessSheet(context: context, userName: _profile.name);
-      },
+  Future<void> _showBlockDialog() async {
+    if (_blocked) return;
+    final blocked = await showBlockConfirmationDialog(
+      context: context,
+      userName: _profile.name,
+      onConfirm: () =>
+          ProfileRelationshipController.instance.blockProfile(_profile),
+    );
+    if (blocked != true || !mounted) return;
+    await showBlockedUserSuccessSheet(
+      context: context,
+      userName: _profile.name,
     );
   }
 
@@ -545,6 +506,7 @@ class ProfileMediaGallery extends StatelessWidget {
     required this.photos,
     required this.controller,
     required this.selectedIndex,
+    required this.mode,
     required this.saved,
     required this.onPageChanged,
     required this.onBack,
@@ -556,16 +518,17 @@ class ProfileMediaGallery extends StatelessWidget {
 
   final double height;
   final DummyProfile profile;
-  final List<String> photos;
+  final List<ProfilePhotoViewData> photos;
   final PageController controller;
   final int selectedIndex;
+  final PublicProfileViewMode mode;
   final bool saved;
   final ValueChanged<int> onPageChanged;
   final VoidCallback onBack;
   final VoidCallback onSave;
   final VoidCallback onMore;
   final ValueChanged<int> onOpen;
-  final VoidCallback onDoubleTap;
+  final VoidCallback? onDoubleTap;
 
   @override
   Widget build(BuildContext context) {
@@ -594,14 +557,15 @@ class ProfileMediaGallery extends StatelessWidget {
                           '${profile.name} profile photo ${index + 1} of ${photos.length}',
                       child: LayoutBuilder(
                         builder: (context, imageConstraints) {
-                          return AmoraProfileImage(
-                            imageUrl: photos[index],
-                            assetPath: profile.fallbackAsset,
-                            initials: profile.initials,
+                          return AmoraaProfilePhotoView(
+                            photo: photos[index],
                             width: imageConstraints.maxWidth,
                             height: imageConstraints.maxHeight,
                             fit: BoxFit.cover,
                             alignment: Alignment.topCenter,
+                            showTransferState: false,
+                            semanticLabel:
+                                '${profile.name} profile photo ${index + 1} of ${photos.length}',
                           );
                         },
                       ),
@@ -613,17 +577,19 @@ class ProfileMediaGallery extends StatelessWidget {
             const Positioned.fill(
               child: IgnorePointer(child: _MediaReadabilityOverlay()),
             ),
-            Positioned(
-              left: AmoraSpacing.space12,
-              right: AmoraSpacing.space12,
-              top: AmoraSpacing.space12,
-              child: ProfileTopControls(
-                saved: saved,
-                onBack: onBack,
-                onSave: onSave,
-                onMore: onMore,
+            if (mode == PublicProfileViewMode.otherUser)
+              Positioned(
+                left: AmoraSpacing.space12,
+                right: AmoraSpacing.space12,
+                top: AmoraSpacing.space12,
+                child: ProfileTopControls(
+                  profileName: profile.name,
+                  saved: saved,
+                  onBack: onBack,
+                  onSave: onSave,
+                  onMore: onMore,
+                ),
               ),
-            ),
             Positioned(
               left: AmoraSpacing.space20,
               right: AmoraSpacing.space20,
@@ -666,6 +632,7 @@ class _MediaReadabilityOverlay extends StatelessWidget {
 class ProfileTopControls extends StatelessWidget {
   const ProfileTopControls({
     super.key,
+    required this.profileName,
     required this.saved,
     required this.onBack,
     required this.onSave,
@@ -673,6 +640,7 @@ class ProfileTopControls extends StatelessWidget {
   });
 
   final bool saved;
+  final String profileName;
   final VoidCallback onBack;
   final VoidCallback onSave;
   final VoidCallback onMore;
@@ -690,7 +658,11 @@ class ProfileTopControls extends StatelessWidget {
         const Spacer(),
         _GlassIconButton(
           key: const ValueKey('profile-save-button'),
-          tooltip: saved ? 'Remove saved profile' : 'Save profile',
+          tooltip: saved
+              ? AmoraaProfileAction.unsave.semanticLabel(
+                  amoraaProfileActionName(profileName),
+                )
+              : 'Save $profileName',
           icon: saved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
           selected: saved,
           onTap: onSave,
@@ -806,7 +778,20 @@ class ProfileIdentityHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final verified = profile.verified;
+    final title = <String>[
+      profile.name.trim().isEmpty
+          ? 'AMORAA member'
+          : profile.name.split(' ').first,
+      if (profile.age > 0) '${profile.age}',
+    ].join(', ');
+    final hasMetadata =
+        profile.distance.trim().isNotEmpty ||
+        profile.status.trim().isNotEmpty ||
+        ProfileFormOptions.normalizeCity(profile.city).isNotEmpty;
+    final badge = resolveAmoraaIdentityBadge(
+      isAadhaarVerified: profile.verified,
+      isPremium: profile.premium,
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -814,7 +799,7 @@ class ProfileIdentityHeader extends StatelessWidget {
           children: [
             Flexible(
               child: Text(
-                '${profile.name.split(' ').first}, ${profile.age}',
+                title,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: AmoraTextStyles.headlineLarge.copyWith(
@@ -824,48 +809,52 @@ class ProfileIdentityHeader extends StatelessWidget {
                 ),
               ),
             ),
-            if (verified) ...[
+            if (badge != AmoraaIdentityBadgeType.none) ...[
               const SizedBox(width: AmoraSpacing.space8),
-              const Icon(
-                Icons.verified_rounded,
-                color: AppColors.tertiary,
-                size: 24,
-                semanticLabel: 'Verified profile',
+              AmoraaIdentityBadge(
+                isAadhaarVerified: profile.verified,
+                isPremium: profile.premium,
               ),
             ],
           ],
         ),
-        const SizedBox(height: AmoraSpacing.space4),
-        Text(
-          profile.profession,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: AmoraTextStyles.titleMedium.copyWith(
-            color: AppColors.surface,
-            fontWeight: FontWeight.w700,
+        if (profile.profession.trim().isNotEmpty) ...[
+          const SizedBox(height: AmoraSpacing.space4),
+          Text(
+            profile.profession,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AmoraTextStyles.titleMedium.copyWith(
+              color: AppColors.surface,
+              fontWeight: FontWeight.w700,
+            ),
           ),
-        ),
-        const SizedBox(height: AmoraSpacing.space8),
-        Wrap(
-          spacing: AmoraSpacing.space12,
-          runSpacing: AmoraSpacing.space4,
-          children: [
-            _OverlayMeta(
-              icon: Icons.location_on_rounded,
-              text: profile.distance,
-            ),
-            _OverlayMeta(
-              icon: Icons.circle,
-              text: profile.status,
-              smallIcon: true,
-            ),
-            if (ProfileFormOptions.normalizeCity(profile.city).isNotEmpty)
-              _OverlayMeta(
-                icon: Icons.location_city_rounded,
-                text: ProfileFormOptions.normalizeCity(profile.city),
-              ),
-          ],
-        ),
+        ],
+        if (hasMetadata) ...[
+          const SizedBox(height: AmoraSpacing.space8),
+          Wrap(
+            spacing: AmoraSpacing.space12,
+            runSpacing: AmoraSpacing.space4,
+            children: [
+              if (profile.distance.trim().isNotEmpty)
+                _OverlayMeta(
+                  icon: Icons.location_on_rounded,
+                  text: profile.distance,
+                ),
+              if (profile.status.trim().isNotEmpty)
+                _OverlayMeta(
+                  icon: Icons.circle,
+                  text: profile.status,
+                  smallIcon: true,
+                ),
+              if (ProfileFormOptions.normalizeCity(profile.city).isNotEmpty)
+                _OverlayMeta(
+                  icon: Icons.location_city_rounded,
+                  text: ProfileFormOptions.normalizeCity(profile.city),
+                ),
+            ],
+          ),
+        ],
       ],
     );
   }
@@ -905,70 +894,131 @@ class _OverlayMeta extends StatelessWidget {
   }
 }
 
-typedef _ProfilePromptReply =
+typedef ProfilePromptReply =
     void Function(String promptId, String prompt, String answer);
 
-class _ProfileStory extends StatelessWidget {
-  const _ProfileStory({
+class ProfileStory extends StatelessWidget {
+  const ProfileStory({
+    super.key,
     required this.profile,
+    required this.mode,
     required this.blocked,
-    required this.onPromptReply,
-    required this.onWhyMatched,
-    required this.onReport,
-    required this.onBlock,
+    this.onPromptReply,
+    this.onWhyMatched,
+    this.onReport,
+    this.onBlock,
   });
 
   final DummyProfile profile;
+  final PublicProfileViewMode mode;
   final bool blocked;
-  final _ProfilePromptReply onPromptReply;
-  final VoidCallback onWhyMatched;
-  final VoidCallback onReport;
-  final VoidCallback onBlock;
+  final ProfilePromptReply? onPromptReply;
+  final VoidCallback? onWhyMatched;
+  final VoidCallback? onReport;
+  final VoidCallback? onBlock;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _SectionReveal(child: ProfileQuickFacts(profile: profile)),
-        const SizedBox(height: AmoraSpacing.space24),
-        _SectionReveal(child: ProfileAboutSection(profile: profile)),
-        const SizedBox(height: AmoraSpacing.space24),
-        _SectionReveal(child: RelationshipIntentionsSection(profile: profile)),
-        const SizedBox(height: AmoraSpacing.space24),
-        _SectionReveal(child: LifestyleGrid(profile: profile)),
-        const SizedBox(height: AmoraSpacing.space24),
-        _SectionReveal(child: _InterestsSection(profile: profile)),
-        const SizedBox(height: AmoraSpacing.space24),
+    final hasQuickFacts = <String>[
+      profile.height,
+      ProfileFormOptions.normalizeEducation(profile.education),
+      ...profile.languages,
+      profile.intent,
+      profile.smoking,
+      profile.drinking,
+    ].any((value) => value.trim().isNotEmpty);
+    final hasRelationship = <String>[
+      profile.intent,
+      profile.familyValues,
+      ...profile.dateIdeas,
+    ].any((value) => value.trim().isNotEmpty);
+    final hasLifestyle = <String>[
+      profile.fitnessLevel,
+      profile.foodPreference,
+      profile.smoking,
+      profile.drinking,
+      profile.petPreference,
+      profile.religion,
+      profile.personality,
+      profile.loveLanguage,
+      profile.weekendPlan,
+    ].any((value) => value.trim().isNotEmpty);
+    final hasInterests = ProfileInterestPolicy.visible(
+      profile.interests,
+    ).isNotEmpty;
+    final hasPrompts = profile.promptAnswers.entries.any(
+      (entry) => entry.key.trim().isNotEmpty && entry.value.trim().isNotEmpty,
+    );
+    final sections = <Widget>[
+      if (hasQuickFacts)
         _SectionReveal(
+          key: const ValueKey('public-profile-section-quick-facts'),
+          child: ProfileQuickFacts(profile: profile),
+        ),
+      if (profile.bio.trim().isNotEmpty)
+        _SectionReveal(
+          key: const ValueKey('public-profile-section-about'),
+          child: ProfileAboutSection(profile: profile),
+        ),
+      if (hasRelationship)
+        _SectionReveal(
+          key: const ValueKey('public-profile-section-relationship'),
+          child: RelationshipIntentionsSection(profile: profile),
+        ),
+      if (hasLifestyle)
+        _SectionReveal(
+          key: const ValueKey('public-profile-section-lifestyle'),
+          child: LifestyleGrid(profile: profile),
+        ),
+      if (hasInterests)
+        _SectionReveal(
+          key: const ValueKey('public-profile-section-interests'),
+          child: _InterestsSection(profile: profile),
+        ),
+      if (hasPrompts)
+        _SectionReveal(
+          key: const ValueKey('public-profile-section-prompts'),
           child: _ProfilePromptsSection(
             profile: profile,
             onReply: onPromptReply,
           ),
         ),
-        const SizedBox(height: AmoraSpacing.space24),
+      if (mode == PublicProfileViewMode.otherUser && profile.score > 0)
         _SectionReveal(
+          key: const ValueKey('public-profile-section-compatibility'),
           child: CompatibilitySection(
             profile: profile,
-            onWhyMatched: onWhyMatched,
+            onWhyMatched: onWhyMatched!,
           ),
         ),
-        const SizedBox(height: AmoraSpacing.space24),
+      if (profile.verification.trim().isNotEmpty ||
+          profile.status.trim().isNotEmpty)
         _SectionReveal(
+          key: const ValueKey('public-profile-section-trust'),
           child: TrustAndSafetySection(
             profile: profile,
             blocked: blocked,
+            showActions: mode == PublicProfileViewMode.otherUser,
             onReport: onReport,
             onBlock: onBlock,
           ),
         ),
+    ];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (var index = 0; index < sections.length; index++) ...[
+          sections[index],
+          if (index != sections.length - 1)
+            const SizedBox(height: AmoraSpacing.space24),
+        ],
       ],
     );
   }
 }
 
 class _SectionReveal extends StatelessWidget {
-  const _SectionReveal({required this.child});
+  const _SectionReveal({super.key, required this.child});
 
   final Widget child;
 
@@ -1384,7 +1434,7 @@ class _ProfilePromptsSection extends StatelessWidget {
   const _ProfilePromptsSection({required this.profile, required this.onReply});
 
   final DummyProfile profile;
-  final _ProfilePromptReply onReply;
+  final ProfilePromptReply? onReply;
 
   @override
   Widget build(BuildContext context) {
@@ -1410,11 +1460,13 @@ class _ProfilePromptsSection extends StatelessWidget {
               promptId: '${profile.id}-prompt-$index',
               prompt: prompts[index].key,
               answer: prompts[index].value,
-              onReply: () => onReply(
-                '${profile.id}-prompt-$index',
-                prompts[index].key,
-                prompts[index].value,
-              ),
+              onReply: onReply == null
+                  ? null
+                  : () => onReply!(
+                      '${profile.id}-prompt-$index',
+                      prompts[index].key,
+                      prompts[index].value,
+                    ),
             ),
           ),
       ],
@@ -1428,13 +1480,13 @@ class ProfilePromptCard extends StatelessWidget {
     required this.promptId,
     required this.prompt,
     required this.answer,
-    required this.onReply,
+    this.onReply,
   });
 
   final String promptId;
   final String prompt;
   final String answer;
-  final VoidCallback onReply;
+  final VoidCallback? onReply;
 
   @override
   Widget build(BuildContext context) {
@@ -1465,27 +1517,29 @@ class ProfilePromptCard extends StatelessWidget {
               fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: AmoraSpacing.space16),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Semantics(
-              button: true,
-              label: 'Reply to this profile prompt',
-              child: TextButton.icon(
-                key: ValueKey('profile-prompt-reply-$promptId'),
-                onPressed: onReply,
-                style: TextButton.styleFrom(
-                  foregroundColor: AppColors.primary,
-                  minimumSize: const Size(48, 48),
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  backgroundColor: AppColors.tertiary.withValues(alpha: .30),
-                  shape: const StadiumBorder(),
+          if (onReply != null) ...[
+            const SizedBox(height: AmoraSpacing.space16),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Semantics(
+                button: true,
+                label: 'Reply to this profile prompt',
+                child: TextButton.icon(
+                  key: ValueKey('profile-prompt-reply-$promptId'),
+                  onPressed: onReply,
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.primary,
+                    minimumSize: const Size(48, 48),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    backgroundColor: AppColors.tertiary.withValues(alpha: .30),
+                    shape: const StadiumBorder(),
+                  ),
+                  icon: const Icon(Icons.reply_rounded, size: 20),
+                  label: const Text('Reply'),
                 ),
-                icon: const Icon(Icons.reply_rounded, size: 20),
-                label: const Text('Reply'),
               ),
             ),
-          ),
+          ],
         ],
       ),
     );
@@ -1637,14 +1691,16 @@ class TrustAndSafetySection extends StatelessWidget {
     super.key,
     required this.profile,
     required this.blocked,
-    required this.onReport,
-    required this.onBlock,
+    required this.showActions,
+    this.onReport,
+    this.onBlock,
   });
 
   final DummyProfile profile;
   final bool blocked;
-  final VoidCallback onReport;
-  final VoidCallback onBlock;
+  final bool showActions;
+  final VoidCallback? onReport;
+  final VoidCallback? onBlock;
 
   @override
   Widget build(BuildContext context) {
@@ -1661,40 +1717,44 @@ class TrustAndSafetySection extends StatelessWidget {
             const SizedBox(height: AmoraSpacing.space16),
             _TrustRow(icon: Icons.verified_user_rounded, text: verification),
           ],
-          const SizedBox(height: AmoraSpacing.space8),
-          _TrustRow(icon: Icons.schedule_rounded, text: profile.status),
-          const SizedBox(height: AmoraSpacing.space16),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  key: const ValueKey('profile-report-button'),
-                  onPressed: onReport,
-                  icon: const Icon(Icons.flag_outlined),
-                  label: const Text('Report'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.primary,
-                    side: const BorderSide(color: AppColors.tertiary),
-                    minimumSize: const Size.fromHeight(48),
+          if (profile.status.trim().isNotEmpty) ...[
+            const SizedBox(height: AmoraSpacing.space8),
+            _TrustRow(icon: Icons.schedule_rounded, text: profile.status),
+          ],
+          if (showActions) ...[
+            const SizedBox(height: AmoraSpacing.space16),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    key: const ValueKey('profile-report-button'),
+                    onPressed: onReport,
+                    icon: const Icon(Icons.flag_outlined),
+                    label: const Text('Report'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.primary,
+                      side: const BorderSide(color: AppColors.tertiary),
+                      minimumSize: const Size.fromHeight(48),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: AmoraSpacing.space8),
-              Expanded(
-                child: OutlinedButton.icon(
-                  key: const ValueKey('profile-block-button'),
-                  onPressed: onBlock,
-                  icon: const Icon(Icons.block_rounded),
-                  label: Text(blocked ? 'Blocked' : 'Block'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.secondary,
-                    side: const BorderSide(color: AppColors.tertiary),
-                    minimumSize: const Size.fromHeight(48),
+                const SizedBox(width: AmoraSpacing.space8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    key: const ValueKey('profile-block-button'),
+                    onPressed: onBlock,
+                    icon: const Icon(Icons.block_rounded),
+                    label: Text(blocked ? 'Blocked' : 'Block'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.secondary,
+                      side: const BorderSide(color: AppColors.tertiary),
+                      minimumSize: const Size.fromHeight(48),
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
+          ],
         ],
       ),
     );
@@ -1744,6 +1804,7 @@ class _TrustRow extends StatelessWidget {
 class ProfileActionBar extends StatelessWidget {
   const ProfileActionBar({
     super.key,
+    this.profileName,
     required this.liked,
     required this.superLiked,
     required this.superLikeSending,
@@ -1758,6 +1819,7 @@ class ProfileActionBar extends StatelessWidget {
   static const double contentInset = 106;
 
   final bool liked;
+  final String? profileName;
   final bool superLiked;
   final bool superLikeSending;
   final bool giftSending;
@@ -1768,6 +1830,7 @@ class ProfileActionBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final safeName = amoraaProfileActionName(profileName);
     return SizedBox(
       height: height,
       child: DecoratedBox(
@@ -1802,7 +1865,11 @@ class ProfileActionBar extends StatelessWidget {
                 child: _ProfileActionButton(
                   key: const ValueKey('profile-super-like-button'),
                   label: 'Super Like',
-                  semanticLabel: 'Super Like this profile',
+                  semanticLabel: superLiked
+                      ? AmoraaProfileAction.removeSuperLike.semanticLabel(
+                          safeName,
+                        )
+                      : 'Super Like $safeName',
                   icon: Icons.star_rounded,
                   selected: superLiked,
                   loading: superLikeSending,
@@ -1822,7 +1889,9 @@ class ProfileActionBar extends StatelessWidget {
                 child: _ProfileActionButton(
                   key: const ValueKey('profile-like-button'),
                   label: 'Like',
-                  semanticLabel: 'Like this profile',
+                  semanticLabel: liked
+                      ? AmoraaProfileAction.unlike.semanticLabel(safeName)
+                      : 'Like $safeName',
                   icon: Icons.favorite_rounded,
                   selected: liked,
                   dominant: true,
@@ -1970,22 +2039,25 @@ class _ProfileActionButtonState extends State<_ProfileActionButton>
   }
 }
 
-class _FullScreenGallery extends StatefulWidget {
-  const _FullScreenGallery({
+class AmoraaProfileFullscreenGallery extends StatefulWidget {
+  const AmoraaProfileFullscreenGallery({
+    super.key,
     required this.profile,
     required this.photos,
     required this.initialIndex,
   });
 
   final DummyProfile profile;
-  final List<String> photos;
+  final List<ProfilePhotoViewData> photos;
   final int initialIndex;
 
   @override
-  State<_FullScreenGallery> createState() => _FullScreenGalleryState();
+  State<AmoraaProfileFullscreenGallery> createState() =>
+      _AmoraaProfileFullscreenGalleryState();
 }
 
-class _FullScreenGalleryState extends State<_FullScreenGallery> {
+class _AmoraaProfileFullscreenGalleryState
+    extends State<AmoraaProfileFullscreenGallery> {
   late final PageController _controller;
   late int _index;
 
@@ -2020,13 +2092,14 @@ class _FullScreenGalleryState extends State<_FullScreenGallery> {
                   maxScale: 4,
                   child: LayoutBuilder(
                     builder: (context, imageConstraints) {
-                      return AmoraProfileImage(
-                        imageUrl: widget.photos[index],
-                        assetPath: widget.profile.fallbackAsset,
-                        initials: widget.profile.initials,
+                      return AmoraaProfilePhotoView(
+                        photo: widget.photos[index],
                         width: imageConstraints.maxWidth,
                         height: imageConstraints.maxHeight,
                         fit: BoxFit.contain,
+                        showTransferState: false,
+                        semanticLabel:
+                            '${widget.profile.name} full-screen profile photo ${index + 1} of ${widget.photos.length}',
                       );
                     },
                   ),

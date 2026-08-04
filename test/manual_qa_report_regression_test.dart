@@ -160,7 +160,7 @@ void main() {
       ),
     );
 
-    expect(find.text('Aadhaar & selfie verification'), findsOneWidget);
+    expect(find.text('Aadhaar & selfie verification'), findsNothing);
     expect(find.text('Verified Profile'), findsNothing);
     expect(find.text('Photo Verification'), findsNothing);
     expect(find.text('Face Verification'), findsNothing);

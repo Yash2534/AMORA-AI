@@ -10,6 +10,7 @@ import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/amora_profile_image.dart';
 import 'package:amora_ai/core/widgets/amora_super_like_animation.dart';
 import 'package:amora_ai/core/widgets/amoraa_identity_badge.dart';
+import 'package:amora_ai/core/widgets/amoraa_confirm_action_sheet.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/floating_bottom_nav.dart';
 import 'package:amora_ai/core/widgets/premium_motion.dart';
@@ -484,12 +485,31 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
     if (!_actions.canRewind) return;
     final entry = _actions.history.last;
     HapticFeedback.selectionClick();
-    await _actions.rewindProfile();
-    if (entry.action == DiscoverAction.like) {
-      ProfileRelationshipController.instance.removeLike(entry.profileId);
-    } else if (entry.action == DiscoverAction.superLike) {
-      ProfileRelationshipController.instance.removeSuperLike(entry.profileId);
+    final removalAction = switch (entry.action) {
+      DiscoverAction.like => AmoraaProfileAction.unlike,
+      DiscoverAction.superLike => AmoraaProfileAction.removeSuperLike,
+      _ => null,
+    };
+    if (removalAction == null) {
+      await _actions.rewindProfile();
+      return;
     }
+    final profile = _profileFor(entry.profileId);
+    await showAmoraaProfileActionConfirmation(
+      context: context,
+      action: removalAction,
+      profileName: profile?.name,
+      onConfirm: () async {
+        await _actions.rewindProfile();
+        if (entry.action == DiscoverAction.like) {
+          ProfileRelationshipController.instance.removeLike(entry.profileId);
+        } else {
+          ProfileRelationshipController.instance.removeSuperLike(
+            entry.profileId,
+          );
+        }
+      },
+    );
   }
 
   List<String> _photosFor(DummyProfile profile) {

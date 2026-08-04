@@ -29,6 +29,7 @@ class LocalOnboardingState {
     this.customGender = '',
     this.showGender = true,
     this.interestedIn = const <String>{},
+    this.relationshipGoals = const <String>{},
     this.relationshipGoal,
     this.city,
     this.preferredDistance = 50,
@@ -43,6 +44,7 @@ class LocalOnboardingState {
   final String customGender;
   final bool showGender;
   final Set<String> interestedIn;
+  final Set<String> relationshipGoals;
   final String? relationshipGoal;
   final String? city;
   final double preferredDistance;
@@ -64,6 +66,30 @@ class LocalOnboardingState {
 
   bool get isAdult => (age ?? 0) >= 18;
 
+  Set<String> get selectedRelationshipGoals {
+    final storedValues = relationshipGoals.isEmpty
+        ? <String>{?relationshipGoal}
+        : relationshipGoals;
+    return <String>{
+      for (final value in storedValues)
+        if (ProfileFormOptions.normalizeDatingIntention(value).isNotEmpty)
+          ProfileFormOptions.normalizeDatingIntention(value),
+    };
+  }
+
+  String? get primaryRelationshipGoal {
+    final selected = selectedRelationshipGoals;
+    final legacy = ProfileFormOptions.normalizeDatingIntention(
+      relationshipGoal,
+    );
+    if (selected.contains(legacy)) return legacy;
+    for (final option in ProfileFormOptions.datingIntentions) {
+      if (selected.contains(option)) return option;
+    }
+    final rawLegacy = relationshipGoal?.trim() ?? '';
+    return rawLegacy.isEmpty ? null : rawLegacy;
+  }
+
   LocalOnboardingState copyWith({
     OnboardingStage? stage,
     DateTime? birthDate,
@@ -71,7 +97,9 @@ class LocalOnboardingState {
     String? customGender,
     bool? showGender,
     Set<String>? interestedIn,
+    Set<String>? relationshipGoals,
     String? relationshipGoal,
+    bool clearRelationshipGoal = false,
     String? city,
     double? preferredDistance,
     bool? accountVerified,
@@ -85,7 +113,12 @@ class LocalOnboardingState {
       customGender: customGender ?? this.customGender,
       showGender: showGender ?? this.showGender,
       interestedIn: Set<String>.of(interestedIn ?? this.interestedIn),
-      relationshipGoal: relationshipGoal ?? this.relationshipGoal,
+      relationshipGoals: Set<String>.of(
+        relationshipGoals ?? this.relationshipGoals,
+      ),
+      relationshipGoal: clearRelationshipGoal
+          ? null
+          : relationshipGoal ?? this.relationshipGoal,
       city: city ?? this.city,
       preferredDistance: preferredDistance ?? this.preferredDistance,
       accountVerified: accountVerified ?? this.accountVerified,
@@ -151,6 +184,9 @@ class LocalOnboardingRepository extends ChangeNotifier {
         interestedIn:
             (json['interestedIn'] as List?)?.whereType<String>().toSet() ??
             const <String>{},
+        relationshipGoals:
+            (json['relationshipGoals'] as List?)?.whereType<String>().toSet() ??
+            const <String>{},
         relationshipGoal: json['relationshipGoal'] as String?,
         city: json['city'] as String?,
         preferredDistance:
@@ -178,9 +214,13 @@ class LocalOnboardingRepository extends ChangeNotifier {
       birthDate: profile.dateOfBirth,
       gender: profile.gender.isEmpty ? null : profile.gender,
       city: profile.location.isEmpty ? null : profile.location,
+      relationshipGoals: profile.datingIntention.isEmpty
+          ? const <String>{}
+          : <String>{profile.datingIntention},
       relationshipGoal: profile.datingIntention.isEmpty
           ? null
           : profile.datingIntention,
+      clearRelationshipGoal: profile.datingIntention.isEmpty,
     );
     notifyListeners();
   }
@@ -232,6 +272,10 @@ class LocalOnboardingRepository extends ChangeNotifier {
         'customGender': _state.customGender,
         'showGender': _state.showGender,
         'interestedIn': _state.interestedIn.toList(),
+        'relationshipGoals': [
+          for (final option in ProfileFormOptions.datingIntentions)
+            if (_state.selectedRelationshipGoals.contains(option)) option,
+        ],
         'relationshipGoal': _state.relationshipGoal,
         'city': _state.city,
         'preferredDistance': _state.preferredDistance,
@@ -266,9 +310,9 @@ class LocalOnboardingRepository extends ChangeNotifier {
         location: _state.city?.trim().isEmpty ?? true
             ? null
             : _state.city!.trim(),
-        datingIntention: _state.relationshipGoal?.trim().isEmpty ?? true
+        datingIntention: _state.primaryRelationshipGoal?.trim().isEmpty ?? true
             ? null
-            : _state.relationshipGoal!.trim(),
+            : _state.primaryRelationshipGoal!.trim(),
       ),
     );
   }

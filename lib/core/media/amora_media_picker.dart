@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:amora_ai/core/permissions/amoraa_permission_service.dart';
 
 enum AmoraMediaSource { camera, gallery }
 
@@ -82,7 +82,9 @@ abstract interface class AmoraMediaPicker {
 }
 
 class DeviceAmoraMediaPicker implements AmoraMediaPicker {
-  const DeviceAmoraMediaPicker();
+  const DeviceAmoraMediaPicker({this.permissionService});
+
+  final AmoraaPermissionService? permissionService;
 
   static const int maximumImageBytes = 12 * 1024 * 1024;
 
@@ -173,33 +175,26 @@ class DeviceAmoraMediaPicker implements AmoraMediaPicker {
   ) async {
     if (kIsWeb) return null;
 
-    Permission? permission;
-    if (source == AmoraMediaSource.camera) {
-      permission = Permission.camera;
-    } else if (defaultTargetPlatform == TargetPlatform.iOS) {
-      permission = Permission.photos;
-    }
-    if (permission == null) return null;
-
-    final status = await permission.request();
-    if (status.isGranted || status.isLimited) return null;
-    if (status.isPermanentlyDenied) {
-      return const AmoraMediaPickResult.failure(
+    final service = permissionService ?? AmoraaPermissionService.instance;
+    final permission = source == AmoraMediaSource.camera
+        ? await service.requestCameraPermission()
+        : await service.requestPhotoPermission();
+    if (permission.allowsFeature) return null;
+    if (permission.state == AmoraaPermissionState.permanentlyDenied) {
+      return AmoraMediaPickResult.failure(
         AmoraMediaIssue.permissionPermanentlyDenied,
-        'Access is disabled in system settings. Open settings to allow it.',
+        permission.message,
       );
     }
-    if (status.isRestricted) {
-      return const AmoraMediaPickResult.failure(
+    if (permission.state == AmoraaPermissionState.restricted) {
+      return AmoraMediaPickResult.failure(
         AmoraMediaIssue.permissionRestricted,
-        'Access is restricted on this device. Check parental or device-management settings.',
+        permission.message,
       );
     }
     return AmoraMediaPickResult.failure(
       AmoraMediaIssue.permissionDenied,
-      source == AmoraMediaSource.camera
-          ? 'Camera access is needed to take a photo.'
-          : 'Photo access is needed to choose an image.',
+      permission.message,
     );
   }
 
@@ -233,7 +228,8 @@ class DeviceAmoraMediaPicker implements AmoraMediaPicker {
   }
 
   @override
-  Future<bool> openSettings() => openAppSettings();
+  Future<bool> openSettings() =>
+      (permissionService ?? AmoraaPermissionService.instance).openSettings();
 }
 
 void showAmoraMediaResult(

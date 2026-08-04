@@ -134,25 +134,36 @@ class _ProfileCompletionScreenState extends State<ProfileCompletionScreen> {
                       ),
                       const SizedBox(height: AmoraSpacing.space16),
                       for (final section in result.sections) ...[
-                        _CompletionSectionCard(
-                          key: ValueKey(
-                            'completion-section-${section.id.name}',
+                        if (section.id == ProfileCompletionSectionId.prompt)
+                          _CompletionPromptSection(
+                            key: ValueKey(
+                              'completion-section-${section.id.name}',
+                            ),
+                            editor: _editorFor(section.id),
+                            saving: _savingSection == section.id,
+                            saveEnabled:
+                                !_controller.promptEditorActive ||
+                                ProfileFormValidators.promptAnswer(
+                                      _controller.promptAnswer.text,
+                                    ) ==
+                                    null,
+                            error: _saveErrors[section.id],
+                            onSave: () => _saveSection(section.id),
+                          )
+                        else
+                          _CompletionSectionCard(
+                            key: ValueKey(
+                              'completion-section-${section.id.name}',
+                            ),
+                            section: section,
+                            expanded: _expanded.contains(section.id),
+                            onTap: () => _toggle(section.id),
+                            editor: _editorFor(section.id),
+                            saving: _savingSection == section.id,
+                            saveEnabled: true,
+                            error: _saveErrors[section.id],
+                            onSave: () => _saveSection(section.id),
                           ),
-                          section: section,
-                          expanded: _expanded.contains(section.id),
-                          onTap: () => _toggle(section.id),
-                          editor: _editorFor(section.id),
-                          saving: _savingSection == section.id,
-                          saveEnabled:
-                              section.id != ProfileCompletionSectionId.prompt ||
-                              !_controller.promptEditorActive ||
-                              ProfileFormValidators.promptAnswer(
-                                    _controller.promptAnswer.text,
-                                  ) ==
-                                  null,
-                          error: _saveErrors[section.id],
-                          onSave: () => _saveSection(section.id),
-                        ),
                         const SizedBox(height: AmoraSpacing.space12),
                       ],
                       if (pending.isNotEmpty) ...[
@@ -650,6 +661,53 @@ class _ReadyCard extends StatelessWidget {
         title: Text('Profile Ready'),
         subtitle: Text('All required profile sections are complete.'),
       ),
+    );
+  }
+}
+
+class _CompletionPromptSection extends StatelessWidget {
+  const _CompletionPromptSection({
+    super.key,
+    required this.editor,
+    required this.saving,
+    required this.saveEnabled,
+    required this.error,
+    required this.onSave,
+  });
+
+  final Widget editor;
+  final bool saving;
+  final bool saveEnabled;
+  final String? error;
+  final VoidCallback onSave;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        editor,
+        if (error case final message?) ...[
+          const SizedBox(height: AmoraSpacing.space8),
+          Semantics(
+            liveRegion: true,
+            child: Text(
+              message,
+              style: AmoraTextStyles.bodySmall.copyWith(
+                color: Theme.of(context).colorScheme.error,
+              ),
+            ),
+          ),
+        ],
+        const SizedBox(height: AmoraSpacing.space16),
+        AppPrimaryButton(
+          key: const ValueKey('completion-save-prompt'),
+          label: saving ? 'Saving' : 'Save Section',
+          icon: Icons.check_rounded,
+          isLoading: saving,
+          onPressed: saving || !saveEnabled ? null : onSave,
+        ),
+      ],
     );
   }
 }

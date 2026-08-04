@@ -9,6 +9,7 @@ import 'package:amora_ai/features/auth/presentation/login_screen.dart';
 import 'package:amora_ai/features/chat/data/local_chat_repository.dart';
 import 'package:amora_ai/features/onboarding/data/local_onboarding_repository.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
+import 'package:amora_ai/features/settings/presentation/widgets/amoraa_delete_account_flow.dart';
 import 'package:flutter/material.dart';
 
 class LogoutAccountScreen extends StatelessWidget {
@@ -165,66 +166,23 @@ class DeleteAccountInformationScreen extends StatefulWidget {
 
 class _DeleteAccountInformationScreenState
     extends State<DeleteAccountInformationScreen> {
-  final _confirmationController = TextEditingController();
-  bool _confirmationStep = false;
-  bool _submitting = false;
-  String? _error;
-
-  bool get _confirmed => _confirmationController.text.trim() == 'DELETE';
-
-  @override
-  void initState() {
-    super.initState();
-    _confirmationController.addListener(_refresh);
-  }
-
-  @override
-  void dispose() {
-    _confirmationController
-      ..removeListener(_refresh)
-      ..dispose();
-    super.dispose();
-  }
-
-  void _refresh() {
-    if (mounted) setState(() => _error = null);
-  }
-
-  Future<void> _deletePermanently() async {
-    if (!_confirmed || _submitting) return;
+  Future<bool> _deletePermanently(DeleteAccountSelection selection) async {
     final callback = widget.onDeleteAccount;
-    if (callback == null) {
-      setState(() {
-        _error =
-            'Couldn’t delete your account. Your account has not been deleted because no delete-account service is connected.';
-      });
-      return;
-    }
-    setState(() {
-      _submitting = true;
-      _error = null;
-    });
+    if (callback == null) return false;
     var deleted = false;
     try {
       deleted = await callback();
     } catch (_) {
       deleted = false;
     }
-    if (!mounted) return;
-    if (!deleted) {
-      setState(() {
-        _submitting = false;
-        _error =
-            'Couldn’t delete your account. Your account has not been deleted. Please try again.';
-      });
-      return;
-    }
+    if (!deleted) return false;
     await _clearDeletedAccountState();
-    if (!mounted) return;
+    if (!mounted) return true;
     AmoraSession.logOut();
     Navigator.of(
       context,
     ).pushNamedAndRemoveUntil(LoginScreen.routeName, (_) => false);
+    return true;
   }
 
   Future<void> _clearDeletedAccountState() async {
@@ -246,70 +204,17 @@ class _DeleteAccountInformationScreenState
     return _AccountActionScaffold(
       title: 'Delete Account',
       icon: Icons.delete_forever_rounded,
-      heading: _confirmationStep
-          ? 'Type DELETE to continue'
-          : 'Delete your account permanently?',
-      description: _confirmationStep
-          ? 'This deliberate confirmation helps prevent accidental deletion.'
-          : 'This action cannot be undone. Profile and account access will be removed only after the account service confirms deletion.',
+      heading: 'Permanent account deletion',
+      description:
+          'Deleting your account is permanent. Review the warning, select a reason, and confirm only when you are ready.',
       supporting: const [
         'Existing matches, chats, and account data may be deleted according to the active backend policy.',
         'Billing managed by an app store must be cancelled through that store.',
         'AMORAA will not treat a local logout as successful deletion.',
       ],
-      action: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (_confirmationStep) ...[
-            TextField(
-              key: const ValueKey('settings-delete-confirmation-field'),
-              controller: _confirmationController,
-              enabled: !_submitting,
-              textCapitalization: TextCapitalization.characters,
-              decoration: const InputDecoration(
-                labelText: 'Type DELETE',
-                hintText: 'DELETE',
-              ),
-            ),
-            const SizedBox(height: AmoraSpacing.space12),
-          ],
-          if (_error != null) _AccountActionError(message: _error!),
-          if (_error != null) const SizedBox(height: AmoraSpacing.space12),
-          Semantics(
-            button: true,
-            label: 'Permanently delete AMORAA account',
-            child: AppPrimaryButton(
-              key: ValueKey(
-                _confirmationStep
-                    ? 'settings-delete-permanently'
-                    : 'settings-delete-continue',
-              ),
-              label: _confirmationStep
-                  ? 'Delete Permanently'
-                  : 'Continue to confirmation',
-              icon: _confirmationStep
-                  ? Icons.delete_forever_rounded
-                  : Icons.arrow_forward_rounded,
-              isLoading: _submitting,
-              variant: _confirmationStep
-                  ? AppPrimaryButtonVariant.destructive
-                  : AppPrimaryButtonVariant.outlined,
-              onPressed: _submitting
-                  ? null
-                  : _confirmationStep
-                  ? (_confirmed ? _deletePermanently : null)
-                  : () => setState(() => _confirmationStep = true),
-            ),
-          ),
-          const SizedBox(height: AmoraSpacing.space8),
-          AppPrimaryButton(
-            label: 'Cancel',
-            variant: AppPrimaryButtonVariant.text,
-            onPressed: _submitting
-                ? null
-                : () => Navigator.of(context).maybePop(),
-          ),
-        ],
+      action: AmoraaDeleteAccountFlow(
+        onDeleteConfirmed: _deletePermanently,
+        onCancel: () => Navigator.of(context).maybePop(),
       ),
       showBackAction: false,
     );

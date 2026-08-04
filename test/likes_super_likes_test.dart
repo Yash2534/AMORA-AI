@@ -56,7 +56,7 @@ void main() {
     );
   });
 
-  testWidgets('real reactions are unique, separated, live, and removable', (
+  testWidgets('real reactions are unique and Super Like removal is confirmed', (
     tester,
   ) async {
     controller
@@ -81,9 +81,55 @@ void main() {
       find.byKey(ValueKey('Remove Super Like-${superLiked.id}')),
     );
     await tester.pumpAndSettle();
+    expect(
+      find.text('Remove Super Like from ${superLiked.name}?'),
+      findsOneWidget,
+    );
+    expect(
+      find.text('This profile will be removed from your Super Likes list.'),
+      findsOneWidget,
+    );
+    expect(controller.superLikedProfileIds, [superLiked.id]);
+
+    await tester.tap(find.text('Remove Super Like'));
+    await tester.pumpAndSettle();
     expect(controller.superLikedProfileIds, isEmpty);
     expect(find.text('No Super Likes yet'), findsOneWidget);
   });
+
+  testWidgets(
+    'Unlike names the real profile, supports cancel, and removes one',
+    (tester) async {
+      final other = ImageRepository.profileAt(5);
+      controller
+        ..likeProfile(liked)
+        ..likeProfile(other);
+      await pumpPage(tester);
+
+      await tester.tap(find.byKey(ValueKey('Unlike-${liked.id}')));
+      await tester.pumpAndSettle();
+      expect(find.text('Unlike ${liked.name}?'), findsOneWidget);
+      expect(
+        find.text('This profile will be removed from your Likes list.'),
+        findsOneWidget,
+      );
+      expect(find.text('Keep Like'), findsOneWidget);
+
+      await tester.tap(find.text('Keep Like'));
+      await tester.pumpAndSettle();
+      expect(controller.likedProfileIds, [liked.id, other.id]);
+
+      await tester.tap(find.byKey(ValueKey('Unlike-${liked.id}')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Unlike'));
+      await tester.pumpAndSettle();
+
+      expect(controller.likedProfileIds, [other.id]);
+      expect(find.textContaining(liked.name), findsNothing);
+      expect(find.textContaining(other.name), findsOneWidget);
+      expect(find.text('Likes (1)'), findsOneWidget);
+    },
+  );
 
   testWidgets('real profile card opens the canonical profile detail route', (
     tester,
@@ -98,14 +144,20 @@ void main() {
     );
   });
 
-  testWidgets('segmented page and cards do not overflow at 320 px', (
+  testWidgets('segmented page and cards fit every supported width', (
     tester,
   ) async {
     controller
       ..likeProfile(liked)
       ..superLikeProfile(superLiked);
-    await pumpPage(tester, size: const Size(320, 700));
-    expect(tester.takeException(), isNull);
+    for (final width in <double>[320, 360, 390, 412, 430, 600, 768, 1024]) {
+      await pumpPage(tester, size: Size(width, 700));
+      expect(
+        tester.takeException(),
+        isNull,
+        reason: 'Likes page overflowed at ${width.toInt()} px.',
+      );
+    }
   });
 
   testWidgets('Profile Quick Actions use exact order and all four callbacks', (

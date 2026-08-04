@@ -46,7 +46,7 @@ void main() {
   );
 
   testWidgets(
-    'Saved Profiles uses action-driven state and removes immediately',
+    'Saved Profiles confirms a named Unsave and supports cancellation',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(320, 700));
       addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -75,9 +75,23 @@ void main() {
         findsOneWidget,
       );
 
-      await tester.tap(
-        find.byKey(ValueKey('Remove saved profile-${profile.id}')),
+      await tester.tap(find.byKey(ValueKey('Unsave Profile-${profile.id}')));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Remove ${profile.name} from Saved Profiles?'),
+        findsOneWidget,
       );
+      expect(
+        find.text('You can save this profile again later.'),
+        findsOneWidget,
+      );
+      await tester.tap(find.text('Keep Saved'));
+      await tester.pumpAndSettle();
+      expect(controller.savedProfileIds, [profile.id]);
+
+      await tester.tap(find.byKey(ValueKey('Unsave Profile-${profile.id}')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Remove from Saved'));
       await tester.pumpAndSettle();
       expect(find.text('No saved profiles yet'), findsOneWidget);
       expect(tester.takeException(), isNull);
@@ -108,13 +122,14 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Blocked Profiles uses real state and unblocks immediately', (
+  testWidgets('Blocked Profiles confirms Unblock and removes only its target', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(320, 700));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     final controller = ProfileRelationshipController();
     final profile = ImageRepository.profiles[24];
+    final other = ImageRepository.profiles[25];
 
     await tester.pumpWidget(
       MaterialApp(home: BlockedProfilesScreen(controller: controller)),
@@ -124,15 +139,32 @@ void main() {
 
     controller.blockProfile(profile);
     controller.blockProfile(profile);
+    controller.blockProfile(other);
     await tester.pump();
     expect(
       find.byKey(ValueKey('managed-profile-${profile.id}')),
       findsOneWidget,
     );
 
-    await tester.tap(find.byKey(ValueKey('Unblock profile-${profile.id}')));
+    await tester.tap(find.byKey(ValueKey('Unblock Profile-${profile.id}')));
     await tester.pumpAndSettle();
-    expect(find.text('No blocked profiles'), findsOneWidget);
+    expect(find.text('Unblock ${profile.name}?'), findsOneWidget);
+    expect(
+      find.text(
+        'This profile may become visible to you again based on your discovery and privacy settings.',
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('Keep Blocked'));
+    await tester.pumpAndSettle();
+    expect(controller.blockedProfileIds, [profile.id, other.id]);
+
+    await tester.tap(find.byKey(ValueKey('Unblock Profile-${profile.id}')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Unblock'));
+    await tester.pumpAndSettle();
+    expect(controller.blockedProfileIds, [other.id]);
+    expect(find.text('${other.name}, ${other.age}'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -153,11 +185,72 @@ void main() {
     expect(ProfileRelationshipController.instance.savedProfileIds, [
       profile.id,
     ]);
-    expect(find.byTooltip('Remove saved profile'), findsOneWidget);
+    expect(
+      find.byTooltip('Remove ${profile.name} from Saved Profiles'),
+      findsOneWidget,
+    );
 
     await tester.tap(find.byKey(const ValueKey('profile-save-button')));
-    await tester.pump();
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Remove ${profile.name} from Saved Profiles?'),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('Remove from Saved'));
+    await tester.pumpAndSettle();
     expect(ProfileRelationshipController.instance.savedProfiles, isEmpty);
+  });
+
+  testWidgets('profile details confirms Unlike with the selected real name', (
+    tester,
+  ) async {
+    final profile = ImageRepository.profiles[30];
+    ProfileRelationshipController.instance.likeProfile(profile);
+
+    await tester.pumpWidget(
+      MaterialApp(home: ProfileDetailScreen(profile: profile)),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('profile-like-button')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Unlike ${profile.name}?'), findsOneWidget);
+    await tester.tap(find.text('Keep Like'));
+    await tester.pumpAndSettle();
+    expect(ProfileRelationshipController.instance.isLiked(profile.id), isTrue);
+
+    await tester.tap(find.byKey(const ValueKey('profile-like-button')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Unlike'));
+    await tester.pumpAndSettle();
+    expect(ProfileRelationshipController.instance.isLiked(profile.id), isFalse);
+  });
+
+  testWidgets('profile details removes a Super Like with specific wording', (
+    tester,
+  ) async {
+    final profile = ImageRepository.profiles[31];
+    ProfileRelationshipController.instance.superLikeProfile(profile);
+
+    await tester.pumpWidget(
+      MaterialApp(home: ProfileDetailScreen(profile: profile)),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('profile-super-like-button')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Remove Super Like from ${profile.name}?'),
+      findsOneWidget,
+    );
+    expect(find.text('Remove Super Like'), findsOneWidget);
+    expect(find.text('Unlike'), findsNothing);
+    await tester.tap(find.text('Remove Super Like'));
+    await tester.pumpAndSettle();
+    expect(
+      ProfileRelationshipController.instance.isSuperLiked(profile.id),
+      isFalse,
+    );
   });
 
   testWidgets(
@@ -175,7 +268,12 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Block Profile'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Block User'));
+      expect(find.text('Block ${profile.name}?'), findsOneWidget);
+      expect(
+        find.textContaining('You will no longer see each other in discovery'),
+        findsOneWidget,
+      );
+      await tester.tap(find.text('Block Profile'));
       await tester.pumpAndSettle();
 
       expect(ProfileRelationshipController.instance.blockedProfileIds, [

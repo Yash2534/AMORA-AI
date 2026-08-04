@@ -1,5 +1,6 @@
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
+import 'package:amora_ai/core/permissions/amoraa_permission_service.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/amoraa_select_field.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
@@ -7,7 +8,9 @@ import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:flutter/material.dart';
 
 class SosCheckinScreen extends StatefulWidget {
-  const SosCheckinScreen({super.key});
+  const SosCheckinScreen({super.key, this.permissionService});
+
+  final AmoraaPermissionService? permissionService;
 
   static const routeName = '/sos-checkin';
 
@@ -17,6 +20,7 @@ class SosCheckinScreen extends StatefulWidget {
 
 class _SosCheckinScreenState extends State<SosCheckinScreen>
     with SingleTickerProviderStateMixin {
+  late final AmoraaPermissionService _permissionService;
   late final AnimationController _pulse;
   String _timer = '1 hour';
   bool _location = false;
@@ -25,6 +29,8 @@ class _SosCheckinScreenState extends State<SosCheckinScreen>
   @override
   void initState() {
     super.initState();
+    _permissionService =
+        widget.permissionService ?? AmoraaPermissionService.instance;
     _pulse = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1050),
@@ -127,9 +133,10 @@ class _SosCheckinScreenState extends State<SosCheckinScreen>
                     ),
                     const SizedBox(height: 12),
                     SwitchListTile(
+                      key: const ValueKey('live-location-permission-toggle'),
                       contentPadding: EdgeInsets.zero,
                       value: _location,
-                      onChanged: (value) => setState(() => _location = value),
+                      onChanged: _changeLocationSharing,
                       title: const Text('Live location sharing'),
                       subtitle: const Text(
                         'Share your location during an active safety check-in.',
@@ -179,6 +186,26 @@ class _SosCheckinScreenState extends State<SosCheckinScreen>
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _changeLocationSharing(bool value) async {
+    if (!value) {
+      setState(() => _location = false);
+      return;
+    }
+    final result = await _permissionService.requestLocationPermission();
+    if (!mounted) return;
+    if (result.allowsFeature) {
+      setState(() => _location = true);
+      return;
+    }
+    setState(() => _location = false);
+    await showAmoraaPermissionFeedback(
+      context,
+      category: AmoraaPermissionCategory.location,
+      result: result,
+      service: _permissionService,
+    );
   }
 }
 

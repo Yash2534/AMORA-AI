@@ -1,6 +1,8 @@
 import 'package:amora_ai/core/access/amora_access.dart';
 import 'package:amora_ai/core/theme/amora_theme.dart';
 import 'package:amora_ai/core/navigation/main_shell.dart';
+import 'package:amora_ai/core/widgets/amora_filter_chip.dart';
+import 'package:amora_ai/core/widgets/amoraa_select_field.dart';
 import 'package:amora_ai/core/widgets/floating_bottom_nav.dart';
 import 'package:amora_ai/features/events/data/events_dummy_data.dart';
 import 'package:amora_ai/features/events/data/event_asset_catalog.dart';
@@ -127,7 +129,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('category selection updates through the compact selector', (
+  testWidgets('event categories use one-line multi-select filters', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(390, 844));
@@ -145,19 +147,438 @@ void main() {
     await tester.pump(const Duration(milliseconds: 520));
     await tester.pump();
 
-    await tester.tap(find.byKey(const ValueKey('event-category-selector')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const ValueKey('amoraa-select-option-Coffee')));
+    final categoryBar = tester.widget<EventCategoryBar>(
+      find.byType(EventCategoryBar),
+    );
+    expect(categoryBar.categories, hasLength(11));
+    expect(categoryBar.categories.toSet(), hasLength(11));
+    expect(find.byType(AmoraaCompactSelect<String>), findsNothing);
+    expect(
+      tester
+          .widget<ListView>(find.byKey(const ValueKey('event-category-scroll')))
+          .scrollDirection,
+      Axis.horizontal,
+    );
+
+    final categoryScroll = tester.state<ScrollableState>(
+      find
+          .descendant(
+            of: find.byKey(const ValueKey('event-category-scroll')),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    categoryScroll.position.jumpTo(180);
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('event-category-Coffee')));
     await tester.pumpAndSettle();
     expect(
-      find.descendant(
-        of: find.byKey(const ValueKey('event-category-selector')),
-        matching: find.text('Coffee'),
-      ),
-      findsOneWidget,
+      tester
+          .widget<EventCategoryBar>(find.byType(EventCategoryBar))
+          .selectedValues,
+      {'Coffee'},
+    );
+
+    categoryScroll.position.jumpTo(440);
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('event-category-Music')));
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<EventCategoryBar>(find.byType(EventCategoryBar))
+          .selectedValues,
+      {'Coffee', 'Music'},
+    );
+    expect(
+      tester
+          .widget<AmoraFilterChip>(
+            find.byKey(const ValueKey('event-category-Music')),
+          )
+          .selected,
+      isTrue,
+    );
+    expect(
+      tester
+          .widget<AmoraFilterChip>(
+            find.byKey(const ValueKey('event-category-Music')),
+          )
+          .showCheckmark,
+      isTrue,
+    );
+
+    categoryScroll.position.jumpTo(180);
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('event-category-Coffee')));
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<EventCategoryBar>(find.byType(EventCategoryBar))
+          .selectedValues,
+      {'Music'},
     );
     expect(find.text('Featured experience'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('event filter rail remains horizontal at supported widths', (
+    tester,
+  ) async {
+    for (final width in const [
+      320.0,
+      360.0,
+      390.0,
+      412.0,
+      430.0,
+      600.0,
+      768.0,
+      1024.0,
+    ]) {
+      await tester.binding.setSurfaceSize(Size(width, 900));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AmoraTheme.light(),
+          home: const EventsBrowseScreen(showNavigation: false),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 520));
+      await tester.pump();
+
+      final rail = find.byKey(const ValueKey('event-category-scroll'));
+      expect(tester.widget<ListView>(rail).scrollDirection, Axis.horizontal);
+      final scrollable = tester.state<ScrollableState>(
+        find.descendant(of: rail, matching: find.byType(Scrollable)).first,
+      );
+      scrollable.position.jumpTo(scrollable.position.maxScrollExtent);
+      await tester.pump();
+      expect(
+        find.byKey(const ValueKey('event-category-AMORAA Circles')),
+        findsOneWidget,
+      );
+      expect(
+        tester.takeException(),
+        isNull,
+        reason: 'Event filters overflowed at ${width.toInt()} px',
+      );
+    }
+  });
+
+  testWidgets('recommended Garba card uses one aligned content column', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AmoraTheme.light(),
+        home: const EventsBrowseScreen(showNavigation: false),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 520));
+    await tester.pump();
+    await tester.scrollUntilVisible(
+      find.text('Recommended for You'),
+      320,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pump();
+
+    final garba = events.firstWhere(
+      (event) => event.title == 'Garba Night for Singles',
+    );
+    final card = find.byKey(ValueKey('event-card-${garba.id}'));
+    expect(card, findsOneWidget);
+    final title = find.byKey(ValueKey('event-title-${garba.id}'));
+    final date = find.byKey(ValueKey('event-date-${garba.id}'));
+    final image = find.byKey(ValueKey('recommended-event-image-${garba.id}'));
+    final time = find.byKey(ValueKey('event-time-${garba.id}'));
+    final venue = find.byKey(ValueKey('event-venue-${garba.id}'));
+    final category = find.byKey(ValueKey('event-category-${garba.id}'));
+    final titleLeft = tester.getTopLeft(title).dx;
+
+    expect(find.byType(AmoraaRecommendedEventCard), findsWidgets);
+    expect(find.text('Garba Night for Singles'), findsOneWidget);
+    expect(tester.getSize(card).width, inInclusiveRange(260, 330));
+    expect(
+      tester.getSize(image).height,
+      AmoraaRecommendedEventCard.imageHeight,
+    );
+    expect(
+      tester.getSize(date),
+      const Size(
+        AmoraaRecommendedEventCard.dateBadgeWidth,
+        AmoraaRecommendedEventCard.dateBadgeHeight,
+      ),
+    );
+    expect(tester.getTopLeft(date).dy, closeTo(tester.getTopLeft(title).dy, 1));
+    expect(tester.getTopLeft(time).dx, closeTo(titleLeft, 1));
+    expect(tester.getTopLeft(venue).dx, closeTo(titleLeft, 1));
+    expect(tester.getTopLeft(category).dx, closeTo(titleLeft, 1));
+    final recommendedRail = find.byKey(
+      const ValueKey('recommended-event-rail'),
+    );
+    expect(
+      tester
+          .widget<ListView>(
+            find.descendant(
+              of: recommendedRail,
+              matching: find.byType(ListView),
+            ),
+          )
+          .scrollDirection,
+      Axis.horizontal,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('recommended long titles wrap without overflow', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(280, 560));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final longTitleEvent = events.firstWhere(
+      (event) => event.title == 'Startup Networking Mixer',
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AmoraTheme.light(),
+        home: Scaffold(
+          body: SizedBox(
+            width: 260,
+            height: AmoraaRecommendedEventCard.baseHeight,
+            child: AmoraaRecommendedEventCard(
+              event: longTitleEvent,
+              status: null,
+              onOpen: () {},
+              onJoin: () {},
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final title = find.byKey(ValueKey('event-title-${longTitleEvent.id}'));
+    expect(tester.getSize(title).height, greaterThan(19));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('all recommended cards share dimensions and alignment rules', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1024, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final recommended = events.sublist(1, 4);
+    String? joinedId;
+    const itemWidth = 260.0;
+    const cardHeight = AmoraaRecommendedEventCard.baseHeight + 36;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AmoraTheme.light(),
+        home: Scaffold(
+          body: MediaQuery(
+            data: const MediaQueryData(
+              size: Size(1024, 700),
+              textScaler: TextScaler.linear(1.3),
+            ),
+            child: SizedBox(
+              height: cardHeight,
+              child: ListView.separated(
+                key: const ValueKey('recommended-alignment-test-rail'),
+                scrollDirection: Axis.horizontal,
+                itemCount: recommended.length,
+                separatorBuilder: (_, _) => const SizedBox(width: 12),
+                itemBuilder: (_, index) {
+                  final event = recommended[index];
+                  return SizedBox(
+                    width: itemWidth,
+                    child: AmoraaRecommendedEventCard(
+                      event: event,
+                      status: null,
+                      onOpen: () {},
+                      onJoin: () => joinedId = event.id,
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AmoraaRecommendedEventCard), findsNWidgets(3));
+    expect(find.text('Garba Night for Singles'), findsOneWidget);
+    expect(find.text('Live Music Social'), findsOneWidget);
+    expect(find.text('Startup Networking Mixer'), findsOneWidget);
+
+    double? expectedTitleInset;
+    double? expectedButtonTop;
+    Size? expectedButtonSize;
+    for (final event in recommended) {
+      final card = find.byKey(ValueKey('event-card-${event.id}'));
+      final image = find.byKey(ValueKey('recommended-event-image-${event.id}'));
+      final date = find.byKey(ValueKey('event-date-${event.id}'));
+      final title = find.byKey(ValueKey('event-title-${event.id}'));
+      final time = find.byKey(ValueKey('event-time-${event.id}'));
+      final venue = find.byKey(ValueKey('event-venue-${event.id}'));
+      final category = find.byKey(ValueKey('event-category-${event.id}'));
+      final action = find.byKey(
+        ValueKey('recommended-event-action-${event.id}'),
+      );
+      final cardRect = tester.getRect(card);
+      final titleRect = tester.getRect(title);
+
+      expect(cardRect.width, itemWidth);
+      expect(
+        tester.getSize(image).height,
+        AmoraaRecommendedEventCard.imageHeight,
+      );
+      expect(
+        tester.getSize(date),
+        const Size(
+          AmoraaRecommendedEventCard.dateBadgeWidth,
+          AmoraaRecommendedEventCard.dateBadgeHeight,
+        ),
+      );
+      expect(tester.getTopLeft(date).dy, closeTo(titleRect.top, 1));
+      expect(tester.getTopLeft(time).dx, closeTo(titleRect.left, 1));
+      expect(tester.getTopLeft(venue).dx, closeTo(titleRect.left, 1));
+      expect(tester.getTopLeft(category).dx, closeTo(titleRect.left, 1));
+
+      final titleInset = titleRect.left - cardRect.left;
+      expectedTitleInset ??= titleInset;
+      expect(titleInset, closeTo(expectedTitleInset, 1));
+      expectedButtonTop ??= tester.getTopLeft(action).dy;
+      expectedButtonSize ??= tester.getSize(action);
+      expect(tester.getTopLeft(action).dy, closeTo(expectedButtonTop, 1));
+      expect(tester.getSize(action), expectedButtonSize);
+    }
+
+    final startup = recommended.last;
+    expect(
+      tester.getSize(find.byKey(ValueKey('event-title-${startup.id}'))).height,
+      greaterThan(24),
+    );
+    final garbaCard = find.byKey(
+      ValueKey('event-card-${recommended.first.id}'),
+    );
+    await tester.tap(
+      find.descendant(of: garbaCard, matching: find.text('Join Event')),
+    );
+    await tester.pump();
+    expect(joinedId, recommended.first.id);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('recommended long venue wraps without card overflow', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(320, 620));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final event = events[4];
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AmoraTheme.light(),
+        home: Scaffold(
+          body: SizedBox(
+            width: 260,
+            height: AmoraaRecommendedEventCard.baseHeight,
+            child: AmoraaRecommendedEventCard(
+              event: event,
+              status: null,
+              onOpen: () {},
+              onJoin: () {},
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final venue = find.byKey(ValueKey('event-venue-${event.id}'));
+    expect(tester.getSize(venue).height, greaterThan(16));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('recommended cards remain responsive at every target size', (
+    tester,
+  ) async {
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final event = events.firstWhere(
+      (candidate) => candidate.title == 'Startup Networking Mixer',
+    );
+
+    for (final width in const <double>[
+      320,
+      360,
+      390,
+      412,
+      430,
+      600,
+      768,
+      1024,
+    ]) {
+      await tester.binding.setSurfaceSize(Size(width, 700));
+      for (final textScale in const [1.0, 1.15, 1.3]) {
+        final itemWidth = width >= 700
+            ? 330.0
+            : (width - 64).clamp(260.0, 328.0).toDouble();
+        final cardHeight =
+            AmoraaRecommendedEventCard.baseHeight +
+            ((textScale - 1).clamp(0.0, .3) * 120);
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: AmoraTheme.light(),
+            home: Scaffold(
+              body: MediaQuery(
+                data: MediaQueryData(
+                  size: Size(width, 700),
+                  textScaler: TextScaler.linear(textScale),
+                ),
+                child: SizedBox(
+                  height: cardHeight,
+                  child: ListView(
+                    key: const ValueKey('responsive-recommended-rail'),
+                    scrollDirection: Axis.horizontal,
+                    children: [
+                      SizedBox(
+                        width: itemWidth,
+                        child: AmoraaRecommendedEventCard(
+                          event: event,
+                          status: null,
+                          onOpen: () {},
+                          onJoin: () {},
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pump();
+
+        expect(
+          tester.getSize(find.byType(AmoraaRecommendedEventCard)).width,
+          itemWidth,
+        );
+        expect(
+          tester
+              .widget<ListView>(
+                find.byKey(const ValueKey('responsive-recommended-rail')),
+              )
+              .scrollDirection,
+          Axis.horizontal,
+        );
+        expect(
+          tester.takeException(),
+          isNull,
+          reason: 'Overflow at $width px and ${textScale}x text scale',
+        );
+      }
+    }
   });
 
   testWidgets('event detail opens directly without membership access UI', (

@@ -3,9 +3,9 @@ import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/amora_profile_image.dart';
+import 'package:amora_ai/core/widgets/amora_filter_chip.dart';
 import 'package:amora_ai/core/widgets/amora_screen_title.dart';
 import 'package:amora_ai/core/widgets/amoraa_identity_badge.dart';
-import 'package:amora_ai/core/widgets/amoraa_select_field.dart';
 import 'package:amora_ai/core/widgets/floating_bottom_nav.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/chat/data/local_chat_repository.dart';
@@ -885,22 +885,15 @@ class AiMatchFilterBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AmoraaCompactSelect<AiMatchFilter>(
+    return AmoraaHorizontalFilterBar<AiMatchFilter>(
       key: const ValueKey('ai-match-filter-bar'),
-      label: 'Match filter',
-      value: selected,
-      prefixIcon: _aiMatchFilterIcon(selected),
-      options: [
-        for (final filter in AiMatchFilter.values)
-          AmoraaSelectOption(
-            value: filter,
-            label: _aiMatchFilterLabel(filter),
-            icon: _aiMatchFilterIcon(filter),
-          ),
-      ],
-      onChanged: (filter) {
-        if (filter != null) onSelected(filter);
-      },
+      options: AiMatchFilter.values,
+      selectedValues: <AiMatchFilter>{selected},
+      multiSelect: false,
+      labelBuilder: _aiMatchFilterLabel,
+      iconBuilder: _aiMatchFilterIcon,
+      optionKeyPrefix: 'ai-match-filter',
+      onChanged: (filters) => onSelected(filters.single),
     );
   }
 }
