@@ -158,6 +158,7 @@ class AmoraaPublicProfileData {
       fitnessLevel: value('Exercise'),
       smoking: value('Smoking'),
       drinking: value('Drinking'),
+      weed: value('Weed'),
       children: '',
       loveLanguage: '',
       greenFlags: const <String>[],

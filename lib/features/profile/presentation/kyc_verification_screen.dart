@@ -418,44 +418,42 @@ class _VerificationTimeline extends StatelessWidget {
     return PremiumCard(
       radius: AmoraRadius.large,
       padding: const EdgeInsets.all(AmoraSpacing.space16),
-      child: SizedBox(
-        height: 56.0 * items.length,
-        child: Stack(
-          children: [
-            const Positioned(
-              left: 29,
-              top: 28,
-              bottom: 28,
-              child: VerticalDivider(
-                width: 2,
-                thickness: 2,
-                color: AppColors.divider,
-              ),
+      child: Stack(
+        children: [
+          const Positioned(
+            left: 29,
+            top: 28,
+            bottom: 28,
+            child: VerticalDivider(
+              width: 2,
+              thickness: 2,
+              color: AppColors.divider,
             ),
-            Positioned(
-              left: 29,
-              top: 28,
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 260),
-                curve: Curves.easeOutCubic,
-                width: 2,
-                height: 56.0 * current.clamp(0, items.length - 1),
-                color: AppColors.primary,
-              ),
+          ),
+          Positioned(
+            left: 29,
+            top: 28,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 260),
+              curve: Curves.easeOutCubic,
+              width: 2,
+              height: 56.0 * current.clamp(0, items.length - 1),
+              color: AppColors.primary,
             ),
-            Column(
-              children: [
-                for (var index = 0; index < items.length; index++)
-                  _TimelineItem(
-                    title: items[index].$1,
-                    icon: items[index].$2,
-                    active: index == current,
-                    complete: index < current || stage == _KycStage.complete,
-                  ),
-              ],
-            ),
-          ],
-        ),
+          ),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (var index = 0; index < items.length; index++)
+                _TimelineItem(
+                  title: items[index].$1,
+                  icon: items[index].$2,
+                  active: index == current,
+                  complete: index < current || stage == _KycStage.complete,
+                ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -503,6 +501,8 @@ class _TimelineItem extends StatelessWidget {
           Expanded(
             child: Text(
               title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: AmoraTextStyles.titleMedium.copyWith(
                 color: active || complete
                     ? AppColors.primary
@@ -516,6 +516,8 @@ class _TimelineItem extends StatelessWidget {
                 : active
                 ? 'Current'
                 : 'Upcoming',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: AmoraTextStyles.labelSmall.copyWith(
               color: active || complete
                   ? AppColors.primary

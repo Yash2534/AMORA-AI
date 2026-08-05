@@ -3,8 +3,8 @@ import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/widgets/amora_filter_chip.dart';
 import 'package:amora_ai/core/widgets/amora_snackbar.dart';
-import 'package:amora_ai/core/widgets/amora_screen_title.dart';
 import 'package:amora_ai/core/widgets/amoraa_adaptive_image.dart';
+import 'package:amora_ai/core/widgets/amoraa_main_page_header.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/premium_avatar.dart';
 import 'package:amora_ai/core/widgets/premium_image.dart';
@@ -72,66 +72,25 @@ class EventsAppBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(
-      header: true,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final compact =
-              constraints.maxWidth < 390 ||
-              MediaQuery.textScalerOf(context).scale(1) > 1.15;
-          return Row(
-            children: [
-              Expanded(
-                child: AmoraScreenTitle(
-                  title: 'Events',
-                  subtitle: compact ? null : 'Meaningful ways to meet',
-                ),
-              ),
-              _ToolbarButton(
-                key: const ValueKey('events-search-button'),
-                tooltip: 'Search events',
-                icon: Icons.search_rounded,
-                onPressed: onSearch,
-              ),
-              const SizedBox(width: 4),
-              _ToolbarButton(
-                key: const ValueKey('events-my-events-button'),
-                tooltip: 'My Events',
-                icon: Icons.calendar_month_rounded,
-                onPressed: onCalendar,
-              ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _ToolbarButton extends StatelessWidget {
-  const _ToolbarButton({
-    super.key,
-    required this.tooltip,
-    required this.icon,
-    required this.onPressed,
-  });
-
-  final String tooltip;
-  final IconData icon;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return IconButton(
-      constraints: const BoxConstraints.tightFor(width: 48, height: 48),
-      tooltip: tooltip,
-      onPressed: onPressed,
-      style: IconButton.styleFrom(
-        backgroundColor: AppColors.surface,
-        foregroundColor: AppColors.primary,
-        side: BorderSide(color: AppColors.tertiary.withValues(alpha: .55)),
-      ),
-      icon: Icon(icon),
+    return AmoraaMainPageHeader(
+      title: 'Events',
+      subtitle: 'Meaningful ways to meet',
+      actions: [
+        AmoraaMainPageHeaderAction(
+          key: const ValueKey('events-search-button'),
+          tooltip: 'Search events',
+          semanticLabel: 'Search events',
+          icon: Icons.search_rounded,
+          onPressed: onSearch,
+        ),
+        AmoraaMainPageHeaderAction(
+          key: const ValueKey('events-my-events-button'),
+          tooltip: 'My Events',
+          semanticLabel: 'Open My Events',
+          icon: Icons.calendar_month_rounded,
+          onPressed: onCalendar,
+        ),
+      ],
     );
   }
 }

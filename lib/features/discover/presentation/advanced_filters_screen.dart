@@ -45,9 +45,9 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
   final Set<String> _fitness = {};
   final Set<String> _coffee = {};
   final Set<String> _movies = {};
-  String _smoking = 'Any';
-  String _drinking = 'Any';
-  String _weed = 'Any';
+  final Set<String> _smoking = {};
+  final Set<String> _drinking = {};
+  final Set<String> _weed = {};
   bool _verifiedOnly = true;
   bool _onlineNow = false;
   bool _hasPrompts = true;
@@ -238,11 +238,12 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
                 key: const ValueKey('filters-city-control'),
                 icon: Icons.location_city_rounded,
                 title: 'City',
-                description: 'Choose one preferred city',
+                description: 'Choose preferred cities',
                 child: AmoraaCompactSelect<String>(
                   key: const ValueKey('filters-city-selector'),
                   label: 'City',
-                  value: _cities.isEmpty ? null : _cities.first,
+                  selectionMode: AmoraaSelectionMode.multiple,
+                  selectedValues: _cities,
                   hintText: 'Any city',
                   prefixIcon: Icons.location_city_rounded,
                   allowClear: true,
@@ -250,7 +251,8 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
                     for (final option in ProfileFormOptions.cities)
                       AmoraaSelectOption(value: option, label: option),
                   ],
-                  onChanged: (option) => _setSingle(_cities, option),
+                  onSelectionChanged: (values) =>
+                      _replaceSelection(_cities, values),
                 ),
               ),
               _ControlBlock(
@@ -284,7 +286,8 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
       child: AmoraaSelectField<String>(
         key: const ValueKey('filters-intention-selector'),
         label: 'Dating Intention',
-        value: _intents.isEmpty ? null : _intents.first,
+        selectionMode: AmoraaSelectionMode.multiple,
+        selectedValues: _intents,
         hintText: 'Any intention',
         prefixIcon: Icons.favorite_outline_rounded,
         allowClear: true,
@@ -297,7 +300,7 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
                   ProfileFormOptions.datingIntentionDescriptions[option],
             ),
         ],
-        onChanged: (option) => _setSingle(_intents, option),
+        onSelectionChanged: (values) => _replaceSelection(_intents, values),
       ),
     );
   }
@@ -377,7 +380,8 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
                 AmoraaCompactSelect<String>(
                   key: const ValueKey('filters-education-selector'),
                   label: 'Education',
-                  value: _education.isEmpty ? null : _education.first,
+                  selectionMode: AmoraaSelectionMode.multiple,
+                  selectedValues: _education,
                   hintText: 'Any education',
                   prefixIcon: Icons.school_outlined,
                   allowClear: true,
@@ -385,7 +389,7 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
                     for (final option in ProfileFormOptions.education)
                       AmoraaSelectOption(value: option, label: option),
                   ],
-                  onChanged: _setEducation,
+                  onSelectionChanged: _setEducation,
                 ),
                 if (_education.contains('Other')) ...[
                   const SizedBox(height: 12),
@@ -421,7 +425,8 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
             child: AmoraaSearchableSelect<String>(
               key: const ValueKey('filters-profession-selector'),
               label: 'Profession',
-              value: _profession.isEmpty ? null : _profession.first,
+              selectionMode: AmoraaSelectionMode.multiple,
+              selectedValues: _profession,
               hintText: 'Any profession',
               searchHint: 'Search profession',
               prefixIcon: Icons.work_outline_rounded,
@@ -430,7 +435,8 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
                 for (final option in ProfileFormOptions.occupations)
                   AmoraaSelectOption(value: option, label: option),
               ],
-              onChanged: (option) => _setSingle(_profession, option),
+              onSelectionChanged: (values) =>
+                  _replaceSelection(_profession, values),
             ),
           ),
         ],
@@ -482,7 +488,8 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
                 description: 'Choose only what you are comfortable sharing',
                 child: AmoraaCompactSelect<String>(
                   label: 'Religion',
-                  value: _religion.isEmpty ? null : _religion.first,
+                  selectionMode: AmoraaSelectionMode.multiple,
+                  selectedValues: _religion,
                   hintText: 'Any religion',
                   prefixIcon: Icons.public_rounded,
                   allowClear: true,
@@ -490,7 +497,8 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
                     for (final option in ProfileFormOptions.religions)
                       AmoraaSelectOption(value: option, label: option),
                   ],
-                  onChanged: (option) => _setSingle(_religion, option),
+                  onSelectionChanged: (values) =>
+                      _replaceSelection(_religion, values),
                 ),
               ),
             ],
@@ -532,10 +540,7 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
       title: 'Habits',
       subtitle: 'Daily choices',
       summary: _habitsSummary,
-      selectedCount:
-          (_smoking == 'Any' ? 0 : 1) +
-          (_drinking == 'Any' ? 0 : 1) +
-          (_weed == 'Any' ? 0 : 1),
+      selectedCount: _smoking.length + _drinking.length + _weed.length,
       expanded: _expandedGroups.contains(_GroupIds.habits),
       highlighted: _highlightedGroup == _GroupIds.habits,
       onToggle: _toggleGroup,
@@ -544,43 +549,46 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
           AmoraaCompactSelect<String>(
             key: const ValueKey('filters-smoking-selector'),
             label: 'Smoking',
-            value: _smoking,
+            selectionMode: AmoraaSelectionMode.multiple,
+            selectedValues: _smoking,
+            hintText: 'Any',
             prefixIcon: Icons.smoke_free_rounded,
             options: [
               const AmoraaSelectOption(value: 'Any', label: 'Any'),
-              for (final option in ProfileFormOptions.smokingOptions)
+              for (final option in ProfileFormOptions.habitFrequencyOptions)
                 AmoraaSelectOption(value: option, label: option),
             ],
-            onChanged: (value) {
-              if (value != null) setState(() => _smoking = value);
-            },
+            onSelectionChanged: (values) =>
+                _setHabitSelection(_smoking, values),
           ),
           AmoraaCompactSelect<String>(
             key: const ValueKey('filters-drinking-selector'),
             label: 'Drinking',
-            value: _drinking,
+            selectionMode: AmoraaSelectionMode.multiple,
+            selectedValues: _drinking,
+            hintText: 'Any',
             prefixIcon: Icons.local_bar_outlined,
             options: [
               const AmoraaSelectOption(value: 'Any', label: 'Any'),
-              for (final option in ProfileFormOptions.drinkingOptions)
+              for (final option in ProfileFormOptions.habitFrequencyOptions)
                 AmoraaSelectOption(value: option, label: option),
             ],
-            onChanged: (value) {
-              if (value != null) setState(() => _drinking = value);
-            },
+            onSelectionChanged: (values) =>
+                _setHabitSelection(_drinking, values),
           ),
           AmoraaCompactSelect<String>(
+            key: const ValueKey('filters-weed-selector'),
             label: 'Weed',
-            value: _weed,
+            selectionMode: AmoraaSelectionMode.multiple,
+            selectedValues: _weed,
+            hintText: 'Any',
             prefixIcon: Icons.grass_rounded,
-            options: const [
-              AmoraaSelectOption(value: 'Any', label: 'Any'),
-              AmoraaSelectOption(value: 'Never', label: 'Never'),
-              AmoraaSelectOption(value: 'Occasionally', label: 'Occasionally'),
+            options: [
+              const AmoraaSelectOption(value: 'Any', label: 'Any'),
+              for (final option in ProfileFormOptions.habitFrequencyOptions)
+                AmoraaSelectOption(value: option, label: option),
             ],
-            onChanged: (value) {
-              if (value != null) setState(() => _weed = value);
-            },
+            onSelectionChanged: (values) => _setHabitSelection(_weed, values),
           ),
         ],
       ),
@@ -661,11 +669,14 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
 
   List<_ActivePreference> get _activePreferences {
     final preferences = <_ActivePreference>[];
-    final seenLabels = <String>{};
+    final seenPreferences = <String>{};
 
     void add(String category, String label) {
       final normalized = label.trim();
-      if (normalized.isEmpty || !seenLabels.add(normalized)) return;
+      if (normalized.isEmpty ||
+          !seenPreferences.add('$category\u0000$normalized')) {
+        return;
+      }
       preferences.add(_ActivePreference(category: category, label: normalized));
     }
 
@@ -712,8 +723,15 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
     if (_onlineNow) add('Trust', 'Online now');
     if (_hasPrompts) add('Trust', 'Has profile prompts');
     if (_eventInterest) add('Events', 'Interested in events');
-    if (_smoking != 'Any') add('Smoking', _smoking);
-    if (_drinking != 'Any') add('Drinking', _drinking);
+    for (final value in _smoking) {
+      add('Smoking', value);
+    }
+    for (final value in _drinking) {
+      add('Drinking', value);
+    }
+    for (final value in _weed) {
+      add('Weed', value);
+    }
     return preferences;
   }
 
@@ -740,9 +758,9 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
 
   String get _habitsSummary {
     final parts = <String>[
-      if (_smoking != 'Any') 'Smoking: $_smoking',
-      if (_drinking != 'Any') 'Drinking: $_drinking',
-      if (_weed != 'Any') 'Weed: $_weed',
+      if (_smoking.isNotEmpty) 'Smoking: ${_smoking.join(', ')}',
+      if (_drinking.isNotEmpty) 'Drinking: ${_drinking.join(', ')}',
+      if (_weed.isNotEmpty) 'Weed: ${_weed.join(', ')}',
     ];
     return parts.isEmpty ? 'Any lifestyle habits' : parts.join(' • ');
   }
@@ -778,18 +796,32 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
     });
   }
 
-  void _setSingle(Set<String> selected, String? option) {
+  void _replaceSelection(Set<String> selected, Set<String> values) {
     setState(() {
-      selected.clear();
-      if (option != null) selected.add(option);
+      selected
+        ..clear()
+        ..addAll(values);
     });
   }
 
-  void _setEducation(String? option) {
+  void _setEducation(Set<String> values) {
     setState(() {
-      _education.clear();
-      if (option != null) _education.add(option);
-      if (option != 'Other') _customEducationError = null;
+      _education
+        ..clear()
+        ..addAll(values);
+      if (!_education.contains('Other')) _customEducationError = null;
+    });
+  }
+
+  void _setHabitSelection(Set<String> selected, Set<String> values) {
+    setState(() {
+      final normalized = Set<String>.of(values);
+      if (normalized.remove('Any') && selected.isNotEmpty) {
+        normalized.clear();
+      }
+      selected
+        ..clear()
+        ..addAll(normalized);
     });
   }
 
@@ -1013,9 +1045,9 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
       _fitness.clear();
       _coffee.clear();
       _movies.clear();
-      _smoking = 'Any';
-      _drinking = 'Any';
-      _weed = 'Any';
+      _smoking.clear();
+      _drinking.clear();
+      _weed.clear();
       _verifiedOnly = false;
       _onlineNow = false;
       _hasPrompts = false;
@@ -1025,7 +1057,7 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
 
   void _apply() {
     final educationError = ProfileFormValidators.customEducation(
-      _education.isEmpty ? null : _education.first,
+      _education.contains('Other') ? 'Other' : null,
       _customEducationController.text,
     );
     if (educationError != null) {
@@ -1201,13 +1233,16 @@ class _SelectedFiltersSummary extends StatelessWidget {
                 runSpacing: 7,
                 children: [
                   for (final preview in visible)
-                    _SelectedPreview(label: preview.label),
+                    _SelectedPreview(
+                      key: ValueKey('selected-preference-${preview.label}'),
+                      label: preview.label,
+                    ),
                   if (remainingCount > 0)
                     _SelectedPreview(
                       key: const ValueKey('selected-preferences-more'),
                       label: '+$remainingCount more',
                       semanticLabel:
-                          'Show $remainingCount more selected preferences',
+                          'Show $remainingCount more selected filters',
                       onTap: onShowAll,
                     ),
                 ],
@@ -1234,28 +1269,28 @@ class _SelectedPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final content = ConstrainedBox(
-      constraints: BoxConstraints(minHeight: onTap == null ? 0 : 48),
+    final chip = DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.secondary.withValues(alpha: .35)),
+      ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-        child: Center(
-          widthFactor: 1,
-          child: Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: AmoraTextStyles.labelSmall.copyWith(
-              color: AppColors.primary,
-              fontWeight: onTap == null ? FontWeight.w500 : FontWeight.w700,
-            ),
+        child: Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: AmoraTextStyles.labelSmall.copyWith(
+            color: AppColors.primary,
+            fontWeight: FontWeight.w500,
           ),
         ),
       ),
     );
-    final decoration = BoxDecoration(
-      color: AppColors.surface,
-      borderRadius: BorderRadius.circular(18),
-      border: Border.all(color: AppColors.secondary.withValues(alpha: .35)),
+    final content = ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 48),
+      child: Center(widthFactor: 1, child: chip),
     );
     if (onTap case final callback?) {
       return Semantics(
@@ -1263,18 +1298,15 @@ class _SelectedPreview extends StatelessWidget {
         label: semanticLabel ?? label,
         child: Material(
           color: AppColors.transparent,
-          child: Ink(
-            decoration: decoration,
-            child: InkWell(
-              onTap: callback,
-              borderRadius: BorderRadius.circular(18),
-              child: content,
-            ),
+          child: InkWell(
+            onTap: callback,
+            borderRadius: BorderRadius.circular(18),
+            child: content,
           ),
         ),
       );
     }
-    return DecoratedBox(decoration: decoration, child: content);
+    return content;
   }
 }
 
@@ -2071,7 +2103,7 @@ class _PremiumFilterChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
-      selected: selected,
+      toggled: selected,
       label: '$label, ${selected ? 'selected' : 'not selected'}',
       child: Material(
         color: AppColors.transparent,

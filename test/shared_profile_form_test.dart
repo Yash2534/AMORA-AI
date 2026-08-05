@@ -509,6 +509,61 @@ void main() {
     expect(repository.profile.name, 'Shared Controller Member');
   });
 
+  testWidgets(
+    'shared habits editor keeps Smoking Drinking and Weed independent',
+    (tester) async {
+      await repository.resetForTesting(blankProfile());
+      final controller = ProfileFormController(repository: repository);
+      addTearDown(controller.dispose);
+      await tester.binding.setSurfaceSize(const Size(320, 700));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AmoraTheme.light(),
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: ListenableBuilder(
+                listenable: controller,
+                builder: (context, _) => AmoraaHabitsEditor(
+                  controller: controller,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      for (final label in const ['Smoking', 'Drinking', 'Weed']) {
+        expect(find.text(label), findsOneWidget);
+      }
+      for (final option in ProfileFormOptions.habitFrequencyOptions) {
+        expect(find.text(option), findsNWidgets(3));
+      }
+
+      await tester.tap(
+        find.byKey(const ValueKey('profile-habit-smoking-Yes')),
+      );
+      await tester.pump();
+      await tester.tap(
+        find.byKey(const ValueKey('profile-habit-smoking-Never')),
+      );
+      await tester.pump();
+      await tester.tap(
+        find.byKey(const ValueKey('profile-habit-drinking-Sometimes')),
+      );
+      await tester.pump();
+      await tester.tap(
+        find.byKey(const ValueKey('profile-habit-weed-Prefer not to say')),
+      );
+      await tester.pump();
+
+      expect(controller.lifestyle['Smoking'], 'Never');
+      expect(controller.lifestyle['Drinking'], 'Sometimes');
+      expect(controller.lifestyle['Weed'], 'Prefer not to say');
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   test('approved option sources are centralized and Technology-free', () {
     expect(ProfileFormOptions.occupations, isNotEmpty);
     expect(ProfileFormOptions.education, isNotEmpty);

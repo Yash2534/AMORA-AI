@@ -69,6 +69,10 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   Widget build(BuildContext context) {
     final args = ModalRoute.of(context)?.settings.arguments;
     final event = widget.event ?? (args is EventModel ? args : events.first);
+    final textScaleDelta = (MediaQuery.textScalerOf(context).scale(1) - 1)
+        .clamp(0.0, .3);
+    final heroTextAllowance = textScaleDelta * 104;
+    final attendeeTextAllowance = textScaleDelta * 44;
     if (_eventId != event.id) {
       _eventId = event.id;
       _status = _existingStatus(event);
@@ -106,14 +110,23 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
             slivers: [
               SliverToBoxAdapter(
                 child: LayoutBuilder(
-                  builder: (context, constraints) => EventDetailHero(
-                    event: event,
-                    status: _status,
-                    height: (constraints.maxWidth * 9 / 16).clamp(260.0, 460.0),
-                    onBack: () => Navigator.of(context).maybePop(),
-                    onShare: () =>
-                        showEventSnack(context, 'Share link prepared'),
-                  ),
+                  builder: (context, constraints) {
+                    final baseHeight = (constraints.maxWidth * 9 / 16).clamp(
+                      260.0,
+                      460.0,
+                    );
+                    return EventDetailHero(
+                      event: event,
+                      status: _status,
+                      height: (baseHeight + heroTextAllowance).clamp(
+                        260.0,
+                        492.0,
+                      ),
+                      onBack: () => Navigator.of(context).maybePop(),
+                      onShare: () =>
+                          showEventSnack(context, 'Share link prepared'),
+                    );
+                  },
                 ),
               ),
               SliverPadding(
@@ -171,7 +184,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                             EventAttendeePreview(attendees: eventAttendees),
                             const SizedBox(height: 18),
                             SizedBox(
-                              height: 116,
+                              height: 116 + attendeeTextAllowance,
                               child: ListView.separated(
                                 key: const ValueKey('event-detail-attendees'),
                                 scrollDirection: Axis.horizontal,

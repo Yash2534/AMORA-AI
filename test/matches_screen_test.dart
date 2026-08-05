@@ -404,7 +404,7 @@ void main() {
     await pumpMatches(tester, size: const Size(1200, 900));
 
     final appBarRect = tester.getRect(find.byType(AiMatchesAppBar));
-    expect(appBarRect.width, lessThanOrEqualTo(1032));
+    expect(appBarRect.width, lessThanOrEqualTo(1048));
     expect(appBarRect.center.dx, closeTo(600, 1));
     expect(find.byType(FeaturedAiMatchCard), findsOneWidget);
     final featured = tester.widget<FeaturedAiMatchCard>(

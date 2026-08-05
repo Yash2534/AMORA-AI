@@ -14,6 +14,8 @@ class AmoraAuthShell extends StatelessWidget {
     this.onBack,
     this.footer,
     this.stepLabel,
+    this.alignStepLabelRight = false,
+    this.stepLabelKey,
     this.statement,
     this.showComposition = false,
   });
@@ -24,6 +26,8 @@ class AmoraAuthShell extends StatelessWidget {
   final VoidCallback? onBack;
   final Widget? footer;
   final String? stepLabel;
+  final bool alignStepLabelRight;
+  final Key? stepLabelKey;
 
   // Retained for source compatibility with existing auth routes.
   final String? statement;
@@ -75,6 +79,8 @@ class AmoraAuthShell extends StatelessWidget {
                             child: AuthBrandHeader(
                               onBack: onBack,
                               stepLabel: stepLabel,
+                              alignStepLabelRight: alignStepLabelRight,
+                              stepLabelKey: stepLabelKey,
                             ),
                           ),
                           SizedBox(
@@ -175,10 +181,18 @@ class _AuthAmbientBackground extends StatelessWidget {
 }
 
 class AuthBrandHeader extends StatelessWidget {
-  const AuthBrandHeader({super.key, this.onBack, this.stepLabel});
+  const AuthBrandHeader({
+    super.key,
+    this.onBack,
+    this.stepLabel,
+    this.alignStepLabelRight = false,
+    this.stepLabelKey,
+  });
 
   final VoidCallback? onBack;
   final String? stepLabel;
+  final bool alignStepLabelRight;
+  final Key? stepLabelKey;
 
   @override
   Widget build(BuildContext context) {
@@ -212,22 +226,33 @@ class AuthBrandHeader extends StatelessWidget {
           semanticLabel: 'AMORAA icon',
         ),
         const SizedBox(width: AmoraSpacing.space8),
-        Expanded(
-          child: Align(
+        if (alignStepLabelRight && stepLabel != null) ...[
+          Image.asset(
+            AmoraBrandAssets.wordmark,
+            height: 19,
+            fit: BoxFit.contain,
             alignment: Alignment.centerLeft,
-            child: Image.asset(
-              AmoraBrandAssets.wordmark,
-              height: 19,
-              fit: BoxFit.contain,
+            semanticLabel: 'AMORAA',
+          ),
+          const Spacer(),
+        ] else
+          Expanded(
+            child: Align(
               alignment: Alignment.centerLeft,
-              semanticLabel: 'AMORAA',
+              child: Image.asset(
+                AmoraBrandAssets.wordmark,
+                height: 19,
+                fit: BoxFit.contain,
+                alignment: Alignment.centerLeft,
+                semanticLabel: 'AMORAA',
+              ),
             ),
           ),
-        ),
         if (stepLabel != null) ...[
           const SizedBox(width: AmoraSpacing.space8),
           Flexible(
             child: Container(
+              key: stepLabelKey,
               padding: const EdgeInsets.symmetric(
                 horizontal: AmoraSpacing.space12,
                 vertical: AmoraSpacing.space8,

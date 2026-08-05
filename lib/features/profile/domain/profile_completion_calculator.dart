@@ -228,7 +228,7 @@ abstract final class ProfileCompletionCalculator {
       'Choose your interests',
     );
     add(
-      !ProfileFormOptions.lifestyleOptions.entries.any(
+      !ProfileFormOptions.completionLifestyleOptions.entries.any(
         (entry) => ProfileFormOptions.normalizeLifestyleValue(
           entry.key,
           input.lifestyle[entry.key],
@@ -251,7 +251,7 @@ abstract final class ProfileCompletionCalculator {
     final visibleInterestCount = ProfileInterestPolicy.visibleCount(
       input.interests,
     );
-    final lifestyleComplete = ProfileFormOptions.lifestyleOptions.entries.any(
+    final lifestyleComplete = ProfileFormOptions.completionLifestyleOptions.entries.any(
       (entry) => ProfileFormOptions.normalizeLifestyleValue(
         entry.key,
         input.lifestyle[entry.key],

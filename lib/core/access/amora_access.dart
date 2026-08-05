@@ -4,6 +4,7 @@ import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/premium_asset_image.dart';
 import 'package:amora_ai/core/widgets/premium_motion.dart';
 import 'package:amora_ai/core/navigation/main_shell.dart';
+import 'package:amora_ai/features/auth/presentation/account_verification_screen.dart';
 import 'package:amora_ai/features/onboarding/data/local_onboarding_repository.dart';
 import 'package:amora_ai/features/onboarding/presentation/profile_onboarding_flow.dart';
 import 'package:flutter/material.dart';
@@ -20,6 +21,17 @@ class AmoraSession {
   static bool get isGuest => !isLoggedIn.value;
   static bool get isExploring => !isLoggedIn.value;
   static bool get hasPendingAction => _pendingAction != null;
+
+  static String get authenticatedRecoveryRoute {
+    final onboarding = LocalOnboardingRepository.instance.state;
+    if (!onboarding.accountVerified) {
+      return AccountVerificationScreen.routeName;
+    }
+    if (!onboarding.onboardingCompleted) {
+      return ProfileOnboardingFlow.routeName;
+    }
+    return MainShell.routeName;
+  }
 
   static void logIn() {
     isLoggedIn.value = true;

@@ -4,7 +4,7 @@ import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/amora_bottom_sheet.dart';
 import 'package:amora_ai/core/widgets/amora_filter_chip.dart';
-import 'package:amora_ai/core/widgets/amora_screen_title.dart';
+import 'package:amora_ai/core/widgets/amoraa_main_page_header.dart';
 import 'package:amora_ai/core/widgets/floating_bottom_nav.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/chat/presentation/chat_detail_screen.dart';
@@ -88,9 +88,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(
-                  AmoraSpacing.space16,
-                  AmoraSpacing.space8,
-                  AmoraSpacing.space16,
+                  AmoraaMainPageHeader.pageHorizontalInset,
+                  AmoraaMainPageHeader.safeTopSpacing,
+                  AmoraaMainPageHeader.pageHorizontalInset,
                   AmoraSpacing.space12,
                 ),
                 child: Column(
@@ -318,75 +318,18 @@ class ChatsAppBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 60,
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: AppColors.secondary.withValues(alpha: .18)),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withValues(alpha: .06),
-            blurRadius: 18,
-            spreadRadius: -7,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          const SizedBox(width: 6),
-          const Expanded(
-            child: AmoraScreenTitle(
-              title: 'Chats',
-              subtitle: 'Your conversations',
-            ),
-          ),
-          const SizedBox(width: 4),
-          _InboxIconButton(
-            tooltip: 'Compose message',
-            icon: Icons.edit_square,
-            onPressed: onCompose,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _InboxIconButton extends StatelessWidget {
-  const _InboxIconButton({
-    required this.tooltip,
-    required this.icon,
-    required this.onPressed,
-  });
-
-  final String tooltip;
-  final IconData icon;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: tooltip,
-      child: SizedBox.square(
-        dimension: 44,
-        child: IconButton(
-          tooltip: tooltip,
-          onPressed: onPressed,
-          style: IconButton.styleFrom(
-            foregroundColor: AppColors.primary,
-            backgroundColor: AppColors.background,
-            hoverColor: AppColors.tertiary.withValues(alpha: .24),
-            focusColor: AppColors.tertiary.withValues(alpha: .28),
-            highlightColor: AppColors.tertiary.withValues(alpha: .2),
-            side: BorderSide(color: AppColors.secondary.withValues(alpha: .16)),
-          ),
-          icon: Icon(icon, size: 20),
+    return AmoraaMainPageHeader(
+      title: 'Chats',
+      subtitle: 'Your conversations',
+      actions: [
+        AmoraaMainPageHeaderAction(
+          key: const ValueKey('chats-compose-action'),
+          tooltip: 'Compose message',
+          semanticLabel: 'Compose new chat',
+          icon: Icons.edit_square,
+          onPressed: onCompose,
         ),
-      ),
+      ],
     );
   }
 }
@@ -556,79 +499,100 @@ class _ChatSearchFieldState extends State<ChatSearchField> {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(AmoraRadius.extraLarge),
-        child: TextField(
-          key: const ValueKey('chats-search-field'),
-          controller: widget.controller,
-          focusNode: widget.focusNode,
-          onChanged: widget.onChanged,
-          textInputAction: TextInputAction.search,
-          cursorColor: AppColors.secondary,
-          style: AmoraTextStyles.bodyLarge.copyWith(
-            color: AppColors.text,
-            fontSize: 16,
-            fontWeight: FontWeight.w500,
-          ),
-          decoration: InputDecoration(
-            hintText: 'Search chats...',
-            hintFadeDuration: const Duration(milliseconds: 200),
-            hintStyle: AmoraTextStyles.bodyLarge.copyWith(
-              color: AppColors.text.withValues(alpha: .56),
-              fontSize: 15,
-              fontWeight: FontWeight.w400,
+        child: Semantics(
+          textField: true,
+          label: 'Search chats',
+          child: TextField(
+            key: const ValueKey('chats-search-field'),
+            controller: widget.controller,
+            focusNode: widget.focusNode,
+            onChanged: widget.onChanged,
+            textInputAction: TextInputAction.search,
+            textAlignVertical: TextAlignVertical.center,
+            cursorColor: AppColors.secondary,
+            style: AmoraTextStyles.bodyLarge.copyWith(
+              color: AppColors.text,
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
             ),
-            prefixIcon: const Icon(
-              Icons.search_rounded,
-              color: AppColors.primary,
-              size: 22,
-            ),
-            prefixIconConstraints: const BoxConstraints(
-              minWidth: 50,
-              minHeight: 54,
-            ),
-            suffixIcon: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 200),
-              switchInCurve: Curves.easeOutBack,
-              switchOutCurve: Curves.easeInCubic,
-              transitionBuilder: (child, animation) => FadeTransition(
-                opacity: animation,
-                child: ScaleTransition(scale: animation, child: child),
+            decoration: InputDecoration(
+              hintText: 'Search chats...',
+              hintFadeDuration: const Duration(milliseconds: 200),
+              hintStyle: AmoraTextStyles.bodyLarge.copyWith(
+                color: AppColors.text.withValues(alpha: .56),
+                fontSize: 15,
+                fontWeight: FontWeight.w400,
               ),
-              child: widget.hasQuery
-                  ? Center(
-                      key: const ValueKey('chats-search-clear-visible'),
-                      child: Tooltip(
-                        message: 'Clear search',
-                        child: Material(
-                          key: const ValueKey('chats-search-clear'),
-                          color: AppColors.tertiary.withValues(alpha: .34),
-                          shape: const CircleBorder(),
-                          child: InkWell(
-                            onTap: widget.onClear,
-                            customBorder: const CircleBorder(),
-                            child: const SizedBox.square(
-                              dimension: 32,
-                              child: Icon(
-                                Icons.close_rounded,
-                                color: AppColors.primary,
-                                size: 18,
+              prefixIcon: const Icon(
+                Icons.search_rounded,
+                key: ValueKey('chats-search-icon'),
+                color: AppColors.primary,
+                size: 22,
+              ),
+              prefixIconConstraints: const BoxConstraints.tightFor(
+                width: 48,
+                height: 54,
+              ),
+              suffixIcon: SizedBox(
+                width: 48,
+                height: 54,
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 200),
+                  switchInCurve: Curves.easeOutBack,
+                  switchOutCurve: Curves.easeInCubic,
+                  transitionBuilder: (child, animation) => FadeTransition(
+                    opacity: animation,
+                    child: ScaleTransition(scale: animation, child: child),
+                  ),
+                  child: widget.hasQuery
+                      ? Semantics(
+                          key: const ValueKey('chats-search-clear-visible'),
+                          button: true,
+                          label: 'Clear search',
+                          child: Tooltip(
+                            message: 'Clear search',
+                            child: Material(
+                              key: const ValueKey('chats-search-clear'),
+                              color: AppColors.transparent,
+                              child: InkWell(
+                                onTap: widget.onClear,
+                                borderRadius: BorderRadius.circular(27),
+                                child: Center(
+                                  child: Container(
+                                    width: 32,
+                                    height: 32,
+                                    decoration: BoxDecoration(
+                                      color: AppColors.tertiary.withValues(
+                                        alpha: .34,
+                                      ),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(
+                                      Icons.close_rounded,
+                                      color: AppColors.primary,
+                                      size: 18,
+                                    ),
+                                  ),
+                                ),
                               ),
                             ),
                           ),
+                        )
+                      : const SizedBox.shrink(
+                          key: ValueKey('chats-search-clear-hidden'),
                         ),
-                      ),
-                    )
-                  : const SizedBox.shrink(
-                      key: ValueKey('chats-search-clear-hidden'),
-                    ),
+                ),
+              ),
+              suffixIconConstraints: const BoxConstraints.tightFor(
+                width: 48,
+                height: 54,
+              ),
+              border: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              focusedBorder: InputBorder.none,
+              isDense: true,
+              contentPadding: EdgeInsets.zero,
             ),
-            suffixIconConstraints: const BoxConstraints(
-              minWidth: 48,
-              minHeight: 54,
-            ),
-            border: InputBorder.none,
-            enabledBorder: InputBorder.none,
-            focusedBorder: InputBorder.none,
-            contentPadding: const EdgeInsets.symmetric(vertical: 15),
           ),
         ),
       ),

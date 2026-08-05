@@ -232,7 +232,7 @@ void main() {
     expect(find.text('Step 1 of 6'), findsOneWidget);
   });
 
-  testWidgets('signup continues to the existing profile onboarding flow', (
+  testWidgets('signup opens email verification before profile onboarding', (
     tester,
   ) async {
     AmoraSession.logOut();
@@ -263,8 +263,14 @@ void main() {
     await tester.pump(const Duration(milliseconds: 750));
     await tester.pump(const Duration(milliseconds: 400));
 
-    expect(find.text("When's your birthday?"), findsOneWidget);
-    expect(find.text('Step 1 of 6'), findsOneWidget);
+    expect(find.text('Verify your email'), findsOneWidget);
+    expect(find.text('new.member@amora.ai'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('account-verification-otp')),
+      findsOneWidget,
+    );
+    expect(find.text("When's your birthday?"), findsNothing);
+    expect(find.text('Step 1 of 6'), findsNothing);
   });
 
   testWidgets('hidden routes fall through to the Discover screen', (
@@ -376,6 +382,7 @@ void main() {
       Size(430, 932),
       Size(600, 960),
       Size(768, 1024),
+      Size(1024, 768),
       Size(1024, 1366),
     ];
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -413,6 +420,37 @@ void main() {
           );
         }
       }
+    }
+  });
+
+  testWidgets('all production routes support 1.3 text scale at 320 px', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(320, 640));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    tester.platformDispatcher.textScaleFactorTestValue = 1.3;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+
+    await tester.pumpWidget(const MyApp());
+    await tester.pump(const Duration(milliseconds: 250));
+
+    final navigator = tester.state<NavigatorState>(find.byType(Navigator));
+    for (final route in _productionRoutes) {
+      navigator.pushNamed(route);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 250));
+      expect(
+        tester.takeException(),
+        isNull,
+        reason: 'Route $route failed at 320 px with 1.3 text scale',
+      );
+      navigator.pop();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(
+        tester.takeException(),
+        isNull,
+        reason: 'Route $route failed while closing at 1.3 text scale',
+      );
     }
   });
 }

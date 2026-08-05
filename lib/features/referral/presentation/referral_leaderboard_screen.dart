@@ -135,45 +135,74 @@ class _LeaderTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) => PremiumCard(
     padding: const EdgeInsets.all(14),
-    child: Row(
-      children: [
-        CircleAvatar(
+    child: LayoutBuilder(
+      builder: (context, constraints) {
+        final avatar = CircleAvatar(
           backgroundColor: rank == 1
               ? AppColors.premiumGold
               : AppColors.lavenderBackground,
           child: Text('$rank'),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        );
+        const nameStyle = TextStyle(
+          color: AppColors.deepWine,
+          fontWeight: FontWeight.w900,
+        );
+        const coinsStyle = TextStyle(
+          color: AppColors.primaryPurple,
+          fontWeight: FontWeight.w900,
+        );
+
+        if (constraints.maxWidth < 280) {
+          return Row(
             children: [
-              Text(
-                leader.$1,
-                style: const TextStyle(
-                  color: AppColors.deepWine,
-                  fontWeight: FontWeight.w900,
+              avatar,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(child: Text(leader.$1, style: nameStyle)),
+                        const SizedBox(width: 8),
+                        Text('${leader.$2} coins', style: coinsStyle),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    LinearProgressIndicator(value: leader.$2 / 2000),
+                    const SizedBox(height: 4),
+                    Text(leader.$3),
+                  ],
                 ),
               ),
-              LinearProgressIndicator(value: leader.$2 / 2000),
             ],
-          ),
-        ),
-        const SizedBox(width: 12),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
+          );
+        }
+
+        return Row(
           children: [
-            Text(
-              '${leader.$2} coins',
-              style: const TextStyle(
-                color: AppColors.primaryPurple,
-                fontWeight: FontWeight.w900,
+            avatar,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(leader.$1, style: nameStyle),
+                  LinearProgressIndicator(value: leader.$2 / 2000),
+                ],
               ),
             ),
-            Text(leader.$3),
+            const SizedBox(width: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text('${leader.$2} coins', style: coinsStyle),
+                Text(leader.$3),
+              ],
+            ),
           ],
-        ),
-      ],
+        );
+      },
     ),
   );
 }

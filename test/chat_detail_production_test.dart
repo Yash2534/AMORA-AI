@@ -124,7 +124,13 @@ void main() {
     expect(avatar.right, lessThan(identity.left));
     expect(identity.left - avatar.right, closeTo(10, .1));
     expect(identity.right, lessThanOrEqualTo(more.left));
-    expect(more.right, closeTo(320, .1));
+    expect(back.left, closeTo(16, .1));
+    expect(more.right, closeTo(304, .1));
+    expect(back.size, const Size.square(48));
+    expect(more.size, const Size.square(48));
+    expect(back.center.dy, closeTo(more.center.dy, .1));
+    expect(back.center.dy, closeTo(avatar.center.dy, .1));
+    expect(back.center.dy, closeTo(identity.center.dy, .1));
 
     final column = tester.widget<Column>(
       find.byKey(const ValueKey('chat-header-name-status')),
@@ -135,6 +141,10 @@ void main() {
     );
     expect(avatarWidget.radius, 20);
     expect(avatarWidget.showVerified, isFalse);
+    expect(
+      find.bySemanticsLabel(RegExp('Chat profile picture for ${profile.name}')),
+      findsOneWidget,
+    );
 
     await tester.tap(find.byTooltip('Back'));
     await tester.tap(find.byTooltip('More chat options'));
@@ -142,6 +152,42 @@ void main() {
     expect(backTaps, 1);
     expect(moreTaps, 1);
     expect(profileTaps, 1);
+  });
+
+  testWidgets('header alignment remains identical at supported widths', (
+    tester,
+  ) async {
+    final profile = _renamedProfile(
+      repository.conversations.first.user,
+      'Alexandria Priyadarshini Verylongsurname',
+    );
+    for (final width in <double>[320, 360, 390, 412, 430, 600, 768]) {
+      await pumpHeader(
+        tester,
+        profile: profile,
+        online: true,
+        status: 'Online',
+        size: Size(width, 700),
+      );
+      final back = tester.getRect(
+        find.byKey(const ValueKey('chat-header-back')),
+      );
+      final avatar = tester.getRect(
+        find.byKey(const ValueKey('chat-header-avatar')),
+      );
+      final identity = tester.getRect(
+        find.byKey(const ValueKey('chat-header-name-status')),
+      );
+      final more = tester.getRect(
+        find.byKey(const ValueKey('chat-header-more')),
+      );
+      expect(back.left, closeTo(16, .1));
+      expect(more.right, closeTo(width - 16, .1));
+      expect(back.center.dy, closeTo(more.center.dy, .1));
+      expect(back.center.dy, closeTo(avatar.center.dy, .1));
+      expect(back.center.dy, closeTo(identity.center.dy, .1));
+      expect(tester.takeException(), isNull);
+    }
   });
 
   testWidgets('long identity and 1.3 text scale stay compact at 320px', (

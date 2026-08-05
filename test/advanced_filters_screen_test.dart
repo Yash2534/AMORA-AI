@@ -24,6 +24,56 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  Future<void> updateMultiSelect(
+    WidgetTester tester,
+    Finder selector,
+    List<String> options,
+  ) async {
+    await tester.ensureVisible(selector);
+    await tester.tap(selector);
+    await tester.pumpAndSettle();
+    for (final option in options) {
+      final optionFinder = find.byKey(ValueKey('amoraa-select-option-$option'));
+      final optionList = find.byKey(const ValueKey('amoraa-select-options'));
+      final optionScrollable = find.descendant(
+        of: optionList,
+        matching: find.byType(Scrollable),
+      );
+      if (optionFinder.hitTestable().evaluate().isEmpty) {
+        await tester.scrollUntilVisible(
+          optionFinder,
+          120,
+          scrollable: optionScrollable,
+        );
+      }
+      final viewportTop = tester.getTopLeft(optionList).dy + 8;
+      final viewportBottom = tester.getBottomRight(optionList).dy - 8;
+      final optionTop = tester.getTopLeft(optionFinder).dy;
+      final optionBottom = tester.getBottomRight(optionFinder).dy;
+      final position = tester.state<ScrollableState>(optionScrollable).position;
+      if (optionBottom > viewportBottom) {
+        position.jumpTo(
+          (position.pixels + optionBottom - viewportBottom).clamp(
+            position.minScrollExtent,
+            position.maxScrollExtent,
+          ),
+        );
+      } else if (optionTop < viewportTop) {
+        position.jumpTo(
+          (position.pixels - (viewportTop - optionTop)).clamp(
+            position.minScrollExtent,
+            position.maxScrollExtent,
+          ),
+        );
+      }
+      await tester.pump();
+      await tester.tap(optionFinder);
+      await tester.pump();
+    }
+    await tester.tap(find.byKey(const ValueKey('amoraa-select-done')));
+    await tester.pumpAndSettle();
+  }
+
   testWidgets('compact layout keeps header and sticky actions readable', (
     tester,
   ) async {
@@ -112,7 +162,44 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('education is single-select and replaces the prior value', (
+  testWidgets('dynamic more chip matches every selected-summary chip', (
+    tester,
+  ) async {
+    for (final width in <double>[320, 360, 390, 412, 430, 600, 768]) {
+      await pumpFilters(tester, size: Size(width, 700));
+
+      final regular = find.byKey(
+        const ValueKey('selected-preference-Verified only'),
+      );
+      final more = find.byKey(const ValueKey('selected-preferences-more'));
+      expect(regular, findsOneWidget);
+      expect(more, findsOneWidget);
+      expect(tester.getSize(more).height, tester.getSize(regular).height);
+
+      final regularText = tester.widget<Text>(
+        find.descendant(of: regular, matching: find.text('Verified only')),
+      );
+      final moreText = tester.widget<Text>(
+        find.descendant(of: more, matching: find.text('+3 more')),
+      );
+      expect(moreText.style, regularText.style);
+
+      final regularDecoration = tester.widget<DecoratedBox>(
+        find.descendant(of: regular, matching: find.byType(DecoratedBox)).first,
+      );
+      final moreDecoration = tester.widget<DecoratedBox>(
+        find.descendant(of: more, matching: find.byType(DecoratedBox)).first,
+      );
+      expect(moreDecoration.decoration, regularDecoration.decoration);
+      expect(
+        find.bySemanticsLabel(RegExp('Show 3 more selected filters')),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    }
+  });
+
+  testWidgets('education supports multiple unique selections and removal', (
     tester,
   ) async {
     await pumpFilters(tester, size: const Size(430, 850));
@@ -122,32 +209,26 @@ void main() {
     await tester.pumpAndSettle();
 
     final selector = find.byKey(const ValueKey('filters-education-selector'));
-    await tester.ensureVisible(selector);
-    await tester.tap(selector);
-    await tester.pumpAndSettle();
-    await tester.tap(
-      find.byKey(const ValueKey('amoraa-select-option-Undergraduate')),
+    await updateMultiSelect(tester, selector, const [
+      'Undergraduate',
+      'Postgraduate',
+    ]);
+    expect(find.text('9 preferences selected'), findsOneWidget);
+    expect(
+      find.descendant(of: selector, matching: find.text('2 selected')),
+      findsOneWidget,
     );
-    await tester.pumpAndSettle();
-    expect(find.text('8 preferences selected'), findsOneWidget);
-    expect(find.text('+4 more'), findsOneWidget);
 
-    await tester.tap(selector);
-    await tester.pumpAndSettle();
-    await tester.tap(
-      find.byKey(const ValueKey('amoraa-select-option-Postgraduate')),
-    );
-    await tester.pumpAndSettle();
+    await updateMultiSelect(tester, selector, const ['Undergraduate']);
     expect(find.text('8 preferences selected'), findsOneWidget);
     expect(
       find.descendant(of: selector, matching: find.text('Postgraduate')),
       findsOneWidget,
     );
-    expect(find.text('Undergraduate'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('shared Smoking options include Yes and remain single-select', (
+  testWidgets('all three shared habit groups support multi-select and reset', (
     tester,
   ) async {
     await pumpFilters(tester, size: const Size(430, 850));
@@ -156,39 +237,31 @@ void main() {
     await tester.tap(habits);
     await tester.pumpAndSettle();
 
-    final selector = find.byKey(const ValueKey('filters-smoking-selector'));
-    await tester.ensureVisible(selector);
-    await tester.tap(selector);
-    await tester.pumpAndSettle();
+    final selectors = <Finder>[
+      find.byKey(const ValueKey('filters-smoking-selector')),
+      find.byKey(const ValueKey('filters-drinking-selector')),
+      find.byKey(const ValueKey('filters-weed-selector')),
+    ];
+    for (final selector in selectors) {
+      await updateMultiSelect(tester, selector, const ['Yes', 'Sometimes']);
+      expect(
+        find.descendant(of: selector, matching: find.text('2 selected')),
+        findsOneWidget,
+      );
+    }
+    expect(find.text('13 preferences selected'), findsOneWidget);
 
-    final yes = find.byKey(const ValueKey('amoraa-select-option-Yes'));
-    await tester.ensureVisible(yes);
-    await tester.tap(yes);
+    await tester.tap(find.byKey(const ValueKey('filters-bottom-reset')));
     await tester.pumpAndSettle();
-    expect(
-      find.descendant(of: selector, matching: find.text('Yes')),
-      findsOneWidget,
-    );
-
-    await tester.tap(selector);
-    await tester.pumpAndSettle();
-    final sometimes = find.byKey(
-      const ValueKey('amoraa-select-option-Sometimes'),
-    );
-    await tester.ensureVisible(sometimes);
-    await tester.tap(sometimes);
-    await tester.pumpAndSettle();
-    expect(
-      find.descendant(of: selector, matching: find.text('Sometimes')),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(of: selector, matching: find.text('Yes')),
-      findsNothing,
-    );
+    for (final selector in selectors) {
+      expect(
+        find.descendant(of: selector, matching: find.text('Any')),
+        findsOneWidget,
+      );
+    }
   });
 
-  testWidgets('city selector contains exactly four single-select choices', (
+  testWidgets('city selector contains exactly four multi-select choices', (
     tester,
   ) async {
     await pumpFilters(tester, size: const Size(390, 844));
@@ -218,14 +291,57 @@ void main() {
       );
     }
 
-    final surat = find.byKey(const ValueKey('amoraa-select-option-Surat'));
-    await tester.tap(surat);
+    await tester.tap(find.byKey(const ValueKey('amoraa-select-option-Surat')));
+    await tester.tap(
+      find.byKey(const ValueKey('amoraa-select-option-Vadodara')),
+    );
+    await tester.tap(find.byKey(const ValueKey('amoraa-select-done')));
     await tester.pumpAndSettle();
     expect(
-      find.descendant(of: citySelector, matching: find.text('Surat')),
+      find.descendant(of: citySelector, matching: find.text('3 selected')),
+      findsOneWidget,
+    );
+    expect(find.text('9 preferences selected'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('dating intentions retain multiple values and remove one only', (
+    tester,
+  ) async {
+    await pumpFilters(tester, size: const Size(390, 844));
+    final selector = find.byKey(const ValueKey('filters-intention-selector'));
+
+    await updateMultiSelect(tester, selector, const ['Marriage Minded']);
+    expect(
+      find.descendant(of: selector, matching: find.text('2 selected')),
+      findsOneWidget,
+    );
+    expect(find.text('8 preferences selected'), findsOneWidget);
+
+    await updateMultiSelect(tester, selector, const ['Long-Term Relationship']);
+    expect(
+      find.descendant(of: selector, matching: find.text('Marriage Minded')),
       findsOneWidget,
     );
     expect(find.text('7 preferences selected'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('existing wrap groups retain independent multi-selections', (
+    tester,
+  ) async {
+    await pumpFilters(tester, size: const Size(430, 900));
+    final lifestyle = find.byKey(const ValueKey('filters-section-lifestyle'));
+    await tester.ensureVisible(lifestyle);
+
+    for (final option in const ['Travel Companion', 'Adventure Seeker']) {
+      final chip = find.byKey(ValueKey('filter-option-$option'));
+      await tester.ensureVisible(chip);
+      await tester.tap(chip);
+      await tester.pump();
+    }
+
+    expect(find.text('9 preferences selected'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -249,6 +365,7 @@ void main() {
       scrollable: find.byType(Scrollable).last,
     );
     await tester.tap(other);
+    await tester.tap(find.byKey(const ValueKey('amoraa-select-done')));
     await tester.pumpAndSettle();
 
     final custom = find.byKey(const ValueKey('filters-custom-education-field'));
@@ -360,6 +477,7 @@ void main() {
       const Size(430, 932),
       const Size(600, 960),
       const Size(768, 1024),
+      const Size(1024, 1100),
     ]) {
       await pumpFilters(tester, size: size);
       await tester.tap(find.byKey(const ValueKey('selected-preferences-more')));

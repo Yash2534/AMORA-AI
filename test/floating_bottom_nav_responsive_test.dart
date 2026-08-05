@@ -29,6 +29,7 @@ void main() {
             viewPadding: EdgeInsets.only(bottom: bottomInset),
           ),
           child: Scaffold(
+            extendBody: true,
             body: const SizedBox.expand(),
             bottomNavigationBar: FloatingBottomNav(
               activeTab: activeTab,
@@ -46,13 +47,13 @@ void main() {
   ) async {
     addTearDown(() => tester.binding.setSurfaceSize(null));
     final expectedBarWidths = <Size, double>{
-      Size(320, 640): 296,
+      Size(320, 640): 288,
       Size(360, 800): 328,
       Size(375, 812): 343,
       Size(390, 844): 358,
-      Size(412, 915): 372,
-      Size(430, 932): 382,
-      Size(480, 932): 432,
+      Size(412, 915): 380,
+      Size(430, 932): 398,
+      Size(480, 932): 448,
       Size(600, 960): FloatingBottomNav.maxBarWidth,
       Size(768, 1024): FloatingBottomNav.maxBarWidth,
       Size(1024, 768): FloatingBottomNav.maxBarWidth,
@@ -140,7 +141,7 @@ void main() {
     expect(s23Bar.height, standardBar.height);
     expect(s23Indicator, standardIndicator);
     expect(s23Icon.size, standardIcon.size);
-    expect(s23Bar.width - standardBar.width, 14);
+    expect(s23Bar.width - standardBar.width, 22);
     expect(tester.takeException(), isNull);
   });
 
@@ -257,9 +258,12 @@ void main() {
     await pumpNavigation(tester, size: const Size(390, 844), bottomInset: 34);
     final withSystemInset = tester.getSize(find.byType(FloatingBottomNav));
 
-    expect(withoutSystemInset.height, FloatingBottomNav.barHeight + 8);
+    expect(
+      withoutSystemInset.height,
+      FloatingBottomNav.barHeight + FloatingBottomNav.minimumBottomSpacing,
+    );
     expect(withSystemInset.height, FloatingBottomNav.barHeight + 34);
-    expect(withSystemInset.height - withoutSystemInset.height, 26);
+    expect(withSystemInset.height - withoutSystemInset.height, 24);
     expect(tester.takeException(), isNull);
   });
 
@@ -321,5 +325,22 @@ void main() {
         reason: 'Text scale $textScale overflowed.',
       );
     }
+  });
+
+  testWidgets('outer region and SafeArea remain transparent', (tester) async {
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await pumpNavigation(tester, size: const Size(390, 844), bottomInset: 34);
+
+    final outer = tester.widget<Material>(
+      find.byKey(const ValueKey('floating-bottom-nav-transparent-outer')),
+    );
+    expect(outer.type, MaterialType.transparency);
+
+    final bar = tester.widget<DecoratedBox>(
+      find.byKey(const ValueKey('floating-bottom-nav-container-surface')),
+    );
+    final decoration = bar.decoration as BoxDecoration;
+    expect(decoration.color, AppColors.surface.withValues(alpha: .96));
+    expect(tester.takeException(), isNull);
   });
 }

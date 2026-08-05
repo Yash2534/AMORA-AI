@@ -45,16 +45,32 @@ class _MainShellState extends State<MainShell> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBody: true,
       backgroundColor: AppColors.background,
-      body: IndexedStack(
-        index: _tabs.indexOf(_activeTab),
-        children: const [
-          BrowseGridScreen(showNavigation: false),
-          ChatListScreen(showNavigation: false),
-          MatchesScreen(showNavigation: false),
-          EventsScreen(showNavigation: false),
-          ProfileScreen(showNavigation: false),
-        ],
+      body: Builder(
+        builder: (context) {
+          final media = MediaQuery.of(context);
+          return MediaQuery(
+            key: const ValueKey('main-shell-navigation-content-inset'),
+            data: media.copyWith(
+              padding: media.padding.copyWith(
+                bottom:
+                    media.padding.bottom +
+                    FloatingBottomNav.contentBottomPadding,
+              ),
+            ),
+            child: IndexedStack(
+              index: _tabs.indexOf(_activeTab),
+              children: const [
+                BrowseGridScreen(showNavigation: false),
+                ChatListScreen(showNavigation: false),
+                MatchesScreen(showNavigation: false),
+                EventsScreen(showNavigation: false),
+                ProfileScreen(showNavigation: false),
+              ],
+            ),
+          );
+        },
       ),
       bottomNavigationBar: FloatingBottomNav(
         activeTab: _activeTab,

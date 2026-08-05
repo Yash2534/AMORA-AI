@@ -137,7 +137,6 @@ class LocalOnboardingRepository extends ChangeNotifier {
   LocalOnboardingRepository._();
 
   static final instance = LocalOnboardingRepository._();
-  static const demoVerificationCode = '246810';
   static const _storageKey = 'amora.onboarding_state.v1';
 
   LocalOnboardingState _state = const LocalOnboardingState();
@@ -225,12 +224,6 @@ class LocalOnboardingRepository extends ChangeNotifier {
     notifyListeners();
   }
 
-  bool verifyCode(String code) {
-    if (code != demoVerificationCode) return false;
-    update(_state.copyWith(accountVerified: true, stage: OnboardingStage.age));
-    return true;
-  }
-
   void markProfileCompleted(bool value) {
     update(
       _state.copyWith(
@@ -243,7 +236,7 @@ class LocalOnboardingRepository extends ChangeNotifier {
   }
 
   void resetForNewAccount() {
-    _state = const LocalOnboardingState();
+    _state = const LocalOnboardingState(stage: OnboardingStage.verification);
     notifyListeners();
     unawaited(_persistSafely());
   }

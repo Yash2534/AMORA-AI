@@ -123,6 +123,8 @@ class _AmoraOtpInputState extends State<AmoraOtpInput> {
         : value.length;
     final activeIndex = math.min(math.max(selectionOffset, 0), _length - 1);
     return Semantics(
+      container: true,
+      explicitChildNodes: true,
       textField: true,
       label: '$_length digit verification code',
       value: value.isEmpty
@@ -167,6 +169,8 @@ class _AmoraOtpInputState extends State<AmoraOtpInput> {
                         for (var index = 0; index < _length; index++) ...[
                           _OtpCell(
                             key: ValueKey('otp-cell-$index'),
+                            semanticLabel:
+                                'Verification digit ${index + 1} of $_length',
                             size: cellSize,
                             digit: index < value.length ? value[index] : '',
                             focused:
@@ -193,6 +197,7 @@ class _OtpCell extends StatelessWidget {
   const _OtpCell({
     super.key,
     required this.size,
+    required this.semanticLabel,
     required this.digit,
     required this.focused,
     required this.hasError,
@@ -200,6 +205,7 @@ class _OtpCell extends StatelessWidget {
   });
 
   final double size;
+  final String semanticLabel;
   final String digit;
   final bool focused;
   final bool hasError;
@@ -216,7 +222,7 @@ class _OtpCell extends StatelessWidget {
         : AppColors.tertiary;
     return Semantics(
       button: true,
-      label: 'Verification digit',
+      label: semanticLabel,
       value: digit.isEmpty ? 'Empty' : 'Entered',
       child: InkWell(
         onTap: onTap,

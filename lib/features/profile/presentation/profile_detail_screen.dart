@@ -926,6 +926,7 @@ class ProfileStory extends StatelessWidget {
       profile.intent,
       profile.smoking,
       profile.drinking,
+      profile.weed,
     ].any((value) => value.trim().isNotEmpty);
     final hasRelationship = <String>[
       profile.intent,
@@ -937,6 +938,7 @@ class ProfileStory extends StatelessWidget {
       profile.foodPreference,
       profile.smoking,
       profile.drinking,
+      profile.weed,
       profile.petPreference,
       profile.religion,
       profile.personality,
@@ -1071,6 +1073,7 @@ class ProfileQuickFacts extends StatelessWidget {
       ),
       _SymbolicFact(Icons.smoke_free_rounded, 'Smoking', profile.smoking),
       _SymbolicFact(Icons.local_bar_outlined, 'Drinking', profile.drinking),
+      _SymbolicFact(Icons.grass_rounded, 'Weed', profile.weed),
     ].where((fact) => fact.value.trim().isNotEmpty).toList(growable: false);
 
     return SizedBox(
@@ -1257,6 +1260,7 @@ class LifestyleGrid extends StatelessWidget {
       _SymbolicFact(Icons.restaurant_rounded, 'Food', profile.foodPreference),
       _SymbolicFact(Icons.smoke_free_rounded, 'Smoking', profile.smoking),
       _SymbolicFact(Icons.local_bar_outlined, 'Drinking', profile.drinking),
+      _SymbolicFact(Icons.grass_rounded, 'Weed', profile.weed),
       _SymbolicFact(Icons.pets_rounded, 'Pets', profile.petPreference),
       _SymbolicFact(
         Icons.self_improvement_rounded,

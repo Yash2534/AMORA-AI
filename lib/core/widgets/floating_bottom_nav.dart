@@ -15,17 +15,19 @@ class FloatingBottomNav extends StatelessWidget {
   final AmoraNavTab activeTab;
   final ValueChanged<AmoraNavTab>? onTabSelected;
 
-  static const double barHeight = 70;
+  static const double barHeight = 68;
   static const double bottomMargin = 0;
-  static const double contentBottomPadding = 96;
-  static const double assistantBottomPadding = 88;
+  static const double contentBottomPadding = 94;
+  static const double assistantBottomPadding = 86;
   static const double maxBarWidth = 480;
-  static const double itemHeight = 62;
-  static const double iconSize = 24;
-  static const double selectedIconSize = 25;
-  static const double iconContainerWidth = 42;
-  static const double iconContainerHeight = 30;
+  static const double itemHeight = 60;
+  static const double iconSize = 23;
+  static const double selectedIconSize = 23;
+  static const double iconContainerWidth = 36;
+  static const double iconContainerHeight = 28;
   static const double labelSize = 11;
+  static const double horizontalMargin = 16;
+  static const double minimumBottomSpacing = 10;
 
   static const items = <AmoraNavigationDestination>[
     AmoraNavigationDestination(
@@ -67,71 +69,62 @@ class FloatingBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      key: const ValueKey('floating-bottom-nav-safe-area'),
-      top: false,
-      minimum: const EdgeInsets.only(bottom: AmoraSpacing.space8),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final horizontalMargin = _horizontalMarginFor(constraints.maxWidth);
-          return Padding(
-            padding: EdgeInsets.symmetric(horizontal: horizontalMargin),
-            child: Center(
-              heightFactor: 1,
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: maxBarWidth),
-                child: SizedBox(
-                  key: const ValueKey('floating-bottom-nav-bar'),
-                  height: barHeight,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(30),
-                      border: Border.all(
-                        color: AppColors.tertiary.withValues(alpha: .78),
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.primary.withValues(alpha: .12),
-                          blurRadius: 24,
-                          spreadRadius: -6,
-                          offset: const Offset(0, 10),
-                        ),
-                      ],
+    return Material(
+      key: const ValueKey('floating-bottom-nav-transparent-outer'),
+      type: MaterialType.transparency,
+      child: SafeArea(
+        key: const ValueKey('floating-bottom-nav-safe-area'),
+        top: false,
+        minimum: const EdgeInsets.only(bottom: minimumBottomSpacing),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: horizontalMargin),
+          child: Center(
+            heightFactor: 1,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: maxBarWidth),
+              child: SizedBox(
+                key: const ValueKey('floating-bottom-nav-bar'),
+                height: barHeight,
+                child: DecoratedBox(
+                  key: const ValueKey('floating-bottom-nav-container-surface'),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface.withValues(alpha: .96),
+                    borderRadius: BorderRadius.circular(28),
+                    border: Border.all(
+                      color: AppColors.textSecondary.withValues(alpha: .14),
                     ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(AmoraSpacing.space4),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          for (final item in items)
-                            Expanded(
-                              child: _BottomNavButton(
-                                item: item,
-                                selected: item.tab == activeTab,
-                                onTap: () => _handleTap(context, item),
-                              ),
-                            ),
-                        ],
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primary.withValues(alpha: .1),
+                        blurRadius: 20,
+                        spreadRadius: -7,
+                        offset: const Offset(0, 8),
                       ),
+                    ],
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(AmoraSpacing.space4),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        for (final item in items)
+                          Expanded(
+                            child: _BottomNavButton(
+                              item: item,
+                              selected: item.tab == activeTab,
+                              onTap: () => _handleTap(context, item),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
                 ),
               ),
             ),
-          );
-        },
+          ),
+        ),
       ),
     );
-  }
-
-  static double _horizontalMarginFor(double width) {
-    return switch (width) {
-      < 360 => AmoraSpacing.space12,
-      < 400 => AmoraSpacing.space16,
-      < 430 => AmoraSpacing.space20,
-      _ => AmoraSpacing.space24,
-    };
   }
 
   void _handleTap(BuildContext context, AmoraNavigationDestination item) {
@@ -182,7 +175,7 @@ class _BottomNavButtonState extends State<_BottomNavButton> {
         child: SizedBox(
           height: FloatingBottomNav.itemHeight,
           child: Material(
-            color: _hovered ? AppColors.background : AppColors.surface,
+            color: _hovered ? AppColors.background : AppColors.transparent,
             borderRadius: AmoraRadius.pillBorder,
             clipBehavior: Clip.antiAlias,
             child: InkWell(
@@ -202,7 +195,7 @@ class _BottomNavButtonState extends State<_BottomNavButton> {
                   AnimatedScale(
                     duration: duration,
                     curve: Curves.easeOutCubic,
-                    scale: _pressed ? .94 : (selected ? 1.02 : 1),
+                    scale: _pressed ? .96 : 1,
                     child: AnimatedContainer(
                       key: ValueKey('bottom-nav-indicator-${item.label}'),
                       duration: duration,
@@ -211,7 +204,7 @@ class _BottomNavButtonState extends State<_BottomNavButton> {
                       height: FloatingBottomNav.iconContainerHeight,
                       decoration: BoxDecoration(
                         color: selected
-                            ? AppColors.tertiary.withValues(alpha: .55)
+                            ? AppColors.tertiary.withValues(alpha: .42)
                             : AppColors.transparent,
                         borderRadius: AmoraRadius.pillBorder,
                         border: Border.all(
@@ -225,16 +218,8 @@ class _BottomNavButtonState extends State<_BottomNavButton> {
                         duration: duration,
                         switchInCurve: Curves.easeOutCubic,
                         switchOutCurve: Curves.easeOutCubic,
-                        transitionBuilder: (child, animation) => FadeTransition(
-                          opacity: animation,
-                          child: ScaleTransition(
-                            scale: Tween<double>(
-                              begin: .92,
-                              end: 1,
-                            ).animate(animation),
-                            child: child,
-                          ),
-                        ),
+                        transitionBuilder: (child, animation) =>
+                            FadeTransition(opacity: animation, child: child),
                         child: Icon(
                           selected ? item.selectedIcon : item.icon,
                           key: ValueKey('$selected-${item.label}'),

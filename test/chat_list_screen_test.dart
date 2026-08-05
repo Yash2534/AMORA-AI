@@ -75,8 +75,46 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('chats-search-clear')));
     await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('chats-search-clear')), findsNothing);
+    expect(find.text('Search chats...'), findsOneWidget);
     expect(find.text('No chats found'), findsNothing);
     expect(find.byType(ConversationTile), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('search hint and icons keep production alignment', (
+    tester,
+  ) async {
+    await pumpChats(tester, size: const Size(320, 760));
+
+    final container = find.byKey(const ValueKey('chats-search-container'));
+    final field = find.byKey(const ValueKey('chats-search-field'));
+    final icon = find.byKey(const ValueKey('chats-search-icon'));
+    final hint = find.text('Search chats...');
+    final containerRect = tester.getRect(container);
+    final iconRect = tester.getRect(icon);
+    final hintRect = tester.getRect(hint);
+    final textField = tester.widget<TextField>(field);
+
+    expect(textField.decoration?.hintText, 'Search chats...');
+    expect(textField.decoration?.prefixIconConstraints?.maxWidth, 48);
+    expect(textField.decoration?.suffixIconConstraints?.maxWidth, 48);
+    expect(iconRect.center.dy, closeTo(containerRect.center.dy, .1));
+    expect(hintRect.left, greaterThan(iconRect.right));
+    expect(hintRect.center.dy, closeTo(containerRect.center.dy, 1));
+    expect(find.byKey(const ValueKey('chats-search-clear')), findsNothing);
+
+    await tester.enterText(field, 'A');
+    await tester.pumpAndSettle();
+
+    final clear = find.byKey(const ValueKey('chats-search-clear'));
+    final clearRect = tester.getRect(clear);
+    expect(clear, findsOneWidget);
+    expect(find.bySemanticsLabel('Clear search'), findsOneWidget);
+    expect(clearRect.width, 48);
+    expect(clearRect.height, greaterThanOrEqualTo(48));
+    expect(clearRect.right, closeTo(containerRect.right, 1));
+    expect(clearRect.center.dy, closeTo(containerRect.center.dy, .1));
     expect(tester.takeException(), isNull);
   });
 
@@ -143,6 +181,20 @@ void main() {
       await pumpChats(tester, size: Size(width, 900));
       final rail = find.byKey(const ValueKey('chats-filter-scroll'));
       expect(tester.widget<ListView>(rail).scrollDirection, Axis.horizontal);
+      final search = find.byKey(const ValueKey('chats-search-field'));
+      final searchContainer = tester.getRect(
+        find.byKey(const ValueKey('chats-search-container')),
+      );
+      expect(find.text('Search chats...'), findsOneWidget);
+      await tester.enterText(search, 'A');
+      await tester.pumpAndSettle();
+      final clearRect = tester.getRect(
+        find.byKey(const ValueKey('chats-search-clear')),
+      );
+      expect(clearRect.right, closeTo(searchContainer.right, 1));
+      expect(clearRect.center.dy, closeTo(searchContainer.center.dy, .1));
+      await tester.tap(find.byKey(const ValueKey('chats-search-clear')));
+      await tester.pumpAndSettle();
       await tester.ensureVisible(
         find.byKey(const ValueKey('chats-filter-Online')),
       );

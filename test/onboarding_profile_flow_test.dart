@@ -406,7 +406,7 @@ void main() {
     );
   });
 
-  testWidgets('dating intentions support independent toggles per option', (
+  testWidgets('dating intention is required and remains single-select', (
     tester,
   ) async {
     final semantics = tester.ensureSemantics();
@@ -470,7 +470,7 @@ void main() {
       isNull,
     );
 
-    Future<void> toggle(String option) async {
+    Future<void> select(String option) async {
       final card = find.byKey(
         ValueKey('onboarding-relationship-option-$option'),
       );
@@ -480,8 +480,9 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    await toggle('Marriage Minded');
+    await select('Marriage Minded');
     expect(onboarding.state.selectedRelationshipGoals, {'Marriage Minded'});
+    expect(onboarding.state.primaryRelationshipGoal, 'Marriage Minded');
     expect(find.text('1 selected'), findsOneWidget);
     expect(
       tester
@@ -495,34 +496,31 @@ void main() {
       isNotNull,
     );
 
-    await toggle('Meaningful Dating');
-    await toggle('Friendship First');
-    expect(onboarding.state.selectedRelationshipGoals, {
-      'Marriage Minded',
-      'Meaningful Dating',
-      'Friendship First',
-    });
-    expect(onboarding.state.relationshipGoals, hasLength(3));
-    expect(find.text('3 selected'), findsOneWidget);
+    await select('Meaningful Dating');
+    expect(onboarding.state.selectedRelationshipGoals, {'Meaningful Dating'});
+    expect(onboarding.state.relationshipGoals, hasLength(1));
+    expect(onboarding.state.primaryRelationshipGoal, 'Meaningful Dating');
+    expect(find.text('1 selected'), findsOneWidget);
     expect(
-      find.byKey(const ValueKey('selected-intention-checkmark')),
-      findsNWidgets(3),
-    );
-    expect(profiles.profile.datingIntention, 'Marriage Minded');
-
-    await toggle('Meaningful Dating');
-    expect(onboarding.state.selectedRelationshipGoals, {
-      'Marriage Minded',
-      'Friendship First',
-    });
-    expect(onboarding.state.relationshipGoals, hasLength(2));
-    expect(find.bySemanticsLabel('Marriage Minded, selected'), findsOneWidget);
-    expect(
-      find.bySemanticsLabel('Meaningful Dating, unselected'),
+      find.byKey(const ValueKey('selected-intention-radio')),
       findsOneWidget,
     );
-    expect(find.bySemanticsLabel('Friendship First, selected'), findsOneWidget);
-    expect(find.text('2 selected'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('selected-intention-checkmark')),
+      findsNothing,
+    );
+    expect(
+      find.bySemanticsLabel('Marriage Minded, unselected'),
+      findsOneWidget,
+    );
+    expect(
+      find.bySemanticsLabel('Meaningful Dating, selected'),
+      findsOneWidget,
+    );
+
+    await select('Meaningful Dating');
+    expect(onboarding.state.selectedRelationshipGoals, {'Meaningful Dating'});
+    expect(find.text('1 selected'), findsOneWidget);
 
     final marriageCard = find.byKey(
       const ValueKey('onboarding-relationship-option-Marriage Minded'),
@@ -537,10 +535,8 @@ void main() {
       isNotNull,
     );
 
-    await toggle('Marriage Minded');
-    await toggle('Friendship First');
-    expect(onboarding.state.selectedRelationshipGoals, isEmpty);
-    expect(onboarding.state.relationshipGoals, isEmpty);
+    await select('Friendship First');
+    expect(onboarding.state.selectedRelationshipGoals, {'Friendship First'});
     expect(
       tester
           .widget<FilledButton>(
@@ -550,60 +546,77 @@ void main() {
             ),
           )
           .onPressed,
-      isNull,
+      isNotNull,
     );
     semantics.dispose();
   });
 
-  testWidgets('saved dating intentions preload without duplicates', (
-    tester,
-  ) async {
-    final semantics = tester.ensureSemantics();
-    onboarding.resetForTesting(
-      LocalOnboardingState(
-        stage: OnboardingStage.relationshipGoal,
-        relationshipGoals: {'Marriage Minded', 'Meaningful Dating'},
-        relationshipGoal: 'Marriage Minded',
-      ),
-    );
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: AmoraTheme.light(),
-        home: const ProfileOnboardingFlow(),
-      ),
-    );
-    await tester.pumpAndSettle();
+  testWidgets(
+    'saved single value preloads and legacy multi-value state is safe',
+    (tester) async {
+      final semantics = tester.ensureSemantics();
+      onboarding.resetForTesting(
+        LocalOnboardingState(
+          stage: OnboardingStage.relationshipGoal,
+          relationshipGoals: {'Marriage Minded', 'Meaningful Dating'},
+          relationshipGoal: 'Marriage Minded',
+        ),
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AmoraTheme.light(),
+          home: const ProfileOnboardingFlow(),
+        ),
+      );
+      await tester.pumpAndSettle();
 
-    expect(onboarding.state.selectedRelationshipGoals, {
-      'Marriage Minded',
-      'Meaningful Dating',
-    });
-    expect(find.bySemanticsLabel('Marriage Minded, selected'), findsOneWidget);
-    expect(
-      find.bySemanticsLabel('Meaningful Dating, selected'),
-      findsOneWidget,
-    );
-    expect(find.text('2 selected'), findsOneWidget);
+      expect(onboarding.state.selectedRelationshipGoals, {
+        'Marriage Minded',
+        'Meaningful Dating',
+      });
+      expect(
+        find.bySemanticsLabel('Marriage Minded, selected'),
+        findsOneWidget,
+      );
+      expect(
+        find.bySemanticsLabel('Meaningful Dating, unselected'),
+        findsOneWidget,
+      );
+      expect(find.text('1 selected'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('selected-intention-radio')),
+        findsOneWidget,
+      );
 
-    onboarding.resetForTesting(
-      const LocalOnboardingState(
-        stage: OnboardingStage.relationshipGoal,
-        relationshipGoal: 'Friendship First',
-      ),
-    );
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: AmoraTheme.light(),
-        home: const ProfileOnboardingFlow(),
-      ),
-    );
-    await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('onboarding-continue')));
+      await tester.pumpAndSettle();
+      expect(onboarding.state.relationshipGoals, {'Marriage Minded'});
+      expect(find.text('Step 5 of 6'), findsOneWidget);
 
-    expect(onboarding.state.selectedRelationshipGoals, {'Friendship First'});
-    expect(find.bySemanticsLabel('Friendship First, selected'), findsOneWidget);
-    expect(find.text('1 selected'), findsOneWidget);
-    semantics.dispose();
-  });
+      await tester.pumpWidget(const SizedBox.shrink());
+      onboarding.resetForTesting(
+        const LocalOnboardingState(
+          stage: OnboardingStage.relationshipGoal,
+          relationshipGoal: 'Friendship First',
+        ),
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AmoraTheme.light(),
+          home: const ProfileOnboardingFlow(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(onboarding.state.selectedRelationshipGoals, {'Friendship First'});
+      expect(
+        find.bySemanticsLabel('Friendship First, selected'),
+        findsOneWidget,
+      );
+      expect(find.text('1 selected'), findsOneWidget);
+      semantics.dispose();
+    },
+  );
 
   testWidgets('dating intention cards remain responsive at supported widths', (
     tester,
@@ -631,6 +644,7 @@ void main() {
       430.0,
       600.0,
       768.0,
+      1024.0,
     ]) {
       tester.view.physicalSize = Size(width, 900);
       await tester.pumpWidget(
@@ -652,7 +666,11 @@ void main() {
         isNull,
         reason: 'Dating Intention cards overflowed at ${width.toInt()} px',
       );
-      expect(find.text('3 selected'), findsOneWidget);
+      expect(find.text('1 selected'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('selected-intention-radio')),
+        findsOneWidget,
+      );
       for (final option in ProfileFormOptions.datingIntentions) {
         final card = find.byKey(
           ValueKey('onboarding-relationship-option-$option'),

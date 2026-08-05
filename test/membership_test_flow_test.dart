@@ -41,6 +41,29 @@ void main() {
     expect(tester.takeException(), isNull);
   }, skip: skipTestFlow);
 
+  testWidgets('payment review remains responsive at compact 1.3 text scale', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(320, 640));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      MediaQuery(
+        data: const MediaQueryData(
+          size: Size(320, 640),
+          textScaler: TextScaler.linear(1.3),
+        ),
+        child: MaterialApp(
+          theme: AmoraTheme.light(),
+          home: const PaymentScreen(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Review membership'), findsOneWidget);
+  });
+
   testWidgets(
     'simulated success remains isolated and joined event appears in My Events',
     (tester) async {

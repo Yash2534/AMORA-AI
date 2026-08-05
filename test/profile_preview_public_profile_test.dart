@@ -165,7 +165,9 @@ void main() {
     expect(find.text('Undergraduate'), findsOneWidget);
     expect(find.text('English · Hindi · Gujarati'), findsOneWidget);
     expect(find.text('Yes'), findsOneWidget);
-    expect(find.text('No'), findsOneWidget);
+    expect(find.text('Never'), findsOneWidget);
+    expect(find.text('Weed'), findsOneWidget);
+    expect(find.text('Prefer not to say'), findsOneWidget);
 
     expect(find.byType(ProfilePromptCard), findsNWidgets(2));
     final firstPrompt = tester.getTopLeft(find.byType(ProfilePromptCard).at(0));
@@ -222,6 +224,7 @@ void main() {
           ...current.lifestyle,
           'Languages': 'Gujarati & English',
           'Drinking': 'Sometimes',
+          'Weed': 'Never',
         },
         photos: [
           'assets/images/profiles/female/female_02.jpg',
@@ -244,6 +247,8 @@ void main() {
     );
     expect(find.text('Gujarati · English'), findsOneWidget);
     expect(find.text('Sometimes'), findsOneWidget);
+    expect(find.text('Weed'), findsOneWidget);
+    expect(find.text('Never'), findsOneWidget);
     expect(find.text('Ahmedabad'), findsNothing);
     expect(find.text('Undergraduate'), findsNothing);
 
@@ -417,6 +422,7 @@ UserProfile _profileFixture() => const UserProfile(
     'Religion': 'Hindu',
     'Drinking': 'Yes',
     'Smoking': 'No',
+    'Weed': 'Prefer not to say',
     'Exercise': 'Daily',
   },
   photos: [

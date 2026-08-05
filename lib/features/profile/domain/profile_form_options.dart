@@ -136,27 +136,41 @@ abstract final class ProfileFormOptions {
     'Religion': religions,
   };
 
-  static const drinkingOptions = <String>[
+  static const habitFrequencyOptions = <String>[
+    'Yes',
+    'Sometimes',
     'Never',
-    'Sometimes',
-    'Socially',
-    'Yes',
-  ];
-
-  static const smokingOptions = <String>[
-    'No',
-    'Sometimes',
     'Prefer not to say',
-    'Yes',
   ];
 
-  static const lifestyleOptions = <String, List<String>>{
-    'Drinking': drinkingOptions,
+  static const smokingOptions = habitFrequencyOptions;
+  static const drinkingOptions = habitFrequencyOptions;
+  static const weedOptions = habitFrequencyOptions;
+
+  static const habitOptions = <String, List<String>>{
     'Smoking': smokingOptions,
+    'Drinking': drinkingOptions,
+    'Weed': weedOptions,
+  };
+
+  static const nonHabitLifestyleOptions = <String, List<String>>{
     'Exercise': ['Daily', 'A few times a week', 'Occasionally'],
     'Food preference': ['Vegetarian', 'Vegan', 'Everything'],
     'Pets': ['Dog person', 'Cat person', 'Love all pets'],
     'Sleep habits': ['Early bird', 'Night owl', 'Flexible'],
+  };
+
+  static const lifestyleOptions = <String, List<String>>{
+    ...habitOptions,
+    ...nonHabitLifestyleOptions,
+  };
+
+  // Weed is optional and intentionally does not alter the existing profile
+  // completion rule or percentage.
+  static const completionLifestyleOptions = <String, List<String>>{
+    'Smoking': smokingOptions,
+    'Drinking': drinkingOptions,
+    ...nonHabitLifestyleOptions,
   };
 
   static const allLifestyleOptions = <String, List<String>>{
@@ -234,13 +248,17 @@ abstract final class ProfileFormOptions {
       'Drinking' => switch (normalized) {
         'no' => 'Never',
         'occasionally' || 'rarely' => 'Sometimes',
-        'social' => 'Socially',
+        'social' || 'socially' => 'Sometimes',
         _ => '',
       },
       'Smoking' => switch (normalized) {
-        'never' => 'No',
+        'no' => 'Never',
         'occasionally' || 'rarely' => 'Sometimes',
-        'prefer not to say' => 'Prefer not to say',
+        _ => '',
+      },
+      'Weed' => switch (normalized) {
+        'no' => 'Never',
+        'occasionally' || 'rarely' => 'Sometimes',
         _ => '',
       },
       _ => '',

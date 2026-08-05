@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:amora_ai/core/access/amora_access.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/floating_bottom_nav.dart';
+import 'package:amora_ai/core/widgets/amoraa_main_page_header.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/events/data/events_dummy_data.dart';
 import 'package:amora_ai/features/events/data/event_asset_catalog.dart';
@@ -174,6 +175,7 @@ class _EventsMemberExperienceState extends State<EventsMemberExperience> {
         SliverPersistentHeader(
           pinned: true,
           delegate: _EventsHeaderDelegate(
+            extent: AmoraaMainPageHeader.sliverExtentFor(context),
             child: EventsAppBar(
               onSearch: _showSearch,
               onCalendar: () =>
@@ -559,15 +561,16 @@ class _EventSearchDelegate extends SearchDelegate<EventModel?> {
 }
 
 class _EventsHeaderDelegate extends SliverPersistentHeaderDelegate {
-  const _EventsHeaderDelegate({required this.child});
+  const _EventsHeaderDelegate({required this.extent, required this.child});
 
+  final double extent;
   final Widget child;
 
   @override
-  double get minExtent => 76;
+  double get minExtent => extent;
 
   @override
-  double get maxExtent => 76;
+  double get maxExtent => extent;
 
   @override
   Widget build(
@@ -575,34 +578,21 @@ class _EventsHeaderDelegate extends SliverPersistentHeaderDelegate {
     double shrinkOffset,
     bool overlapsContent,
   ) {
-    return SizedBox.expand(
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: AppColors.surface.withValues(alpha: .98),
-          border: Border(
-            bottom: BorderSide(color: AppColors.primary.withValues(alpha: .08)),
-          ),
-          boxShadow: overlapsContent
-              ? [
-                  BoxShadow(
-                    color: AppColors.primary.withValues(alpha: .08),
-                    blurRadius: 16,
-                    offset: const Offset(0, 6),
-                  ),
-                ]
-              : null,
+    return ColoredBox(
+      color: AppColors.background,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AmoraaMainPageHeader.pageHorizontalInset,
+          vertical: AmoraaMainPageHeader.safeTopSpacing,
         ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-          child: child,
-        ),
+        child: child,
       ),
     );
   }
 
   @override
   bool shouldRebuild(covariant _EventsHeaderDelegate oldDelegate) =>
-      oldDelegate.child != child;
+      oldDelegate.extent != extent || oldDelegate.child != child;
 }
 
 class _EventRail extends StatelessWidget {

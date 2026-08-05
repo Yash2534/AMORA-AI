@@ -168,7 +168,7 @@ class _ProfileOnboardingFlowState extends State<ProfileOnboardingFlow> {
       2 => state.interestedIn.any(
         (value) => ProfileFormOptions.normalizeGender(value).isNotEmpty,
       ),
-      3 => state.selectedRelationshipGoals.isNotEmpty,
+      3 => state.primaryRelationshipGoal != null,
       4 => ProfileFormOptions.cities.contains(_cityController.text.trim()),
       5 => LocalProfileRepository.instance.profile.photos.length >= 2,
       _ => false,
@@ -190,6 +190,17 @@ class _ProfileOnboardingFlowState extends State<ProfileOnboardingFlow> {
           customGender: _customGenderController.text.trim(),
         ),
       );
+    }
+    if (_page == 3) {
+      final selected = _repository.state.primaryRelationshipGoal;
+      if (selected != null) {
+        _repository.update(
+          _repository.state.copyWith(
+            relationshipGoals: <String>{selected},
+            relationshipGoal: selected,
+          ),
+        );
+      }
     }
     if (_page == 4) {
       _repository.update(
@@ -1111,7 +1122,7 @@ class _RelationshipQuestion extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final selected = state.selectedRelationshipGoals;
+    final selected = state.primaryRelationshipGoal;
     return _QuestionFrame(
       icon: Icons.favorite_rounded,
       title: 'What are you looking for?',
@@ -1128,9 +1139,9 @@ class _RelationshipQuestion extends StatelessWidget {
                   style: AmoraTextStyles.titleMedium,
                 ),
               ),
-              if (selected.isNotEmpty)
+              if (selected != null)
                 Text(
-                  '${selected.length} selected',
+                  '1 selected',
                   key: const ValueKey('onboarding-relationship-count'),
                   style: AmoraTextStyles.labelMedium.copyWith(
                     color: AppColors.textSecondary,
@@ -1154,29 +1165,13 @@ class _RelationshipQuestion extends StatelessWidget {
                       .datingIntentionDescriptions[ProfileFormOptions
                       .datingIntentions[index]] ??
                   '',
-              selected: selected.contains(
-                ProfileFormOptions.datingIntentions[index],
-              ),
+              selected: selected == ProfileFormOptions.datingIntentions[index],
               onTap: () {
-                final updated = Set<String>.of(selected);
                 final option = ProfileFormOptions.datingIntentions[index];
-                updated.contains(option)
-                    ? updated.remove(option)
-                    : updated.add(option);
-                final currentPrimary =
-                    ProfileFormOptions.normalizeDatingIntention(
-                      state.relationshipGoal,
-                    );
-                final primary = updated.contains(currentPrimary)
-                    ? currentPrimary
-                    : ProfileFormOptions.datingIntentions
-                          .where(updated.contains)
-                          .firstOrNull;
                 onChanged(
                   state.copyWith(
-                    relationshipGoals: updated,
-                    relationshipGoal: primary,
-                    clearRelationshipGoal: primary == null,
+                    relationshipGoals: <String>{option},
+                    relationshipGoal: option,
                   ),
                 );
               },
@@ -1210,7 +1205,8 @@ class _DatingIntentionCard extends StatelessWidget {
     return Semantics(
       container: true,
       button: true,
-      checked: selected,
+      selected: selected,
+      inMutuallyExclusiveGroup: true,
       label: '$label, ${selected ? 'selected' : 'unselected'}',
       onTap: onTap,
       child: ExcludeSemantics(
@@ -1268,10 +1264,8 @@ class _DatingIntentionCard extends StatelessWidget {
                       width: 24,
                       height: 24,
                       decoration: BoxDecoration(
-                        color: selected
-                            ? AppColors.secondary
-                            : AppColors.surface,
-                        borderRadius: BorderRadius.circular(AmoraRadius.small),
+                        color: AppColors.surface,
+                        shape: BoxShape.circle,
                         border: Border.all(
                           color: selected
                               ? AppColors.secondary
@@ -1280,11 +1274,16 @@ class _DatingIntentionCard extends StatelessWidget {
                         ),
                       ),
                       child: selected
-                          ? const Icon(
-                              Icons.check_rounded,
-                              key: ValueKey('selected-intention-checkmark'),
-                              size: 18,
-                              color: AppColors.surface,
+                          ? Center(
+                              child: Container(
+                                key: const ValueKey('selected-intention-radio'),
+                                width: 12,
+                                height: 12,
+                                decoration: const BoxDecoration(
+                                  color: AppColors.secondary,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
                             )
                           : null,
                     ),

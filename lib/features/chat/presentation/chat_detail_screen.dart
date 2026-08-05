@@ -447,38 +447,44 @@ class ChatHeader extends StatelessWidget {
       elevation: 1,
       child: SizedBox(
         height: 72,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            _HeaderIconButton(
-              key: const ValueKey('chat-header-back'),
-              tooltip: 'Back',
-              icon: Icons.arrow_back_rounded,
-              onPressed: onBack,
-            ),
-            const SizedBox(width: 4),
-            Expanded(
-              child: Semantics(
-                container: true,
-                explicitChildNodes: true,
-                button: true,
-                label:
-                    'Open ${profile.name} profile${profile.verified ? ', verified' : ''}, $status',
-                child: InkWell(
-                  key: const ValueKey('chat-header-identity'),
-                  excludeFromSemantics: true,
-                  onTap: onProfileTap,
-                  borderRadius: BorderRadius.circular(18),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              _HeaderIconButton(
+                key: const ValueKey('chat-header-back'),
+                tooltip: 'Back',
+                icon: Icons.arrow_back_rounded,
+                onPressed: onBack,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Semantics(
+                  container: true,
+                  explicitChildNodes: true,
+                  button: true,
+                  label:
+                      'Open ${profile.name} profile${profile.verified ? ', verified' : ''}, $status',
+                  child: InkWell(
+                    key: const ValueKey('chat-header-identity'),
+                    excludeFromSemantics: true,
+                    onTap: onProfileTap,
+                    borderRadius: BorderRadius.circular(18),
                     child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        ChatPresenceAvatar(
-                          key: const ValueKey('chat-header-avatar'),
-                          profile: profile,
-                          radius: 20,
-                          online: online,
-                          showVerified: false,
+                        Semantics(
+                          image: true,
+                          label: 'Chat profile picture for ${profile.name}',
+                          excludeSemantics: true,
+                          child: ChatPresenceAvatar(
+                            key: const ValueKey('chat-header-avatar'),
+                            profile: profile,
+                            radius: 20,
+                            online: online,
+                            showVerified: false,
+                          ),
                         ),
                         const SizedBox(width: 10),
                         Expanded(
@@ -535,15 +541,15 @@ class ChatHeader extends StatelessWidget {
                   ),
                 ),
               ),
-            ),
-            const SizedBox(width: 4),
-            _HeaderIconButton(
-              key: const ValueKey('chat-header-more'),
-              tooltip: 'More chat options',
-              icon: Icons.more_horiz_rounded,
-              onPressed: onMore,
-            ),
-          ],
+              const SizedBox(width: 8),
+              _HeaderIconButton(
+                key: const ValueKey('chat-header-more'),
+                tooltip: 'More chat options',
+                icon: Icons.more_horiz_rounded,
+                onPressed: onMore,
+              ),
+            ],
+          ),
         ),
       ),
     );

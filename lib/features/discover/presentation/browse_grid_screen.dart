@@ -11,6 +11,7 @@ import 'package:amora_ai/core/widgets/amora_profile_image.dart';
 import 'package:amora_ai/core/widgets/amora_super_like_animation.dart';
 import 'package:amora_ai/core/widgets/amoraa_identity_badge.dart';
 import 'package:amora_ai/core/widgets/amoraa_confirm_action_sheet.dart';
+import 'package:amora_ai/core/widgets/amoraa_main_page_header.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/floating_bottom_nav.dart';
 import 'package:amora_ai/core/widgets/premium_motion.dart';
@@ -231,7 +232,12 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
                 autofocus: true,
                 onKeyEvent: _handleKeyEvent,
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+                  padding: const EdgeInsets.fromLTRB(
+                    AmoraaMainPageHeader.pageHorizontalInset,
+                    AmoraaMainPageHeader.safeTopSpacing,
+                    AmoraaMainPageHeader.pageHorizontalInset,
+                    10,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -693,45 +699,32 @@ class _DiscoverHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 52,
-      child: Row(
-        children: [
-          Semantics(
-            image: true,
-            label: 'AMORAA',
-            child: Image.asset(
-              AmoraBrandAssets.wordmark,
-              width: 128,
-              height: 24,
-              fit: BoxFit.contain,
-              alignment: Alignment.centerLeft,
-              filterQuality: FilterQuality.high,
-            ),
+    return AmoraaMainPageHeader(
+      titleWidget: Semantics(
+        header: true,
+        image: true,
+        label: 'AMORAA',
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: Image.asset(
+            AmoraBrandAssets.wordmark,
+            width: 92,
+            height: 18,
+            fit: BoxFit.contain,
+            alignment: Alignment.centerLeft,
+            filterQuality: FilterQuality.high,
           ),
-          const Spacer(),
-          Semantics(
-            button: true,
-            label: 'Open notifications',
-            child: SizedBox.square(
-              dimension: 48,
-              child: IconButton(
-                key: const ValueKey('discover-notifications'),
-                tooltip: 'Notifications',
-                onPressed: onNotifications,
-                style: IconButton.styleFrom(
-                  foregroundColor: AppColors.primary,
-                  backgroundColor: AppColors.surface,
-                  side: BorderSide(
-                    color: AppColors.tertiary.withValues(alpha: .8),
-                  ),
-                ),
-                icon: const Icon(Icons.notifications_none_rounded),
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
+      actions: [
+        AmoraaMainPageHeaderAction(
+          key: const ValueKey('discover-notifications'),
+          tooltip: 'Notifications',
+          semanticLabel: 'Open notifications',
+          icon: Icons.notifications_none_rounded,
+          onPressed: onNotifications,
+        ),
+      ],
     );
   }
 }

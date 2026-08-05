@@ -39,26 +39,25 @@ void main() {
       'Wellness & Yoga',
       'Volunteer & Community',
     ]);
-    expect(ProfileFormOptions.drinkingOptions, const [
+    const approvedHabits = <String>[
+      'Yes',
+      'Sometimes',
       'Never',
-      'Sometimes',
-      'Socially',
-      'Yes',
-    ]);
-    expect(ProfileFormOptions.smokingOptions, const [
-      'No',
-      'Sometimes',
       'Prefer not to say',
-      'Yes',
+    ];
+    expect(ProfileFormOptions.habitFrequencyOptions, approvedHabits);
+    expect(ProfileFormOptions.smokingOptions, approvedHabits);
+    expect(ProfileFormOptions.drinkingOptions, approvedHabits);
+    expect(ProfileFormOptions.weedOptions, approvedHabits);
+    expect(ProfileFormOptions.habitOptions.keys, const [
+      'Smoking',
+      'Drinking',
+      'Weed',
     ]);
-    expect(
-      ProfileFormOptions.drinkingOptions.where((value) => value == 'Yes'),
-      hasLength(1),
-    );
-    expect(
-      ProfileFormOptions.smokingOptions.where((value) => value == 'Yes'),
-      hasLength(1),
-    );
+    for (final options in ProfileFormOptions.habitOptions.values) {
+      expect(identical(options, ProfileFormOptions.habitFrequencyOptions), isTrue);
+      expect(options.where((value) => value == 'Yes'), hasLength(1));
+    }
     expect(ProfileFormOptions.education, const [
       'School & College',
       'Undergraduate',
@@ -128,8 +127,7 @@ void main() {
       'ProfileFormOptions.languages',
       'ProfileFormOptions.religions',
       'ProfileFormOptions.datingTypes',
-      'ProfileFormOptions.drinkingOptions',
-      'ProfileFormOptions.smokingOptions',
+      'ProfileFormOptions.habitFrequencyOptions',
     ]) {
       expect(filters, contains(optionSource));
     }
@@ -265,9 +263,21 @@ void main() {
     );
     expect(
       ProfileFormOptions.normalizeLifestyleValue('Smoking', 'Never'),
-      'No',
+      'Never',
     );
     expect(ProfileFormOptions.normalizeLifestyleValue('Smoking', 'Yes'), 'Yes');
+    expect(
+      ProfileFormOptions.normalizeLifestyleValue('Smoking', 'No'),
+      'Never',
+    );
+    expect(
+      ProfileFormOptions.normalizeLifestyleValue('Drinking', 'Socially'),
+      'Sometimes',
+    );
+    expect(
+      ProfileFormOptions.normalizeLifestyleValue('Weed', 'Occasionally'),
+      'Sometimes',
+    );
     expect(
       ProfileFormOptions.normalizeInterest('Heritage Walks'),
       'Heritage walks',
@@ -351,14 +361,25 @@ void main() {
 
     controller.setLifestyle('Drinking', 'Yes');
     expect(controller.lifestyle['Drinking'], 'Yes');
-    controller.setLifestyle('Drinking', 'Socially');
-    expect(controller.lifestyle['Drinking'], 'Socially');
+    controller.setLifestyle('Drinking', 'Sometimes');
+    expect(controller.lifestyle['Drinking'], 'Sometimes');
+
+    controller.setLifestyle('Weed', 'Never');
+    expect(controller.lifestyle['Drinking'], 'Sometimes');
+    expect(controller.lifestyle['Weed'], 'Never');
 
     final yesProfile = original.copyWith(lifestyle: const {'Smoking': 'Yes'});
     final lifestyle = yesProfile.completionResult.sections.firstWhere(
       (section) => section.title == 'Lifestyle',
     );
     expect(lifestyle.isComplete, isTrue);
+
+    final weedOnlyProfile = original.copyWith(
+      lifestyle: const {'Weed': 'Never'},
+    );
+    final weedOnlyLifestyle = weedOnlyProfile.completionResult.sections
+        .firstWhere((section) => section.title == 'Lifestyle');
+    expect(weedOnlyLifestyle.isComplete, isFalse);
   });
 
   test('height formatting and conversion have one shared implementation', () {

@@ -609,6 +609,29 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('event detail supports compact 1.3 text scale', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(320, 640));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AmoraTheme.light(),
+        home: MediaQuery(
+          data: const MediaQueryData(
+            size: Size(320, 640),
+            textScaler: TextScaler.linear(1.3),
+          ),
+          child: EventDetailScreen(event: events.first),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text(events.first.title), findsOneWidget);
+    expect(find.text('Join Event'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('joining from details updates the shared My Events state', (
     tester,
   ) async {

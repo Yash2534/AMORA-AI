@@ -4,7 +4,7 @@ import 'package:amora_ai/core/theme/amora_gradients.dart';
 import 'package:amora_ai/core/theme/amora_shadows.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
-import 'package:amora_ai/core/widgets/amora_screen_title.dart';
+import 'package:amora_ai/core/widgets/amoraa_main_page_header.dart';
 import 'package:amora_ai/core/widgets/amoraa_identity_badge.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/floating_bottom_nav.dart';
@@ -81,6 +81,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               SliverPersistentHeader(
                 pinned: true,
                 delegate: _ProfileHeaderDelegate(
+                  extent: AmoraaMainPageHeader.sliverExtentFor(context),
                   onSettings: () => _open(ProfileSettingsScreen.routeName),
                 ),
               ),
@@ -151,15 +152,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
 }
 
 class _ProfileHeaderDelegate extends SliverPersistentHeaderDelegate {
-  const _ProfileHeaderDelegate({required this.onSettings});
+  const _ProfileHeaderDelegate({
+    required this.extent,
+    required this.onSettings,
+  });
 
+  final double extent;
   final VoidCallback onSettings;
 
   @override
-  double get minExtent => 64;
+  double get minExtent => extent;
 
   @override
-  double get maxExtent => 64;
+  double get maxExtent => extent;
 
   @override
   Widget build(
@@ -167,30 +172,25 @@ class _ProfileHeaderDelegate extends SliverPersistentHeaderDelegate {
     double shrinkOffset,
     bool overlapsContent,
   ) {
-    return SizedBox.expand(
-      child: Material(
-        color: AppColors.surface,
-        elevation: overlapsContent ? 2 : 0,
-        shadowColor: AppColors.primary.withValues(alpha: .08),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Row(
-            children: [
-              const Expanded(
-                child: AmoraScreenTitle(
-                  title: 'My Dating Identity',
-                  subtitle: 'Your dating identity',
-                ),
-              ),
-              _ProfileHeaderActionButton(
-                key: const ValueKey('profile-settings-button'),
-                tooltip: 'Profile settings',
-                semanticLabel: 'Open profile settings',
-                onPressed: onSettings,
-                icon: Icons.settings_rounded,
-              ),
-            ],
-          ),
+    return ColoredBox(
+      color: AppColors.background,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AmoraaMainPageHeader.pageHorizontalInset,
+          vertical: AmoraaMainPageHeader.safeTopSpacing,
+        ),
+        child: AmoraaMainPageHeader(
+          title: 'My Dating Identity',
+          subtitle: 'Your dating identity',
+          actions: [
+            AmoraaMainPageHeaderAction(
+              key: const ValueKey('profile-settings-button'),
+              tooltip: 'Profile settings',
+              semanticLabel: 'Open profile settings',
+              onPressed: onSettings,
+              icon: Icons.settings_rounded,
+            ),
+          ],
         ),
       ),
     );
@@ -198,69 +198,7 @@ class _ProfileHeaderDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   bool shouldRebuild(covariant _ProfileHeaderDelegate oldDelegate) {
-    return oldDelegate.onSettings != onSettings;
-  }
-}
-
-class _ProfileHeaderActionButton extends StatelessWidget {
-  const _ProfileHeaderActionButton({
-    super.key,
-    required this.icon,
-    required this.tooltip,
-    required this.semanticLabel,
-    required this.onPressed,
-  });
-
-  final IconData icon;
-  final String tooltip;
-  final String semanticLabel;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: semanticLabel,
-      child: Tooltip(
-        message: tooltip,
-        child: SizedBox.square(
-          dimension: 48,
-          child: Center(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: AppColors.secondary.withValues(alpha: .28),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.primary.withValues(alpha: .08),
-                    blurRadius: 14,
-                    offset: const Offset(0, 5),
-                  ),
-                ],
-              ),
-              child: Material(
-                color: AppColors.transparent,
-                shape: const CircleBorder(),
-                clipBehavior: Clip.antiAlias,
-                child: InkWell(
-                  onTap: onPressed,
-                  overlayColor: WidgetStatePropertyAll(
-                    AppColors.tertiary.withValues(alpha: .22),
-                  ),
-                  child: SizedBox.square(
-                    dimension: 44,
-                    child: Icon(icon, color: AppColors.primary, size: 22),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
+    return oldDelegate.extent != extent || oldDelegate.onSettings != onSettings;
   }
 }
 

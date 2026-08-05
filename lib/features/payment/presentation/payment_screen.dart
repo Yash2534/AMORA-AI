@@ -395,25 +395,45 @@ class _PaymentReviewCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              const Icon(Icons.favorite_rounded, color: AppColors.surface),
-              const SizedBox(width: 8),
-              const Expanded(
-                child: Text(
-                  'AMORAA Membership',
-                  style: TextStyle(
-                    color: AppColors.surface,
-                    fontWeight: FontWeight.w700,
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final heading = Row(
+                children: const [
+                  Icon(Icons.favorite_rounded, color: AppColors.surface),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'AMORAA Membership',
+                      style: TextStyle(
+                        color: AppColors.surface,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
-                ),
-              ),
-              TextButton(
+                ],
+              );
+              final changePlan = TextButton(
                 onPressed: onChangePlan,
                 style: TextButton.styleFrom(foregroundColor: AppColors.surface),
                 child: const Text('Change Plan'),
-              ),
-            ],
+              );
+
+              if (constraints.maxWidth < 280) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    heading,
+                    Align(alignment: Alignment.centerRight, child: changePlan),
+                  ],
+                );
+              }
+              return Row(
+                children: [
+                  Expanded(child: heading),
+                  changePlan,
+                ],
+              );
+            },
           ),
           const SizedBox(height: 16),
           Text(

@@ -10,6 +10,29 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  testWidgets('KYC remains scroll-safe at compact 1.3 text scale', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(320, 640));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AmoraTheme.light(),
+        home: MediaQuery(
+          data: const MediaQueryData(
+            size: Size(320, 640),
+            textScaler: TextScaler.linear(1.3),
+          ),
+          child: const KycVerificationScreen(),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Identity Verification'), findsOneWidget);
+    expect(find.byType(CustomScrollView), findsOneWidget);
+  });
+
   testWidgets('media permissions are requested only after a user action', (
     tester,
   ) async {

@@ -7,6 +7,8 @@ import 'package:flutter/services.dart';
 
 enum AmoraaSelectVariant { standard, searchable, compact }
 
+enum AmoraaSelectionMode { single, multiple }
+
 @immutable
 class AmoraaSelectOption<T> {
   const AmoraaSelectOption({
@@ -27,7 +29,10 @@ class AmoraaSelectField<T> extends StatefulWidget {
     super.key,
     required this.label,
     required this.options,
-    required this.onChanged,
+    this.onChanged,
+    this.selectionMode = AmoraaSelectionMode.single,
+    this.selectedValues,
+    this.onSelectionChanged,
     this.value,
     this.hintText,
     this.supportingText,
@@ -41,11 +46,19 @@ class AmoraaSelectField<T> extends StatefulWidget {
     this.errorText,
     this.validator,
     this.allowClear = false,
-  });
+  }) : assert(
+         selectionMode == AmoraaSelectionMode.single
+             ? onChanged != null
+             : onSelectionChanged != null,
+         'Single-select fields require onChanged; multi-select fields require onSelectionChanged.',
+       );
 
   final String label;
   final List<AmoraaSelectOption<T>> options;
-  final ValueChanged<T?> onChanged;
+  final ValueChanged<T?>? onChanged;
+  final AmoraaSelectionMode selectionMode;
+  final Set<T>? selectedValues;
+  final ValueChanged<Set<T>>? onSelectionChanged;
   final T? value;
   final String? hintText;
   final String? supportingText;
@@ -69,7 +82,10 @@ class AmoraaSearchableSelect<T> extends AmoraaSelectField<T> {
     super.key,
     required super.label,
     required super.options,
-    required super.onChanged,
+    super.onChanged,
+    super.selectionMode,
+    super.selectedValues,
+    super.onSelectionChanged,
     super.value,
     super.hintText,
     super.supportingText,
@@ -90,7 +106,10 @@ class AmoraaCompactSelect<T> extends AmoraaSelectField<T> {
     super.key,
     required super.label,
     required super.options,
-    required super.onChanged,
+    super.onChanged,
+    super.selectionMode,
+    super.selectedValues,
+    super.onSelectionChanged,
     super.value,
     super.hintText,
     super.supportingText,
@@ -121,6 +140,28 @@ class _AmoraaSelectFieldState<T> extends State<AmoraaSelectField<T>> {
     return null;
   }
 
+  Set<T> get _selectedValues =>
+      widget.selectionMode == AmoraaSelectionMode.multiple
+      ? Set<T>.unmodifiable(widget.selectedValues ?? <T>{})
+      : <T>{?widget.value};
+
+  String get _displayValue {
+    if (widget.selectionMode == AmoraaSelectionMode.single) {
+      return _selected?.label ??
+          widget.hintText ??
+          'Select ${widget.label.toLowerCase()}';
+    }
+    final selected = _selectedValues;
+    if (selected.isEmpty) {
+      return widget.hintText ?? 'Select ${widget.label.toLowerCase()}';
+    }
+    final labels = <String>[
+      for (final option in widget.options)
+        if (selected.contains(option.value)) option.label,
+    ];
+    return labels.length == 1 ? labels.single : '${labels.length} selected';
+  }
+
   @override
   void initState() {
     super.initState();
@@ -149,6 +190,7 @@ class _AmoraaSelectFieldState<T> extends State<AmoraaSelectField<T>> {
         final externalError = widget.errorText;
         final error = externalError ?? field.errorText;
         final selected = _selected;
+        final selectedValues = _selectedValues;
         final compact = widget.variant == AmoraaSelectVariant.compact;
         final focusColor = _focusNode.hasFocus || _open
             ? AppColors.secondary
@@ -159,8 +201,11 @@ class _AmoraaSelectFieldState<T> extends State<AmoraaSelectField<T>> {
             ? AppColors.secondary.withValues(alpha: .78)
             : focusColor;
         final disabledOpacity = widget.enabled ? 1.0 : .54;
-        final semanticValue =
-            selected?.label ?? widget.hintText ?? 'Not selected';
+        final semanticValue = selectedValues.isEmpty
+            ? widget.hintText ?? 'Not selected'
+            : widget.selectionMode == AmoraaSelectionMode.multiple
+            ? '${selectedValues.length} options selected'
+            : selected?.label ?? 'Not selected';
         return Semantics(
           button: true,
           enabled: widget.enabled,
@@ -267,19 +312,18 @@ class _AmoraaSelectFieldState<T> extends State<AmoraaSelectField<T>> {
                                         ),
                                         const SizedBox(height: 2),
                                         Text(
-                                          selected?.label ??
-                                              widget.hintText ??
-                                              'Select ${widget.label.toLowerCase()}',
+                                          _displayValue,
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                           style: AmoraTextStyles.bodyMedium
                                               .copyWith(
-                                                color: selected == null
+                                                color: selectedValues.isEmpty
                                                     ? AppColors.text.withValues(
                                                         alpha: .58,
                                                       )
                                                     : AppColors.text,
-                                                fontWeight: selected == null
+                                                fontWeight:
+                                                    selectedValues.isEmpty
                                                     ? FontWeight.w400
                                                     : FontWeight.w600,
                                               ),
@@ -357,6 +401,8 @@ class _AmoraaSelectFieldState<T> extends State<AmoraaSelectField<T>> {
       supportingText: widget.supportingText,
       options: widget.options,
       selectedValue: widget.value,
+      selectedValues: _selectedValues,
+      selectionMode: widget.selectionMode,
       searchable: widget.variant == AmoraaSelectVariant.searchable,
       searchHint: widget.searchHint,
       allowClear: widget.allowClear,
@@ -387,15 +433,24 @@ class _AmoraaSelectFieldState<T> extends State<AmoraaSelectField<T>> {
           );
     if (mounted) setState(() => _open = false);
     if (result == null) return;
+    if (widget.selectionMode == AmoraaSelectionMode.multiple) {
+      widget.onSelectionChanged!(Set<T>.unmodifiable(result.values ?? <T>{}));
+      return;
+    }
     field.didChange(result.value);
-    widget.onChanged(result.value);
+    widget.onChanged!(result.value);
   }
 }
 
 class _AmoraaSelectResult<T> {
-  const _AmoraaSelectResult(this.value);
+  const _AmoraaSelectResult.single(this.value) : values = null;
+
+  _AmoraaSelectResult.multiple(Set<T> values)
+    : value = null,
+      values = Set<T>.unmodifiable(values);
 
   final T? value;
+  final Set<T>? values;
 }
 
 class AmoraaSelectBottomSheet<T> extends StatefulWidget {
@@ -404,6 +459,8 @@ class AmoraaSelectBottomSheet<T> extends StatefulWidget {
     required this.title,
     required this.options,
     required this.selectedValue,
+    required this.selectedValues,
+    required this.selectionMode,
     required this.searchable,
     required this.searchHint,
     required this.allowClear,
@@ -414,6 +471,8 @@ class AmoraaSelectBottomSheet<T> extends StatefulWidget {
   final String? supportingText;
   final List<AmoraaSelectOption<T>> options;
   final T? selectedValue;
+  final Set<T> selectedValues;
+  final AmoraaSelectionMode selectionMode;
   final bool searchable;
   final String searchHint;
   final bool allowClear;
@@ -427,6 +486,7 @@ class _AmoraaSelectBottomSheetState<T>
     extends State<AmoraaSelectBottomSheet<T>> {
   late final TextEditingController _searchController;
   late final FocusNode _searchFocus;
+  late final Set<T> _selectedValues;
   String _query = '';
   int _highlightedIndex = 0;
 
@@ -447,6 +507,7 @@ class _AmoraaSelectBottomSheetState<T>
     super.initState();
     _searchController = TextEditingController();
     _searchFocus = FocusNode();
+    _selectedValues = Set<T>.of(widget.selectedValues);
     final selectedIndex = widget.options.indexWhere(
       (option) => option.value == widget.selectedValue,
     );
@@ -577,10 +638,21 @@ class _AmoraaSelectBottomSheetState<T>
                         itemBuilder: (context, index) {
                           if (widget.allowClear && index == 0) {
                             return _AmoraaClearOptionTile(
-                              selected: widget.selectedValue == null,
-                              onTap: () => Navigator.of(
-                                context,
-                              ).pop(_AmoraaSelectResult<T>(null)),
+                              selected:
+                                  widget.selectionMode ==
+                                      AmoraaSelectionMode.multiple
+                                  ? _selectedValues.isEmpty
+                                  : widget.selectedValue == null,
+                              onTap: () {
+                                if (widget.selectionMode ==
+                                    AmoraaSelectionMode.multiple) {
+                                  setState(_selectedValues.clear);
+                                  return;
+                                }
+                                Navigator.of(
+                                  context,
+                                ).pop(_AmoraaSelectResult<T>.single(null));
+                              },
                             );
                           }
                           final optionIndex =
@@ -591,15 +663,50 @@ class _AmoraaSelectBottomSheetState<T>
                               'amoraa-select-option-${option.label}',
                             ),
                             option: option,
-                            selected: option.value == widget.selectedValue,
+                            selected:
+                                widget.selectionMode ==
+                                    AmoraaSelectionMode.multiple
+                                ? _selectedValues.contains(option.value)
+                                : option.value == widget.selectedValue,
                             highlighted: optionIndex == _highlightedIndex,
-                            onTap: () => Navigator.of(
-                              context,
-                            ).pop(_AmoraaSelectResult<T>(option.value)),
+                            selectionMode: widget.selectionMode,
+                            onTap: () {
+                              if (widget.selectionMode ==
+                                  AmoraaSelectionMode.multiple) {
+                                setState(() {
+                                  _selectedValues.contains(option.value)
+                                      ? _selectedValues.remove(option.value)
+                                      : _selectedValues.add(option.value);
+                                });
+                                return;
+                              }
+                              Navigator.of(context).pop(
+                                _AmoraaSelectResult<T>.single(option.value),
+                              );
+                            },
                           );
                         },
                       ),
               ),
+              if (widget.selectionMode == AmoraaSelectionMode.multiple) ...[
+                const SizedBox(height: AmoraSpacing.space8),
+                Divider(
+                  height: 1,
+                  color: AppColors.tertiary.withValues(alpha: .72),
+                ),
+                const SizedBox(height: AmoraSpacing.space12),
+                FilledButton(
+                  key: const ValueKey('amoraa-select-done'),
+                  onPressed: () => Navigator.of(
+                    context,
+                  ).pop(_AmoraaSelectResult<T>.multiple(_selectedValues)),
+                  child: Text(
+                    _selectedValues.isEmpty
+                        ? 'Done'
+                        : 'Done (${_selectedValues.length})',
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -617,7 +724,15 @@ class _AmoraaSelectBottomSheetState<T>
   void _selectHighlighted(List<AmoraaSelectOption<T>> options) {
     if (options.isEmpty) return;
     final option = options[_highlightedIndex.clamp(0, options.length - 1)];
-    Navigator.of(context).pop(_AmoraaSelectResult<T>(option.value));
+    if (widget.selectionMode == AmoraaSelectionMode.multiple) {
+      setState(() {
+        _selectedValues.contains(option.value)
+            ? _selectedValues.remove(option.value)
+            : _selectedValues.add(option.value);
+      });
+      return;
+    }
+    Navigator.of(context).pop(_AmoraaSelectResult<T>.single(option.value));
   }
 }
 
@@ -691,19 +806,23 @@ class AmoraaSelectOptionTile<T> extends StatelessWidget {
     required this.option,
     required this.selected,
     required this.highlighted,
+    this.selectionMode = AmoraaSelectionMode.single,
     required this.onTap,
   });
 
   final AmoraaSelectOption<T> option;
   final bool selected;
   final bool highlighted;
+  final AmoraaSelectionMode selectionMode;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
-      selected: selected,
+      selected: selectionMode == AmoraaSelectionMode.single ? selected : null,
+      toggled: selectionMode == AmoraaSelectionMode.multiple ? selected : null,
+      inMutuallyExclusiveGroup: selectionMode == AmoraaSelectionMode.single,
       label: option.label,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),

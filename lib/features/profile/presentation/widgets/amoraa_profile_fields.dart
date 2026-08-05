@@ -711,7 +711,10 @@ class AmoraaLifestyleSelector extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        for (final entry in ProfileFormOptions.lifestyleOptions.entries) ...[
+        AmoraaHabitsEditor(controller: controller),
+        const SizedBox(height: AmoraSpacing.space16),
+        for (final entry in ProfileFormOptions.lifestyleOptions.entries)
+          if (!ProfileFormOptions.habitOptions.containsKey(entry.key)) ...[
           Text(entry.key, style: AmoraTextStyles.titleMedium),
           const SizedBox(height: AmoraSpacing.space8),
           Wrap(
@@ -732,6 +735,49 @@ class AmoraaLifestyleSelector extends StatelessWidget {
         ],
         if (showValidation && !hasSelection)
           const _FormError('Choose at least one lifestyle preference'),
+      ],
+    );
+  }
+}
+
+class AmoraaHabitsEditor extends StatelessWidget {
+  const AmoraaHabitsEditor({super.key, required this.controller});
+
+  final ProfileFormController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final entry in ProfileFormOptions.habitOptions.entries) ...[
+          Text(entry.key, style: AmoraTextStyles.titleMedium),
+          const SizedBox(height: AmoraSpacing.space8),
+          Wrap(
+            spacing: AmoraSpacing.space8,
+            runSpacing: AmoraSpacing.space8,
+            children: [
+              for (final value in entry.value)
+                Semantics(
+                  label: '${entry.key}, $value',
+                  selected: controller.lifestyle[entry.key] == value,
+                  inMutuallyExclusiveGroup: true,
+                  child: ChoiceChip(
+                    key: ValueKey(
+                      'profile-habit-${entry.key.toLowerCase()}-$value',
+                    ),
+                    label: Text(value),
+                    selected: controller.lifestyle[entry.key] == value,
+                    showCheckmark: false,
+                    onSelected: (_) =>
+                        controller.setLifestyle(entry.key, value),
+                  ),
+                ),
+            ],
+          ),
+          if (entry.key != ProfileFormOptions.habitOptions.keys.last)
+            const SizedBox(height: AmoraSpacing.space16),
+        ],
       ],
     );
   }

@@ -25,6 +25,27 @@ void main() {
 
     expect(find.byType(FloatingBottomNav), findsOneWidget);
     expect(find.text('Discover'), findsOneWidget);
+    final shellScaffold = tester.widget<Scaffold>(find.byType(Scaffold).first);
+    expect(shellScaffold.extendBody, isTrue);
+    final contentMedia = tester.widget<MediaQuery>(
+      find.byKey(const ValueKey('main-shell-navigation-content-inset')),
+    );
+    expect(
+      contentMedia.data.padding.bottom,
+      greaterThanOrEqualTo(FloatingBottomNav.contentBottomPadding),
+    );
+
+    for (final destination in <(String, String)>[
+      ('Chats', 'Your conversations'),
+      ('AI Matches', 'Curated for you'),
+      ('Events', 'Meaningful ways to meet'),
+      ('Profile', 'Your dating identity'),
+    ]) {
+      await tester.tap(find.byKey(ValueKey('bottom-nav-${destination.$1}')));
+      await tester.pumpAndSettle();
+      expect(find.text(destination.$2), findsOneWidget);
+      expect(find.byType(FloatingBottomNav), findsOneWidget);
+    }
     expect(tester.takeException(), isNull);
   });
 }

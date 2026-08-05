@@ -73,6 +73,50 @@ void main() {
     expect(find.text('mba'), findsNothing);
   });
 
+  testWidgets('multi-select mode toggles unique values and commits together', (
+    tester,
+  ) async {
+    var selected = <String>{'graduate'};
+    await pumpSelector(
+      tester,
+      StatefulBuilder(
+        builder: (context, setState) => AmoraaSelectField<String>(
+          key: const ValueKey('multi-selector'),
+          label: 'Education',
+          selectionMode: AmoraaSelectionMode.multiple,
+          selectedValues: selected,
+          options: const [
+            AmoraaSelectOption(value: 'graduate', label: 'Graduate'),
+            AmoraaSelectOption(value: 'mba', label: 'MBA'),
+            AmoraaSelectOption(value: 'phd', label: 'PhD'),
+          ],
+          onSelectionChanged: (values) => setState(() => selected = values),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byKey(const ValueKey('multi-selector')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('amoraa-select-option-MBA')));
+    await tester.tap(find.byKey(const ValueKey('amoraa-select-option-PhD')));
+    await tester.tap(find.byKey(const ValueKey('amoraa-select-done')));
+    await tester.pumpAndSettle();
+
+    expect(selected, {'graduate', 'mba', 'phd'});
+    expect(find.text('3 selected'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('multi-selector')));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey('amoraa-select-option-Graduate')),
+    );
+    await tester.tap(find.byKey(const ValueKey('amoraa-select-done')));
+    await tester.pumpAndSettle();
+
+    expect(selected, {'mba', 'phd'});
+    expect(find.text('2 selected'), findsOneWidget);
+  });
+
   testWidgets('searchable selector filters and explains empty results', (
     tester,
   ) async {

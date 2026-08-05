@@ -4,7 +4,7 @@ import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/amora_profile_image.dart';
 import 'package:amora_ai/core/widgets/amora_filter_chip.dart';
-import 'package:amora_ai/core/widgets/amora_screen_title.dart';
+import 'package:amora_ai/core/widgets/amoraa_main_page_header.dart';
 import 'package:amora_ai/core/widgets/amoraa_identity_badge.dart';
 import 'package:amora_ai/core/widgets/floating_bottom_nav.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
@@ -119,11 +119,11 @@ class _MatchesScreenState extends State<MatchesScreen> {
                   Column(
                     children: [
                       Padding(
-                        padding: EdgeInsets.fromLTRB(
-                          desktop ? AmoraSpacing.space24 : AmoraSpacing.space16,
-                          AmoraSpacing.space8,
-                          desktop ? AmoraSpacing.space24 : AmoraSpacing.space16,
-                          AmoraSpacing.space8,
+                        padding: const EdgeInsets.fromLTRB(
+                          AmoraaMainPageHeader.pageHorizontalInset,
+                          AmoraaMainPageHeader.safeTopSpacing,
+                          AmoraaMainPageHeader.pageHorizontalInset,
+                          AmoraaMainPageHeader.safeTopSpacing,
                         ),
                         child: AnimatedSwitcher(
                           duration: const Duration(milliseconds: 220),
@@ -720,42 +720,25 @@ class AiMatchesAppBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 56,
-      child: Row(
-        children: [
-          const Expanded(
-            child: AmoraScreenTitle(
-              title: 'AI Matches',
-              subtitle: 'Curated for you',
-            ),
-          ),
-          TextButton.icon(
-            key: const ValueKey('ai-matches-select'),
-            onPressed: onSelect,
-            icon: const Icon(Icons.checklist_rounded, size: 19),
-            label: const Text('Select'),
-            style: TextButton.styleFrom(
-              foregroundColor: AppColors.primary,
-              minimumSize: const Size(48, 48),
-              padding: const EdgeInsets.symmetric(
-                horizontal: AmoraSpacing.space8,
-              ),
-            ),
-          ),
-          Tooltip(
-            message: 'About AI recommendations',
-            child: IconButton(
-              key: const ValueKey('ai-matches-info'),
-              onPressed: onInfo,
-              icon: const Icon(
-                Icons.info_outline_rounded,
-                color: AppColors.primary,
-              ),
-            ),
-          ),
-        ],
-      ),
+    return AmoraaMainPageHeader(
+      title: 'AI Matches',
+      subtitle: 'Curated for you',
+      actions: [
+        AmoraaMainPageHeaderAction(
+          key: const ValueKey('ai-matches-select'),
+          tooltip: 'Select matches',
+          semanticLabel: 'Select matches',
+          icon: Icons.checklist_rounded,
+          onPressed: onSelect,
+        ),
+        AmoraaMainPageHeaderAction(
+          key: const ValueKey('ai-matches-info'),
+          tooltip: 'About AI recommendations',
+          semanticLabel: 'About AI recommendations',
+          icon: Icons.info_outline_rounded,
+          onPressed: onInfo,
+        ),
+      ],
     );
   }
 }

@@ -5,8 +5,8 @@ import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/amora_snackbar.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/features/onboarding/data/local_onboarding_repository.dart';
-import 'package:amora_ai/features/onboarding/presentation/profile_onboarding_flow.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
+import 'package:amora_ai/features/auth/presentation/account_verification_screen.dart';
 import 'package:amora_ai/features/auth/presentation/login_screen.dart';
 import 'package:amora_ai/features/auth/domain/amora_password_policy.dart';
 import 'package:amora_ai/features/auth/presentation/widgets/auth_presentation.dart';
@@ -90,6 +90,8 @@ class _SignupScreenState extends State<SignupScreen> {
       statement: 'Your story starts with a few essentials.',
       showComposition: false,
       stepLabel: 'Account setup',
+      alignStepLabelRight: true,
+      stepLabelKey: const ValueKey('signup-account-setup-chip'),
       footer: const _SignupFooter(),
       child: AutofillGroup(
         child: Form(
@@ -234,7 +236,12 @@ class _SignupScreenState extends State<SignupScreen> {
       phoneNumber: '+91 ${_phoneController.text.trim()}',
     );
     AmoraSession.logIn();
-    Navigator.of(context).pushReplacementNamed(ProfileOnboardingFlow.routeName);
+    Navigator.of(context).pushReplacementNamed(
+      AccountVerificationScreen.routeName,
+      arguments: EmailVerificationArguments(
+        email: _emailController.text.trim(),
+      ),
+    );
   }
 
   Future<void> _continueWithGoogle() async {

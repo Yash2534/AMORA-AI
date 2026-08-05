@@ -124,6 +124,7 @@ class DummyProfile {
     required this.fitnessLevel,
     required this.smoking,
     required this.drinking,
+    this.weed = '',
     required this.children,
     required this.loveLanguage,
     required this.greenFlags,
@@ -164,6 +165,7 @@ class DummyProfile {
   final String fitnessLevel;
   final String smoking;
   final String drinking;
+  final String weed;
   final String children;
   final String loveLanguage;
   final List<String> greenFlags;

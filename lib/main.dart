@@ -119,7 +119,7 @@ class _MyAppState extends State<MyApp> {
         routes: {
           AmoraSplashScreen.routeName: (_) => AmoraSplashScreen(
             resolveInitialRoute: () => AmoraSession.isLoggedIn.value
-                ? MainShell.routeName
+                ? AmoraSession.authenticatedRecoveryRoute
                 : LoginScreen.routeName,
           ),
           OnboardingScreen.routeName: (_) => const OnboardingScreen(),
