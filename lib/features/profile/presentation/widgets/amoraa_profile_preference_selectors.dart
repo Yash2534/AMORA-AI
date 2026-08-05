@@ -22,6 +22,7 @@ class AmoraaPersonalPreferencesEditor extends StatelessWidget {
           value: controller.hometown.isEmpty ? null : controller.hometown,
           hintText: 'Select hometown',
           searchHint: 'Find your hometown',
+          searchSemanticLabel: 'Search Gujarat hometowns',
           supportingText: 'Gujarat locations only',
           prefixIcon: Icons.home_work_outlined,
           allowClear: true,
@@ -29,7 +30,11 @@ class AmoraaPersonalPreferencesEditor extends StatelessWidget {
             for (final option
                 in ProfileFormOptions.preferenceOptions[ProfilePreferenceType
                     .hometown]!)
-              AmoraaSelectOption(value: option.id, label: option.label),
+              AmoraaSelectOption(
+                value: option.id,
+                label: option.label,
+                description: option.description,
+              ),
           ],
           onChanged: controller.setHometown,
         ),
@@ -73,7 +78,7 @@ class AmoraaConnectionPreferencesEditor extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('Their Qualities', style: AmoraTextStyles.titleMedium),
+        Text('Qualities', style: AmoraTextStyles.titleMedium),
         const SizedBox(height: AmoraSpacing.space4),
         Text(
           'Choose up to ${ProfileFormOptions.maximumQualities} qualities you value in another person.',
@@ -288,7 +293,7 @@ class _PreferenceChoice extends StatelessWidget {
           ),
         ),
         child: Material(
-          color: Colors.transparent,
+          color: AppColors.transparent,
           borderRadius: BorderRadius.circular(cardStyle ? 18 : 999),
           child: InkWell(
             borderRadius: BorderRadius.circular(cardStyle ? 18 : 999),
@@ -366,7 +371,7 @@ class AmoraaPronounSelector extends StatelessWidget {
     final result = await showModalBottomSheet<Set<String>>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+      backgroundColor: AppColors.transparent,
       builder: (context) => _PronounSheet(initial: selected),
     );
     if (result != null) onChanged(result);

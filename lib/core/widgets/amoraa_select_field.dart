@@ -37,6 +37,7 @@ class AmoraaSelectField<T> extends StatefulWidget {
     this.hintText,
     this.supportingText,
     this.searchHint = 'Search',
+    this.searchSemanticLabel,
     this.prefixIcon,
     this.variant = AmoraaSelectVariant.standard,
     this.enabled = true,
@@ -63,6 +64,7 @@ class AmoraaSelectField<T> extends StatefulWidget {
   final String? hintText;
   final String? supportingText;
   final String searchHint;
+  final String? searchSemanticLabel;
   final IconData? prefixIcon;
   final AmoraaSelectVariant variant;
   final bool enabled;
@@ -90,6 +92,7 @@ class AmoraaSearchableSelect<T> extends AmoraaSelectField<T> {
     super.hintText,
     super.supportingText,
     super.searchHint,
+    super.searchSemanticLabel,
     super.prefixIcon,
     super.enabled,
     super.isLoading,
@@ -405,6 +408,7 @@ class _AmoraaSelectFieldState<T> extends State<AmoraaSelectField<T>> {
       selectionMode: widget.selectionMode,
       searchable: widget.variant == AmoraaSelectVariant.searchable,
       searchHint: widget.searchHint,
+      searchSemanticLabel: widget.searchSemanticLabel,
       allowClear: widget.allowClear,
     );
     final result = width >= 720
@@ -463,6 +467,7 @@ class AmoraaSelectBottomSheet<T> extends StatefulWidget {
     required this.selectionMode,
     required this.searchable,
     required this.searchHint,
+    this.searchSemanticLabel,
     required this.allowClear,
     this.supportingText,
   });
@@ -475,6 +480,7 @@ class AmoraaSelectBottomSheet<T> extends StatefulWidget {
   final AmoraaSelectionMode selectionMode;
   final bool searchable;
   final String searchHint;
+  final String? searchSemanticLabel;
   final bool allowClear;
 
   @override
@@ -583,37 +589,41 @@ class _AmoraaSelectBottomSheetState<T>
               ),
               if (widget.searchable) ...[
                 const SizedBox(height: AmoraSpacing.space12),
-                TextField(
-                  key: const ValueKey('amoraa-select-search'),
-                  controller: _searchController,
-                  focusNode: _searchFocus,
-                  textInputAction: TextInputAction.search,
-                  decoration: InputDecoration(
-                    hintText: widget.searchHint,
-                    prefixIcon: const Icon(
-                      Icons.search_rounded,
-                      color: AppColors.primary,
+                Semantics(
+                  textField: true,
+                  label: widget.searchSemanticLabel ?? widget.searchHint,
+                  child: TextField(
+                    key: const ValueKey('amoraa-select-search'),
+                    controller: _searchController,
+                    focusNode: _searchFocus,
+                    textInputAction: TextInputAction.search,
+                    decoration: InputDecoration(
+                      hintText: widget.searchHint,
+                      prefixIcon: const Icon(
+                        Icons.search_rounded,
+                        color: AppColors.primary,
+                      ),
+                      suffixIcon: _query.isEmpty
+                          ? null
+                          : IconButton(
+                              tooltip: 'Clear search',
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() {
+                                  _query = '';
+                                  _highlightedIndex = 0;
+                                });
+                              },
+                              icon: const Icon(Icons.close_rounded),
+                            ),
+                      filled: true,
+                      fillColor: AppColors.background,
                     ),
-                    suffixIcon: _query.isEmpty
-                        ? null
-                        : IconButton(
-                            tooltip: 'Clear search',
-                            onPressed: () {
-                              _searchController.clear();
-                              setState(() {
-                                _query = '';
-                                _highlightedIndex = 0;
-                              });
-                            },
-                            icon: const Icon(Icons.close_rounded),
-                          ),
-                    filled: true,
-                    fillColor: AppColors.background,
+                    onChanged: (value) => setState(() {
+                      _query = value;
+                      _highlightedIndex = 0;
+                    }),
                   ),
-                  onChanged: (value) => setState(() {
-                    _query = value;
-                    _highlightedIndex = 0;
-                  }),
                 ),
               ],
               const SizedBox(height: AmoraSpacing.space12),

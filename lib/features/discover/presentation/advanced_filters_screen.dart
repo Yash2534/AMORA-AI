@@ -321,12 +321,19 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
               selectionMode: AmoraaSelectionMode.multiple,
               selectedValues: _hometowns,
               hintText: 'Any hometown',
-              searchHint: 'Find a hometown',
+              searchHint: 'Find your hometown',
+              searchSemanticLabel: 'Search Gujarat hometowns',
               prefixIcon: Icons.home_work_outlined,
               allowClear: true,
               options: [
-                for (final option in ProfileFormOptions.hometowns)
-                  AmoraaSelectOption(value: option, label: option),
+                for (final option
+                    in ProfileFormOptions
+                        .preferenceOptions[ProfilePreferenceType.hometown]!)
+                  AmoraaSelectOption(
+                    value: option.id,
+                    label: option.label,
+                    description: option.description,
+                  ),
               ],
               onSelectionChanged: (values) =>
                   _replaceSelection(_hometowns, values),

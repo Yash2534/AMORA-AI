@@ -29,7 +29,7 @@ class AmoraaProfilePreferenceDisplay extends StatelessWidget {
         Icons.home_work_outlined,
         'Hometown',
         <String>{
-          ProfileFormOptions.normalizeHometown(profile.hometown),
+          ProfileFormOptions.displayHometown(profile.hometown),
         }.where((value) => value.isNotEmpty).toList(),
       ),
     ].where((item) => item.values.isNotEmpty).toList(growable: false);

@@ -1,3 +1,5 @@
+import 'package:amora_ai/core/data/gujarat_hometowns.dart';
+
 enum ProfilePreferenceType {
   hometown,
   qualities,
@@ -28,7 +30,8 @@ abstract final class ProfileFormOptions {
   ];
 
   /// Approved Gujarat-only hometown source. Current City remains separate.
-  static const hometowns = cities;
+  static final List<GujaratHometown> hometownOptions = GujaratHometowns.all;
+  static final List<String> hometowns = GujaratHometowns.storageValues;
 
   static const qualities = <String>[
     'Ambition',
@@ -108,8 +111,12 @@ abstract final class ProfileFormOptions {
   preferenceOptions =
       Map<ProfilePreferenceType, List<ProfilePreferenceOption>>.unmodifiable({
         ProfilePreferenceType.hometown: [
-          for (final value in hometowns)
-            ProfilePreferenceOption(id: value, label: value),
+          for (final location in hometownOptions)
+            ProfilePreferenceOption(
+              id: location.storageValue,
+              label: location.selectorLabel,
+              description: location.alternateSpellings,
+            ),
         ],
         ProfilePreferenceType.qualities: [
           for (final value in qualities)
@@ -138,7 +145,10 @@ abstract final class ProfileFormOptions {
       });
 
   static String normalizeHometown(String? storedValue) =>
-      _approvedValue(storedValue, hometowns);
+      GujaratHometowns.normalizeStorageValue(storedValue);
+
+  static String displayHometown(String? storedValue) =>
+      GujaratHometowns.displayNameFor(storedValue);
 
   static String normalizeSexuality(String? storedValue) =>
       _approvedValue(storedValue, sexualities);

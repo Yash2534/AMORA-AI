@@ -14,6 +14,23 @@ void main() {
     return box.localToGlobal(Offset.zero) & box.size;
   }
 
+  Element contentRowFor(Element header) {
+    Element? row;
+    header.visitChildElements((child) {
+      void visit(Element element) {
+        if (row != null) return;
+        if (element.widget is Row) {
+          row = element;
+          return;
+        }
+        element.visitChildElements(visit);
+      }
+
+      visit(child);
+    });
+    return row!;
+  }
+
   Future<void> pumpMainShell(
     WidgetTester tester, {
     double width = 320,
@@ -53,6 +70,7 @@ void main() {
       AmoraaMainPageHeader.safeTopSpacing,
     );
     expect(AmoraaMainPageHeader.contentSpacing, inInclusiveRange(8, 12));
+    expect(AmoraaMainPageHeader.contentHorizontalInset, 20);
     for (final rect in rects) {
       expect(rect.left, closeTo(AmoraaMainPageHeader.pageHorizontalInset, .1));
       expect(rect.right, closeTo(304, .1));
@@ -226,7 +244,8 @@ void main() {
         final headers = find.byType(AmoraaMainPageHeader, skipOffstage: false);
         expect(headers, findsNWidgets(5));
         final context = tester.element(headers.first);
-        for (final rect in headers.evaluate().map(rectFor)) {
+        final headerElements = headers.evaluate().toList(growable: false);
+        for (final rect in headerElements.map(rectFor)) {
           expect(
             rect.height,
             AmoraaMainPageHeader.heightFor(context),
@@ -234,12 +253,54 @@ void main() {
           );
           expect(rect.height, lessThanOrEqualTo(70));
         }
+        final internalInset =
+            AmoraaMainPageHeader.contentHorizontalInset -
+            AmoraaMainPageHeader.pageHorizontalInset;
+        for (final header in headerElements) {
+          final headerRect = rectFor(header);
+          final contentRect = rectFor(contentRowFor(header));
+          expect(
+            contentRect.left,
+            closeTo(headerRect.left + internalInset, .1),
+          );
+          expect(
+            contentRect.right,
+            closeTo(headerRect.right - internalInset, .1),
+          );
+          expect(
+            contentRect.width,
+            closeTo(headerRect.width - (internalInset * 2), .1),
+          );
+        }
+        final actionCenters = find
+            .byType(AmoraaMainPageHeaderAction, skipOffstage: false)
+            .evaluate()
+            .map(rectFor)
+            .map((rect) => rect.center.dy)
+            .toSet();
+        expect(actionCenters, hasLength(1));
         expect(
           tester.takeException(),
           isNull,
           reason: 'Header overflow at $width px and ${textScale}x text scale',
         );
       }
+    }
+  });
+
+  testWidgets('each main header has exactly one SafeArea ancestor', (
+    tester,
+  ) async {
+    await pumpMainShell(tester, width: 430);
+
+    final headers = find.byType(AmoraaMainPageHeader, skipOffstage: false);
+    for (final header in headers.evaluate()) {
+      var safeAreaAncestors = 0;
+      header.visitAncestorElements((ancestor) {
+        if (ancestor.widget is SafeArea) safeAreaAncestors++;
+        return true;
+      });
+      expect(safeAreaAncestors, 1);
     }
   });
 }

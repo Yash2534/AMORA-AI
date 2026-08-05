@@ -15,11 +15,11 @@ class AmoraaMainPageHeader extends StatelessWidget {
        );
 
   static const double pageHorizontalInset = 16;
+  static const double contentHorizontalInset = 20;
   static const double safeTopSpacing = 8;
   static const double contentSpacing = 8;
   static const double compactHeight = 56;
   static const double scaledHeight = 70;
-  static const double horizontalPadding = 0;
   static const double verticalPadding = 0;
   static const double actionSize = 48;
   static const double actionIconSize = 20;
@@ -61,7 +61,7 @@ class AmoraaMainPageHeader extends StatelessWidget {
       height: heightFor(context),
       child: Padding(
         padding: const EdgeInsets.symmetric(
-          horizontal: horizontalPadding,
+          horizontal: contentHorizontalInset - pageHorizontalInset,
           vertical: verticalPadding,
         ),
         child: Row(

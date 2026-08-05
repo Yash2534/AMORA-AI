@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:amora_ai/core/data/image_repository.dart';
+import 'package:amora_ai/core/data/gujarat_hometowns.dart';
 import 'package:amora_ai/core/theme/amora_theme.dart';
 import 'package:amora_ai/core/widgets/amoraa_select_field.dart';
 import 'package:amora_ai/features/discover/presentation/advanced_filters_screen.dart';
@@ -28,13 +31,9 @@ void main() {
         const ProfilePreferenceFilterState();
   });
 
-  test('all six approved option sources are exact and centralized', () {
-    expect(ProfileFormOptions.hometowns, [
-      'Gandhinagar',
-      'Ahmedabad',
-      'Surat',
-      'Vadodara',
-    ]);
+  test('all six approved option sources are centralized', () {
+    expect(ProfileFormOptions.hometownOptions, same(GujaratHometowns.all));
+    expect(ProfileFormOptions.hometowns, same(GujaratHometowns.storageValues));
     expect(ProfileFormOptions.qualities, [
       'Ambition',
       'Confidence',
@@ -136,6 +135,16 @@ void main() {
     expect(controller.pronouns, {'she', 'her', 'hers', 'they'});
   });
 
+  test('Profile Completion reuses the single-select hometown editor', () {
+    final source = File(
+      'lib/features/profile/presentation/profile_completion_screen.dart',
+    ).readAsStringSync();
+    expect(
+      source,
+      contains('AmoraaPersonalPreferencesEditor(controller: _controller)'),
+    );
+  });
+
   testWidgets('profile editors enforce limits and single-select behavior', (
     tester,
   ) async {
@@ -169,6 +178,13 @@ void main() {
       ),
     );
 
+    final hometownSelector = tester.widget<AmoraaSearchableSelect<String>>(
+      find.byKey(const ValueKey('profile-hometown-selector')),
+    );
+    expect(hometownSelector.selectionMode, AmoraaSelectionMode.single);
+    expect(hometownSelector.searchHint, 'Find your hometown');
+    expect(hometownSelector.searchSemanticLabel, 'Search Gujarat hometowns');
+
     await tester.tap(find.byKey(const ValueKey('profile-hometown-selector')));
     await tester.pumpAndSettle();
     await tester.enterText(
@@ -176,9 +192,20 @@ void main() {
       'sur',
     );
     await tester.pump();
-    expect(find.text('Surat'), findsWidgets);
+    final suratOption = find.byKey(
+      const ValueKey('amoraa-select-option-Surat, Surat, Gujarat'),
+    );
+    await tester.scrollUntilVisible(
+      suratOption,
+      80,
+      scrollable: find.descendant(
+        of: find.byKey(const ValueKey('amoraa-select-options')),
+        matching: find.byType(Scrollable),
+      ),
+    );
+    expect(find.text('Surat, Surat, Gujarat'), findsOneWidget);
     expect(find.text('Mumbai'), findsNothing);
-    await tester.tap(find.byKey(const ValueKey('amoraa-select-option-Surat')));
+    tester.widget<AmoraaSelectOptionTile<String>>(suratOption).onTap();
     await tester.pumpAndSettle();
     expect(controller.hometown, 'Surat');
 
@@ -353,6 +380,9 @@ void main() {
       expect(find.text('Connection Style'), findsOneWidget);
       expect(find.text('Pronouns'), findsOneWidget);
       expect(find.text('Love Languages'), findsOneWidget);
+      if (profile.hometown.isNotEmpty) {
+        expect(find.textContaining(', Gujarat'), findsWidgets);
+      }
       expect(find.textContaining('['), findsNothing);
       expect(tester.takeException(), isNull);
     }
@@ -397,6 +427,7 @@ Future<void> _selectOptions(
   bool searchEach = false,
 }) async {
   final selector = find.byKey(selectorKey);
+  final field = tester.widget<AmoraaSelectField<String>>(selector);
   await tester.ensureVisible(selector);
   await tester.pumpAndSettle();
   await tester.tap(selector.hitTestable());
@@ -409,7 +440,18 @@ Future<void> _selectOptions(
       );
       await tester.pump();
     }
-    final optionFinder = find.byKey(ValueKey('amoraa-select-option-$option'));
+    final label = field.options
+        .firstWhere((candidate) => candidate.value == option)
+        .label;
+    final optionFinder = find.byKey(ValueKey('amoraa-select-option-$label'));
+    await tester.scrollUntilVisible(
+      optionFinder,
+      80,
+      scrollable: find.descendant(
+        of: find.byKey(const ValueKey('amoraa-select-options')),
+        matching: find.byType(Scrollable),
+      ),
+    );
     expect(optionFinder, findsOneWidget);
     tester.widget<AmoraaSelectOptionTile<String>>(optionFinder).onTap();
     await tester.pump();
