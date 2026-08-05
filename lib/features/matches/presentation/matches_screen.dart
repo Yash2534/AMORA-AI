@@ -123,7 +123,7 @@ class _MatchesScreenState extends State<MatchesScreen> {
                           AmoraaMainPageHeader.pageHorizontalInset,
                           AmoraaMainPageHeader.safeTopSpacing,
                           AmoraaMainPageHeader.pageHorizontalInset,
-                          AmoraaMainPageHeader.safeTopSpacing,
+                          0,
                         ),
                         child: AnimatedSwitcher(
                           duration: const Duration(milliseconds: 220),
@@ -367,8 +367,10 @@ class _MatchesScreenState extends State<MatchesScreen> {
                                               _bulkSubmitting)
                                       ? (widget.showNavigation ? 224 : 132)
                                       : widget.showNavigation
-                                      ? FloatingBottomNav.contentBottomPadding
-                                      : AmoraSpacing.space16,
+                                      ? FloatingBottomNav.contentBottomPaddingFor(
+                                          context,
+                                        )
+                                      : FloatingBottomNav.contentSpacing,
                                 ),
                               ),
                             ],
@@ -388,7 +390,7 @@ class _MatchesScreenState extends State<MatchesScreen> {
                         ? AmoraSpacing.space24
                         : AmoraSpacing.space12,
                     bottom: widget.showNavigation
-                        ? FloatingBottomNav.contentBottomPadding
+                        ? FloatingBottomNav.contentBottomPaddingFor(context)
                         : AmoraSpacing.space8,
                     child: AnimatedSwitcher(
                       duration: const Duration(milliseconds: 240),

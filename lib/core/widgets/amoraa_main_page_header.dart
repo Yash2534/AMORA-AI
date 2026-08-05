@@ -16,6 +16,7 @@ class AmoraaMainPageHeader extends StatelessWidget {
 
   static const double pageHorizontalInset = 16;
   static const double safeTopSpacing = 8;
+  static const double contentSpacing = 8;
   static const double compactHeight = 56;
   static const double scaledHeight = 70;
   static const double horizontalPadding = 0;
@@ -52,7 +53,7 @@ class AmoraaMainPageHeader extends StatelessWidget {
   }
 
   static double sliverExtentFor(BuildContext context) =>
-      heightFor(context) + (safeTopSpacing * 2);
+      heightFor(context) + safeTopSpacing;
 
   @override
   Widget build(BuildContext context) {

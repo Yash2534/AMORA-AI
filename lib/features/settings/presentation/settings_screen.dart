@@ -31,6 +31,7 @@ class SettingsScreen extends StatelessWidget {
           ),
         ),
         child: SafeArea(
+          bottom: false,
           child: ResponsiveMobileFrame(
             child: LayoutBuilder(
               builder: (context, constraints) {
@@ -42,7 +43,7 @@ class SettingsScreen extends StatelessWidget {
                         padding,
                         22,
                         padding,
-                        FloatingBottomNav.contentBottomPadding,
+                        FloatingBottomNav.contentBottomPaddingFor(context),
                       ),
                       child: Column(
                         children: [

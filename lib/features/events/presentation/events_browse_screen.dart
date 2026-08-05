@@ -184,7 +184,12 @@ class _EventsMemberExperienceState extends State<EventsMemberExperience> {
           ),
         ),
         SliverPadding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+          padding: const EdgeInsets.fromLTRB(
+            20,
+            AmoraaMainPageHeader.contentSpacing,
+            20,
+            0,
+          ),
           sliver: SliverList.list(
             children: [
               EventsContextBar(
@@ -339,7 +344,12 @@ class _EventsMemberExperienceState extends State<EventsMemberExperience> {
             ),
           ),
         SliverPadding(
-          padding: const EdgeInsets.fromLTRB(20, 28, 20, 38),
+          padding: const EdgeInsets.fromLTRB(
+            20,
+            28,
+            20,
+            FloatingBottomNav.contentSpacing,
+          ),
           sliver: SliverList.list(
             children: [
               _SectionHeading(
@@ -581,9 +591,11 @@ class _EventsHeaderDelegate extends SliverPersistentHeaderDelegate {
     return ColoredBox(
       color: AppColors.background,
       child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AmoraaMainPageHeader.pageHorizontalInset,
-          vertical: AmoraaMainPageHeader.safeTopSpacing,
+        padding: const EdgeInsets.fromLTRB(
+          AmoraaMainPageHeader.pageHorizontalInset,
+          AmoraaMainPageHeader.safeTopSpacing,
+          AmoraaMainPageHeader.pageHorizontalInset,
+          0,
         ),
         child: child,
       ),

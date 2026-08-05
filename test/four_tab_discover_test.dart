@@ -32,7 +32,7 @@ void main() {
     );
     expect(
       contentMedia.data.padding.bottom,
-      greaterThanOrEqualTo(FloatingBottomNav.contentBottomPadding),
+      FloatingBottomNav.barHeight + FloatingBottomNav.minimumBottomSpacing,
     );
 
     for (final destination in <(String, String)>[

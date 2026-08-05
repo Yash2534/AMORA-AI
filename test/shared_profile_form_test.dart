@@ -524,9 +524,8 @@ void main() {
             body: SingleChildScrollView(
               child: ListenableBuilder(
                 listenable: controller,
-                builder: (context, _) => AmoraaHabitsEditor(
-                  controller: controller,
-                ),
+                builder: (context, _) =>
+                    AmoraaHabitsEditor(controller: controller),
               ),
             ),
           ),
@@ -540,9 +539,7 @@ void main() {
         expect(find.text(option), findsNWidgets(3));
       }
 
-      await tester.tap(
-        find.byKey(const ValueKey('profile-habit-smoking-Yes')),
-      );
+      await tester.tap(find.byKey(const ValueKey('profile-habit-smoking-Yes')));
       await tester.pump();
       await tester.tap(
         find.byKey(const ValueKey('profile-habit-smoking-Never')),

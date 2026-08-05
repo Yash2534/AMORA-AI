@@ -67,7 +67,6 @@ class _AmoraHomeScreenState extends State<AmoraHomeScreen> {
   }
 
   Widget _buildScaffold(BuildContext context, bool isLoggedIn) {
-    final bottomInset = MediaQuery.viewPaddingOf(context).bottom;
     final isGuest = !isLoggedIn;
     return Scaffold(
       body: DecoratedBox(
@@ -79,6 +78,7 @@ class _AmoraHomeScreenState extends State<AmoraHomeScreen> {
           ),
         ),
         child: SafeArea(
+          bottom: false,
           child: ResponsiveMobileFrame(
             child: LayoutBuilder(
               builder: (context, constraints) {
@@ -99,8 +99,7 @@ class _AmoraHomeScreenState extends State<AmoraHomeScreen> {
                             padding,
                             AmoraSpacing.space24,
                             padding,
-                            FloatingBottomNav.contentBottomPadding +
-                                bottomInset,
+                            FloatingBottomNav.contentBottomPaddingFor(context),
                           ),
                           sliver: SliverList.list(
                             children: [
@@ -278,13 +277,8 @@ class _AmoraHomeScreenState extends State<AmoraHomeScreen> {
                     ),
                     Align(
                       alignment: Alignment.bottomCenter,
-                      child: Padding(
-                        padding: EdgeInsets.only(
-                          bottom: FloatingBottomNav.bottomMargin + bottomInset,
-                        ),
-                        child: const FloatingBottomNav(
-                          activeTab: AmoraNavTab.discover,
-                        ),
+                      child: const FloatingBottomNav(
+                        activeTab: AmoraNavTab.discover,
                       ),
                     ),
                   ],

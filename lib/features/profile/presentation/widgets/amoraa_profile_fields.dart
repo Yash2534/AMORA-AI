@@ -715,24 +715,25 @@ class AmoraaLifestyleSelector extends StatelessWidget {
         const SizedBox(height: AmoraSpacing.space16),
         for (final entry in ProfileFormOptions.lifestyleOptions.entries)
           if (!ProfileFormOptions.habitOptions.containsKey(entry.key)) ...[
-          Text(entry.key, style: AmoraTextStyles.titleMedium),
-          const SizedBox(height: AmoraSpacing.space8),
-          Wrap(
-            spacing: AmoraSpacing.space8,
-            runSpacing: AmoraSpacing.space8,
-            children: [
-              for (final value in entry.value)
-                ChoiceChip(
-                  label: Text(value),
-                  selected: controller.lifestyle[entry.key] == value,
-                  showCheckmark: false,
-                  onSelected: (_) => controller.setLifestyle(entry.key, value),
-                ),
-            ],
-          ),
-          if (entry.key != ProfileFormOptions.lifestyleOptions.keys.last)
-            const SizedBox(height: AmoraSpacing.space16),
-        ],
+            Text(entry.key, style: AmoraTextStyles.titleMedium),
+            const SizedBox(height: AmoraSpacing.space8),
+            Wrap(
+              spacing: AmoraSpacing.space8,
+              runSpacing: AmoraSpacing.space8,
+              children: [
+                for (final value in entry.value)
+                  ChoiceChip(
+                    label: Text(value),
+                    selected: controller.lifestyle[entry.key] == value,
+                    showCheckmark: false,
+                    onSelected: (_) =>
+                        controller.setLifestyle(entry.key, value),
+                  ),
+              ],
+            ),
+            if (entry.key != ProfileFormOptions.lifestyleOptions.keys.last)
+              const SizedBox(height: AmoraSpacing.space16),
+          ],
         if (showValidation && !hasSelection)
           const _FormError('Choose at least one lifestyle preference'),
       ],

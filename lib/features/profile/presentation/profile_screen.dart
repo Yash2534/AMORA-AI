@@ -65,7 +65,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final profile = _repository.profile;
-    final bottomInset = widget.showNavigation ? 116.0 : 36.0;
+    const bottomInset = FloatingBottomNav.contentSpacing;
     return Scaffold(
       backgroundColor: AppColors.background,
       bottomNavigationBar: widget.showNavigation
@@ -86,7 +86,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
               SliverPadding(
-                padding: EdgeInsets.fromLTRB(20, 16, 20, bottomInset),
+                padding: EdgeInsets.fromLTRB(
+                  20,
+                  AmoraaMainPageHeader.contentSpacing,
+                  20,
+                  bottomInset,
+                ),
                 sliver: SliverList.list(
                   children: [
                     FadeUp(
@@ -175,9 +180,11 @@ class _ProfileHeaderDelegate extends SliverPersistentHeaderDelegate {
     return ColoredBox(
       color: AppColors.background,
       child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AmoraaMainPageHeader.pageHorizontalInset,
-          vertical: AmoraaMainPageHeader.safeTopSpacing,
+        padding: const EdgeInsets.fromLTRB(
+          AmoraaMainPageHeader.pageHorizontalInset,
+          AmoraaMainPageHeader.safeTopSpacing,
+          AmoraaMainPageHeader.pageHorizontalInset,
+          0,
         ),
         child: AmoraaMainPageHeader(
           title: 'My Dating Identity',

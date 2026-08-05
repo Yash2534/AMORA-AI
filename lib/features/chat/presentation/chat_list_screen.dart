@@ -180,8 +180,10 @@ class _ChatListScreenState extends State<ChatListScreen> {
                               height: keyboardIsOpen
                                   ? AmoraSpacing.space16
                                   : widget.showNavigation
-                                  ? FloatingBottomNav.contentBottomPadding
-                                  : AmoraSpacing.space16,
+                                  ? FloatingBottomNav.contentBottomPaddingFor(
+                                      context,
+                                    )
+                                  : FloatingBottomNav.contentSpacing,
                             ),
                           ),
                         ],

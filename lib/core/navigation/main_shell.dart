@@ -54,9 +54,7 @@ class _MainShellState extends State<MainShell> {
             key: const ValueKey('main-shell-navigation-content-inset'),
             data: media.copyWith(
               padding: media.padding.copyWith(
-                bottom:
-                    media.padding.bottom +
-                    FloatingBottomNav.contentBottomPadding,
+                bottom: FloatingBottomNav.navigationHeightFor(context),
               ),
             ),
             child: IndexedStack(

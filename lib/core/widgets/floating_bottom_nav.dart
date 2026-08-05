@@ -16,8 +16,9 @@ class FloatingBottomNav extends StatelessWidget {
   final ValueChanged<AmoraNavTab>? onTabSelected;
 
   static const double barHeight = 68;
-  static const double bottomMargin = 0;
-  static const double contentBottomPadding = 94;
+  static const double contentSpacing = 8;
+  static const double contentBottomPadding =
+      barHeight + minimumBottomSpacing + contentSpacing;
   static const double assistantBottomPadding = 86;
   static const double maxBarWidth = 480;
   static const double itemHeight = 60;
@@ -27,7 +28,16 @@ class FloatingBottomNav extends StatelessWidget {
   static const double iconContainerHeight = 28;
   static const double labelSize = 11;
   static const double horizontalMargin = 16;
-  static const double minimumBottomSpacing = 10;
+  static const double minimumBottomSpacing = 8;
+
+  static double navigationHeightFor(BuildContext context) =>
+      barHeight +
+      MediaQuery.viewPaddingOf(
+        context,
+      ).bottom.clamp(minimumBottomSpacing, double.infinity);
+
+  static double contentBottomPaddingFor(BuildContext context) =>
+      navigationHeightFor(context) + contentSpacing;
 
   static const items = <AmoraNavigationDestination>[
     AmoraNavigationDestination(

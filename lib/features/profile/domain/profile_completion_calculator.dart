@@ -251,12 +251,15 @@ abstract final class ProfileCompletionCalculator {
     final visibleInterestCount = ProfileInterestPolicy.visibleCount(
       input.interests,
     );
-    final lifestyleComplete = ProfileFormOptions.completionLifestyleOptions.entries.any(
-      (entry) => ProfileFormOptions.normalizeLifestyleValue(
-        entry.key,
-        input.lifestyle[entry.key],
-      ).isNotEmpty,
-    );
+    final lifestyleComplete = ProfileFormOptions
+        .completionLifestyleOptions
+        .entries
+        .any(
+          (entry) => ProfileFormOptions.normalizeLifestyleValue(
+            entry.key,
+            input.lifestyle[entry.key],
+          ).isNotEmpty,
+        );
 
     final sections = <ProfileSectionProgress>[
       ProfileSectionProgress(

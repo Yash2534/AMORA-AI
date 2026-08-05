@@ -46,9 +46,17 @@ void main() {
     expect(headers, findsNWidgets(5));
 
     final rects = headers.evaluate().map(rectFor).toList(growable: false);
+    final headerContext = tester.element(headers.first);
+    expect(
+      AmoraaMainPageHeader.sliverExtentFor(headerContext) -
+          AmoraaMainPageHeader.heightFor(headerContext),
+      AmoraaMainPageHeader.safeTopSpacing,
+    );
+    expect(AmoraaMainPageHeader.contentSpacing, inInclusiveRange(8, 12));
     for (final rect in rects) {
       expect(rect.left, closeTo(AmoraaMainPageHeader.pageHorizontalInset, .1));
       expect(rect.right, closeTo(304, .1));
+      expect(rect.top, AmoraaMainPageHeader.safeTopSpacing);
       expect(
         rect.height,
         AmoraaMainPageHeader.heightFor(tester.element(headers.first)),

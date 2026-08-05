@@ -55,7 +55,10 @@ void main() {
       'Weed',
     ]);
     for (final options in ProfileFormOptions.habitOptions.values) {
-      expect(identical(options, ProfileFormOptions.habitFrequencyOptions), isTrue);
+      expect(
+        identical(options, ProfileFormOptions.habitFrequencyOptions),
+        isTrue,
+      );
       expect(options.where((value) => value == 'Yes'), hasLength(1));
     }
     expect(ProfileFormOptions.education, const [

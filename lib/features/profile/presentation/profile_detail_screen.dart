@@ -1316,53 +1316,60 @@ class _LifestyleTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(minHeight: 92),
-      padding: const EdgeInsets.all(AmoraSpacing.space12),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.tertiary.withValues(alpha: .55)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          DecoratedBox(
-            decoration: BoxDecoration(
-              color: AppColors.tertiary.withValues(alpha: .32),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: SizedBox(
-              width: 36,
-              height: 36,
-              child: Icon(item.icon, color: AppColors.primary, size: 19),
+    return Semantics(
+      label: '${item.label}, ${item.value}',
+      child: ExcludeSemantics(
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 92),
+          padding: const EdgeInsets.all(AmoraSpacing.space12),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: AppColors.tertiary.withValues(alpha: .55),
             ),
           ),
-          const SizedBox(width: AmoraSpacing.space8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item.label,
-                  style: AmoraTextStyles.labelSmall.copyWith(
-                    color: AppColors.textNeutral.withValues(alpha: .54),
-                  ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  color: AppColors.tertiary.withValues(alpha: .32),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                const SizedBox(height: AmoraSpacing.space4),
-                Text(
-                  item.value,
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                  style: AmoraTextStyles.labelMedium.copyWith(
-                    color: AppColors.textNeutral,
-                    fontWeight: FontWeight.w700,
-                  ),
+                child: SizedBox(
+                  width: 36,
+                  height: 36,
+                  child: Icon(item.icon, color: AppColors.primary, size: 19),
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(width: AmoraSpacing.space8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.label,
+                      style: AmoraTextStyles.labelSmall.copyWith(
+                        color: AppColors.textNeutral.withValues(alpha: .54),
+                      ),
+                    ),
+                    const SizedBox(height: AmoraSpacing.space4),
+                    Text(
+                      item.value,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: AmoraTextStyles.labelMedium.copyWith(
+                        color: AppColors.textNeutral,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

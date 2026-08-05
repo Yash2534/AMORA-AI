@@ -263,7 +263,29 @@ void main() {
       FloatingBottomNav.barHeight + FloatingBottomNav.minimumBottomSpacing,
     );
     expect(withSystemInset.height, FloatingBottomNav.barHeight + 34);
-    expect(withSystemInset.height - withoutSystemInset.height, 24);
+    expect(withSystemInset.height - withoutSystemInset.height, 26);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('bar keeps only the controlled bottom spacing', (tester) async {
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    const viewport = Size(390, 844);
+    await pumpNavigation(tester, size: viewport);
+
+    final bar = tester.getRect(
+      find.byKey(const ValueKey('floating-bottom-nav-bar')),
+    );
+    expect(
+      viewport.height - bar.bottom,
+      FloatingBottomNav.minimumBottomSpacing,
+    );
+    expect(
+      FloatingBottomNav.contentBottomPadding -
+          FloatingBottomNav.navigationHeightFor(
+            tester.element(find.byType(FloatingBottomNav)),
+          ),
+      FloatingBottomNav.contentSpacing,
+    );
     expect(tester.takeException(), isNull);
   });
 
