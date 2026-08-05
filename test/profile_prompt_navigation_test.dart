@@ -72,6 +72,30 @@ void main() {
     );
   });
 
+  test(
+    'saving one prompt preserves other unsaved Edit Profile values',
+    () async {
+      final profile = completeProfile();
+      await repository.resetForTesting(profile);
+      final controller = ProfileFormController(repository: repository);
+      addTearDown(controller.dispose);
+
+      controller.name.text = 'Unsaved edited name';
+      controller.beginEditPrompt('My ideal Sunday is...');
+      controller.promptAnswer.text = '  A slow breakfast and a long walk.  ';
+      await controller.savePrompt();
+
+      expect(repository.profile.name, profile.name);
+      expect(controller.name.text, 'Unsaved edited name');
+      expect(controller.draftProfile.name, 'Unsaved edited name');
+      expect(controller.dirty, isTrue);
+      expect(
+        repository.profile.prompts['My ideal Sunday is...'],
+        'A slow breakfast and a long walk.',
+      );
+    },
+  );
+
   testWidgets(
     'saved prompts stack vertically and Add Prompt saves immediately',
     (tester) async {
@@ -141,19 +165,30 @@ void main() {
       await tester.pumpAndSettle();
 
       final answer = find.byKey(const ValueKey('profile-prompt-answer-field'));
+      final savePrompt = find.byKey(const ValueKey('save-profile-prompt-edit'));
       expect(answer, findsOneWidget);
       await tester.enterText(answer, '   ');
       expect(formKey.currentState?.validate(), isFalse);
+      await tester.ensureVisible(savePrompt);
+      await tester.pumpAndSettle();
+      await tester.tap(savePrompt);
       await tester.pump();
       expect(find.text('Write an answer for this prompt'), findsOneWidget);
+      expect(
+        repository.profile.prompts.containsKey('Together we could...'),
+        isFalse,
+      );
+      expect(answer, findsOneWidget);
 
       await tester.enterText(
         answer,
         '  Explore local cafes and plan a weekend road trip.  ',
       );
       expect(formKey.currentState?.validate(), isTrue);
-      await controller.save();
-      await tester.pump();
+      await tester.ensureVisible(savePrompt);
+      await tester.pumpAndSettle();
+      await tester.tap(savePrompt);
+      await tester.pumpAndSettle();
 
       expect(
         repository.profile.prompts['Together we could...'],
@@ -217,7 +252,215 @@ void main() {
       greaterThan(tester.getBottomLeft(cards.at(0)).dy),
     );
     expect(find.widgetWithText(TextButton, 'Edit'), findsNWidgets(2));
+    final firstTitle = tester.widget<Text>(find.text(shortPrompt.key));
+    final secondTitle = tester.widget<Text>(find.text(longPrompt.key));
+    final firstAnswer = tester.widget<Text>(find.text('“Already quoted”'));
+    expect(firstTitle.style, secondTitle.style);
+    expect(firstTitle.style?.fontWeight, FontWeight.w600);
+    expect(firstAnswer.style?.fontWeight, FontWeight.w600);
+    expect(
+      firstAnswer.style?.fontSize,
+      greaterThan(firstTitle.style?.fontSize ?? double.infinity),
+    );
+    expect(find.text('Delete'), findsNothing);
+    expect(find.text('Share'), findsNothing);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('inline prompt edit cancels safely and only one card edits', (
+    tester,
+  ) async {
+    await repository.resetForTesting(
+      completeProfile().copyWith(
+        prompts: const {
+          'My ideal Sunday is...': 'Coffee and a long walk.',
+          'A green flag I value is...': 'Kind, direct communication.',
+        },
+      ),
+    );
+    final controller = ProfileFormController(repository: repository);
+    addTearDown(controller.dispose);
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AmoraTheme.light(),
+        home: Scaffold(
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: AmoraaProfilePromptField(controller: controller),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final editActions = find.byKey(const ValueKey('edit-profile-prompt'));
+    await tester.tap(editActions.first);
+    await tester.pumpAndSettle();
+    final answerField = find.byKey(
+      const ValueKey('profile-prompt-answer-field'),
+    );
+    expect(answerField, findsOneWidget);
+    expect(
+      tester
+          .getSize(find.byKey(const ValueKey('cancel-profile-prompt-edit')))
+          .height,
+      greaterThanOrEqualTo(48),
+    );
+    expect(
+      tester
+          .getSize(find.byKey(const ValueKey('save-profile-prompt-edit')))
+          .height,
+      greaterThanOrEqualTo(48),
+    );
+    expect(
+      tester.widget<TextFormField>(answerField).controller?.text,
+      'Coffee and a long walk.',
+    );
+
+    await tester.enterText(answerField, 'Unsaved first answer');
+    await tester.tap(find.byKey(const ValueKey('edit-profile-prompt')).last);
+    await tester.pumpAndSettle();
+    expect(answerField, findsOneWidget);
+    expect(
+      tester.widget<TextFormField>(answerField).controller?.text,
+      'Kind, direct communication.',
+    );
+
+    await tester.enterText(answerField, 'Unsaved second answer');
+    await tester.tap(find.byKey(const ValueKey('cancel-profile-prompt-edit')));
+    await tester.pumpAndSettle();
+    expect(answerField, findsNothing);
+    expect(find.text('“Kind, direct communication.”'), findsOneWidget);
+    expect(
+      repository.profile.prompts['A green flag I value is...'],
+      'Kind, direct communication.',
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('save failure keeps inline prompt text and allows Retry', (
+    tester,
+  ) async {
+    final answerController = TextEditingController(text: 'Original answer');
+    addTearDown(answerController.dispose);
+    var shouldFail = true;
+    var attempts = 0;
+    var savedAnswer = 'Original answer';
+    var editing = true;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AmoraTheme.light(),
+        home: Scaffold(
+          body: StatefulBuilder(
+            builder: (context, setHostState) => Padding(
+              padding: const EdgeInsets.all(16),
+              child: AmoraaEditableProfilePromptCard(
+                promptTitle: 'My ideal Sunday is...',
+                answer: savedAnswer,
+                editing: editing,
+                answerController: answerController,
+                onEdit: () {},
+                onCancel: () {},
+                onSave: () async {
+                  attempts++;
+                  if (shouldFail) throw StateError('save failed');
+                  setHostState(() {
+                    savedAnswer = answerController.text.trim();
+                    editing = false;
+                  });
+                },
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('profile-prompt-answer-field')),
+      'Keep this typed answer',
+    );
+    await tester.tap(find.byKey(const ValueKey('save-profile-prompt-edit')));
+    await tester.pumpAndSettle();
+
+    expect(attempts, 1);
+    expect(answerController.text, 'Keep this typed answer');
+    expect(
+      find.text('Could not save this prompt. Please retry.'),
+      findsOneWidget,
+    );
+
+    shouldFail = false;
+    await tester.tap(find.byKey(const ValueKey('save-profile-prompt-edit')));
+    await tester.pumpAndSettle();
+    expect(attempts, 2);
+    expect(find.text('“Keep this typed answer”'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('profile-prompt-save-error')),
+      findsNothing,
+    );
+  });
+
+  testWidgets('prompt cards stay full width at every supported viewport', (
+    tester,
+  ) async {
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    const prompts = <MapEntry<String, String>>[
+      MapEntry('My ideal Sunday is...', 'Coffee and a long walk.'),
+      MapEntry(
+        'A green flag I value is...',
+        'Kind communication and a thoughtful answer that wraps naturally.',
+      ),
+      MapEntry('Together we could...', 'Explore somewhere new.'),
+    ];
+    for (final width in const <double>[
+      320,
+      360,
+      390,
+      412,
+      430,
+      600,
+      768,
+      1024,
+    ]) {
+      await tester.binding.setSurfaceSize(Size(width, 1200));
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AmoraTheme.light(),
+          home: Scaffold(
+            body: MediaQuery(
+              data: MediaQueryData(
+                size: Size(width, 1200),
+                textScaler: const TextScaler.linear(1.3),
+              ),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: AmoraaProfilePromptsSection(
+                  prompts: prompts,
+                  onEditPrompt: (_) {},
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final cards = find.byType(AmoraaEditableProfilePromptCard);
+      expect(cards, findsNWidgets(3), reason: '$width px');
+      final expectedWidth = width - 32;
+      for (var index = 0; index < 3; index++) {
+        expect(
+          tester.getSize(cards.at(index)).width,
+          expectedWidth,
+          reason: '$width px card $index',
+        );
+      }
+      expect(find.widgetWithText(TextButton, 'Edit'), findsNWidgets(3));
+      expect(tester.takeException(), isNull, reason: '$width px');
+    }
   });
 
   testWidgets(

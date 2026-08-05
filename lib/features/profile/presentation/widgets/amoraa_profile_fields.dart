@@ -761,6 +761,11 @@ class AmoraaProfilePromptField extends StatelessWidget {
 
   Widget _buildContent(BuildContext context) {
     final saved = controller.savedPrompts.entries.toList(growable: false);
+    final originalPromptTitle = controller.promptEditingOriginalTitle;
+    final canAddPrompt =
+        !controller.promptEditorActive && controller.canAddPrompt;
+    final showPromptRequired =
+        showValidation && saved.isEmpty && !controller.promptEditorActive;
     return _profileTarget(
       id: ProfileFormFieldId.profilePrompt,
       label: 'Profile Prompts',
@@ -769,88 +774,47 @@ class AmoraaProfilePromptField extends StatelessWidget {
       child: AmoraaProfilePromptsSection(
         prompts: saved,
         editingPromptTitle: controller.promptEditorActive
-            ? controller.promptEditingOriginalTitle
+            ? originalPromptTitle
             : null,
+        newPromptTitle:
+            controller.promptEditorActive && originalPromptTitle == null
+            ? controller.promptTitle
+            : null,
+        answerController: controller.promptAnswer,
+        answerFocusNode: navigationTargets?.focusNodeFor(
+          ProfileFormFieldId.profilePrompt,
+        ),
+        showValidation: showValidation,
         onEditPrompt: (prompt) {
           controller.beginEditPrompt(prompt);
           _focusPromptAnswer();
         },
-        footer: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (controller.promptEditorActive) ...[
-              Semantics(
-                container: true,
-                label: 'Profile prompt editor',
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    AmoraaProfilePromptSelector(
-                      selectedPrompt: controller.promptTitle,
-                      options: {
-                        ...controller.availablePromptTitles,
-                        controller.promptTitle,
-                      },
-                      onSelected: controller.setPromptTitle,
-                    ),
-                    const SizedBox(height: AmoraSpacing.space12),
-                    TextFormField(
-                      key: const ValueKey('profile-prompt-answer-field'),
-                      controller: controller.promptAnswer,
-                      focusNode: navigationTargets?.focusNodeFor(
-                        ProfileFormFieldId.profilePrompt,
+        onCancelPrompt: controller.cancelPromptEditing,
+        onSavePrompt: controller.savePrompt,
+        footer: canAddPrompt || showPromptRequired
+            ? Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (canAddPrompt)
+                    OutlinedButton.icon(
+                      key: const ValueKey('add-profile-prompt'),
+                      onPressed: () => showAmoraaProfilePromptPicker(
+                        context,
+                        selectedPrompt: '',
+                        options: controller.availablePromptTitles,
+                        onSelected: (prompt) {
+                          controller.beginAddPrompt(prompt);
+                          _focusPromptAnswer();
+                        },
                       ),
-                      minLines: 3,
-                      maxLines: 6,
-                      maxLength:
-                          ProfileFormOptions.profilePromptAnswerMaxLength,
-                      inputFormatters: [
-                        LengthLimitingTextInputFormatter(
-                          ProfileFormOptions.profilePromptAnswerMaxLength,
-                        ),
-                      ],
-                      validator: ProfileFormValidators.promptAnswer,
-                      autovalidateMode: showValidation
-                          ? AutovalidateMode.always
-                          : AutovalidateMode.onUserInteraction,
-                      decoration: const InputDecoration(
-                        labelText: 'Your answer',
-                        hintText: 'Write a specific, warm answer',
-                        counterText: '',
-                      ),
+                      icon: const Icon(Icons.add_rounded),
+                      label: const Text('Add Prompt'),
                     ),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton(
-                        key: const ValueKey('cancel-profile-prompt-edit'),
-                        onPressed: controller.cancelPromptEditing,
-                        child: const Text('Cancel'),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ] else if (controller.canAddPrompt)
-              OutlinedButton.icon(
-                key: const ValueKey('add-profile-prompt'),
-                onPressed: () => showAmoraaProfilePromptPicker(
-                  context,
-                  selectedPrompt: '',
-                  options: controller.availablePromptTitles,
-                  onSelected: (prompt) {
-                    controller.beginAddPrompt(prompt);
-                    _focusPromptAnswer();
-                  },
-                ),
-                icon: const Icon(Icons.add_rounded),
-                label: const Text('Add Prompt'),
-              ),
-            if (showValidation &&
-                saved.isEmpty &&
-                !controller.promptEditorActive)
-              const _FormError('Complete one profile prompt'),
-          ],
-        ),
+                  if (showPromptRequired)
+                    const _FormError('Complete one profile prompt'),
+                ],
+              )
+            : null,
       ),
     );
   }
@@ -870,12 +834,24 @@ class AmoraaProfilePromptsSection extends StatelessWidget {
     required this.prompts,
     required this.onEditPrompt,
     this.editingPromptTitle,
+    this.newPromptTitle,
+    this.answerController,
+    this.answerFocusNode,
+    this.onCancelPrompt,
+    this.onSavePrompt,
+    this.showValidation = false,
     this.footer,
   });
 
   final List<MapEntry<String, String>> prompts;
   final ValueChanged<String> onEditPrompt;
   final String? editingPromptTitle;
+  final String? newPromptTitle;
+  final TextEditingController? answerController;
+  final FocusNode? answerFocusNode;
+  final VoidCallback? onCancelPrompt;
+  final Future<void> Function()? onSavePrompt;
+  final bool showValidation;
   final Widget? footer;
 
   @override
@@ -887,20 +863,42 @@ class AmoraaProfilePromptsSection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const _ProfilePromptsHeader(),
-          if (prompts.isNotEmpty) const SizedBox(height: AmoraSpacing.space16),
+          if (prompts.isNotEmpty || newPromptTitle != null)
+            const SizedBox(height: AmoraSpacing.space16),
           for (var index = 0; index < prompts.length; index++) ...[
             AmoraaEditableProfilePromptCard(
               key: ValueKey('saved-profile-prompt-$index'),
               promptTitle: prompts[index].key,
               answer: prompts[index].value,
               editing: editingPromptTitle == prompts[index].key,
+              answerController: answerController,
+              answerFocusNode: answerFocusNode,
+              showValidation: showValidation,
               onEdit: () => onEditPrompt(prompts[index].key),
+              onCancel: onCancelPrompt,
+              onSave: onSavePrompt,
             ),
             if (index != prompts.length - 1)
               const SizedBox(height: AmoraSpacing.space12),
           ],
-          if (footer != null) ...[
+          if (newPromptTitle case final title?) ...[
             if (prompts.isNotEmpty)
+              const SizedBox(height: AmoraSpacing.space12),
+            AmoraaEditableProfilePromptCard(
+              key: const ValueKey('new-profile-prompt'),
+              promptTitle: title,
+              answer: answerController?.text ?? '',
+              editing: true,
+              answerController: answerController,
+              answerFocusNode: answerFocusNode,
+              showValidation: showValidation,
+              onEdit: () {},
+              onCancel: onCancelPrompt,
+              onSave: onSavePrompt,
+            ),
+          ],
+          if (footer != null) ...[
+            if (prompts.isNotEmpty || newPromptTitle != null)
               const SizedBox(height: AmoraSpacing.space16),
             footer!,
           ],
@@ -948,27 +946,66 @@ class _ProfilePromptsHeader extends StatelessWidget {
   }
 }
 
-class AmoraaEditableProfilePromptCard extends StatelessWidget {
+class AmoraaEditableProfilePromptCard extends StatefulWidget {
   const AmoraaEditableProfilePromptCard({
     super.key,
     required this.promptTitle,
     required this.answer,
     required this.editing,
     required this.onEdit,
+    this.answerController,
+    this.answerFocusNode,
+    this.onCancel,
+    this.onSave,
+    this.showValidation = false,
   });
 
   final String promptTitle;
   final String answer;
   final bool editing;
   final VoidCallback onEdit;
+  final TextEditingController? answerController;
+  final FocusNode? answerFocusNode;
+  final VoidCallback? onCancel;
+  final Future<void> Function()? onSave;
+  final bool showValidation;
+
+  @override
+  State<AmoraaEditableProfilePromptCard> createState() =>
+      _AmoraaEditableProfilePromptCardState();
+}
+
+class _AmoraaEditableProfilePromptCardState
+    extends State<AmoraaEditableProfilePromptCard> {
+  bool _showValidation = false;
+  bool _saving = false;
+  String? _saveError;
+
+  @override
+  void didUpdateWidget(AmoraaEditableProfilePromptCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.editing && !widget.editing) {
+      _showValidation = false;
+      _saving = false;
+      _saveError = null;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    assert(
+      !widget.editing ||
+          (widget.answerController != null &&
+              widget.onCancel != null &&
+              widget.onSave != null),
+      'Editing prompt cards require a controller, Cancel, and Save callbacks.',
+    );
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
     return Semantics(
       container: true,
       explicitChildNodes: true,
       label:
-          'Profile prompt, $promptTitle. Answer, $answer${editing ? '. Editing' : ''}',
+          'Profile prompt, ${widget.promptTitle}. Answer, ${widget.answer}${widget.editing ? '. Editing' : ''}',
       child: SizedBox(
         width: double.infinity,
         child: PremiumCard(
@@ -976,46 +1013,196 @@ class AmoraaEditableProfilePromptCard extends StatelessWidget {
           padding: const EdgeInsets.all(AmoraSpacing.space24),
           borderColor: AppColors.secondary,
           shadowOpacity: 0,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                promptTitle,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.left,
-                style: AmoraTextStyles.bodyMedium.copyWith(
-                  color: AppColors.secondary,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: AmoraSpacing.space12),
-              Text(
-                _profilePromptAnswerWithQuotes(answer),
-                textAlign: TextAlign.left,
-                style: AmoraTextStyles.titleMedium.copyWith(
-                  color: AppColors.primary,
-                  height: 1.45,
-                ),
-              ),
-              const SizedBox(height: AmoraSpacing.space12),
-              Align(
-                alignment: Alignment.bottomRight,
-                child: Semantics(
-                  button: true,
-                  label: 'Edit profile prompt: $promptTitle',
-                  child: TextButton.icon(
-                    onPressed: onEdit,
-                    icon: Icon(
-                      editing ? Icons.edit_rounded : Icons.edit_outlined,
-                    ),
-                    label: const Text('Edit'),
-                  ),
-                ),
-              ),
-            ],
+          child: AnimatedSize(
+            duration: reduceMotion
+                ? Duration.zero
+                : const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
+            alignment: Alignment.topCenter,
+            child: AnimatedSwitcher(
+              duration: reduceMotion
+                  ? Duration.zero
+                  : const Duration(milliseconds: 200),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeOutCubic,
+              child: widget.editing ? _buildEditor() : _buildView(),
+            ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildView() {
+    return Column(
+      key: const ValueKey('profile-prompt-view-mode'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _PromptTitle(widget.promptTitle),
+        const SizedBox(height: AmoraSpacing.space20),
+        Text(
+          _profilePromptAnswerWithQuotes(widget.answer),
+          textAlign: TextAlign.left,
+          style: AmoraTextStyles.titleMedium.copyWith(
+            color: AppColors.primary,
+            fontWeight: FontWeight.w600,
+            height: 1.45,
+          ),
+        ),
+        const SizedBox(height: AmoraSpacing.space12),
+        Align(
+          alignment: Alignment.bottomRight,
+          child: Semantics(
+            button: true,
+            label: 'Edit profile prompt: ${widget.promptTitle}',
+            child: TextButton.icon(
+              key: const ValueKey('edit-profile-prompt'),
+              style: TextButton.styleFrom(
+                minimumSize: const Size(0, AmoraSpacing.minimumTouchTarget),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AmoraSpacing.space12,
+                ),
+              ),
+              onPressed: widget.onEdit,
+              icon: const Icon(Icons.edit_outlined),
+              label: const Text('Edit'),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEditor() {
+    final controller = widget.answerController!;
+    return Column(
+      key: const ValueKey('profile-prompt-edit-mode'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _PromptTitle(widget.promptTitle),
+        const SizedBox(height: AmoraSpacing.space16),
+        TextFormField(
+          key: const ValueKey('profile-prompt-answer-field'),
+          controller: controller,
+          focusNode: widget.answerFocusNode,
+          minLines: 3,
+          maxLines: 6,
+          maxLength: ProfileFormOptions.profilePromptAnswerMaxLength,
+          inputFormatters: [
+            LengthLimitingTextInputFormatter(
+              ProfileFormOptions.profilePromptAnswerMaxLength,
+            ),
+          ],
+          validator: ProfileFormValidators.promptAnswer,
+          autovalidateMode: widget.showValidation || _showValidation
+              ? AutovalidateMode.always
+              : AutovalidateMode.onUserInteraction,
+          textInputAction: TextInputAction.newline,
+          decoration: const InputDecoration(
+            labelText: 'Your answer',
+            hintText: 'Write a specific, warm answer',
+            counterText: '',
+          ),
+        ),
+        if (_saveError case final message?) ...[
+          const SizedBox(height: AmoraSpacing.space8),
+          Semantics(
+            liveRegion: true,
+            child: Text(
+              message,
+              key: const ValueKey('profile-prompt-save-error'),
+              style: AmoraTextStyles.bodySmall.copyWith(
+                color: Theme.of(context).colorScheme.error,
+              ),
+            ),
+          ),
+        ],
+        const SizedBox(height: AmoraSpacing.space16),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            TextButton(
+              key: const ValueKey('cancel-profile-prompt-edit'),
+              style: TextButton.styleFrom(
+                minimumSize: const Size(0, AmoraSpacing.minimumTouchTarget),
+              ),
+              onPressed: _saving ? null : _cancel,
+              child: const Text('Cancel'),
+            ),
+            const SizedBox(width: AmoraSpacing.space12),
+            Semantics(
+              button: true,
+              label: _saving
+                  ? 'Saving profile prompt: ${widget.promptTitle}'
+                  : 'Save profile prompt: ${widget.promptTitle}',
+              child: FilledButton(
+                key: const ValueKey('save-profile-prompt-edit'),
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size(0, AmoraSpacing.minimumTouchTarget),
+                ),
+                onPressed: _saving ? null : _save,
+                child: _saving
+                    ? const SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Save'),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  void _cancel() {
+    setState(() {
+      _showValidation = false;
+      _saveError = null;
+    });
+    widget.onCancel!();
+  }
+
+  Future<void> _save() async {
+    if (_saving) return;
+    final validation = ProfileFormValidators.promptAnswer(
+      widget.answerController!.text,
+    );
+    setState(() {
+      _showValidation = true;
+      _saveError = null;
+    });
+    if (validation != null) return;
+    setState(() => _saving = true);
+    try {
+      await widget.onSave!();
+      if (mounted) setState(() => _saving = false);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _saveError = 'Could not save this prompt. Please retry.';
+      });
+    }
+  }
+}
+
+class _PromptTitle extends StatelessWidget {
+  const _PromptTitle(this.title);
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      title,
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+      textAlign: TextAlign.left,
+      style: AmoraTextStyles.titleSmall.copyWith(
+        color: AppColors.secondary,
+        fontWeight: FontWeight.w600,
+        height: 1.4,
       ),
     );
   }

@@ -514,7 +514,7 @@ class _NotificationFilterRail extends StatelessWidget {
         labelBuilder: (filter) => filter,
         iconBuilder: _notificationFilterIcon,
         optionKeyPrefix: 'notification-filter',
-        showCheckmark: true,
+        showCheckmark: false,
         onChanged: (selection) {
           if (selection.isNotEmpty) onSelected(selection.single);
         },

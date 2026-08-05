@@ -9,7 +9,6 @@ import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
 import 'package:amora_ai/features/profile/domain/profile_completion_calculator.dart';
-import 'package:amora_ai/features/profile/domain/profile_form_validators.dart';
 import 'package:amora_ai/features/profile/presentation/controllers/profile_form_controller.dart';
 import 'package:amora_ai/features/profile/presentation/kyc_verification_screen.dart';
 import 'package:amora_ai/features/profile/presentation/photo_manager_screen.dart';
@@ -140,15 +139,6 @@ class _ProfileCompletionScreenState extends State<ProfileCompletionScreen> {
                               'completion-section-${section.id.name}',
                             ),
                             editor: _editorFor(section.id),
-                            saving: _savingSection == section.id,
-                            saveEnabled:
-                                !_controller.promptEditorActive ||
-                                ProfileFormValidators.promptAnswer(
-                                      _controller.promptAnswer.text,
-                                    ) ==
-                                    null,
-                            error: _saveErrors[section.id],
-                            onSave: () => _saveSection(section.id),
                           )
                         else
                           _CompletionSectionCard(
@@ -666,49 +656,13 @@ class _ReadyCard extends StatelessWidget {
 }
 
 class _CompletionPromptSection extends StatelessWidget {
-  const _CompletionPromptSection({
-    super.key,
-    required this.editor,
-    required this.saving,
-    required this.saveEnabled,
-    required this.error,
-    required this.onSave,
-  });
+  const _CompletionPromptSection({super.key, required this.editor});
 
   final Widget editor;
-  final bool saving;
-  final bool saveEnabled;
-  final String? error;
-  final VoidCallback onSave;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        editor,
-        if (error case final message?) ...[
-          const SizedBox(height: AmoraSpacing.space8),
-          Semantics(
-            liveRegion: true,
-            child: Text(
-              message,
-              style: AmoraTextStyles.bodySmall.copyWith(
-                color: Theme.of(context).colorScheme.error,
-              ),
-            ),
-          ),
-        ],
-        const SizedBox(height: AmoraSpacing.space16),
-        AppPrimaryButton(
-          key: const ValueKey('completion-save-prompt'),
-          label: saving ? 'Saving' : 'Save Section',
-          icon: Icons.check_rounded,
-          isLoading: saving,
-          onPressed: saving || !saveEnabled ? null : onSave,
-        ),
-      ],
-    );
+    return editor;
   }
 }
 

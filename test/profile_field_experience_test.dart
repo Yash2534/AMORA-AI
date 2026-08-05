@@ -265,7 +265,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('profile prompt uses selectable cards and loads saved value', (
+  testWidgets('profile prompt edits the saved answer inside its card', (
     tester,
   ) async {
     await repository.resetForTesting(
@@ -302,15 +302,23 @@ void main() {
 
     await tester.tap(find.widgetWithText(TextButton, 'Edit').first);
     await tester.pumpAndSettle();
-    await tester.tap(
-      find.byKey(const ValueKey('profile-prompt-card-selector')),
+    final answerField = find.byKey(
+      const ValueKey('profile-prompt-answer-field'),
     );
-    await tester.pumpAndSettle();
-    await tester.tap(
-      find.byKey(const ValueKey('prompt-option-A green flag I value is...')),
+    expect(answerField, findsOneWidget);
+    expect(
+      tester.widget<TextFormField>(answerField).controller?.text,
+      'Explore somewhere new.',
     );
+    expect(find.byType(AmoraaProfilePromptSelector), findsNothing);
+    await tester.enterText(answerField, '  Explore a new neighbourhood.  ');
+    await tester.tap(find.byKey(const ValueKey('save-profile-prompt-edit')));
     await tester.pumpAndSettle();
-    expect(controller.promptTitle, 'A green flag I value is...');
+    expect(controller.promptTitle, 'Together we could...');
+    expect(
+      repository.profile.prompts['Together we could...'],
+      'Explore a new neighbourhood.',
+    );
     expect(controller.draftProfile.completedPromptCount, 1);
   });
 

@@ -227,6 +227,29 @@ void main() {
       ),
       findsNothing,
     );
+    expect(find.byKey(const ValueKey('completion-save-prompt')), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('edit-profile-prompt')).first);
+    await tester.pumpAndSettle();
+    final completionAnswer = find.byKey(
+      const ValueKey('profile-prompt-answer-field'),
+    );
+    expect(completionAnswer, findsOneWidget);
+    expect(find.text('Edit destination'), findsNothing);
+    expect(find.text('Profile Completion'), findsOneWidget);
+    await tester.enterText(
+      completionAnswer,
+      '  Build a kinder, more thoughtful life.  ',
+    );
+    await tester.tap(find.byKey(const ValueKey('save-profile-prompt-edit')));
+    await tester.pumpAndSettle();
+    expect(
+      repository.profile.prompts['My ideal Sunday is...'],
+      'Build a kinder, more thoughtful life.',
+    );
+    expect(
+      find.text('“Build a kinder, more thoughtful life.”'),
+      findsOneWidget,
+    );
 
     await pumpFlow(
       tester,
@@ -236,8 +259,24 @@ void main() {
     expect(find.byType(AmoraaProfilePromptsSection), findsOneWidget);
     expect(find.byType(AmoraaEditableProfilePromptCard), findsNWidgets(2));
     expect(find.widgetWithText(TextButton, 'Edit'), findsNWidgets(2));
+    await tester.tap(find.byKey(const ValueKey('edit-profile-prompt')).first);
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('profile-prompt-answer-field')),
+      findsOneWidget,
+    );
+    expect(find.text('Edit profile'), findsOneWidget);
+    expect(find.text('Edit destination'), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('cancel-profile-prompt-edit')));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('“Build a kinder, more thoughtful life.”'),
+      findsOneWidget,
+    );
     expect(find.text('Like'), findsNothing);
     expect(find.text('Reply'), findsNothing);
+    expect(find.text('Delete'), findsNothing);
+    expect(find.text('Share'), findsNothing);
   });
 
   testWidgets('Completion progress follows the profile source of truth', (

@@ -2,6 +2,7 @@ import 'package:amora_ai/core/widgets/amora_dob_field.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
 import 'package:amora_ai/features/profile/domain/profile_form_options.dart';
 import 'package:amora_ai/features/profile/domain/profile_interest_policy.dart';
+import 'package:flutter/foundation.dart' show mapEquals, setEquals;
 import 'package:flutter/material.dart';
 
 class ProfileFormController extends ChangeNotifier {
@@ -184,7 +185,8 @@ class ProfileFormController extends ChangeNotifier {
     promptTitle = title;
     promptAnswer.clear();
     promptEditorActive = true;
-    markDirty();
+    dirty = _hasUnsavedNonPromptChanges();
+    notifyListeners();
   }
 
   void beginEditPrompt(String title) {
@@ -194,13 +196,61 @@ class ProfileFormController extends ChangeNotifier {
     promptTitle = title;
     promptAnswer.text = answer;
     promptEditorActive = true;
+    dirty = _hasUnsavedNonPromptChanges();
     notifyListeners();
   }
 
   void cancelPromptEditing() {
+    final originalTitle = _originalPromptTitle;
     promptEditorActive = false;
     _originalPromptTitle = null;
+    if (originalTitle == null) {
+      promptAnswer.clear();
+    } else {
+      promptTitle = originalTitle;
+      promptAnswer.text = _baseProfile.prompts[originalTitle] ?? '';
+    }
+    dirty = _hasUnsavedNonPromptChanges();
     notifyListeners();
+  }
+
+  Future<UserProfile> savePrompt() async {
+    if (!promptEditorActive || saving) return draftProfile;
+    final answer = promptAnswer.text.trim();
+    if (answer.isEmpty ||
+        answer.length > ProfileFormOptions.profilePromptAnswerMaxLength) {
+      throw StateError('The profile prompt answer is invalid.');
+    }
+    final hasOtherChanges = _hasUnsavedNonPromptChanges();
+    final prompts = Map<String, String>.of(_baseProfile.prompts);
+    if (_originalPromptTitle case final originalTitle?) {
+      prompts.remove(originalTitle);
+    }
+    prompts[promptTitle] = answer;
+    final updated = _baseProfile.copyWith(prompts: prompts);
+    final previousProfile = repository.profile;
+    saving = true;
+    notifyListeners();
+    try {
+      await repository.savePersisted(updated);
+      if (answer != promptAnswer.text) {
+        promptAnswer.value = TextEditingValue(
+          text: answer,
+          selection: TextSelection.collapsed(offset: answer.length),
+        );
+      }
+      _baseProfile = updated;
+      _originalPromptTitle = null;
+      promptEditorActive = false;
+      dirty = hasOtherChanges;
+      return updated;
+    } catch (_) {
+      repository.save(previousProfile);
+      rethrow;
+    } finally {
+      saving = false;
+      notifyListeners();
+    }
   }
 
   void setLanguages(Set<String> values) {
@@ -281,6 +331,21 @@ class ProfileFormController extends ChangeNotifier {
       saving = false;
       notifyListeners();
     }
+  }
+
+  bool _hasUnsavedNonPromptChanges() {
+    final draft = draftProfile;
+    return draft.name != _baseProfile.name ||
+        draft.birthdate != _baseProfile.birthdate ||
+        draft.gender != _baseProfile.gender ||
+        draft.bio != _baseProfile.bio ||
+        draft.profession != _baseProfile.profession ||
+        draft.company != _baseProfile.company ||
+        draft.education != _baseProfile.education ||
+        draft.location != _baseProfile.location ||
+        draft.datingIntention != _baseProfile.datingIntention ||
+        !setEquals(draft.interests.toSet(), _baseProfile.interests.toSet()) ||
+        !mapEquals(draft.lifestyle, _baseProfile.lifestyle);
   }
 
   @override

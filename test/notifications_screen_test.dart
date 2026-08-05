@@ -129,7 +129,7 @@ void main() {
     );
     expect(bar.options, filters);
     expect(bar.multiSelect, isFalse);
-    expect(bar.showCheckmark, isTrue);
+    expect(bar.showCheckmark, isFalse);
     final allChip = find.byKey(const ValueKey('notification-filter-All'));
     final unreadChip = find.byKey(const ValueKey('notification-filter-Unread'));
     expect(tester.getCenter(allChip).dy, tester.getCenter(unreadChip).dy);
@@ -141,6 +141,21 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.widget<AmoraFilterChip>(allChip).selected, isFalse);
     expect(tester.widget<AmoraFilterChip>(unreadChip).selected, isTrue);
+    expect(tester.widget<AmoraFilterChip>(unreadChip).showCheckmark, isFalse);
+    final selectedMaterialChip = tester.widget<FilterChip>(
+      find.descendant(of: unreadChip, matching: find.byType(FilterChip)),
+    );
+    expect(selectedMaterialChip.showCheckmark, isFalse);
+    expect(
+      selectedMaterialChip.selectedColor,
+      isNot(selectedMaterialChip.backgroundColor),
+    );
+    final unreadLabel = find.descendant(
+      of: unreadChip,
+      matching: find.text('Unread'),
+    );
+    expect(tester.getCenter(unreadLabel).dy, tester.getCenter(unreadChip).dy);
+    expect(tester.getSize(unreadChip).height, 48);
     await tester.scrollUntilVisible(
       find.byKey(const ValueKey('notification-filter-Offers')),
       320,
