@@ -389,97 +389,105 @@ class _PronounSheetState extends State<_PronounSheet> {
   @override
   Widget build(BuildContext context) {
     return SafeArea(
-      child: Container(
+      child: Material(
         key: const ValueKey('pronoun-selector-sheet'),
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.sizeOf(context).height * .82,
-        ),
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-        decoration: const BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
+        color: AppColors.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        clipBehavior: Clip.antiAlias,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(context).height * .82,
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Pronouns', style: AmoraTextStyles.headlineSmall),
-                      Text(
-                        'Select up to 4',
-                        style: AmoraTextStyles.bodySmall.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Pronouns',
+                            style: AmoraTextStyles.headlineSmall,
+                          ),
+                          Text(
+                            'Select up to 4',
+                            style: AmoraTextStyles.bodySmall.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
                       ),
+                    ),
+                    IconButton(
+                      tooltip: 'Close pronoun selector',
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(Icons.close_rounded),
+                    ),
+                  ],
+                ),
+                if (_selected.isNotEmpty) ...[
+                  const SizedBox(height: AmoraSpacing.space12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final value in ProfileFormOptions.pronouns)
+                        if (_selected.contains(value))
+                          InputChip(
+                            key: ValueKey('selected-pronoun-$value'),
+                            label: Text(value),
+                            onDeleted: () => setState(() {
+                              _selected.remove(value);
+                              _limitMessage = null;
+                            }),
+                          ),
+                    ],
+                  ),
+                ],
+                if (_limitMessage case final message?) ...[
+                  const SizedBox(height: AmoraSpacing.space8),
+                  Semantics(
+                    liveRegion: true,
+                    child: Text(
+                      message,
+                      key: const ValueKey('pronoun-limit-message'),
+                      style: AmoraTextStyles.bodySmall.copyWith(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: AmoraSpacing.space8),
+                Expanded(
+                  child: ListView(
+                    children: [
+                      for (final value in ProfileFormOptions.pronouns)
+                        CheckboxListTile(
+                          key: ValueKey('pronoun-option-$value'),
+                          value: _selected.contains(value),
+                          title: Text(value),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 4,
+                          ),
+                          controlAffinity: ListTileControlAffinity.trailing,
+                          onChanged: (_) => _toggle(value),
+                        ),
                     ],
                   ),
                 ),
-                IconButton(
-                  tooltip: 'Close pronoun selector',
-                  onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(Icons.close_rounded),
+                const SizedBox(height: AmoraSpacing.space12),
+                FilledButton(
+                  key: const ValueKey('pronoun-selector-done'),
+                  onPressed: () => Navigator.of(context).pop(_selected),
+                  child: Text('Done (${_selected.length})'),
                 ),
               ],
             ),
-            if (_selected.isNotEmpty) ...[
-              const SizedBox(height: AmoraSpacing.space12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (final value in ProfileFormOptions.pronouns)
-                    if (_selected.contains(value))
-                      InputChip(
-                        key: ValueKey('selected-pronoun-$value'),
-                        label: Text(value),
-                        onDeleted: () => setState(() {
-                          _selected.remove(value);
-                          _limitMessage = null;
-                        }),
-                      ),
-                ],
-              ),
-            ],
-            if (_limitMessage case final message?) ...[
-              const SizedBox(height: AmoraSpacing.space8),
-              Semantics(
-                liveRegion: true,
-                child: Text(
-                  message,
-                  key: const ValueKey('pronoun-limit-message'),
-                  style: AmoraTextStyles.bodySmall.copyWith(
-                    color: Theme.of(context).colorScheme.error,
-                  ),
-                ),
-              ),
-            ],
-            const SizedBox(height: AmoraSpacing.space8),
-            Expanded(
-              child: ListView(
-                children: [
-                  for (final value in ProfileFormOptions.pronouns)
-                    CheckboxListTile(
-                      key: ValueKey('pronoun-option-$value'),
-                      value: _selected.contains(value),
-                      title: Text(value),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-                      controlAffinity: ListTileControlAffinity.trailing,
-                      onChanged: (_) => _toggle(value),
-                    ),
-                ],
-              ),
-            ),
-            const SizedBox(height: AmoraSpacing.space12),
-            FilledButton(
-              key: const ValueKey('pronoun-selector-done'),
-              onPressed: () => Navigator.of(context).pop(_selected),
-              child: Text('Done (${_selected.length})'),
-            ),
-          ],
+          ),
         ),
       ),
     );

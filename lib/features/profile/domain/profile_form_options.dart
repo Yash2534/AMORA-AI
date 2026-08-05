@@ -104,37 +104,38 @@ abstract final class ProfileFormOptions {
   static const int maximumQualities = 3;
   static const int maximumPronouns = 4;
 
-  static const Map<ProfilePreferenceType, List<ProfilePreferenceOption>>
-  preferenceOptions = {
-    ProfilePreferenceType.hometown: [
-      for (final value in hometowns)
-        ProfilePreferenceOption(id: value, label: value),
-    ],
-    ProfilePreferenceType.qualities: [
-      for (final value in qualities)
-        ProfilePreferenceOption(id: value, label: value),
-    ],
-    ProfilePreferenceType.pronouns: [
-      for (final value in pronouns)
-        ProfilePreferenceOption(id: value, label: value),
-    ],
-    ProfilePreferenceType.sexuality: [
-      for (final value in sexualities)
-        ProfilePreferenceOption(id: value, label: value),
-    ],
-    ProfilePreferenceType.preferredTalkingHours: [
-      for (final value in preferredTalkingHours)
-        ProfilePreferenceOption(
-          id: value,
-          label: value,
-          description: preferredTalkingHourDescriptions[value],
-        ),
-    ],
-    ProfilePreferenceType.loveLanguages: [
-      for (final value in loveLanguages)
-        ProfilePreferenceOption(id: value, label: value),
-    ],
-  };
+  static final Map<ProfilePreferenceType, List<ProfilePreferenceOption>>
+  preferenceOptions =
+      Map<ProfilePreferenceType, List<ProfilePreferenceOption>>.unmodifiable({
+        ProfilePreferenceType.hometown: [
+          for (final value in hometowns)
+            ProfilePreferenceOption(id: value, label: value),
+        ],
+        ProfilePreferenceType.qualities: [
+          for (final value in qualities)
+            ProfilePreferenceOption(id: value, label: value),
+        ],
+        ProfilePreferenceType.pronouns: [
+          for (final value in pronouns)
+            ProfilePreferenceOption(id: value, label: value),
+        ],
+        ProfilePreferenceType.sexuality: [
+          for (final value in sexualities)
+            ProfilePreferenceOption(id: value, label: value),
+        ],
+        ProfilePreferenceType.preferredTalkingHours: [
+          for (final value in preferredTalkingHours)
+            ProfilePreferenceOption(
+              id: value,
+              label: value,
+              description: preferredTalkingHourDescriptions[value],
+            ),
+        ],
+        ProfilePreferenceType.loveLanguages: [
+          for (final value in loveLanguages)
+            ProfilePreferenceOption(id: value, label: value),
+        ],
+      });
 
   static String normalizeHometown(String? storedValue) =>
       _approvedValue(storedValue, hometowns);
