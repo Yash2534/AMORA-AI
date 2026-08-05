@@ -19,6 +19,38 @@ const int visiblePreferenceChipLimit = 4;
 
 const approvedFilterCities = ProfileFormOptions.cities;
 
+@immutable
+class ProfilePreferenceFilterState {
+  const ProfilePreferenceFilterState({
+    this.hometowns = const <String>{},
+    this.qualities = const <String>{},
+    this.pronouns = const <String>{},
+    this.sexualities = const <String>{},
+    this.preferredTalkingHours = const <String>{},
+    this.loveLanguages = const <String>{},
+  });
+
+  final Set<String> hometowns;
+  final Set<String> qualities;
+  final Set<String> pronouns;
+  final Set<String> sexualities;
+  final Set<String> preferredTalkingHours;
+  final Set<String> loveLanguages;
+
+  bool get isEmpty =>
+      hometowns.isEmpty &&
+      qualities.isEmpty &&
+      pronouns.isEmpty &&
+      sexualities.isEmpty &&
+      preferredTalkingHours.isEmpty &&
+      loveLanguages.isEmpty;
+}
+
+final appliedProfilePreferenceFilters =
+    ValueNotifier<ProfilePreferenceFilterState>(
+      const ProfilePreferenceFilterState(),
+    );
+
 class AdvancedFiltersScreen extends StatefulWidget {
   const AdvancedFiltersScreen({super.key});
 
@@ -48,6 +80,12 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
   final Set<String> _smoking = {};
   final Set<String> _drinking = {};
   final Set<String> _weed = {};
+  final Set<String> _hometowns = {};
+  final Set<String> _qualities = {};
+  final Set<String> _pronouns = {};
+  final Set<String> _sexualities = {};
+  final Set<String> _preferredTalkingHours = {};
+  final Set<String> _loveLanguages = {};
   bool _verifiedOnly = true;
   bool _onlineNow = false;
   bool _hasPrompts = true;
@@ -155,6 +193,8 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
                                 const SizedBox(height: 14),
                                 _buildIdentitySection(),
                                 const SizedBox(height: 14),
+                                _buildCompatibilitySection(),
+                                const SizedBox(height: 14),
                                 _buildHabitsSection(),
                                 const SizedBox(height: 14),
                                 _buildTrustSection(),
@@ -192,7 +232,10 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
       title: 'Core preferences',
       subtitle: 'Age, distance, city and height',
       summary: _basicsSummary,
-      selectedCount: _cities.length + (_minimumHeightCm == null ? 0 : 1),
+      selectedCount:
+          _cities.length +
+          _hometowns.length +
+          (_minimumHeightCm == null ? 0 : 1),
       expanded: _expandedGroups.contains(_GroupIds.basics),
       highlighted: _highlightedGroup == _GroupIds.basics,
       onToggle: _toggleGroup,
@@ -265,6 +308,29 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
                 ),
               ),
             ],
+          ),
+          const _FilterDivider(),
+          _ControlBlock(
+            key: const ValueKey('filters-hometown-control'),
+            icon: Icons.home_work_outlined,
+            title: 'Hometown',
+            description: 'Choose one or more Gujarat hometowns',
+            child: AmoraaSearchableSelect<String>(
+              key: const ValueKey('filters-hometown-selector'),
+              label: 'Hometown',
+              selectionMode: AmoraaSelectionMode.multiple,
+              selectedValues: _hometowns,
+              hintText: 'Any hometown',
+              searchHint: 'Find a hometown',
+              prefixIcon: Icons.home_work_outlined,
+              allowClear: true,
+              options: [
+                for (final option in ProfileFormOptions.hometowns)
+                  AmoraaSelectOption(value: option, label: option),
+              ],
+              onSelectionChanged: (values) =>
+                  _replaceSelection(_hometowns, values),
+            ),
           ),
         ],
       ),
@@ -462,8 +528,15 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
         _selectionSummary(_community),
         _selectionSummary(_religion),
         _selectionSummary(_languages),
+        _selectionSummary(_pronouns),
+        _selectionSummary(_sexualities),
       ]),
-      selectedCount: _community.length + _religion.length + _languages.length,
+      selectedCount:
+          _community.length +
+          _religion.length +
+          _languages.length +
+          _pronouns.length +
+          _sexualities.length,
       expanded: _expandedGroups.contains(_GroupIds.identity),
       highlighted: _highlightedGroup == _GroupIds.identity,
       onToggle: _toggleGroup,
@@ -526,6 +599,146 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
                   ),
               ],
             ),
+          ),
+          const _FilterDivider(),
+          _ResponsivePair(
+            children: [
+              _ControlBlock(
+                icon: Icons.badge_outlined,
+                title: 'Pronouns',
+                child: AmoraaCompactSelect<String>(
+                  key: const ValueKey('filters-pronouns-selector'),
+                  label: 'Pronouns',
+                  selectionMode: AmoraaSelectionMode.multiple,
+                  selectedValues: _pronouns,
+                  hintText: 'Any pronouns',
+                  prefixIcon: Icons.badge_outlined,
+                  allowClear: true,
+                  options: [
+                    for (final option in ProfileFormOptions.pronouns)
+                      AmoraaSelectOption(value: option, label: option),
+                  ],
+                  onSelectionChanged: (values) =>
+                      _replaceSelection(_pronouns, values),
+                ),
+              ),
+              _ControlBlock(
+                icon: Icons.favorite_outline_rounded,
+                title: 'Sexuality',
+                child: AmoraaCompactSelect<String>(
+                  key: const ValueKey('filters-sexuality-selector'),
+                  label: 'Sexuality',
+                  selectionMode: AmoraaSelectionMode.multiple,
+                  selectedValues: _sexualities,
+                  hintText: 'Any sexuality',
+                  prefixIcon: Icons.favorite_outline_rounded,
+                  allowClear: true,
+                  options: [
+                    for (final option in ProfileFormOptions.sexualities)
+                      AmoraaSelectOption(value: option, label: option),
+                  ],
+                  onSelectionChanged: (values) =>
+                      _replaceSelection(_sexualities, values),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompatibilitySection() {
+    return _ExpandableFilterSection(
+      key: _categoryKeys[_FilterCategory.compatibility],
+      id: _GroupIds.compatibility,
+      icon: Icons.favorite_border_rounded,
+      title: 'Compatibility',
+      subtitle: 'Qualities, conversation rhythm and love languages',
+      summary: _joinedSummaries([
+        _selectionSummary(_qualities),
+        _selectionSummary(_preferredTalkingHours),
+        _selectionSummary(_loveLanguages),
+      ]),
+      selectedCount:
+          _qualities.length +
+          _preferredTalkingHours.length +
+          _loveLanguages.length,
+      expanded: _expandedGroups.contains(_GroupIds.compatibility),
+      highlighted: _highlightedGroup == _GroupIds.compatibility,
+      onToggle: _toggleGroup,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _ControlBlock(
+            icon: Icons.auto_awesome_rounded,
+            title: 'Their Qualities',
+            description: 'Choose every quality that matters to you',
+            child: AmoraaSearchableSelect<String>(
+              key: const ValueKey('filters-qualities-selector'),
+              label: 'Their Qualities',
+              selectionMode: AmoraaSelectionMode.multiple,
+              selectedValues: _qualities,
+              hintText: 'Any qualities',
+              searchHint: 'Find a quality',
+              prefixIcon: Icons.auto_awesome_rounded,
+              allowClear: true,
+              options: [
+                for (final option in ProfileFormOptions.qualities)
+                  AmoraaSelectOption(value: option, label: option),
+              ],
+              onSelectionChanged: (values) =>
+                  _replaceSelection(_qualities, values),
+            ),
+          ),
+          const _FilterDivider(),
+          _ResponsivePair(
+            children: [
+              _ControlBlock(
+                icon: Icons.schedule_rounded,
+                title: 'Preferred Hours for Talking',
+                child: AmoraaCompactSelect<String>(
+                  key: const ValueKey('filters-talking-hours-selector'),
+                  label: 'Preferred Hours for Talking',
+                  selectionMode: AmoraaSelectionMode.multiple,
+                  selectedValues: _preferredTalkingHours,
+                  hintText: 'Any time',
+                  prefixIcon: Icons.schedule_rounded,
+                  allowClear: true,
+                  options: [
+                    for (final option
+                        in ProfileFormOptions.preferredTalkingHours)
+                      AmoraaSelectOption(
+                        value: option,
+                        label: option,
+                        description: ProfileFormOptions
+                            .preferredTalkingHourDescriptions[option],
+                      ),
+                  ],
+                  onSelectionChanged: (values) =>
+                      _replaceSelection(_preferredTalkingHours, values),
+                ),
+              ),
+              _ControlBlock(
+                icon: Icons.volunteer_activism_rounded,
+                title: 'Love Languages',
+                child: AmoraaCompactSelect<String>(
+                  key: const ValueKey('filters-love-languages-selector'),
+                  label: 'Love Languages',
+                  selectionMode: AmoraaSelectionMode.multiple,
+                  selectedValues: _loveLanguages,
+                  hintText: 'Any love language',
+                  prefixIcon: Icons.volunteer_activism_rounded,
+                  allowClear: true,
+                  options: [
+                    for (final option in ProfileFormOptions.loveLanguages)
+                      AmoraaSelectOption(value: option, label: option),
+                  ],
+                  onSelectionChanged: (values) =>
+                      _replaceSelection(_loveLanguages, values),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -686,6 +899,9 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
     for (final value in _cities) {
       add('City', value);
     }
+    for (final value in _hometowns) {
+      add('Hometown', value);
+    }
     for (final value in _languages) {
       add('Languages', value);
     }
@@ -732,6 +948,21 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
     for (final value in _weed) {
       add('Weed', value);
     }
+    for (final value in _qualities) {
+      add('Their Qualities', value);
+    }
+    for (final value in _pronouns) {
+      add('Pronouns', value);
+    }
+    for (final value in _sexualities) {
+      add('Sexuality', value);
+    }
+    for (final value in _preferredTalkingHours) {
+      add('Preferred Hours for Talking', value);
+    }
+    for (final value in _loveLanguages) {
+      add('Love Languages', value);
+    }
     return preferences;
   }
 
@@ -751,6 +982,7 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
       '${_age.start.round()}–${_age.end.round()} years',
       '${_distance.round()} km',
       if (_cities.isNotEmpty) _cities.join(', '),
+      if (_hometowns.isNotEmpty) 'Hometown: ${_hometowns.join(', ')}',
       if (_minimumHeightCm case final height?) minimumHeightSummary(height),
     ];
     return parts.join(' • ');
@@ -910,6 +1142,7 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
       'location',
       'height',
       'basic',
+      'hometown',
     ])) {
       return _SearchTarget(
         id: _GroupIds.basics,
@@ -937,6 +1170,20 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
       );
     }
     if (_containsKeyword(query, const [
+      'quality',
+      'qualities',
+      'talking',
+      'hours',
+      'love language',
+      'compatibility',
+    ])) {
+      return _SearchTarget(
+        id: _GroupIds.compatibility,
+        key: _categoryKeys[_FilterCategory.compatibility],
+        category: _FilterCategory.compatibility,
+      );
+    }
+    if (_containsKeyword(query, const [
       'education',
       'profession',
       'career',
@@ -950,6 +1197,8 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
       'language',
       'identity',
       'background',
+      'pronoun',
+      'sexuality',
     ])) {
       return _SearchTarget(
         id: _GroupIds.identity,
@@ -1048,10 +1297,18 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
       _smoking.clear();
       _drinking.clear();
       _weed.clear();
+      _hometowns.clear();
+      _qualities.clear();
+      _pronouns.clear();
+      _sexualities.clear();
+      _preferredTalkingHours.clear();
+      _loveLanguages.clear();
       _verifiedOnly = false;
       _onlineNow = false;
       _hasPrompts = false;
       _eventInterest = false;
+      appliedProfilePreferenceFilters.value =
+          const ProfilePreferenceFilterState();
     });
   }
 
@@ -1072,6 +1329,14 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
       );
     }
     final navigator = Navigator.of(context);
+    appliedProfilePreferenceFilters.value = ProfilePreferenceFilterState(
+      hometowns: Set<String>.unmodifiable(_hometowns),
+      qualities: Set<String>.unmodifiable(_qualities),
+      pronouns: Set<String>.unmodifiable(_pronouns),
+      sexualities: Set<String>.unmodifiable(_sexualities),
+      preferredTalkingHours: Set<String>.unmodifiable(_preferredTalkingHours),
+      loveLanguages: Set<String>.unmodifiable(_loveLanguages),
+    );
     showAmoraSnackBar(context, message: 'Filters applied');
     if (navigator.canPop()) {
       navigator.pop();
@@ -2453,6 +2718,11 @@ enum _FilterCategory {
   ),
   lifestyle('Lifestyle', Icons.auto_awesome_rounded, _GroupIds.lifestyle),
   identity('Identity', Icons.person_outline_rounded, _GroupIds.identity),
+  compatibility(
+    'Compatibility',
+    Icons.favorite_border_rounded,
+    _GroupIds.compatibility,
+  ),
   habits('Habits', Icons.local_cafe_outlined, _GroupIds.habits),
   trust('AI & Trust', Icons.verified_user_outlined, _GroupIds.trust);
 
@@ -2469,6 +2739,7 @@ abstract final class _GroupIds {
   static const lifestyle = 'lifestyle';
   static const career = 'career';
   static const identity = 'identity';
+  static const compatibility = 'compatibility';
   static const habits = 'habits';
   static const trust = 'trust';
 }

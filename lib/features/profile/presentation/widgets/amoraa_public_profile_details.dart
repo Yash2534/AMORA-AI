@@ -32,6 +32,12 @@ class AmoraaPublicProfileData {
     required this.additionalPhotos,
     required this.isAadhaarVerified,
     required this.isPremium,
+    required this.hometown,
+    required this.valuedQualities,
+    required this.pronouns,
+    required this.sexuality,
+    required this.preferredTalkingHours,
+    required this.loveLanguages,
   });
 
   factory AmoraaPublicProfileData.fromProfile(
@@ -90,6 +96,24 @@ class AmoraaPublicProfileData {
           .toList(growable: false),
       isAadhaarVerified: isAadhaarVerified,
       isPremium: isPremium,
+      hometown: ProfileFormOptions.normalizeHometown(profile.hometown),
+      valuedQualities: ProfileFormOptions.normalizePreferenceValues(
+        profile.valuedQualities,
+        ProfileFormOptions.qualities,
+      ),
+      pronouns: ProfileFormOptions.normalizePreferenceValues(
+        profile.pronouns,
+        ProfileFormOptions.pronouns,
+      ),
+      sexuality: ProfileFormOptions.normalizeSexuality(profile.sexuality),
+      preferredTalkingHours: ProfileFormOptions.normalizePreferenceValues(
+        profile.preferredTalkingHours,
+        ProfileFormOptions.preferredTalkingHours,
+      ),
+      loveLanguages: ProfileFormOptions.normalizePreferenceValues(
+        profile.loveLanguages,
+        ProfileFormOptions.loveLanguages,
+      ),
     );
   }
 
@@ -113,6 +137,12 @@ class AmoraaPublicProfileData {
   final List<ProfilePhotoViewData> additionalPhotos;
   final bool isAadhaarVerified;
   final bool isPremium;
+  final String hometown;
+  final List<String> valuedQualities;
+  final List<String> pronouns;
+  final String sexuality;
+  final List<String> preferredTalkingHours;
+  final List<String> loveLanguages;
 
   List<ProfilePhotoViewData> get orderedPhotos => <ProfilePhotoViewData>[
     primaryPhoto,
@@ -165,6 +195,12 @@ class AmoraaPublicProfileData {
       redFlags: const <String>[],
       familyValues: '',
       dateIdeas: datingType.isEmpty ? const <String>[] : <String>[datingType],
+      hometown: hometown,
+      valuedQualities: valuedQualities,
+      pronouns: pronouns,
+      sexuality: sexuality,
+      preferredTalkingHours: preferredTalkingHours,
+      loveLanguages: loveLanguages,
     );
   }
 

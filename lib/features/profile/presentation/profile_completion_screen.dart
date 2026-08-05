@@ -15,6 +15,7 @@ import 'package:amora_ai/features/profile/presentation/photo_manager_screen.dart
 import 'package:amora_ai/features/profile/presentation/profile_form_navigation.dart';
 import 'package:amora_ai/features/profile/presentation/profile_screen.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_fields.dart';
+import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_preference_selectors.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_photo_view.dart';
 import 'package:flutter/material.dart';
 
@@ -286,13 +287,18 @@ class _ProfileCompletionScreenState extends State<ProfileCompletionScreen> {
           navigationTargets: _navigationTargets,
           highlightedField: _highlightedField,
         ),
-      ProfileCompletionSectionId.identityDetails =>
-        AmoraaIdentityDetailsSelector(
-          controller: _controller,
-          showValidation: showValidation,
-          navigationTargets: _navigationTargets,
-          highlightedField: _highlightedField,
-        ),
+      ProfileCompletionSectionId.identityDetails => Column(
+        children: [
+          AmoraaIdentityDetailsSelector(
+            controller: _controller,
+            showValidation: showValidation,
+            navigationTargets: _navigationTargets,
+            highlightedField: _highlightedField,
+          ),
+          const SizedBox(height: AmoraSpacing.space24),
+          AmoraaPersonalPreferencesEditor(controller: _controller),
+        ],
+      ),
       ProfileCompletionSectionId.bio => AmoraaProfileBioField(
         controller: _controller.bio,
         navigationTargets: _navigationTargets,
@@ -306,13 +312,19 @@ class _ProfileCompletionScreenState extends State<ProfileCompletionScreen> {
           showValidation: showValidation,
         ),
       ),
-      ProfileCompletionSectionId.lifestyle => _target(
-        ProfileFormFieldId.lifestyle,
-        'Lifestyle',
-        AmoraaLifestyleSelector(
-          controller: _controller,
-          showValidation: showValidation,
-        ),
+      ProfileCompletionSectionId.lifestyle => Column(
+        children: [
+          _target(
+            ProfileFormFieldId.lifestyle,
+            'Lifestyle',
+            AmoraaLifestyleSelector(
+              controller: _controller,
+              showValidation: showValidation,
+            ),
+          ),
+          const SizedBox(height: AmoraSpacing.space24),
+          AmoraaConnectionPreferencesEditor(controller: _controller),
+        ],
       ),
       ProfileCompletionSectionId.prompt => AmoraaProfilePromptField(
         controller: _controller,

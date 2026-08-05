@@ -1,3 +1,24 @@
+enum ProfilePreferenceType {
+  hometown,
+  qualities,
+  pronouns,
+  sexuality,
+  preferredTalkingHours,
+  loveLanguages,
+}
+
+class ProfilePreferenceOption {
+  const ProfilePreferenceOption({
+    required this.id,
+    required this.label,
+    this.description,
+  });
+
+  final String id;
+  final String label;
+  final String? description;
+}
+
 abstract final class ProfileFormOptions {
   static const cities = <String>[
     'Gandhinagar',
@@ -5,6 +26,135 @@ abstract final class ProfileFormOptions {
     'Surat',
     'Vadodara',
   ];
+
+  /// Approved Gujarat-only hometown source. Current City remains separate.
+  static const hometowns = cities;
+
+  static const qualities = <String>[
+    'Ambition',
+    'Confidence',
+    'Empathy',
+    'Generosity',
+    'Humour',
+    'Kindness',
+    'Openness',
+    'Optimism',
+    'Playfulness',
+    'Sassiness',
+    'Leadership',
+    'Curiosity',
+    'Gratitude',
+    'Humility',
+    'Loyalty',
+    'Sarcasm',
+    'Emotional Intelligence',
+  ];
+
+  static const pronouns = <String>[
+    'she',
+    'her',
+    'hers',
+    'he',
+    'him',
+    'his',
+    'they',
+    'them',
+    'theirs',
+  ];
+
+  static const sexualities = <String>[
+    'Straight',
+    'Gay',
+    'Lesbian',
+    'Bisexual',
+    'Allosexual',
+    'Androsexual',
+    'Asexual',
+    'Autosexual',
+    'Bicurious',
+    'Demisexual',
+  ];
+
+  static const preferredTalkingHours = <String>[
+    'Early Morning',
+    'Morning',
+    'Afternoon',
+    'Evening',
+    'Late Night',
+    'Flexible',
+  ];
+
+  static const preferredTalkingHourDescriptions = <String, String>{
+    'Early Morning': '5:00 AM – 8:00 AM',
+    'Morning': '8:00 AM – 12:00 PM',
+    'Afternoon': '12:00 PM – 5:00 PM',
+    'Evening': '5:00 PM – 9:00 PM',
+    'Late Night': '9:00 PM – 1:00 AM',
+    'Flexible': 'Any time works',
+  };
+
+  static const loveLanguages = <String>[
+    'Words of Affirmation',
+    'Quality Time',
+    'Acts of Service',
+    'Receiving Gifts',
+    'Physical Touch',
+  ];
+
+  static const int maximumQualities = 3;
+  static const int maximumPronouns = 4;
+
+  static const Map<ProfilePreferenceType, List<ProfilePreferenceOption>>
+  preferenceOptions = {
+    ProfilePreferenceType.hometown: [
+      for (final value in hometowns)
+        ProfilePreferenceOption(id: value, label: value),
+    ],
+    ProfilePreferenceType.qualities: [
+      for (final value in qualities)
+        ProfilePreferenceOption(id: value, label: value),
+    ],
+    ProfilePreferenceType.pronouns: [
+      for (final value in pronouns)
+        ProfilePreferenceOption(id: value, label: value),
+    ],
+    ProfilePreferenceType.sexuality: [
+      for (final value in sexualities)
+        ProfilePreferenceOption(id: value, label: value),
+    ],
+    ProfilePreferenceType.preferredTalkingHours: [
+      for (final value in preferredTalkingHours)
+        ProfilePreferenceOption(
+          id: value,
+          label: value,
+          description: preferredTalkingHourDescriptions[value],
+        ),
+    ],
+    ProfilePreferenceType.loveLanguages: [
+      for (final value in loveLanguages)
+        ProfilePreferenceOption(id: value, label: value),
+    ],
+  };
+
+  static String normalizeHometown(String? storedValue) =>
+      _approvedValue(storedValue, hometowns);
+
+  static String normalizeSexuality(String? storedValue) =>
+      _approvedValue(storedValue, sexualities);
+
+  static List<String> normalizePreferenceValues(
+    Iterable<String>? storedValues,
+    List<String> approved,
+  ) {
+    final selected = <String>{
+      for (final value in storedValues ?? const <String>[])
+        if (approved.contains(value.trim())) value.trim(),
+    };
+    return [
+      for (final value in approved)
+        if (selected.contains(value)) value,
+    ];
+  }
 
   static const occupations = <String>[
     'Entrepreneur',

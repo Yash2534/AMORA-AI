@@ -48,6 +48,24 @@ class ProfileFormController extends ChangeNotifier {
       _baseProfile.lifestyle,
     );
     languages = ProfileFormOptions.parseLanguages(lifestyle['Languages']);
+    hometown = ProfileFormOptions.normalizeHometown(_baseProfile.hometown);
+    valuedQualities = ProfileFormOptions.normalizePreferenceValues(
+      _baseProfile.valuedQualities,
+      ProfileFormOptions.qualities,
+    ).toSet();
+    pronouns = ProfileFormOptions.normalizePreferenceValues(
+      _baseProfile.pronouns,
+      ProfileFormOptions.pronouns,
+    ).toSet();
+    sexuality = ProfileFormOptions.normalizeSexuality(_baseProfile.sexuality);
+    preferredTalkingHours = ProfileFormOptions.normalizePreferenceValues(
+      _baseProfile.preferredTalkingHours,
+      ProfileFormOptions.preferredTalkingHours,
+    ).toSet();
+    loveLanguages = ProfileFormOptions.normalizePreferenceValues(
+      _baseProfile.loveLanguages,
+      ProfileFormOptions.loveLanguages,
+    ).toSet();
     final prompt = _baseProfile.prompts.entries
         .where((entry) => entry.value.trim().isNotEmpty)
         .firstOrNull;
@@ -77,6 +95,12 @@ class ProfileFormController extends ChangeNotifier {
   late Set<String> interests;
   late Map<String, String> lifestyle;
   late Set<String> languages;
+  late String hometown;
+  late Set<String> valuedQualities;
+  late Set<String> pronouns;
+  late String sexuality;
+  late Set<String> preferredTalkingHours;
+  late Set<String> loveLanguages;
   late String promptTitle;
   late List<String> _retiredInterests;
   String? _originalPromptTitle;
@@ -127,6 +151,24 @@ class ProfileFormController extends ChangeNotifier {
       interests: [...interests, ..._retiredInterests],
       lifestyle: updatedLifestyle,
       prompts: prompts,
+      hometown: hometown,
+      valuedQualities: ProfileFormOptions.normalizePreferenceValues(
+        valuedQualities,
+        ProfileFormOptions.qualities,
+      ),
+      pronouns: ProfileFormOptions.normalizePreferenceValues(
+        pronouns,
+        ProfileFormOptions.pronouns,
+      ),
+      sexuality: sexuality,
+      preferredTalkingHours: ProfileFormOptions.normalizePreferenceValues(
+        preferredTalkingHours,
+        ProfileFormOptions.preferredTalkingHours,
+      ),
+      loveLanguages: ProfileFormOptions.normalizePreferenceValues(
+        loveLanguages,
+        ProfileFormOptions.loveLanguages,
+      ),
     );
   }
 
@@ -258,6 +300,48 @@ class ProfileFormController extends ChangeNotifier {
     markDirty();
   }
 
+  void setHometown(String? value) {
+    hometown = ProfileFormOptions.normalizeHometown(value);
+    markDirty();
+  }
+
+  void setValuedQualities(Set<String> values) {
+    valuedQualities = ProfileFormOptions.normalizePreferenceValues(
+      values,
+      ProfileFormOptions.qualities,
+    ).take(ProfileFormOptions.maximumQualities).toSet();
+    markDirty();
+  }
+
+  void setPronouns(Set<String> values) {
+    pronouns = ProfileFormOptions.normalizePreferenceValues(
+      values,
+      ProfileFormOptions.pronouns,
+    ).take(ProfileFormOptions.maximumPronouns).toSet();
+    markDirty();
+  }
+
+  void setSexuality(String? value) {
+    sexuality = ProfileFormOptions.normalizeSexuality(value);
+    markDirty();
+  }
+
+  void setPreferredTalkingHours(Set<String> values) {
+    preferredTalkingHours = ProfileFormOptions.normalizePreferenceValues(
+      values,
+      ProfileFormOptions.preferredTalkingHours,
+    ).toSet();
+    markDirty();
+  }
+
+  void setLoveLanguages(Set<String> values) {
+    loveLanguages = ProfileFormOptions.normalizePreferenceValues(
+      values,
+      ProfileFormOptions.loveLanguages,
+    ).toSet();
+    markDirty();
+  }
+
   void toggleInterest(String value, bool selected) {
     if (selected && interests.length >= 10) return;
     selected ? interests.add(value) : interests.remove(value);
@@ -281,6 +365,24 @@ class ProfileFormController extends ChangeNotifier {
       refreshed.lifestyle,
     );
     languages = ProfileFormOptions.parseLanguages(lifestyle['Languages']);
+    hometown = ProfileFormOptions.normalizeHometown(refreshed.hometown);
+    valuedQualities = ProfileFormOptions.normalizePreferenceValues(
+      refreshed.valuedQualities,
+      ProfileFormOptions.qualities,
+    ).toSet();
+    pronouns = ProfileFormOptions.normalizePreferenceValues(
+      refreshed.pronouns,
+      ProfileFormOptions.pronouns,
+    ).toSet();
+    sexuality = ProfileFormOptions.normalizeSexuality(refreshed.sexuality);
+    preferredTalkingHours = ProfileFormOptions.normalizePreferenceValues(
+      refreshed.preferredTalkingHours,
+      ProfileFormOptions.preferredTalkingHours,
+    ).toSet();
+    loveLanguages = ProfileFormOptions.normalizePreferenceValues(
+      refreshed.loveLanguages,
+      ProfileFormOptions.loveLanguages,
+    ).toSet();
     notifyListeners();
   }
 
@@ -344,6 +446,21 @@ class ProfileFormController extends ChangeNotifier {
         draft.education != _baseProfile.education ||
         draft.location != _baseProfile.location ||
         draft.datingIntention != _baseProfile.datingIntention ||
+        draft.hometown != _baseProfile.hometown ||
+        !setEquals(
+          draft.valuedQualities.toSet(),
+          _baseProfile.valuedQualities.toSet(),
+        ) ||
+        !setEquals(draft.pronouns.toSet(), _baseProfile.pronouns.toSet()) ||
+        draft.sexuality != _baseProfile.sexuality ||
+        !setEquals(
+          draft.preferredTalkingHours.toSet(),
+          _baseProfile.preferredTalkingHours.toSet(),
+        ) ||
+        !setEquals(
+          draft.loveLanguages.toSet(),
+          _baseProfile.loveLanguages.toSet(),
+        ) ||
         !setEquals(draft.interests.toSet(), _baseProfile.interests.toSet()) ||
         !mapEquals(draft.lifestyle, _baseProfile.lifestyle);
   }

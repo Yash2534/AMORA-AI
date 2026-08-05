@@ -14,6 +14,7 @@ import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
 import 'package:amora_ai/features/profile/presentation/controllers/profile_relationship_controller.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_rose_gift_sheet.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_public_profile_view.dart';
+import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_preference_display.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_photo_view.dart';
 import 'package:amora_ai/features/chat/data/local_chat_repository.dart';
 import 'package:amora_ai/features/chat/presentation/chat_detail_screen.dart';
@@ -951,6 +952,14 @@ class ProfileStory extends StatelessWidget {
     final hasPrompts = profile.promptAnswers.entries.any(
       (entry) => entry.key.trim().isNotEmpty && entry.value.trim().isNotEmpty,
     );
+    final hasProfilePreferences = <String>[
+      profile.hometown,
+      profile.sexuality,
+      ...profile.valuedQualities,
+      ...profile.pronouns,
+      ...profile.preferredTalkingHours,
+      ...profile.loveLanguages,
+    ].any((value) => value.trim().isNotEmpty);
     final sections = <Widget>[
       if (hasQuickFacts)
         _SectionReveal(
@@ -971,6 +980,11 @@ class ProfileStory extends StatelessWidget {
         _SectionReveal(
           key: const ValueKey('public-profile-section-lifestyle'),
           child: LifestyleGrid(profile: profile),
+        ),
+      if (hasProfilePreferences)
+        _SectionReveal(
+          key: const ValueKey('public-profile-section-preferences'),
+          child: AmoraaProfilePreferenceDisplay(profile: profile),
         ),
       if (hasInterests)
         _SectionReveal(

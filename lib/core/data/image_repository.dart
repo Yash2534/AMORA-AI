@@ -131,6 +131,12 @@ class DummyProfile {
     required this.redFlags,
     required this.familyValues,
     required this.dateIdeas,
+    this.hometown = '',
+    this.valuedQualities = const <String>[],
+    this.pronouns = const <String>[],
+    this.sexuality = '',
+    this.preferredTalkingHours = const <String>[],
+    this.loveLanguages = const <String>[],
   });
 
   final String id;
@@ -172,6 +178,12 @@ class DummyProfile {
   final List<String> redFlags;
   final String familyValues;
   final List<String> dateIdeas;
+  final String hometown;
+  final List<String> valuedQualities;
+  final List<String> pronouns;
+  final String sexuality;
+  final List<String> preferredTalkingHours;
+  final List<String> loveLanguages;
 
   String get fallbackAsset => gender == Gender.female
       ? AppImages.femaleProfileFallback
@@ -321,6 +333,28 @@ DummyProfile _profile(int index, Gender gender) {
       _dateIdeas[index % _dateIdeas.length],
       _dateIdeas[(index + 5) % _dateIdeas.length],
       _dateIdeas[(index + 9) % _dateIdeas.length],
+    ],
+    hometown: ProfileFormOptions
+        .hometowns[(index + 1) % ProfileFormOptions.hometowns.length],
+    valuedQualities: [
+      for (var offset = 0; offset < 3; offset++)
+        ProfileFormOptions.qualities[(index * 3 + offset * 5) %
+            ProfileFormOptions.qualities.length],
+    ],
+    pronouns: female ? const ['she', 'her'] : const ['he', 'him'],
+    sexuality: ProfileFormOptions
+        .sexualities[index % ProfileFormOptions.sexualities.length],
+    preferredTalkingHours: [
+      ProfileFormOptions.preferredTalkingHours[index %
+          ProfileFormOptions.preferredTalkingHours.length],
+      ProfileFormOptions.preferredTalkingHours[(index + 3) %
+          ProfileFormOptions.preferredTalkingHours.length],
+    ],
+    loveLanguages: [
+      ProfileFormOptions.loveLanguages[index %
+          ProfileFormOptions.loveLanguages.length],
+      ProfileFormOptions.loveLanguages[(index + 2) %
+          ProfileFormOptions.loveLanguages.length],
     ],
   );
 }

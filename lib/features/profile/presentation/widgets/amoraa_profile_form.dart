@@ -16,6 +16,7 @@ import 'package:amora_ai/features/profile/presentation/photo_manager_screen.dart
 import 'package:amora_ai/features/profile/presentation/profile_form_navigation.dart';
 import 'package:amora_ai/features/profile/presentation/profile_preview_screen.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_fields.dart';
+import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_preference_selectors.dart';
 import 'package:flutter/material.dart';
 
 enum ProfileFormMode { edit }
@@ -238,6 +239,14 @@ class _AmoraaProfileFormState extends State<AmoraaProfileForm> {
                             ),
                           ),
                           _EditSection(
+                            id: null,
+                            icon: Icons.person_search_rounded,
+                            title: 'Personal Details',
+                            child: AmoraaPersonalPreferencesEditor(
+                              controller: _controller,
+                            ),
+                          ),
+                          _EditSection(
                             id: ProfileCompletionSectionId.bio,
                             icon: Icons.notes_rounded,
                             title: 'Bio',
@@ -271,6 +280,14 @@ class _AmoraaProfileFormState extends State<AmoraaProfileForm> {
                                 controller: _controller,
                                 showValidation: _showValidation,
                               ),
+                            ),
+                          ),
+                          _EditSection(
+                            id: null,
+                            icon: Icons.favorite_border_rounded,
+                            title: 'Connection Preferences',
+                            child: AmoraaConnectionPreferencesEditor(
+                              controller: _controller,
                             ),
                           ),
                           _EditSection(

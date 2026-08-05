@@ -28,6 +28,12 @@ class UserProfile {
     required this.primaryPhotoIndex,
     required this.voicePrompt,
     required this.videoPrompt,
+    this.hometown = '',
+    this.valuedQualities = const <String>[],
+    this.pronouns = const <String>[],
+    this.sexuality = '',
+    this.preferredTalkingHours = const <String>[],
+    this.loveLanguages = const <String>[],
   });
 
   final String name;
@@ -48,6 +54,12 @@ class UserProfile {
   final int primaryPhotoIndex;
   final String? voicePrompt;
   final String? videoPrompt;
+  final String hometown;
+  final List<String> valuedQualities;
+  final List<String> pronouns;
+  final String sexuality;
+  final List<String> preferredTalkingHours;
+  final List<String> loveLanguages;
 
   DateTime? get dateOfBirth => AmoraDateOfBirth.parse(birthdate);
 
@@ -117,6 +129,12 @@ class UserProfile {
     String? voicePrompt,
     String? videoPrompt,
     bool clearVideoPrompt = false,
+    String? hometown,
+    List<String>? valuedQualities,
+    List<String>? pronouns,
+    String? sexuality,
+    List<String>? preferredTalkingHours,
+    List<String>? loveLanguages,
   }) {
     return UserProfile(
       name: name ?? this.name,
@@ -137,6 +155,14 @@ class UserProfile {
       primaryPhotoIndex: primaryPhotoIndex ?? this.primaryPhotoIndex,
       voicePrompt: voicePrompt ?? this.voicePrompt,
       videoPrompt: clearVideoPrompt ? null : videoPrompt ?? this.videoPrompt,
+      hometown: hometown ?? this.hometown,
+      valuedQualities: List<String>.of(valuedQualities ?? this.valuedQualities),
+      pronouns: List<String>.of(pronouns ?? this.pronouns),
+      sexuality: sexuality ?? this.sexuality,
+      preferredTalkingHours: List<String>.of(
+        preferredTalkingHours ?? this.preferredTalkingHours,
+      ),
+      loveLanguages: List<String>.of(loveLanguages ?? this.loveLanguages),
     );
   }
 
@@ -159,6 +185,12 @@ class UserProfile {
     'primaryPhotoIndex': primaryPhotoIndex,
     'voicePrompt': voicePrompt,
     'videoPrompt': videoPrompt,
+    'hometown': hometown,
+    'valuedQualities': valuedQualities,
+    'pronouns': pronouns,
+    'sexuality': sexuality,
+    'preferredTalkingHours': preferredTalkingHours,
+    'loveLanguages': loveLanguages,
   };
 
   factory UserProfile.fromJson(Map<String, Object?> json) {
@@ -190,6 +222,12 @@ class UserProfile {
       primaryPhotoIndex: json['primaryPhotoIndex'] as int? ?? 0,
       voicePrompt: json['voicePrompt'] as String?,
       videoPrompt: json['videoPrompt'] as String?,
+      hometown: json['hometown'] as String? ?? '',
+      valuedQualities: strings('valuedQualities'),
+      pronouns: strings('pronouns'),
+      sexuality: json['sexuality'] as String? ?? '',
+      preferredTalkingHours: strings('preferredTalkingHours'),
+      loveLanguages: strings('loveLanguages'),
     );
   }
 }
@@ -619,6 +657,12 @@ const _defaultProfile = UserProfile(
   primaryPhotoIndex: 0,
   voicePrompt: 'local://voice/ideal-sunday',
   videoPrompt: 'local://video/profile-intro',
+  hometown: 'Gandhinagar',
+  valuedQualities: ['Empathy', 'Loyalty', 'Humour'],
+  pronouns: ['he', 'him'],
+  sexuality: 'Straight',
+  preferredTalkingHours: ['Evening', 'Late Night'],
+  loveLanguages: ['Quality Time', 'Words of Affirmation'],
 );
 
 const _clearedProfile = UserProfile(
