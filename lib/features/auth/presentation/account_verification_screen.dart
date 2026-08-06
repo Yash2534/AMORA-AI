@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:amora_ai/core/theme/amora_spacing.dart';
+import 'package:amora_ai/core/access/amora_access.dart';
+import 'package:amora_ai/core/auth/auth_service.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
@@ -35,10 +37,12 @@ class EmailVerificationArguments {
   const EmailVerificationArguments({
     required this.email,
     this.verificationPurpose = VerificationPurpose.signup,
+    this.codeAlreadySent = false,
   });
 
   final String email;
   final VerificationPurpose verificationPurpose;
+  final bool codeAlreadySent;
 }
 
 class AccountVerificationScreen extends StatefulWidget {
@@ -47,7 +51,7 @@ class AccountVerificationScreen extends StatefulWidget {
     this.arguments,
     this.requestCode,
     this.verifyCode,
-    this.resendSeconds = 30,
+    this.resendSeconds = 45,
   });
 
   static const routeName = '/account-verification';
@@ -89,6 +93,13 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
     super.didChangeDependencies();
     _arguments ??=
         widget.arguments ?? _routeArguments() ?? _recoveryArguments();
+    if (_arguments!.codeAlreadySent && !_codeSent) {
+      _codeSent = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _startCountdown();
+      });
+    }
+    if (_arguments!.codeAlreadySent) return;
     if (_initialRequestStarted) return;
     _initialRequestStarted = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -317,6 +328,7 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
     try {
       await verify(_email, _code);
       if (!mounted) return;
+      AmoraSession.logIn();
       LocalOnboardingRepository.instance.update(
         LocalOnboardingRepository.instance.state.copyWith(
           accountVerified: true,
@@ -343,6 +355,15 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
   }
 
   String _messageFor(Object error, {bool sending = false}) {
+    if (error is AuthException) {
+      return switch (error.code) {
+        'OTP_EXPIRED' => 'This code has expired. Request a new code.',
+        'OTP_MAX_ATTEMPTS' => 'Too many attempts. Please request a new code.',
+        'OTP_INVALID' => 'That code doesn’t match. Please try again.',
+        'RATE_LIMITED' => 'Please wait before requesting another code.',
+        _ => error.message,
+      };
+    }
     if (error is EmailVerificationException) {
       return switch (error.failure) {
         EmailVerificationFailure.incorrectCode =>

@@ -1,4 +1,5 @@
 import 'package:amora_ai/core/access/amora_access.dart';
+import 'package:amora_ai/core/auth/auth_service.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
@@ -36,6 +37,7 @@ class _SignupScreenState extends State<SignupScreen> {
   bool _googleLoading = false;
   bool _obscurePassword = true;
   bool _obscureConfirmation = true;
+  String? _error;
 
   double get _progress {
     var completed = 0;
@@ -199,6 +201,10 @@ class _SignupScreenState extends State<SignupScreen> {
                   _privacy = value;
                 }),
               ),
+              if (_error != null) ...[
+                const SizedBox(height: AmoraSpacing.space12),
+                AuthInlineAlert(message: _error!),
+              ],
               const SizedBox(height: AmoraSpacing.space16),
               AuthPrimaryButton(
                 label: _loading ? 'Creating account…' : 'Create account',
@@ -228,28 +234,46 @@ class _SignupScreenState extends State<SignupScreen> {
       return;
     }
     if (!(_formKey.currentState?.validate() ?? false)) return;
-    setState(() => _loading = true);
-    LocalOnboardingRepository.instance.resetForNewAccount();
-    LocalProfileRepository.instance.startNewProfile(
-      _nameController.text.trim(),
-      email: _emailController.text.trim(),
-      phoneNumber: '+91 ${_phoneController.text.trim()}',
-    );
-    AmoraSession.logIn();
-    Navigator.of(context).pushReplacementNamed(
-      AccountVerificationScreen.routeName,
-      arguments: EmailVerificationArguments(
+    setState(() { _loading = true; _error = null; });
+    try {
+      await AuthService.instance.signUp(
+        name: _nameController.text.trim(),
         email: _emailController.text.trim(),
-      ),
-    );
+        phoneNumber: _phoneController.text.trim(),
+        password: _passwordController.text,
+        confirmPassword: _confirmPasswordController.text,
+      );
+      if (!mounted) return;
+      LocalOnboardingRepository.instance.resetForNewAccount();
+      LocalProfileRepository.instance.startNewProfile(_nameController.text.trim(), email: _emailController.text.trim(), phoneNumber: '+91 ${_phoneController.text.trim()}');
+      Navigator.of(context).pushReplacementNamed(AccountVerificationScreen.routeName, arguments: EmailVerificationArguments(email: _emailController.text.trim(), codeAlreadySent: true));
+    } on AuthException catch (error) {
+      if (mounted) setState(() { _loading = false; _error = error.message; });
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _error = 'Account creation is unavailable right now. Please try again.';
+        });
+      }
+    }
   }
 
   Future<void> _continueWithGoogle() async {
     setState(() => _googleLoading = true);
     try {
+      await AuthService.instance.googleSignIn();
+      if (!mounted) return;
       await AmoraSession.completeAuthentication(context);
+    } on AuthException catch (error) {
+      if (mounted) setState(() { _googleLoading = false; _error = error.message; });
     } catch (_) {
-      if (mounted) setState(() => _googleLoading = false);
+      if (mounted) {
+        setState(() {
+          _googleLoading = false;
+          _error = 'Google sign-in could not be completed. Please try again.';
+        });
+      }
     }
   }
 
