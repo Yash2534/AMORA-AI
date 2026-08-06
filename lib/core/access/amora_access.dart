@@ -1,4 +1,5 @@
 import 'package:amora_ai/core/constants/app_images.dart';
+import 'package:amora_ai/core/auth/auth_service.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/premium_asset_image.dart';
@@ -8,6 +9,7 @@ import 'package:amora_ai/features/auth/presentation/account_verification_screen.
 import 'package:amora_ai/features/onboarding/data/local_onboarding_repository.dart';
 import 'package:amora_ai/features/onboarding/presentation/profile_onboarding_flow.dart';
 import 'package:flutter/material.dart';
+import 'dart:async';
 
 typedef AuthenticatedAction = void Function();
 
@@ -15,6 +17,7 @@ class AmoraSession {
   AmoraSession._();
 
   static final ValueNotifier<bool> isLoggedIn = ValueNotifier<bool>(false);
+  static final ValueNotifier<AmoraUser?> user = ValueNotifier<AmoraUser?>(null);
   static final ValueNotifier<int> profileStrength = ValueNotifier<int>(20);
   static AuthenticatedAction? _pendingAction;
 
@@ -35,13 +38,22 @@ class AmoraSession {
 
   static void logIn() {
     isLoggedIn.value = true;
+    user.value = AuthService.instance.currentUser;
     if (profileStrength.value < 20) profileStrength.value = 20;
   }
 
   static void logOut() {
     isLoggedIn.value = false;
+    user.value = null;
     profileStrength.value = 20;
     _pendingAction = null;
+    unawaited(AuthService.instance.logout());
+  }
+
+  static Future<void> restore() async {
+    final restored = await AuthService.instance.restoreSession();
+    isLoggedIn.value = restored;
+    user.value = restored ? AuthService.instance.currentUser : null;
   }
 
   static void completeProfileStep(int strength) {
@@ -243,3 +255,4 @@ Future<void> showLoginRequiredSheet(BuildContext context) {
     },
   );
 }
+

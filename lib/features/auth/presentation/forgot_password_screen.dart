@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:amora_ai/core/theme/amora_spacing.dart';
+import 'package:amora_ai/core/auth/auth_service.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
@@ -223,12 +224,19 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       });
       _startCountdown();
       _codeNodes.first.requestFocus();
-    } catch (_) {
+    } on AuthException catch (error) {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = 'We could not send a code. Check your connection and retry.';
+        _error = error.message;
       });
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _error = 'We could not send a code. Check your connection and retry.';
+        });
+      }
     }
   }
 
@@ -254,12 +262,21 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           recoveryToken: token,
         ),
       );
-    } catch (_) {
+    } on AuthException catch (error) {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = 'That code is invalid or expired. Request a new code.';
+        _error = error.code == 'OTP_INVALID' || error.code == 'OTP_EXPIRED'
+            ? 'That code is invalid or expired. Request a new code.'
+            : error.message;
       });
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _error = 'That code is invalid or expired. Request a new code.';
+        });
+      }
     }
   }
 

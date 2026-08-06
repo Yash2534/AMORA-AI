@@ -1,4 +1,6 @@
 import 'package:amora_ai/core/access/amora_access.dart';
+import 'package:amora_ai/core/auth/auth_service.dart';
+import 'package:amora_ai/features/auth/presentation/account_verification_screen.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
@@ -152,13 +154,33 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _loading = true);
     try {
       TextInput.finishAutofillContext();
-      await AmoraSession.completeAuthentication(context);
-    } catch (_) {
+      await AuthService.instance.login(
+        _emailController.text.trim(),
+        _passwordController.text,
+      );
       if (!mounted) return;
+      await AmoraSession.completeAuthentication(context);
+    } on AuthException catch (error) {
+      if (!mounted) return;
+      if (error.code == 'ACCOUNT_NOT_VERIFIED') {
+        Navigator.of(context).pushNamed(
+          AccountVerificationScreen.routeName,
+          arguments: EmailVerificationArguments(email: _emailController.text.trim()),
+        );
+        setState(() => _loading = false);
+        return;
+      }
       setState(() {
         _loading = false;
-        _error = 'Sign in is unavailable right now. Please try again.';
+        _error = error.message;
       });
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _error = 'Sign in is unavailable right now. Please try again.';
+        });
+      }
     }
   }
 
@@ -168,13 +190,22 @@ class _LoginScreenState extends State<LoginScreen> {
       _error = null;
     });
     try {
+      await AuthService.instance.googleSignIn();
+      if (!mounted) return;
       await AmoraSession.completeAuthentication(context);
-    } catch (_) {
+    } on AuthException catch (error) {
       if (!mounted) return;
       setState(() {
         _googleLoading = false;
-        _error = 'Google sign-in could not be completed. Please try again.';
+        _error = error.message;
       });
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _googleLoading = false;
+          _error = 'Google sign-in could not be completed. Please try again.';
+        });
+      }
     }
   }
 

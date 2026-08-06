@@ -1,5 +1,6 @@
 import 'package:amora_ai/core/constants/app_images.dart';
 import 'package:amora_ai/core/access/amora_access.dart';
+import 'package:amora_ai/core/auth/auth_service.dart';
 import 'package:amora_ai/core/theme/amora_theme.dart';
 import 'package:amora_ai/core/theme/amora_theme_controller.dart';
 import 'package:amora_ai/core/navigation/main_shell.dart';
@@ -67,6 +68,8 @@ import 'package:flutter/material.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await AuthService.instance.initialize();
+  await AmoraSession.restore();
   await LocalProfileRepository.instance.initialize();
   await LocalOnboardingRepository.instance.initialize();
   LocalOnboardingRepository.instance.hydrateFromUserProfile();
@@ -125,10 +128,19 @@ class _MyAppState extends State<MyApp> {
           OnboardingScreen.routeName: (_) => const OnboardingScreen(),
           LoginScreen.routeName: (_) => const LoginScreen(),
           SignupScreen.routeName: (_) => const SignupScreen(),
-          ForgotPasswordScreen.routeName: (_) => const ForgotPasswordScreen(),
-          ResetPasswordScreen.routeName: (_) => const ResetPasswordScreen(),
-          AccountVerificationScreen.routeName: (_) =>
-              const AccountVerificationScreen(),
+          ForgotPasswordScreen.routeName: (_) => ForgotPasswordScreen(
+            requestCode: AuthService.instance.forgotPassword,
+            verifyCode: AuthService.instance.verifyResetCode,
+          ),
+          ResetPasswordScreen.routeName: (_) => ResetPasswordScreen(
+            onReset: AuthService.instance.resetPassword,
+          ),
+          AccountVerificationScreen.routeName: (_) => AccountVerificationScreen(
+            requestCode: AuthService.instance.resendVerification,
+            verifyCode: (email, code) async {
+              await AuthService.instance.verifyAccount(email, code);
+            },
+          ),
           ProfileOnboardingFlow.routeName: (_) => const ProfileOnboardingFlow(),
           ProfileCompletionScreen.routeName: (_) =>
               const ProfileCompletionScreen(),

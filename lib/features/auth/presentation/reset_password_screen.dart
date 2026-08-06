@@ -1,4 +1,5 @@
 import 'package:amora_ai/core/theme/amora_spacing.dart';
+import 'package:amora_ai/core/auth/auth_service.dart';
 import 'package:amora_ai/features/auth/domain/amora_password_policy.dart';
 import 'package:amora_ai/features/auth/presentation/login_screen.dart';
 import 'package:amora_ai/features/auth/presentation/widgets/auth_presentation.dart';
@@ -221,13 +222,20 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         _loading = false;
         _success = true;
       });
-    } catch (_) {
+    } on AuthException catch (error) {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error =
-            'The reset session expired or the service is unavailable. Start again.';
+        _error = error.message;
       });
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _error =
+              'The reset session expired or the service is unavailable. Start again.';
+        });
+      }
     }
   }
 }
