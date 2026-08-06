@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 abstract final class SupportContact {
   static const email = 'support@amora.ai';
   static const subject = 'AMORAA Support Request';
+
   static const body = '''Hi AMORAA Support,
 
 I need help with:
@@ -37,18 +38,20 @@ class SupportFaqItem {
     required this.category,
     required this.question,
     required this.answer,
-    this.popular = false,
   });
 
   final String id;
   final FaqCategory category;
   final String question;
   final String answer;
-  final bool popular;
 
   bool matches(String query) {
     final normalized = query.trim().toLowerCase();
-    if (normalized.isEmpty) return true;
+
+    if (normalized.isEmpty) {
+      return true;
+    }
+
     return question.toLowerCase().contains(normalized) ||
         answer.toLowerCase().contains(normalized) ||
         category.label.toLowerCase().contains(normalized);
@@ -64,17 +67,15 @@ const supportFaqs = <SupportFaqItem>[
         'Compatibility combines profile intent, interests, lifestyle '
         'preferences, and conversation signals to help surface relevant '
         'matches.',
-    popular: true,
   ),
   SupportFaqItem(
     id: 'blue-tick',
     category: FaqCategory.profile,
-    question: 'How do I get Blue Tick verified?',
+    question: 'How do I get Pink & Purple Tick verified?',
     answer:
         'Open Profile Settings and complete the available selfie and identity '
         'verification steps. Your badge reflects the verification state '
         'already shown in your profile.',
-    popular: true,
   ),
   SupportFaqItem(
     id: 'report-block',
@@ -84,7 +85,6 @@ const supportFaqs = <SupportFaqItem>[
         'Open Safety & Privacy or the conversation menu, then choose the '
         'available report or block action. Use the safety flow whenever a '
         'conversation or profile makes you uncomfortable.',
-    popular: true,
   ),
   SupportFaqItem(
     id: 'join-event',
@@ -93,7 +93,6 @@ const supportFaqs = <SupportFaqItem>[
     answer:
         'Open Events, choose a gathering, and use its current Join, Request, '
         'or Waitlist action. Joined gatherings appear in My Events.',
-    popular: true,
   ),
   SupportFaqItem(
     id: 'event-change',
