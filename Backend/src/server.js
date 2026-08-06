@@ -3,8 +3,10 @@ require("./config/env");
 const express = require("express");
 const helmet = require("helmet");
 const cors = require("cors");
+const path = require("path");
 const { initializeDatabase } = require("./config/db");
 const authRoutes = require("./routes/authRoutes");
+const onboardingRoutes = require("./routes/onboardingRoutes");
 const errorHandler = require("./middleware/errorHandler");
 const { port } = require("./config/env");
 const { logGoogleStatus } = require("./controllers/authController");
@@ -23,6 +25,7 @@ app.use(
   }),
 );
 app.use(express.json({ limit: "20kb" }));
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 app.get("/health", (_req, res) =>
   res.json({
     success: true,
@@ -31,6 +34,7 @@ app.get("/health", (_req, res) =>
   }),
 );
 app.use("/api/auth", authRoutes);
+app.use("/api/onboarding", onboardingRoutes);
 app.use((_req, res) =>
   res
     .status(404)
