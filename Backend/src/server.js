@@ -7,6 +7,7 @@ const path = require("path");
 const { initializeDatabase } = require("./config/db");
 const authRoutes = require("./routes/authRoutes");
 const onboardingRoutes = require("./routes/onboardingRoutes");
+const discoverRoutes = require("./routes/discoverRoutes");
 const errorHandler = require("./middleware/errorHandler");
 const { port } = require("./config/env");
 const { logGoogleStatus } = require("./controllers/authController");
@@ -35,6 +36,7 @@ app.get("/health", (_req, res) =>
 );
 app.use("/api/auth", authRoutes);
 app.use("/api/onboarding", onboardingRoutes);
+app.use("/api/discover", discoverRoutes);
 app.use((_req, res) =>
   res
     .status(404)

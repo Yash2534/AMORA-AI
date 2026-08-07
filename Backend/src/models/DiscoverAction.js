@@ -1,0 +1,2 @@
+const { DataTypes } = require('sequelize');
+module.exports = (sequelize) => sequelize.define('DiscoverAction', { id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true }, actorUserId: { type: DataTypes.INTEGER, allowNull: false }, targetUserId: { type: DataTypes.INTEGER, allowNull: false }, action: { type: DataTypes.ENUM('pass', 'like', 'superLike'), allowNull: false } }, { tableName: 'DiscoverActions', indexes: [{ unique: true, fields: ['actorUserId', 'targetUserId'] }] });

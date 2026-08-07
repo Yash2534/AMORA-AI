@@ -5,5 +5,6 @@ module.exports = {
   loginLimiter: rateLimit(options(15 * 60 * 1000, 5, normalizedEmail)),
   signupLimiter: rateLimit(options(15 * 60 * 1000, 10, (req) => req.ip)),
   otpLimiter: rateLimit(options(45 * 1000, 1, normalizedEmail)),
-  photoUploadLimiter: rateLimit(options(15 * 60 * 1000, 20, (req) => String(req.user?.sub || req.ip)))
+  photoUploadLimiter: rateLimit(options(15 * 60 * 1000, 20, (req) => String(req.user?.sub || req.ip))),
+  discoverSwipeLimiter: rateLimit(options(5 * 60 * 1000, 120, (req) => String(req.user?.sub || req.ip)))
 };
