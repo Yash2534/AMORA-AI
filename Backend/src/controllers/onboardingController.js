@@ -1,7 +1,7 @@
 const { getModels } = require('../models'); const { publicPath, remove } = require('../utils/photoStorage');
 const ranks = { age: 0, gender: 1, interestedIn: 2, relationshipGoal: 3, location: 4, starterProfile: 5, profileCompletion: 6, photos: 7, complete: 8 };
 const success = (res, message, profile) => res.json({ success: true, message, data: { onboarding: profile.toJSON() } });
-async function getProfile(userId) { const { OnboardingProfile } = getModels(); const [profile] = await OnboardingProfile.findOrCreate({ where: { userId }, defaults: { userId } }); return profile; }
+async function getProfile(userId) { const { OnboardingProfile } = getModels(); const [profile] = await OnboardingProfile.findOrCreate({ where: { userId }, defaults: { userId } }); const photos = Array.isArray(profile.photos) ? profile.photos.filter((photo) => photo !== '[' && photo !== ']') : []; if (photos.length !== (profile.photos || []).length) { profile.photos = photos; profile.primaryPhotoIndex = Math.min(profile.primaryPhotoIndex, Math.max(0, photos.length - 1)); await profile.save(); } return profile; }
 function advance(profile, stage) { if (ranks[stage] > ranks[profile.stage]) profile.stage = stage; }
 async function save(res, userId, values, stage, message) { const profile = await getProfile(userId); Object.assign(profile, values); advance(profile, stage); await profile.save(); return success(res, message, profile); }
 exports.status = async (req, res, next) => { try { return success(res, 'Onboarding status retrieved.', await getProfile(req.user.sub)); } catch (error) { return next(error); } };
