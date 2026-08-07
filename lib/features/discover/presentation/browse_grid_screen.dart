@@ -18,6 +18,7 @@ import 'package:amora_ai/core/widgets/premium_motion.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/discover/presentation/advanced_filters_screen.dart';
 import 'package:amora_ai/features/discover/presentation/discover_action_controller.dart';
+import 'package:amora_ai/features/discover/data/discover_api_service.dart';
 import 'package:amora_ai/features/notifications/presentation/notifications_hub_screen.dart';
 import 'package:amora_ai/features/profile/domain/profile_interest_policy.dart';
 import 'package:amora_ai/features/profile/presentation/controllers/profile_relationship_controller.dart';
@@ -73,8 +74,9 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
 
   late final FocusNode _keyboardFocus;
   late final AnimationController _superLikeAnimation;
-  late List<DummyProfile> _profiles;
+  List<DummyProfile> _profiles = const <DummyProfile>[];
   DiscoverActionController? _controller;
+  final DiscoverApiService _discoverApi = DiscoverApiService();
   Timer? _loadingTimer;
   Object? _error;
   bool _loading = true;
@@ -84,6 +86,9 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
   final Set<String> _selectedQuickFilters = <String>{};
   final Map<String, int> _photoIndices = <String, int>{};
   String _superLikeProfileName = '';
+  int _nextPage = 1;
+  bool _hasMore = true;
+  bool _loadingMore = false;
 
   DiscoverActionController get _actions => _controller!;
 
@@ -95,7 +100,7 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
       vsync: this,
       duration: AmoraSuperLikeAnimation.duration,
     );
-    _loadProfiles();
+    unawaited(_loadProfiles());
   }
 
   @override
@@ -108,22 +113,120 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
     super.dispose();
   }
 
-  void _loadProfiles() {
+  Future<void> _loadProfiles() async {
     _loadingTimer?.cancel();
-    try {
-      _profiles = ImageRepository.profiles.toList(growable: false);
+    setState(() => _loading = true);
+    final result = await _discoverApi.getFeed(page: 1);
+    if (!mounted) return;
+    if (!result.success || result.data == null) {
+      setState(() {
+        _error = result.message;
+        _loading = false;
+      });
+      return;
+    }
+    setState(() {
+      _profiles = result.data!.profiles
+          .map(_profileFromRemote)
+          .toList(growable: false);
+      _nextPage = result.data!.nextPage ?? 2;
+      _hasMore = result.data!.hasMore;
       _error = null;
       _replaceController();
-      _loading = true;
-      _loadingTimer = Timer(Duration.zero, () {
-        if (mounted) {
-          setState(() => _loading = false);
-        }
-      });
-    } catch (_) {
-      _error = Object();
       _loading = false;
+    });
+  }
+
+  Future<void> _loadNextPage() async {
+    if (_loadingMore || !_hasMore) return;
+    _loadingMore = true;
+    final result = await _discoverApi.getFeed(page: _nextPage);
+    _loadingMore = false;
+    if (!mounted) return;
+    if (!result.success || result.data == null) {
+      _showSyncError(result.message);
+      return;
     }
+    final profiles = result.data!.profiles
+        .map(_profileFromRemote)
+        .toList(growable: false);
+    setState(() {
+      _profiles = [..._profiles, ...profiles];
+      _nextPage = result.data!.nextPage ?? (_nextPage + 1);
+      _hasMore = result.data!.hasMore;
+    });
+    _actions.appendProfileIds(profiles.map((profile) => profile.id));
+  }
+
+  DummyProfile _profileFromRemote(Map<String, dynamic> values) {
+    String text(Object? value) => value?.toString() ?? '';
+    List<String> strings(Object? value) => value is List
+        ? value
+              .map(text)
+              .where((value) => value.trim().isNotEmpty)
+              .toList(growable: false)
+        : const <String>[];
+    Map<String, String> prompts(Object? value) => value is Map
+        ? value.map((key, item) => MapEntry(key.toString(), text(item)))
+        : const <String, String>{};
+    final lifestyle = values['lifestyle'];
+    final lifestyleValues = lifestyle is Map
+        ? lifestyle.entries
+              .map((entry) => '${entry.key}: ${entry.value}')
+              .toList(growable: false)
+        : strings(lifestyle);
+    final distance = values['distance'];
+    return DummyProfile(
+      id: text(values['id']),
+      gender: text(values['gender']).toLowerCase() == 'female'
+          ? Gender.female
+          : Gender.male,
+      name: text(values['name']),
+      age: (values['age'] as num?)?.toInt() ?? 0,
+      city: text(values['city']),
+      profession: text(values['profession']),
+      education: text(values['education']),
+      distance: distance is num ? '${distance.round()} km' : text(distance),
+      score: (values['score'] as num?)?.round() ?? 0,
+      intent: text(values['intent']),
+      personality: text(values['personality']),
+      status: text(values['status']),
+      bio: text(values['bio']),
+      interests: strings(values['interests']),
+      imageUrl: text(values['imageUrl']),
+      gallery: strings(values['gallery']),
+      languages: strings(values['languages']),
+      verification: text(values['verification']).toLowerCase() == 'verified'
+          ? 'Verified'
+          : 'Not verified',
+      lifestyle: lifestyleValues,
+      promptAnswers: prompts(values['promptAnswers']),
+      travelPreference: text(values['travelPreference']),
+      musicTaste: text(values['musicTaste']),
+      foodPreference: text(values['foodPreference']),
+      weekendPlan: text(values['weekendPlan']),
+      petPreference: text(values['petPreference']),
+      coffeePreference: text(values['coffeePreference']),
+      religion: text(values['religion']),
+      community: text(values['community']),
+      height: text(values['height']),
+      fitnessLevel: text(values['fitnessLevel']),
+      smoking: text(values['smoking']),
+      drinking: text(values['drinking']),
+      weed: text(values['weed']),
+      children: text(values['children']),
+      loveLanguage: text(values['loveLanguage']),
+      greenFlags: strings(values['greenFlags']),
+      redFlags: strings(values['redFlags']),
+      familyValues: text(values['familyValues']),
+      dateIdeas: strings(values['dateIdeas']),
+      hometown: text(values['hometown']),
+      valuedQualities: strings(values['valuedQualities']),
+      pronouns: strings(values['pronouns']),
+      sexuality: text(values['sexuality']),
+      preferredTalkingHours: strings(values['preferredTalkingHours']),
+      loveLanguages: strings(values['loveLanguages']),
+    );
   }
 
   List<DummyProfile> get _filteredProfiles {
@@ -456,18 +559,25 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
     _dragOffsetX.value = action == DiscoverAction.like
         ? exitDistance
         : -exitDistance;
+    var saved = false;
     if (action == DiscoverAction.like) {
-      await _actions.likeProfile();
+      saved = await _actions.likeProfile();
       ProfileRelationshipController.instance.likeProfile(profile);
+      if (!saved && mounted) {
+        _showSyncError(_actions.lastError ?? 'Unable to save this like.');
+      }
     } else {
-      await _actions.rejectProfile();
+      saved = await _actions.rejectProfile();
+      if (!saved && mounted) {
+        _showSyncError(_actions.lastError ?? 'Unable to save this pass.');
+      }
     }
     if (!mounted) return;
     setState(() {
       _photoIndices.remove(profile.id);
     });
     _dragOffsetX.value = 0;
-    if (action == DiscoverAction.like) {
+    if (action == DiscoverAction.like && saved) {
       final matched = _actions.matchedProfileId == profile.id;
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
@@ -485,6 +595,7 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
         _actions.consumeMatch();
       }
     }
+    unawaited(_loadNextPage());
   }
 
   Future<void> _rewind() async {
@@ -497,7 +608,10 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
       _ => null,
     };
     if (removalAction == null) {
-      await _actions.rewindProfile();
+      final saved = await _actions.rewindProfile();
+      if (!saved && mounted) {
+        _showSyncError(_actions.lastError ?? 'Unable to rewind this swipe.');
+      }
       return;
     }
     final profile = _profileFor(entry.profileId);
@@ -506,10 +620,13 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
       action: removalAction,
       profileName: profile?.name,
       onConfirm: () async {
-        await _actions.rewindProfile();
-        if (entry.action == DiscoverAction.like) {
+        final saved = await _actions.rewindProfile();
+        if (!saved && mounted) {
+          _showSyncError(_actions.lastError ?? 'Unable to rewind this swipe.');
+        }
+        if (saved && entry.action == DiscoverAction.like) {
           ProfileRelationshipController.instance.removeLike(entry.profileId);
-        } else {
+        } else if (saved) {
           ProfileRelationshipController.instance.removeSuperLike(
             entry.profileId,
           );
@@ -537,11 +654,17 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
 
     final preloadIndex = next + 1;
     if (preloadIndex < photos.length) {
-      final asset = AppImages.resolveAsset(
-        photos[preloadIndex],
-        fallback: profile.fallbackAsset,
-      );
-      precacheImage(AssetImage(asset), context);
+      final nextPhoto = photos[preloadIndex];
+      final uri = Uri.tryParse(nextPhoto);
+      if (uri != null && uri.hasScheme) {
+        precacheImage(NetworkImage(nextPhoto), context);
+      } else {
+        final asset = AppImages.resolveAsset(
+          nextPhoto,
+          fallback: profile.fallbackAsset,
+        );
+        precacheImage(AssetImage(asset), context);
+      }
     }
   }
 
@@ -552,22 +675,30 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
         if (_actions.isTransitioning) return;
         HapticFeedback.mediumImpact();
         _superLikeProfileName = profile.name;
-        await _actions.superLikeProfile();
+        final saved = await _actions.superLikeProfile();
         ProfileRelationshipController.instance.superLikeProfile(profile);
+        if (!saved && mounted) {
+          _showSyncError(
+            _actions.lastError ?? 'Unable to save this Super Like.',
+          );
+        }
         if (!mounted) return;
         setState(() => _photoIndices.remove(profile.id));
         if (!MediaQuery.disableAnimationsOf(context)) {
           await _superLikeAnimation.forward(from: 0);
           if (!mounted) return;
         }
-        ScaffoldMessenger.of(context)
-          ..hideCurrentSnackBar()
-          ..showSnackBar(
-            SnackBar(
-              duration: const Duration(milliseconds: 1200),
-              content: const Text('Super Like sent'),
-            ),
-          );
+        if (saved) {
+          ScaffoldMessenger.of(context)
+            ..hideCurrentSnackBar()
+            ..showSnackBar(
+              SnackBar(
+                duration: const Duration(milliseconds: 1200),
+                content: const Text('Super Like sent'),
+              ),
+            );
+        }
+        unawaited(_loadNextPage());
       },
     );
   }
@@ -583,10 +714,13 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
           profile: profile,
           onSuperLike: () async {
             if (_actions.currentProfileId != profile.id) return false;
-            await _actions.superLikeProfile();
-            final sent = _actions.superLikedProfileIds.contains(profile.id);
+            final sent = await _actions.superLikeProfile();
             if (sent) {
               ProfileRelationshipController.instance.superLikeProfile(profile);
+            } else if (mounted) {
+              _showSyncError(
+                _actions.lastError ?? 'Unable to save this Super Like.',
+              );
             }
             return sent;
           },
@@ -602,8 +736,11 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
     );
   }
 
-  void _openFilters() {
-    Navigator.of(context).pushNamed(AdvancedFiltersScreen.routeName);
+  Future<void> _openFilters() async {
+    final applied = await Navigator.of(
+      context,
+    ).pushNamed(AdvancedFiltersScreen.routeName);
+    if (mounted && applied == true) await _loadProfiles();
   }
 
   void _toggleQuickFilter(String filter) {
@@ -620,10 +757,17 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
   void _resetFiltersAndDeck() {
     setState(() {
       _selectedQuickFilters.clear();
-      _replaceController();
       _photoIndices.clear();
     });
     _dragOffsetX.value = 0;
+    unawaited(_loadProfiles());
+  }
+
+  void _showSyncError(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 
   void _keyboardAction(DiscoverAction action) {
