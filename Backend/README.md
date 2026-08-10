@@ -9,12 +9,19 @@ Standalone Node.js/Express authentication API for the Amora AI mobile client. Al
 
 ```bash
 npm install
+npm run db:migrate
 npm run dev
 ```
 
-On its first start, the server copies `.env.example` to `.env`, generates secure JWT secrets, creates the `amora_ai` database and its tables, and starts on port 5000. In development with no SMTP configured, OTPs print in the terminal and are returned as `devOtp` in the successful OTP-generating response. This makes the whole flow testable in Postman without external accounts.
+On first setup, the migration command creates the configured database when permitted and applies the ordered migrations recorded in `SequelizeMeta`. The server only connects to the migrated schema; it does not call `sequelize.sync()` or mutate tables at startup. In development with no SMS provider configured, OTPs print in the terminal and are returned as `devOtp` in the successful OTP-generating response. This makes the whole flow testable in Postman without external accounts.
 
-`sequelize.sync()` is deliberately enabled for convenient development. Replace it with reviewed Sequelize migrations before production.
+Run `npm run db:migrate` as an explicit deployment step before starting a production release. Use `npm run db:migrate:status` to inspect state and `npm run db:migrate:undo` to revert the latest reversible migration.
+
+The Discover integration suite uses `TEST_DB_NAME` and refuses to run against `DB_NAME`:
+
+```bash
+npm run test:integration
+```
 
 ## Docker MySQL alternative
 

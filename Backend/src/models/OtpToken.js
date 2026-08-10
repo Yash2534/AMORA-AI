@@ -1,6 +1,6 @@
 const { DataTypes } = require('sequelize');
 module.exports = (sequelize) => {
-const model = sequelize.define('OtpToken', {
+return sequelize.define('OtpToken', {
   id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
   phoneNumber: { type: DataTypes.STRING, allowNull: false },
   codeHash: { type: DataTypes.STRING, allowNull: false },
@@ -9,6 +9,4 @@ const model = sequelize.define('OtpToken', {
   attempts: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
   consumed: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false }
 }, { tableName: 'OtpTokens', indexes: [{ fields: ['phoneNumber'] }] });
-model.addHook('beforeSync', async () => { const columns = await sequelize.getQueryInterface().describeTable('OtpTokens').catch(() => null); if (columns && columns.email && !columns.phoneNumber) await sequelize.getQueryInterface().renameColumn('OtpTokens', 'email', 'phoneNumber'); });
-return model;
 };

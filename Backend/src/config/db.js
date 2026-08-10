@@ -1,29 +1,41 @@
-const mysql = require('mysql2/promise');
 const { Sequelize } = require('sequelize');
 
 let sequelize;
-async function initializeDatabase() {
-  const config = { host: process.env.DB_HOST, port: Number(process.env.DB_PORT), user: process.env.DB_USER, password: process.env.DB_PASS || '' };
-  let connection;
+async function assertMigrationsApplied(connection) {
+  let rows;
   try {
-    connection = await mysql.createConnection(config);
+    [rows] = await connection.query('SELECT `name` FROM `SequelizeMeta`');
+  } catch (error) {
+    if (error.original?.code === 'ER_NO_SUCH_TABLE') {
+      throw new Error('Database migrations have not been applied. Run npm run db:migrate.');
+    }
+    throw error;
+  }
+  const applied = new Set(rows.map((row) => row.name));
+  const pending = require('../migrations/run').migrationFiles().filter((file) => !applied.has(file));
+  if (pending.length) {
+    throw new Error(`Pending database migrations: ${pending.join(', ')}`);
+  }
+}
+
+async function initializeDatabase() {
+  try {
     const dbName = process.env.DB_NAME;
-    const escapedName = `\`${dbName.replace(/`/g, '``')}\``;
-    await connection.query(`CREATE DATABASE IF NOT EXISTS ${escapedName}`);
-    await connection.end();
-    sequelize = new Sequelize(dbName, config.user, config.password, { host: config.host, port: config.port, dialect: 'mysql', logging: false });
+    sequelize = new Sequelize(dbName, process.env.DB_USER, process.env.DB_PASS || '', {
+      host: process.env.DB_HOST,
+      port: Number(process.env.DB_PORT),
+      dialect: 'mysql',
+      logging: false,
+    });
     await sequelize.authenticate();
+    await assertMigrationsApplied(sequelize);
     require('../models').initModels(sequelize);
-    await require('../migrations/202608100001-add-communication-style').up(
-      sequelize.getQueryInterface(),
-      Sequelize,
-    );
-    await sequelize.sync();
-    console.log(`[Database] Connected to MySQL, schema '${dbName}' ready`);
+    console.log(`[Database] Connected to MySQL schema '${dbName}'`);
     return sequelize;
   } catch (error) {
-    if (connection) await connection.end().catch(() => {});
-    console.error('[Database] Could not connect to MySQL. Check that MySQL is running and verify DB_HOST/DB_USER/DB_PASS/DB_NAME in .env.');
+    if (sequelize) await sequelize.close().catch(() => {});
+    sequelize = undefined;
+    console.error('[Database] Could not connect to MySQL. Run migrations and verify DB_HOST/DB_USER/DB_PASS/DB_NAME.');
     throw error;
   }
 }

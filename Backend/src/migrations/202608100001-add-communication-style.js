@@ -38,21 +38,8 @@ module.exports = {
     }
   },
 
-  async down(queryInterface) {
-    const filterColumns = await tableColumns(
-      queryInterface,
-      'DiscoverFilterPreferences',
-    );
-    if (filterColumns?.communicationStyles) {
-      await queryInterface.removeColumn(
-        'DiscoverFilterPreferences',
-        'communicationStyles',
-      );
-    }
-
-    const profileColumns = await tableColumns(queryInterface, 'OnboardingProfiles');
-    if (profileColumns?.communicationStyle) {
-      await queryInterface.removeColumn('OnboardingProfiles', 'communicationStyle');
-    }
+  async down() {
+    // Intentionally data-preserving. These columns may have existed before the
+    // migration ledger was introduced, and removing them would discard profile data.
   },
 };

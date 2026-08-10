@@ -8,5 +8,11 @@ module.exports = (sequelize) => sequelize.define('User', {
   authProvider: { type: DataTypes.ENUM('local', 'google'), allowNull: false, defaultValue: 'local' },
   googleId: { type: DataTypes.STRING, allowNull: true, unique: true },
   isVerified: { type: DataTypes.BOOLEAN, defaultValue: false },
-  termsAcceptedAt: { type: DataTypes.DATE, allowNull: true }
+  termsAcceptedAt: { type: DataTypes.DATE, allowNull: true },
+  accountStatus: { type: DataTypes.ENUM('active', 'deactivated', 'deleted'), allowNull: false, defaultValue: 'active' },
+  deactivatedAt: { type: DataTypes.DATE, allowNull: true },
+  deletedAt: { type: DataTypes.DATE, allowNull: true },
+  tokenVersion: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+  deletionReason: { type: DataTypes.STRING, allowNull: true },
+  deletionDetails: { type: DataTypes.TEXT, allowNull: true }
 }, { tableName: 'Users' });

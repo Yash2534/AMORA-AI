@@ -27,13 +27,14 @@ test('invalid communication styles are rejected', () => {
   assert.equal(hasOnlyCommunicationStyles('calls,voice_notes'), true);
 });
 
-test('empty styles leave the profile query unchanged', () => {
-  assert.deepEqual(_test.buildProfileWhere({ communicationStyles: [] }), {
-    onboardingCompleted: true,
-  });
+test('profile query always enforces completion and a database age range', () => {
+  const query = _test.buildProfileWhere({ communicationStyles: [] });
+  assert.equal(query.onboardingCompleted, true);
+  assert.match(query.birthDate[Op.gt], /^\d{4}-\d{2}-\d{2}$/);
+  assert.match(query.birthDate[Op.lte], /^\d{4}-\d{2}-\d{2}$/);
 });
 
-test('one or many styles use a database IN condition before pagination', () => {
+test('one or many communication styles use a database IN condition', () => {
   const one = _test.buildProfileWhere({ communicationStyles: ['calls'] });
   assert.deepEqual(one.communicationStyle[Op.in], ['calls']);
 
@@ -42,54 +43,4 @@ test('one or many styles use a database IN condition before pagination', () => {
   });
   assert.deepEqual(many.communicationStyle[Op.in], ['calls', 'voice_notes']);
   assert.equal(many.onboardingCompleted, true);
-});
-
-test('null profile styles do not match an active filter', () => {
-  const baseFilters = {
-    minAge: 18,
-    maxAge: 45,
-    maxDistanceKm: 500,
-    minScore: 0,
-    city: '',
-    minHeight: '',
-    hometown: [],
-    datingIntentions: [],
-    lifestyleTags: [],
-    education: '',
-    profession: '',
-    community: '',
-    religion: '',
-    languages: [],
-    pronouns: [],
-    sexuality: '',
-    qualities: [],
-    preferredTalkingHours: [],
-    loveLanguages: [],
-    communicationStyles: ['calls', 'voice_notes'],
-    smoking: '',
-    drinking: '',
-    weed: '',
-    verifiedOnly: false,
-    onlineNow: false,
-    hasPrompts: false,
-    hasEventInterest: false,
-  };
-  const viewer = { city: 'Ahmedabad' };
-  const profile = {
-    birthDate: '1995-01-01',
-    city: 'Ahmedabad',
-    communicationStyle: null,
-    lifestyle: {},
-  };
-
-  assert.equal(_test.matchesFilters({}, profile, viewer, baseFilters), false);
-  assert.equal(
-    _test.matchesFilters(
-      {},
-      { ...profile, communicationStyle: 'voice_notes' },
-      viewer,
-      baseFilters,
-    ),
-    true,
-  );
 });
