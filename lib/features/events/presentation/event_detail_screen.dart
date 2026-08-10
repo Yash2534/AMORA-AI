@@ -150,14 +150,16 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                         ),
                       ),
                       const SizedBox(height: 28),
-                      const EventDetailSection(
-                        title: 'What to expect',
-                        subtitle:
-                            'The available event schedule, presented at a glance',
-                        delay: Duration(milliseconds: 80),
-                        child: _AgendaList(items: eventAgenda),
-                      ),
-                      const SizedBox(height: 28),
+                      if (event.agenda.isNotEmpty) ...[
+                        EventDetailSection(
+                          title: 'What to expect',
+                          subtitle:
+                              'The available event schedule, presented at a glance',
+                          delay: const Duration(milliseconds: 80),
+                          child: _AgendaList(items: event.agenda),
+                        ),
+                        const SizedBox(height: 28),
+                      ],
                       EventDetailSection(
                         title: 'Good to know',
                         subtitle: 'Details already provided for this event',
@@ -422,12 +424,14 @@ class _DetailMetadata extends StatelessWidget {
             label: 'Location',
             value: '${event.venue}, ${event.city}',
           ),
-          const SizedBox(height: 16),
-          EventInfoTile(
-            icon: Icons.near_me_rounded,
-            label: 'Distance',
-            value: event.distance,
-          ),
+          if (event.hasNumericDistance) ...[
+            const SizedBox(height: 16),
+            EventInfoTile(
+              icon: Icons.near_me_rounded,
+              label: 'Distance',
+              value: event.distance,
+            ),
+          ],
         ],
       ),
     );

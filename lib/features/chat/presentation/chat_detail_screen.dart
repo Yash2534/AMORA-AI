@@ -150,8 +150,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
               context,
             ).pushNamed(ProfileDetailScreen.routeName, arguments: _profile),
           ),
-        if (!(compactHeight && _emojiPickerVisible))
-          _LocalMessagingBanner(compact: compactHeight),
         Expanded(
           child: _ChatTimeline(
             messages: _messages,
@@ -1181,8 +1179,8 @@ class _ConversationLoadError extends StatelessWidget {
   }
 }
 
-class _LocalMessagingBanner extends StatelessWidget {
-  const _LocalMessagingBanner({this.compact = false});
+class LocalMessagingBanner extends StatelessWidget {
+  const LocalMessagingBanner({super.key, this.compact = false});
 
   final bool compact;
 

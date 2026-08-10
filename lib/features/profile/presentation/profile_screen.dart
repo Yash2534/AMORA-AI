@@ -22,6 +22,7 @@ import 'package:amora_ai/features/profile/presentation/profile_edit_screen.dart'
 import 'package:amora_ai/features/profile/presentation/profile_preview_screen.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_photo_view.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/profile_photo_gallery.dart';
+import 'package:amora_ai/features/profile/presentation/widgets/profile_attribute_icons.dart';
 import 'package:amora_ai/features/settings/presentation/managed_profiles_screen.dart';
 import 'package:amora_ai/features/settings/presentation/likes_super_likes_screen.dart';
 import 'package:amora_ai/features/settings/presentation/profile_settings_screen.dart';
@@ -1416,7 +1417,6 @@ class ProfilePersonalityCard extends StatelessWidget {
       'Exercise': Icons.fitness_center_rounded,
       'Pets': Icons.pets_rounded,
       'Drinking': Icons.local_bar_rounded,
-      'Smoking': Icons.smoke_free_rounded,
       'Sleep habits': Icons.bedtime_rounded,
       'Food preference': Icons.restaurant_rounded,
     };
@@ -1453,7 +1453,9 @@ class ProfilePersonalityCard extends StatelessWidget {
                 SizedBox(
                   width: tileWidth,
                   child: _LifestyleTile(
-                    icon: icons[entry.key] ?? Icons.auto_awesome_rounded,
+                    icon: entry.key == 'Smoking'
+                        ? ProfileAttributeIcons.smoking(entry.value)
+                        : icons[entry.key] ?? Icons.auto_awesome_rounded,
                     label: entry.key,
                     value: entry.value,
                   ),

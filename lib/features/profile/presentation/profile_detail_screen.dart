@@ -17,6 +17,7 @@ import 'package:amora_ai/features/profile/presentation/widgets/amoraa_public_pro
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_preference_display.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_photo_view.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_connection_profile_details.dart';
+import 'package:amora_ai/features/profile/presentation/widgets/profile_attribute_icons.dart';
 import 'package:amora_ai/features/chat/data/local_chat_repository.dart';
 import 'package:amora_ai/features/chat/presentation/chat_detail_screen.dart';
 import 'package:amora_ai/features/discover/presentation/browse_grid_screen.dart';
@@ -1096,7 +1097,11 @@ class ProfileQuickFacts extends StatelessWidget {
         'Looking for',
         profile.intent,
       ),
-      _SymbolicFact(Icons.smoke_free_rounded, 'Smoking', profile.smoking),
+      _SymbolicFact(
+        ProfileAttributeIcons.smoking(profile.smoking),
+        'Smoking',
+        profile.smoking,
+      ),
       _SymbolicFact(Icons.local_bar_outlined, 'Drinking', profile.drinking),
       _SymbolicFact(Icons.grass_rounded, 'Weed', profile.weed),
     ].where((fact) => fact.value.trim().isNotEmpty).toList(growable: false);
@@ -1283,7 +1288,11 @@ class LifestyleGrid extends StatelessWidget {
         profile.fitnessLevel,
       ),
       _SymbolicFact(Icons.restaurant_rounded, 'Food', profile.foodPreference),
-      _SymbolicFact(Icons.smoke_free_rounded, 'Smoking', profile.smoking),
+      _SymbolicFact(
+        ProfileAttributeIcons.smoking(profile.smoking),
+        'Smoking',
+        profile.smoking,
+      ),
       _SymbolicFact(Icons.local_bar_outlined, 'Drinking', profile.drinking),
       _SymbolicFact(Icons.grass_rounded, 'Weed', profile.weed),
       _SymbolicFact(Icons.pets_rounded, 'Pets', profile.petPreference),
@@ -1450,7 +1459,11 @@ class InterestChip extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(_interestIcon(label), color: AppColors.secondary, size: 17),
+            Icon(
+              ProfileAttributeIcons.interest(label),
+              color: AppColors.secondary,
+              size: 17,
+            ),
             const SizedBox(width: AmoraSpacing.space8),
             Text(
               label,
@@ -1741,6 +1754,15 @@ class TrustAndSafetySection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final verification = profile.verification.trim();
+    final normalizedVerification = verification.toLowerCase();
+    final showVerificationDetail =
+        verification.isNotEmpty &&
+        normalizedVerification != 'verified' &&
+        normalizedVerification != 'verified profile';
+    final status = profile.status.trim();
+    final showStatus =
+        status.isNotEmpty &&
+        !(profile.verified && status.toLowerCase() == 'verified');
     return _SectionSurface(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1749,13 +1771,13 @@ class TrustAndSafetySection extends StatelessWidget {
             icon: Icons.shield_outlined,
             title: 'Safety & trust',
           ),
-          if (verification.isNotEmpty) ...[
+          if (showVerificationDetail) ...[
             const SizedBox(height: AmoraSpacing.space16),
             _TrustRow(icon: Icons.verified_user_rounded, text: verification),
           ],
-          if (profile.status.trim().isNotEmpty) ...[
+          if (showStatus) ...[
             const SizedBox(height: AmoraSpacing.space8),
-            _TrustRow(icon: Icons.schedule_rounded, text: profile.status),
+            _TrustRow(icon: Icons.schedule_rounded, text: status),
           ],
           if (showActions) ...[
             const SizedBox(height: AmoraSpacing.space16),
@@ -2285,33 +2307,6 @@ class _SymbolicFact {
   final IconData icon;
   final String label;
   final String value;
-}
-
-IconData _interestIcon(String label) {
-  final value = label.toLowerCase();
-  if (value.contains('travel') || value.contains('road')) {
-    return Icons.flight_takeoff_rounded;
-  }
-  if (value.contains('coffee')) return Icons.coffee_rounded;
-  if (value.contains('music') || value.contains('concert')) {
-    return Icons.music_note_rounded;
-  }
-  if (value.contains('fitness') || value.contains('gym')) {
-    return Icons.fitness_center_rounded;
-  }
-  if (value.contains('movie') || value.contains('cinema')) {
-    return Icons.movie_outlined;
-  }
-  if (value.contains('art') || value.contains('design')) {
-    return Icons.palette_outlined;
-  }
-  if (value.contains('food') || value.contains('dining')) {
-    return Icons.restaurant_rounded;
-  }
-  if (value.contains('pet')) return Icons.pets_rounded;
-  if (value.contains('game')) return Icons.sports_esports_rounded;
-  if (value.contains('book')) return Icons.menu_book_rounded;
-  return Icons.favorite_border_rounded;
 }
 
 final _detailProfile = ImageRepository.profileByName('Aadhya');

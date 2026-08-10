@@ -824,6 +824,8 @@ class _DiscoverFilterRail extends StatelessWidget {
       height: 46,
       child: ListView(
         scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.only(right: AmoraSpacing.space20),
+        clipBehavior: Clip.none,
         physics: const BouncingScrollPhysics(),
         children: [
           _DiscoverFilterChip(
@@ -966,6 +968,8 @@ class _DiscoverFilterChipState extends State<_DiscoverFilterChip>
                   const SizedBox(width: 4),
                   Text(
                     widget.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: AmoraTextStyles.labelMedium.copyWith(
                       color: widget.selected
                           ? AppColors.surface

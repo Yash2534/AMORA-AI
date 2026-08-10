@@ -98,6 +98,8 @@ class AmoraaHorizontalFilterBar<T> extends StatelessWidget {
       child: ListView.separated(
         key: ValueKey('$optionKeyPrefix-scroll'),
         scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.only(right: AmoraSpacing.space20),
+        clipBehavior: Clip.none,
         physics: const BouncingScrollPhysics(),
         itemCount: options.length,
         separatorBuilder: (_, _) => const SizedBox(width: AmoraSpacing.space8),

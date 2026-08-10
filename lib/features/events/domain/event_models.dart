@@ -21,6 +21,7 @@ class EventModel {
     required this.palette,
     required this.intent,
     required this.interests,
+    this.agenda = const <(String, String)>[],
     this.startAt,
     this.endAt,
   });
@@ -44,8 +45,16 @@ class EventModel {
   final List<Color> palette;
   final String intent;
   final List<String> interests;
+  final List<(String, String)> agenda;
   final DateTime? startAt;
   final DateTime? endAt;
+
+  /// Local content can contain a venue descriptor in this legacy field. Only
+  /// render it as distance when it is actually a numeric kilometre value.
+  bool get hasNumericDistance => RegExp(
+    r'\b\d+(?:\.\d+)?\s*km\b',
+    caseSensitive: false,
+  ).hasMatch(distance.trim());
 }
 
 class EventVisual {

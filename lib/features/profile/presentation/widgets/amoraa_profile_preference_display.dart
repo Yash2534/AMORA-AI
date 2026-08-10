@@ -3,6 +3,7 @@ import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/features/profile/domain/profile_form_options.dart';
+import 'package:amora_ai/features/profile/presentation/widgets/profile_attribute_icons.dart';
 import 'package:flutter/material.dart';
 
 class AmoraaProfilePreferenceDisplay extends StatelessWidget {
@@ -14,7 +15,7 @@ class AmoraaProfilePreferenceDisplay extends StatelessWidget {
   Widget build(BuildContext context) {
     final identity = <_PreferenceValue>[
       _PreferenceValue(
-        Icons.badge_outlined,
+        ProfileAttributeIcons.pronouns,
         'Pronouns',
         _ordered(profile.pronouns, ProfileFormOptions.pronouns),
       ),

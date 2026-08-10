@@ -1127,7 +1127,7 @@ class AmoraCircleCard extends StatelessWidget {
                 const SizedBox(height: 11),
                 Text(
                   event.title,
-                  maxLines: 1,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: AppColors.primary,
@@ -1494,7 +1494,7 @@ class _EventCardDetails extends StatelessWidget {
                 text: event.venue,
                 compact: true,
               ),
-              if (showDistance) ...[
+              if (showDistance && event.hasNumericDistance) ...[
                 const SizedBox(height: 6),
                 EventMetadataRow(
                   icon: Icons.near_me_rounded,

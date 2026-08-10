@@ -90,6 +90,10 @@ void main() {
       findsOneWidget,
     );
     expect(find.text(conversation.messages.first.text), findsOneWidget);
+    expect(
+      find.text('Offline: messages remain queued on this device.'),
+      findsNothing,
+    );
     expect(find.text(repository.conversations.first.user.name), findsNothing);
     expect(repository.hasActiveConversationSubscriptions, isTrue);
   });
