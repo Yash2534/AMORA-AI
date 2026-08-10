@@ -14,6 +14,10 @@ async function initializeDatabase() {
     sequelize = new Sequelize(dbName, config.user, config.password, { host: config.host, port: config.port, dialect: 'mysql', logging: false });
     await sequelize.authenticate();
     require('../models').initModels(sequelize);
+    await require('../migrations/202608100001-add-communication-style').up(
+      sequelize.getQueryInterface(),
+      Sequelize,
+    );
     await sequelize.sync();
     console.log(`[Database] Connected to MySQL, schema '${dbName}' ready`);
     return sequelize;

@@ -1,5 +1,6 @@
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
+import 'package:amora_ai/core/widgets/amora_app_bar.dart';
 import 'package:flutter/material.dart';
 
 class ProgressHeader extends StatelessWidget {
@@ -24,11 +25,7 @@ class ProgressHeader extends StatelessWidget {
         Row(
           children: [
             if (onBack != null)
-              IconButton(
-                onPressed: onBack,
-                icon: const Icon(Icons.arrow_back_rounded),
-                color: AppColors.deepWine,
-              )
+              AmoraHeaderBackButton(onPressed: onBack!)
             else
               const SizedBox(width: AmoraSpacing.minimumTouchTarget),
             Expanded(

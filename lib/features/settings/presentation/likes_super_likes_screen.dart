@@ -3,6 +3,7 @@ import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
+import 'package:amora_ai/core/widgets/amora_app_bar.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/core/widgets/amoraa_confirm_action_sheet.dart';
 import 'package:amora_ai/features/discover/presentation/discover_screen.dart';
@@ -63,7 +64,10 @@ class _LikesSuperLikesScreenState extends State<LikesSuperLikesScreen> {
     final superLikes = _source.superLikedProfiles.length;
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(title: const Text('Likes & Super Likes')),
+      appBar: AmoraAppBar(
+        title: 'Likes & Super Likes',
+        onBack: () => Navigator.of(context).maybePop(),
+      ),
       body: SafeArea(
         top: false,
         child: ResponsiveMobileFrame(

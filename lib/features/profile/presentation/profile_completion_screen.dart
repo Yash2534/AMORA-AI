@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
-import 'package:amora_ai/core/widgets/amora_screen_title.dart';
+import 'package:amora_ai/core/widgets/amora_app_bar.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
@@ -81,12 +81,10 @@ class _ProfileCompletionScreenState extends State<ProfileCompletionScreen> {
     final pending = profile.pendingFields;
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        titleSpacing: AmoraSpacing.space8,
-        title: const AmoraScreenTitle(
-          title: 'Profile Completion',
-          subtitle: 'Your progress dashboard',
-        ),
+      appBar: AmoraAppBar(
+        title: 'Profile Completion',
+        subtitle: 'Your progress dashboard',
+        onBack: () => Navigator.of(context).maybePop(),
       ),
       body: SafeArea(
         top: false,

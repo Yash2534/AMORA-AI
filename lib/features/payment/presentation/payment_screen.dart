@@ -1,9 +1,9 @@
 import 'dart:async';
 
 import 'package:amora_ai/core/theme/app_colors.dart';
-import 'package:amora_ai/core/theme/amora_spacing.dart';
-import 'package:amora_ai/core/theme/amora_text_styles.dart';
+import 'package:amora_ai/core/theme/amora_header_tokens.dart';
 import 'package:amora_ai/core/widgets/amora_app_bar.dart';
+import 'package:amora_ai/core/widgets/amora_screen_title.dart';
 import 'package:amora_ai/core/widgets/amora_dialog.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/amoraa_select_field.dart';
@@ -348,29 +348,15 @@ class _PaymentAppBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: AmoraSpacing.appBarWithSubtitleHeight,
+      height: AmoraHeaderTokens.titleSubtitleHeight,
       child: Row(
         children: [
           AmoraHeaderBackButton(onPressed: onBack),
-          const SizedBox(width: 8),
+          const SizedBox(width: AmoraHeaderTokens.backTitleGap),
           const Expanded(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Review membership',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AmoraTextStyles.pageHeaderTitle,
-                ),
-                Text(
-                  'Confirm your plan before continuing.',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AmoraTextStyles.pageHeaderSubtitle,
-                ),
-              ],
+            child: AmoraScreenTitle(
+              title: 'Review membership',
+              subtitle: 'Confirm your plan before continuing.',
             ),
           ),
           const Icon(

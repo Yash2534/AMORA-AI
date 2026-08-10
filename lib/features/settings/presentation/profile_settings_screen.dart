@@ -1,8 +1,10 @@
 import 'package:amora_ai/core/theme/amora_spacing.dart';
+import 'package:amora_ai/core/theme/amora_header_tokens.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/core/widgets/amora_app_bar.dart';
+import 'package:amora_ai/core/widgets/amora_screen_title.dart';
 import 'package:amora_ai/features/auth/presentation/forgot_password_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_basic_details_screen.dart';
 import 'package:amora_ai/features/settings/presentation/account_action_screens.dart';
@@ -34,7 +36,7 @@ class ProfileSettingsScreen extends StatelessWidget {
                 pinned: true,
                 backgroundColor: AppColors.background.withValues(alpha: .96),
                 surfaceTintColor: AppColors.background,
-                toolbarHeight: AmoraSpacing.appBarWithSubtitleHeight,
+                toolbarHeight: AmoraHeaderTokens.titleSubtitleHeight,
                 leadingWidth: AmoraSpacing.space56,
                 leading: Padding(
                   padding: const EdgeInsets.only(left: AmoraSpacing.space4),
@@ -42,26 +44,12 @@ class ProfileSettingsScreen extends StatelessWidget {
                     onPressed: () => Navigator.of(context).maybePop(),
                   ),
                 ),
-                titleSpacing: AmoraSpacing.space8,
+                titleSpacing: AmoraHeaderTokens.backTitleGap,
                 title: Semantics(
                   header: true,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'Profile Settings',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      SizedBox(height: 2),
-                      Text(
-                        'Manage your AMORAA account',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AmoraTextStyles.pageHeaderSubtitle,
-                      ),
-                    ],
+                  child: AmoraScreenTitle(
+                    title: 'Profile Settings',
+                    subtitle: 'Manage your AMORAA account',
                   ),
                 ),
               ),

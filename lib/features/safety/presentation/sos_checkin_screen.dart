@@ -2,6 +2,8 @@ import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/permissions/amoraa_permission_service.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
+import 'package:amora_ai/core/widgets/amora_app_bar.dart';
+import 'package:amora_ai/core/widgets/amora_screen_title.dart';
 import 'package:amora_ai/core/widgets/amoraa_select_field.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
@@ -218,11 +220,8 @@ class _Header extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        IconButton.filledTonal(
-          onPressed: onBack,
-          icon: const Icon(Icons.arrow_back_rounded),
-        ),
-        const SizedBox(width: 10),
+        AmoraHeaderBackButton(onPressed: onBack),
+        const SizedBox(width: AmoraSpacing.space8),
         Container(
           width: 52,
           height: 52,
@@ -239,25 +238,9 @@ class _Header extends StatelessWidget {
         ),
         const SizedBox(width: 12),
         const Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Date Check-in',
-                style: TextStyle(
-                  color: AppColors.deepWine,
-                  fontSize: 25,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              Text(
-                'Share safety status with people you trust.',
-                style: TextStyle(
-                  color: AppColors.textGray,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
+          child: AmoraScreenTitle(
+            title: 'Date Check-in',
+            subtitle: 'Share safety status with people you trust.',
           ),
         ),
       ],

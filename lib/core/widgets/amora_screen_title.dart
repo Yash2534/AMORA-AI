@@ -1,4 +1,4 @@
-import 'package:amora_ai/core/theme/amora_text_styles.dart';
+import 'package:amora_ai/core/theme/amora_header_tokens.dart';
 import 'package:flutter/material.dart';
 
 /// The shared title block used by headers that retain an existing subtitle.
@@ -27,15 +27,15 @@ class AmoraScreenTitle extends StatelessWidget {
             title,
             maxLines: titleMaxLines,
             overflow: TextOverflow.ellipsis,
-            style: AmoraTextStyles.pageHeaderTitle,
+            style: AmoraHeaderTokens.titleStyle,
           ),
           if (subtitle case final subtitle?) ...[
-            const SizedBox(height: 2),
+            const SizedBox(height: AmoraHeaderTokens.titleSubtitleGap),
             Text(
               subtitle,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: AmoraTextStyles.pageHeaderSubtitle,
+              style: AmoraHeaderTokens.subtitleStyle,
             ),
           ],
         ],

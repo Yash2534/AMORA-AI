@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
+import 'package:amora_ai/core/widgets/amora_app_bar.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
@@ -94,32 +95,17 @@ class _AmoraaProfileFormState extends State<AmoraaProfileForm> {
       },
       child: Scaffold(
         backgroundColor: AppColors.background,
-        appBar: AppBar(
-          backgroundColor: AppColors.surface,
-          surfaceTintColor: AppColors.surface,
-          titleSpacing: AmoraSpacing.space8,
-          title: const Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Edit profile'),
-              Text(
-                'Update your AMORAA story',
-                style: AmoraTextStyles.pageHeaderSubtitle,
-              ),
-            ],
-          ),
-          leading: IconButton(
-            tooltip: 'Back to profile',
-            onPressed: () => Navigator.of(context).maybePop(),
-            icon: const Icon(Icons.arrow_back_rounded),
-          ),
+        appBar: AmoraAppBar(
+          title: 'Edit profile',
+          subtitle: 'Update your AMORAA story',
+          onBack: () => Navigator.of(context).maybePop(),
           actions: [
-            IconButton(
+            AmoraHeaderActionButton(
               tooltip: 'Preview profile',
+              icon: Icons.visibility_rounded,
               onPressed: () => Navigator.of(
                 context,
               ).pushNamed(ProfilePreviewScreen.routeName),
-              icon: const Icon(Icons.visibility_rounded),
             ),
             const SizedBox(width: AmoraSpacing.space4),
           ],

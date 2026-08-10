@@ -1,8 +1,10 @@
 import 'package:amora_ai/core/branding/amora_brand_assets.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
+import 'package:amora_ai/core/theme/amora_header_tokens.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
+import 'package:amora_ai/core/widgets/amora_app_bar.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:flutter/material.dart';
 
@@ -70,7 +72,15 @@ class LegalDocumentScreen extends StatelessWidget {
                 pinned: true,
                 backgroundColor: AppColors.background.withValues(alpha: .96),
                 surfaceTintColor: AppColors.background,
-                titleSpacing: AmoraSpacing.space8,
+                toolbarHeight: AmoraHeaderTokens.singleLineHeight,
+                leadingWidth: AmoraSpacing.space56,
+                leading: Padding(
+                  padding: const EdgeInsets.only(left: AmoraSpacing.space4),
+                  child: AmoraHeaderBackButton(
+                    onPressed: () => Navigator.of(context).maybePop(),
+                  ),
+                ),
+                titleSpacing: AmoraHeaderTokens.backTitleGap,
                 title: Text(title, maxLines: 1),
               ),
               SliverPadding(

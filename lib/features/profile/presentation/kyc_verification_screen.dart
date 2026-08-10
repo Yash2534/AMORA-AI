@@ -2,11 +2,12 @@ import 'dart:async';
 
 import 'package:amora_ai/core/access/amora_access.dart';
 import 'package:amora_ai/core/media/amora_media_picker.dart';
-import 'package:amora_ai/core/theme/amora_icons.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
+import 'package:amora_ai/core/widgets/amora_app_bar.dart';
+import 'package:amora_ai/core/widgets/amora_screen_title.dart';
 import 'package:amora_ai/core/widgets/amoraa_adaptive_image.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
@@ -297,24 +298,12 @@ class _KycHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        IconButton.filledTonal(
-          tooltip: 'Back',
-          onPressed: onBack,
-          icon: const Icon(AmoraIcons.back),
-        ),
-        const SizedBox(width: AmoraSpacing.space12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Identity Verification', style: AmoraTextStyles.titleLarge),
-              Text(
-                'Secure, guided, and private',
-                style: AmoraTextStyles.bodySmall.copyWith(
-                  color: AppColors.textSecondary,
-                ),
-              ),
-            ],
+        AmoraHeaderBackButton(onPressed: onBack),
+        const SizedBox(width: AmoraSpacing.space8),
+        const Expanded(
+          child: AmoraScreenTitle(
+            title: 'Identity Verification',
+            subtitle: 'Secure, guided, and private',
           ),
         ),
         AppPrimaryButton(

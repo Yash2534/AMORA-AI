@@ -1,9 +1,11 @@
 import 'package:amora_ai/core/theme/amora_spacing.dart';
+import 'package:amora_ai/core/theme/amora_header_tokens.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/core/widgets/amora_app_bar.dart';
+import 'package:amora_ai/core/widgets/amora_screen_title.dart';
 import 'package:amora_ai/features/legal/presentation/community_guidelines_screen.dart';
 import 'package:amora_ai/features/profile/presentation/controllers/profile_relationship_controller.dart';
 import 'package:amora_ai/features/settings/presentation/managed_profiles_screen.dart';
@@ -45,7 +47,7 @@ class SafetyPrivacyScreen extends StatelessWidget {
                       alpha: .96,
                     ),
                     surfaceTintColor: AppColors.background,
-                    toolbarHeight: AmoraSpacing.appBarWithSubtitleHeight,
+                    toolbarHeight: AmoraHeaderTokens.titleSubtitleHeight,
                     leadingWidth: AmoraSpacing.space56,
                     leading: Padding(
                       padding: const EdgeInsets.only(left: AmoraSpacing.space4),
@@ -53,22 +55,13 @@ class SafetyPrivacyScreen extends StatelessWidget {
                         onPressed: () => Navigator.of(context).maybePop(),
                       ),
                     ),
-                    titleSpacing: AmoraSpacing.space8,
+                    titleSpacing: AmoraHeaderTokens.backTitleGap,
                     title: Semantics(
                       header: true,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text('Safety Center'),
-                          SizedBox(height: 2),
-                          Text(
+                      child: AmoraScreenTitle(
+                        title: 'Safety Center',
+                        subtitle:
                             'Tools and guidance for dating with confidence',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AmoraTextStyles.pageHeaderSubtitle,
-                          ),
-                        ],
                       ),
                     ),
                   ),

@@ -1,8 +1,8 @@
-import 'package:amora_ai/core/theme/amora_icons.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
-import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
+import 'package:amora_ai/core/widgets/amora_app_bar.dart';
+import 'package:amora_ai/core/widgets/amora_screen_title.dart';
 import 'package:amora_ai/core/widgets/amoraa_select_field.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:flutter/material.dart';
@@ -110,20 +110,9 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Row(
     children: [
-      IconButton.filledTonal(
-        onPressed: () => Navigator.of(context).maybePop(),
-        icon: const Icon(AmoraIcons.back),
-      ),
-      const SizedBox(width: AmoraSpacing.space12),
-      Expanded(
-        child: Text(
-          'Referral Leaderboard',
-          style: AmoraTextStyles.headlineSmall.copyWith(
-            color: AppColors.deepWine,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ),
+      AmoraHeaderBackButton(onPressed: () => Navigator.of(context).maybePop()),
+      const SizedBox(width: AmoraSpacing.space8),
+      const Expanded(child: AmoraScreenTitle(title: 'Referral Leaderboard')),
     ],
   );
 }

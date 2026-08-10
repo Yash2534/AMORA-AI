@@ -1,10 +1,13 @@
 import 'dart:async';
 
 import 'package:amora_ai/core/theme/amora_shadows.dart';
+import 'package:amora_ai/core/theme/amora_header_tokens.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/amora_snackbar.dart';
+import 'package:amora_ai/core/widgets/amora_app_bar.dart';
+import 'package:amora_ai/core/widgets/amora_screen_title.dart';
 import 'package:amora_ai/core/widgets/amoraa_select_field.dart';
 import 'package:amora_ai/core/widgets/premium_motion.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
@@ -13,6 +16,7 @@ import 'package:amora_ai/features/discover/data/discover_api_service.dart';
 import 'package:amora_ai/features/discover/presentation/widgets/amoraa_minimum_height_picker.dart';
 import 'package:amora_ai/features/profile/domain/profile_form_options.dart';
 import 'package:amora_ai/features/profile/domain/profile_form_validators.dart';
+import 'package:amora_ai/features/profile/domain/communication_style.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -29,6 +33,7 @@ class ProfilePreferenceFilterState {
     this.sexualities = const <String>{},
     this.preferredTalkingHours = const <String>{},
     this.loveLanguages = const <String>{},
+    this.communicationStyles = const <CommunicationStyle>{},
   });
 
   final Set<String> hometowns;
@@ -37,6 +42,7 @@ class ProfilePreferenceFilterState {
   final Set<String> sexualities;
   final Set<String> preferredTalkingHours;
   final Set<String> loveLanguages;
+  final Set<CommunicationStyle> communicationStyles;
 
   bool get isEmpty =>
       hometowns.isEmpty &&
@@ -44,7 +50,8 @@ class ProfilePreferenceFilterState {
       pronouns.isEmpty &&
       sexualities.isEmpty &&
       preferredTalkingHours.isEmpty &&
-      loveLanguages.isEmpty;
+      loveLanguages.isEmpty &&
+      communicationStyles.isEmpty;
 }
 
 final appliedProfilePreferenceFilters =
@@ -53,16 +60,18 @@ final appliedProfilePreferenceFilters =
     );
 
 class AdvancedFiltersScreen extends StatefulWidget {
-  const AdvancedFiltersScreen({super.key});
+  const AdvancedFiltersScreen({super.key, this.apiService});
 
   static const routeName = '/filters';
+
+  final DiscoverApiService? apiService;
 
   @override
   State<AdvancedFiltersScreen> createState() => _AdvancedFiltersScreenState();
 }
 
 class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
-  final DiscoverApiService _discoverApi = DiscoverApiService();
+  late final DiscoverApiService _discoverApi;
   RangeValues _age = const RangeValues(24, 34);
   double _distance = 80;
   double _score = 80;
@@ -88,6 +97,7 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
   final Set<String> _sexualities = {};
   final Set<String> _preferredTalkingHours = {};
   final Set<String> _loveLanguages = {};
+  final Set<CommunicationStyle> _communicationStyles = {};
   bool _verifiedOnly = true;
   bool _onlineNow = false;
   bool _hasPrompts = true;
@@ -117,6 +127,7 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
   @override
   void initState() {
     super.initState();
+    _discoverApi = widget.apiService ?? DiscoverApiService();
     _filterSearchController = TextEditingController();
     _customEducationController = TextEditingController();
     unawaited(_loadSavedFilters());
@@ -203,6 +214,13 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
       );
       replace(_preferredTalkingHours, values('preferredTalkingHours'));
       replace(_loveLanguages, values('loveLanguages'));
+      _communicationStyles
+        ..clear()
+        ..addAll(
+          values('communicationStyles')
+              .map(CommunicationStyle.fromStorageValue)
+              .whereType<CommunicationStyle>(),
+        );
       replace(
         _smoking,
         value('smoking').isEmpty
@@ -772,11 +790,13 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
       subtitle: 'Qualities, conversation rhythm and love languages',
       summary: _joinedSummaries([
         _selectionSummary(_qualities),
+        _communicationStyleSummary,
         _selectionSummary(_preferredTalkingHours),
         _selectionSummary(_loveLanguages),
       ]),
       selectedCount:
           _qualities.length +
+          _communicationStyles.length +
           _preferredTalkingHours.length +
           _loveLanguages.length,
       expanded: _expandedGroups.contains(_GroupIds.compatibility),
@@ -804,6 +824,28 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
               ],
               onSelectionChanged: (values) =>
                   _replaceSelection(_qualities, values),
+            ),
+          ),
+          const _FilterDivider(),
+          _ControlBlock(
+            icon: Icons.forum_outlined,
+            title: 'Communication Style',
+            description: 'Choose every way you enjoy staying connected',
+            child: AmoraaSelectField<CommunicationStyle>(
+              key: const ValueKey('filters-communication-style-selector'),
+              label: 'Communication Style',
+              selectionMode: AmoraaSelectionMode.multiple,
+              selectedValues: _communicationStyles,
+              hintText: 'Any communication style',
+              supportingText: 'Select one or more communication styles.',
+              prefixIcon: Icons.forum_outlined,
+              allowClear: true,
+              options: [
+                for (final style in CommunicationStyle.values)
+                  AmoraaSelectOption(value: style, label: style.label),
+              ],
+              onSelectionChanged: (values) =>
+                  _replaceCommunicationStyles(values),
             ),
           ),
           const _FilterDivider(),
@@ -1066,6 +1108,11 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
     for (final value in _qualities) {
       add('Their Qualities', value);
     }
+    for (final style in CommunicationStyle.values) {
+      if (_communicationStyles.contains(style)) {
+        add('Communication Style', style.label);
+      }
+    }
     for (final value in _pronouns) {
       add('Pronouns', value);
     }
@@ -1123,6 +1170,14 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
     return parts.join(' • ');
   }
 
+  String get _communicationStyleSummary {
+    final labels = <String>[
+      for (final style in CommunicationStyle.values)
+        if (_communicationStyles.contains(style)) style.label,
+    ];
+    return labels.take(3).join(', ');
+  }
+
   String _selectionSummary(Set<String> values, {String fallback = ''}) {
     if (values.isEmpty) return fallback;
     return values.take(3).join(', ');
@@ -1146,6 +1201,14 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
   void _replaceSelection(Set<String> selected, Set<String> values) {
     setState(() {
       selected
+        ..clear()
+        ..addAll(values);
+    });
+  }
+
+  void _replaceCommunicationStyles(Set<CommunicationStyle> values) {
+    setState(() {
+      _communicationStyles
         ..clear()
         ..addAll(values);
     });
@@ -1290,6 +1353,10 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
       'talking',
       'hours',
       'love language',
+      'communication',
+      'texting',
+      'calls',
+      'voice notes',
       'compatibility',
     ])) {
       return _SearchTarget(
@@ -1418,6 +1485,7 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
       _sexualities.clear();
       _preferredTalkingHours.clear();
       _loveLanguages.clear();
+      _communicationStyles.clear();
       _verifiedOnly = false;
       _onlineNow = false;
       _hasPrompts = false;
@@ -1425,6 +1493,19 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
       appliedProfilePreferenceFilters.value =
           const ProfilePreferenceFilterState();
     });
+    unawaited(_clearPersistedCommunicationStyles());
+  }
+
+  Future<void> _clearPersistedCommunicationStyles() async {
+    final result = await _discoverApi.updateFilters(<String, dynamic>{
+      'communicationStyles': <String>[],
+    });
+    if (!mounted || result.success) return;
+    showAmoraSnackBar(
+      context,
+      message: result.message,
+      tone: AmoraSnackBarTone.error,
+    );
   }
 
   Future<void> _apply() async {
@@ -1463,6 +1544,10 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
       'qualities': _qualities.toList(),
       'preferredTalkingHours': _preferredTalkingHours.toList(),
       'loveLanguages': _loveLanguages.toList(),
+      'communicationStyles': [
+        for (final style in CommunicationStyle.values)
+          if (_communicationStyles.contains(style)) style.storageValue,
+      ],
       'smoking': _smoking.isEmpty ? '' : _smoking.first,
       'drinking': _drinking.isEmpty ? '' : _drinking.first,
       'weed': _weed.isEmpty ? '' : _weed.first,
@@ -1489,6 +1574,9 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
       sexualities: Set<String>.unmodifiable(_sexualities),
       preferredTalkingHours: Set<String>.unmodifiable(_preferredTalkingHours),
       loveLanguages: Set<String>.unmodifiable(_loveLanguages),
+      communicationStyles: Set<CommunicationStyle>.unmodifiable(
+        _communicationStyles,
+      ),
     );
     showAmoraSnackBar(context, message: 'Filters applied');
     if (navigator.canPop()) {
@@ -1522,38 +1610,19 @@ class _FiltersHeader extends StatelessWidget {
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(8, 8, 10, 10),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            IconButton(
+            AmoraHeaderBackButton(
               key: const ValueKey('filters-back-button'),
-              tooltip: 'Back',
               onPressed: onBack,
-              icon: const Icon(Icons.arrow_back_rounded),
             ),
-            const SizedBox(width: 4),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'Filters',
-                    maxLines: 1,
-                    style: AmoraTextStyles.titleLarge.copyWith(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  Text(
-                    'Refine who appears in Discover',
-                    maxLines: 2,
-                    style: AmoraTextStyles.bodySmall.copyWith(
-                      color: AppColors.text.withValues(alpha: .68),
-                    ),
-                  ),
-                ],
+            const SizedBox(width: AmoraHeaderTokens.backTitleGap),
+            const Expanded(
+              child: AmoraScreenTitle(
+                title: 'Filters',
+                subtitle: 'Refine who appears in Discover',
               ),
             ),
             const SizedBox(width: 6),

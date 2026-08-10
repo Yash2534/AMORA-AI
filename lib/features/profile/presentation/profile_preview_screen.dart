@@ -1,6 +1,7 @@
 import 'package:amora_ai/core/data/image_repository.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
+import 'package:amora_ai/core/widgets/amora_app_bar.dart';
 import 'package:amora_ai/features/subscription/domain/amoraa_membership_status.dart';
 import 'package:amora_ai/features/discover/presentation/discover_screen.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
@@ -56,13 +57,9 @@ class _ProfilePreviewScreenState extends State<ProfilePreviewScreen> {
     if (_photoIndex >= photos.length) _photoIndex = 0;
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('Profile Preview'),
-        leading: IconButton(
-          tooltip: 'Back',
-          onPressed: () => Navigator.of(context).maybePop(),
-          icon: const Icon(Icons.arrow_back_rounded),
-        ),
+      appBar: AmoraAppBar(
+        title: 'Profile Preview',
+        onBack: () => Navigator.of(context).maybePop(),
       ),
       body: SafeArea(
         top: false,

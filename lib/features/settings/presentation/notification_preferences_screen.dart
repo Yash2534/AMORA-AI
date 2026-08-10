@@ -3,6 +3,8 @@ import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/permissions/amoraa_permission_service.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
+import 'package:amora_ai/core/widgets/amora_app_bar.dart';
+import 'package:amora_ai/core/widgets/amora_screen_title.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:flutter/material.dart';
@@ -224,27 +226,12 @@ class _Header extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        IconButton.filledTonal(
-          tooltip: 'Back',
-          onPressed: onBack,
-          icon: const Icon(Icons.arrow_back_rounded),
-        ),
-        const SizedBox(width: AmoraSpacing.space12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Notification Preferences',
-                style: AmoraTextStyles.headlineSmall,
-              ),
-              Text(
-                'Stay informed without the noise.',
-                style: AmoraTextStyles.bodySmall.copyWith(
-                  color: AppColors.textSecondary,
-                ),
-              ),
-            ],
+        AmoraHeaderBackButton(onPressed: onBack),
+        const SizedBox(width: AmoraSpacing.space8),
+        const Expanded(
+          child: AmoraScreenTitle(
+            title: 'Notification Preferences',
+            subtitle: 'Stay informed without the noise.',
           ),
         ),
       ],

@@ -1,9 +1,11 @@
 import 'dart:math' as math;
 
 import 'package:amora_ai/core/theme/amora_spacing.dart';
+import 'package:amora_ai/core/theme/amora_header_tokens.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/amoraa_select_field.dart';
+import 'package:amora_ai/core/widgets/amora_app_bar.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/amora_snackbar.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
@@ -363,14 +365,10 @@ class _FlowHeader extends StatelessWidget {
       child: Row(
         children: [
           SizedBox.square(
-            dimension: 48,
+            dimension: AmoraHeaderTokens.touchTarget,
             child: onBack == null
                 ? null
-                : IconButton(
-                    tooltip: 'Go back',
-                    onPressed: onBack,
-                    icon: const Icon(Icons.arrow_back_rounded),
-                  ),
+                : AmoraHeaderBackButton(onPressed: onBack!),
           ),
           Expanded(
             child: Column(
@@ -388,7 +386,7 @@ class _FlowHeader extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(width: 48),
+          const SizedBox(width: AmoraHeaderTokens.touchTarget),
         ],
       ),
     );

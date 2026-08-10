@@ -1,4 +1,5 @@
 import 'package:amora_ai/core/theme/amora_icon_sizes.dart';
+import 'package:amora_ai/core/theme/amora_header_tokens.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
@@ -76,19 +77,19 @@ abstract final class AmoraTheme {
         centerTitle: false,
         elevation: 0,
         scrolledUnderElevation: 0,
-        toolbarHeight: AmoraSpacing.appBarHeight,
+        toolbarHeight: AmoraHeaderTokens.singleLineHeight,
         backgroundColor: AppColors.background,
         foregroundColor: AppColors.primary,
         surfaceTintColor: AppColors.transparent,
-        titleSpacing: AmoraSpacing.space20,
-        titleTextStyle: AmoraTextStyles.pageHeaderTitle,
+        titleSpacing: AmoraHeaderTokens.contentHorizontalInset,
+        titleTextStyle: AmoraHeaderTokens.titleStyle,
         iconTheme: IconThemeData(
           color: AppColors.primary,
-          size: AmoraIconSizes.medium,
+          size: AmoraHeaderTokens.iconSize,
         ),
         actionsIconTheme: IconThemeData(
           color: AppColors.primary,
-          size: AmoraIconSizes.medium,
+          size: AmoraHeaderTokens.iconSize,
         ),
       ),
       dividerColor: AppColors.divider,

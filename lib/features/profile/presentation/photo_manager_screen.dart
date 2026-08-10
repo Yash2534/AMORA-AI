@@ -10,6 +10,7 @@ import 'package:amora_ai/core/theme/amora_icons.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
+import 'package:amora_ai/core/widgets/amora_app_bar.dart';
 import 'package:amora_ai/core/widgets/amora_screen_title.dart';
 import 'package:amora_ai/core/widgets/amora_snackbar.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
@@ -406,30 +407,14 @@ class _Header extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        IconButton.filledTonal(
+        AmoraHeaderBackButton(
           onPressed: () => Navigator.of(context).maybePop(),
-          icon: const Icon(AmoraIcons.back),
         ),
-        const SizedBox(width: AmoraSpacing.space12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Photo Manager',
-                style: AmoraTextStyles.headlineSmall.copyWith(
-                  color: AppColors.deepWine,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              Text(
-                'Choose clear photos that represent you.',
-                style: AmoraTextStyles.bodySmall.copyWith(
-                  color: AppColors.textGray,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
+        const SizedBox(width: AmoraSpacing.space8),
+        const Expanded(
+          child: AmoraScreenTitle(
+            title: 'Photo Manager',
+            subtitle: 'Choose clear photos that represent you.',
           ),
         ),
       ],
@@ -809,14 +794,14 @@ class _ProfilePhotoViewerScreenState extends State<ProfilePhotoViewerScreen> {
     return Scaffold(
       key: const ValueKey('photo-full-preview'),
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        leading: IconButton(
+      appBar: AmoraAppBar(
+        leading: AmoraHeaderActionButton(
           key: const ValueKey('photo-preview-close'),
           tooltip: 'Close photo preview',
+          icon: Icons.close_rounded,
           onPressed: () => Navigator.of(context).pop(),
-          icon: const Icon(Icons.close_rounded),
         ),
-        title: Text('${_index + 1} of ${widget.photos.length}'),
+        title: '${_index + 1} of ${widget.photos.length}',
       ),
       body: SafeArea(
         top: false,
@@ -940,17 +925,14 @@ class _ProfilePhotoCropPreviewScreenState
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        leading: IconButton(
+      appBar: AmoraAppBar(
+        leading: AmoraHeaderActionButton(
           tooltip: 'Cancel photo crop',
+          icon: Icons.arrow_back_rounded,
           onPressed: _usingPhoto ? null : () => Navigator.of(context).pop(),
-          icon: const Icon(Icons.arrow_back_rounded),
         ),
-        titleSpacing: AmoraSpacing.space8,
-        title: const AmoraScreenTitle(
-          title: 'Crop Photo',
-          subtitle: 'Drag and zoom to frame your profile',
-        ),
+        title: 'Crop Photo',
+        subtitle: 'Drag and zoom to frame your profile',
       ),
       body: SafeArea(
         top: false,

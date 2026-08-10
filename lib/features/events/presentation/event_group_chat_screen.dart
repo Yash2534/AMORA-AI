@@ -4,6 +4,8 @@ import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/amora_search_bar.dart';
+import 'package:amora_ai/core/widgets/amora_app_bar.dart';
+import 'package:amora_ai/core/widgets/amora_screen_title.dart';
 import 'package:amora_ai/core/widgets/app_text_field.dart';
 import 'package:amora_ai/core/widgets/premium_avatar.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
@@ -126,31 +128,12 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Row(
     children: [
-      IconButton.filledTonal(
-        onPressed: onBack,
-        icon: const Icon(AmoraIcons.back),
-      ),
-      const SizedBox(width: 10),
+      AmoraHeaderBackButton(onPressed: onBack),
+      const SizedBox(width: AmoraSpacing.space8),
       const Expanded(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Event Group Chat',
-              style: TextStyle(
-                color: AppColors.deepWine,
-                fontSize: 24,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-            Text(
-              'Verified attendees and host announcements',
-              style: TextStyle(
-                color: AppColors.textGray,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
+        child: AmoraScreenTitle(
+          title: 'Event Group Chat',
+          subtitle: 'Verified attendees and host announcements',
         ),
       ),
       const Chip(

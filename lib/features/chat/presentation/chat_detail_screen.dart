@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:amora_ai/core/data/image_repository.dart';
 import 'package:amora_ai/core/theme/amora_icon_sizes.dart';
+import 'package:amora_ai/core/theme/amora_header_tokens.dart';
 import 'package:amora_ai/core/theme/amora_icons.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
@@ -444,9 +445,11 @@ class ChatHeader extends StatelessWidget {
       shadowColor: AppColors.primary.withValues(alpha: .08),
       elevation: 1,
       child: SizedBox(
-        height: 72,
+        height: AmoraHeaderTokens.chatDetailHeight,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AmoraHeaderTokens.pageHorizontalInset,
+          ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -456,7 +459,7 @@ class ChatHeader extends StatelessWidget {
                 icon: Icons.arrow_back_rounded,
                 onPressed: onBack,
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AmoraHeaderTokens.backTitleGap),
               Expanded(
                 child: Semantics(
                   container: true,
@@ -539,7 +542,7 @@ class ChatHeader extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AmoraHeaderTokens.actionGap),
               _HeaderIconButton(
                 key: const ValueKey('chat-header-more'),
                 tooltip: 'More chat options',
@@ -569,12 +572,15 @@ class _HeaderIconButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox.square(
-      dimension: 48,
+      dimension: AmoraHeaderTokens.touchTarget,
       child: Center(
         child: IconButton(
           tooltip: tooltip,
           onPressed: onPressed,
-          constraints: const BoxConstraints.tightFor(width: 44, height: 44),
+          constraints: const BoxConstraints.tightFor(
+            width: AmoraHeaderTokens.actionVisualSize,
+            height: AmoraHeaderTokens.actionVisualSize,
+          ),
           padding: EdgeInsets.zero,
           style: IconButton.styleFrom(
             foregroundColor: AppColors.primary,
@@ -584,7 +590,7 @@ class _HeaderIconButton extends StatelessWidget {
             highlightColor: AppColors.tertiary.withValues(alpha: .2),
             side: BorderSide(color: AppColors.secondary.withValues(alpha: .16)),
           ),
-          icon: Icon(icon, size: 21),
+          icon: Icon(icon, size: AmoraHeaderTokens.chatIconSize),
         ),
       ),
     );

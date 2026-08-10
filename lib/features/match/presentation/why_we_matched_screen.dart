@@ -3,6 +3,8 @@ import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
+import 'package:amora_ai/core/widgets/amora_app_bar.dart';
+import 'package:amora_ai/core/widgets/amora_screen_title.dart';
 import 'package:amora_ai/core/widgets/premium_avatar.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
@@ -33,18 +35,12 @@ class WhyWeMatchedScreen extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    IconButton.filledTonal(
+                    AmoraHeaderBackButton(
                       onPressed: () => Navigator.of(context).maybePop(),
-                      icon: const Icon(Icons.arrow_back_rounded),
                     ),
-                    const SizedBox(width: AmoraSpacing.space12),
-                    Expanded(
-                      child: Text(
-                        'Why We Matched',
-                        style: AmoraTextStyles.headlineMedium.copyWith(
-                          color: AppColors.deepWine,
-                        ),
-                      ),
+                    const SizedBox(width: AmoraSpacing.space8),
+                    const Expanded(
+                      child: AmoraScreenTitle(title: 'Why We Matched'),
                     ),
                   ],
                 ),

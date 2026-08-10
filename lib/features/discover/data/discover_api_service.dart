@@ -6,6 +6,19 @@ import 'package:amora_ai/core/config/amora_api_config.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
+Map<String, String> buildDiscoverFeedQuery({
+  required int page,
+  required int limit,
+  Iterable<String> communicationStyles = const <String>[],
+}) {
+  final styles = communicationStyles.toSet().toList(growable: false);
+  return {
+    'page': '$page',
+    'limit': '$limit',
+    if (styles.isNotEmpty) 'communicationStyles': styles.join(','),
+  };
+}
+
 class DiscoverApiResult<T> {
   const DiscoverApiResult.success(
     this.data, {
@@ -57,11 +70,16 @@ class DiscoverApiService {
   Future<DiscoverApiResult<DiscoverFeedPage>> getFeed({
     required int page,
     int limit = 10,
+    Iterable<String> communicationStyles = const <String>[],
   }) async {
     final result = await _request(
       'GET',
       '/api/discover/feed',
-      query: {'page': '$page', 'limit': '$limit'},
+      query: buildDiscoverFeedQuery(
+        page: page,
+        limit: limit,
+        communicationStyles: communicationStyles,
+      ),
     );
     if (!result.success || result.data == null) {
       return DiscoverApiResult.failure(

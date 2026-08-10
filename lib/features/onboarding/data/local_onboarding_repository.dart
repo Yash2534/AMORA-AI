@@ -6,7 +6,6 @@ import 'package:amora_ai/core/widgets/amora_dob_field.dart';
 import 'package:amora_ai/features/onboarding/data/onboarding_api_service.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
 import 'package:amora_ai/features/profile/domain/profile_form_options.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -339,36 +338,41 @@ class LocalOnboardingRepository extends ChangeNotifier
   Future<void> _syncState(LocalOnboardingState state) async {
     switch (state.stage) {
       case OnboardingStage.age:
-        if (state.birthDate != null)
+        if (state.birthDate != null) {
           await _record('age', _api.saveAge(state.birthDate!));
+        }
         break;
       case OnboardingStage.gender:
-        if (state.gender != null && state.gender!.isNotEmpty)
+        if (state.gender != null && state.gender!.isNotEmpty) {
           await _record(
             'gender',
             _api.saveGender(state.gender!, customGender: state.customGender),
           );
+        }
         break;
       case OnboardingStage.interestedIn:
-        if (state.interestedIn.isNotEmpty)
+        if (state.interestedIn.isNotEmpty) {
           await _record(
             'interestedIn',
             _api.saveInterestedIn(state.interestedIn),
           );
+        }
         break;
       case OnboardingStage.relationshipGoal:
-        if (state.selectedRelationshipGoals.isNotEmpty)
+        if (state.selectedRelationshipGoals.isNotEmpty) {
           await _record(
             'relationshipGoal',
             _api.saveRelationshipGoals(state.selectedRelationshipGoals),
           );
+        }
         break;
       case OnboardingStage.location:
-        if (state.city != null && state.city!.trim().isNotEmpty)
+        if (state.city != null && state.city!.trim().isNotEmpty) {
           await _record(
             'location',
             _api.saveLocation(state.city!.trim(), state.preferredDistance),
           );
+        }
         break;
       case OnboardingStage.starterProfile:
         await _syncProfileData(includeStarter: true, includeCompletion: false);
@@ -388,25 +392,30 @@ class LocalOnboardingRepository extends ChangeNotifier
   }
 
   Future<void> _syncAll(LocalOnboardingState state) async {
-    if (state.birthDate != null)
+    if (state.birthDate != null) {
       await _record('age', _api.saveAge(state.birthDate!));
-    if (state.gender != null && state.gender!.isNotEmpty)
+    }
+    if (state.gender != null && state.gender!.isNotEmpty) {
       await _record(
         'gender',
         _api.saveGender(state.gender!, customGender: state.customGender),
       );
-    if (state.interestedIn.isNotEmpty)
+    }
+    if (state.interestedIn.isNotEmpty) {
       await _record('interestedIn', _api.saveInterestedIn(state.interestedIn));
-    if (state.selectedRelationshipGoals.isNotEmpty)
+    }
+    if (state.selectedRelationshipGoals.isNotEmpty) {
       await _record(
         'relationshipGoal',
         _api.saveRelationshipGoals(state.selectedRelationshipGoals),
       );
-    if (state.city != null && state.city!.trim().isNotEmpty)
+    }
+    if (state.city != null && state.city!.trim().isNotEmpty) {
       await _record(
         'location',
         _api.saveLocation(state.city!.trim(), state.preferredDistance),
       );
+    }
     await _syncProfileData(includeStarter: true, includeCompletion: true);
     await _syncPhotos();
     await _record('complete', _api.complete());
@@ -443,6 +452,7 @@ class LocalOnboardingRepository extends ChangeNotifier
           'valuedQualities': profile.valuedQualities,
           'loveLanguages': profile.loveLanguages,
           'preferredTalkingHours': profile.preferredTalkingHours,
+          'communicationStyle': profile.communicationStyle?.storageValue,
           'voicePromptUrl': profile.voicePrompt,
           'videoPromptUrl': profile.videoPrompt,
         }),
@@ -479,11 +489,12 @@ class LocalOnboardingRepository extends ChangeNotifier
       }
     }
     final current = profileRepository.profile;
-    if (current.photos.isNotEmpty)
+    if (current.photos.isNotEmpty) {
       await _record(
         'primaryPhoto',
         _api.setPrimaryPhoto(current.primaryPhotoIndex),
       );
+    }
   }
 
   Future<void> _record(

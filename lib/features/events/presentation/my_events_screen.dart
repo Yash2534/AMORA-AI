@@ -1,5 +1,7 @@
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
+import 'package:amora_ai/core/widgets/amora_app_bar.dart';
+import 'package:amora_ai/core/widgets/amora_screen_title.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/events/domain/event_models.dart';
 import 'package:amora_ai/features/events/domain/my_event_category.dart';
@@ -161,40 +163,17 @@ class _MyEventsHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 14, 20, 0),
+      padding: const EdgeInsets.fromLTRB(16, 14, 20, 0),
       child: Row(
         children: [
-          IconButton(
-            tooltip: 'Back',
-            constraints: const BoxConstraints.tightFor(width: 48, height: 48),
+          AmoraHeaderBackButton(
             onPressed: () => Navigator.of(context).maybePop(),
-            icon: const Icon(Icons.arrow_back_rounded),
           ),
           const SizedBox(width: 8),
           const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'My Events',
-                  style: TextStyle(
-                    color: AppColors.primary,
-                    fontSize: 26,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                SizedBox(height: 2),
-                Text(
-                  'Your plans, bookings, and event history.',
-                  maxLines: 2,
-                  style: TextStyle(
-                    color: AppColors.text,
-                    fontSize: 13,
-                    height: 1.3,
-                    fontWeight: FontWeight.w400,
-                  ),
-                ),
-              ],
+            child: AmoraScreenTitle(
+              title: 'My Events',
+              subtitle: 'Your plans, bookings, and event history.',
             ),
           ),
         ],

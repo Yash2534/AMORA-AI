@@ -4,6 +4,8 @@ import 'package:amora_ai/core/theme/amora_icons.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/widgets/amora_snackbar.dart';
+import 'package:amora_ai/core/widgets/amora_app_bar.dart';
+import 'package:amora_ai/core/widgets/amora_screen_title.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:flutter/material.dart';
@@ -31,12 +33,8 @@ class SettingsHeader extends StatelessWidget {
     return Row(
       children: [
         if (onBack != null) ...[
-          IconButton.filledTonal(
-            tooltip: 'Back',
-            onPressed: onBack,
-            icon: const Icon(AmoraIcons.back),
-          ),
-          const SizedBox(width: AmoraSpacing.space12),
+          AmoraHeaderBackButton(onPressed: onBack!),
+          const SizedBox(width: AmoraSpacing.space8),
         ],
         Container(
           width: AmoraSpacing.controlHeight,
@@ -51,31 +49,7 @@ class SettingsHeader extends StatelessWidget {
         ),
         const SizedBox(width: AmoraSpacing.space12),
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AmoraTextStyles.title.copyWith(
-                  color: AppColors.deepWine,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: AmoraSpacing.space4),
-              Text(
-                subtitle,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: AmoraTextStyles.caption.copyWith(
-                  color: AppColors.textGray,
-                  height: 1.25,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
+          child: AmoraScreenTitle(title: title, subtitle: subtitle),
         ),
       ],
     );

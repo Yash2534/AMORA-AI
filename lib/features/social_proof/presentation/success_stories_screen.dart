@@ -1,6 +1,8 @@
 import 'package:amora_ai/core/data/image_repository.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
+import 'package:amora_ai/core/widgets/amora_app_bar.dart';
+import 'package:amora_ai/core/widgets/amora_screen_title.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/premium_asset_image.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
@@ -30,20 +32,12 @@ class _SuccessStoriesScreenState extends State<SuccessStoriesScreen> {
               children: [
                 Row(
                   children: [
-                    IconButton.filledTonal(
+                    AmoraHeaderBackButton(
                       onPressed: () => Navigator.of(context).maybePop(),
-                      icon: const Icon(Icons.arrow_back_rounded),
                     ),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: 8),
                     const Expanded(
-                      child: Text(
-                        'Success Stories',
-                        style: TextStyle(
-                          color: AppColors.deepWine,
-                          fontSize: 26,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
+                      child: AmoraScreenTitle(title: 'Success Stories'),
                     ),
                   ],
                 ),

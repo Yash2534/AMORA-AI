@@ -1,4 +1,5 @@
 import 'package:amora_ai/core/theme/amora_spacing.dart';
+import 'package:amora_ai/core/theme/amora_header_tokens.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/amora_screen_title.dart';
@@ -367,31 +368,17 @@ class MembershipAppBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: AmoraSpacing.appBarWithSubtitleHeight,
+      height: AmoraHeaderTokens.titleSubtitleHeight,
       child: Row(
         children: [
           AmoraHeaderBackButton(
             onPressed: () => Navigator.of(context).maybePop(),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: AmoraHeaderTokens.backTitleGap),
           const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'AMORAA Membership',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AmoraTextStyles.pageHeaderTitle,
-                ),
-                SizedBox(height: 3),
-                Text(
-                  'Connect better. Meet meaningfully.',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AmoraTextStyles.pageHeaderSubtitle,
-                ),
-              ],
+            child: AmoraScreenTitle(
+              title: 'AMORAA Membership',
+              subtitle: 'Connect better. Meet meaningfully.',
             ),
           ),
         ],

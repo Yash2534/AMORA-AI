@@ -1,4 +1,5 @@
 import 'package:amora_ai/core/navigation/main_shell.dart';
+import 'package:amora_ai/core/theme/amora_header_tokens.dart';
 import 'package:amora_ai/core/theme/amora_theme.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/amoraa_main_page_header.dart';
@@ -94,6 +95,33 @@ void main() {
         const Size.square(AmoraaMainPageHeader.actionSize),
       );
     }
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Discover wordmark is moderately larger within shared bounds', (
+    tester,
+  ) async {
+    await pumpMainShell(tester, width: 320);
+
+    final logo = find.descendant(
+      of: find.byType(AmoraaMainPageHeader, skipOffstage: false),
+      matching: find.byWidgetPredicate(
+        (widget) =>
+            widget is Image &&
+            widget.width == AmoraHeaderTokens.discoverLogoWidth &&
+            widget.height == AmoraHeaderTokens.discoverLogoHeight &&
+            widget.fit == BoxFit.contain,
+        skipOffstage: false,
+      ),
+    );
+    expect(logo, findsOneWidget);
+    expect(
+      tester.getSize(logo),
+      const Size(
+        AmoraHeaderTokens.discoverLogoWidth,
+        AmoraHeaderTokens.discoverLogoHeight,
+      ),
+    );
     expect(tester.takeException(), isNull);
   });
 

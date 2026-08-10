@@ -1,9 +1,10 @@
 import 'package:amora_ai/core/data/image_repository.dart';
-import 'package:amora_ai/core/theme/amora_icons.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
+import 'package:amora_ai/core/widgets/amora_app_bar.dart';
+import 'package:amora_ai/core/widgets/amora_screen_title.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/premium_asset_image.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
@@ -46,18 +47,12 @@ class _LikedYouPaywallScreenState extends State<LikedYouPaywallScreen> {
               children: [
                 Row(
                   children: [
-                    IconButton.filledTonal(
+                    AmoraHeaderBackButton(
                       onPressed: () => Navigator.of(context).maybePop(),
-                      icon: const Icon(AmoraIcons.back),
                     ),
-                    const SizedBox(width: AmoraSpacing.space12),
-                    Expanded(
-                      child: Text(
-                        'See Who Liked You',
-                        style: AmoraTextStyles.headlineMedium.copyWith(
-                          color: AppColors.deepWine,
-                        ),
-                      ),
+                    const SizedBox(width: AmoraSpacing.space8),
+                    const Expanded(
+                      child: AmoraScreenTitle(title: 'See Who Liked You'),
                     ),
                   ],
                 ),

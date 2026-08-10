@@ -5,6 +5,8 @@ import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/amora_snackbar.dart';
+import 'package:amora_ai/core/widgets/amora_app_bar.dart';
+import 'package:amora_ai/core/widgets/amora_screen_title.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/features/monetization/data/monetization_data.dart';
@@ -33,15 +35,10 @@ class MonetizationHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final compact = MediaQuery.sizeOf(context).width < 360;
     return Row(
       children: [
         if (onBack != null) ...[
-          IconButton.filledTonal(
-            tooltip: 'Back',
-            onPressed: onBack,
-            icon: const Icon(AmoraIcons.back),
-          ),
+          AmoraHeaderBackButton(onPressed: onBack!),
           const SizedBox(width: AmoraSpacing.space8),
         ],
         Container(
@@ -57,34 +54,7 @@ class MonetizationHeader extends StatelessWidget {
         ),
         const SizedBox(width: AmoraSpacing.space12),
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style:
-                    (compact
-                            ? AmoraTextStyles.titleLarge
-                            : AmoraTextStyles.headlineSmall)
-                        .copyWith(
-                          color: AppColors.deepWine,
-                          fontWeight: FontWeight.w700,
-                        ),
-              ),
-              const SizedBox(height: AmoraSpacing.space4),
-              Text(
-                subtitle,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: AmoraTextStyles.bodySmall.copyWith(
-                  color: AppColors.textGray,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
+          child: AmoraScreenTitle(title: title, subtitle: subtitle),
         ),
       ],
     );

@@ -1,5 +1,5 @@
 import 'package:amora_ai/core/theme/app_colors.dart';
-import 'package:amora_ai/core/theme/amora_text_styles.dart';
+import 'package:amora_ai/core/theme/amora_header_tokens.dart';
 import 'package:flutter/material.dart';
 
 /// The compact, transparent header for AMORAA's five primary destinations.
@@ -15,19 +15,21 @@ class AmoraaMainPageHeader extends StatelessWidget {
          'Provide either title or titleWidget.',
        );
 
-  static const double pageHorizontalInset = 16;
-  static const double contentHorizontalInset = 20;
-  static const double safeTopSpacing = 8;
-  static const double contentSpacing = 8;
-  static const double compactHeight = 56;
-  static const double scaledHeight = 70;
+  static const double pageHorizontalInset =
+      AmoraHeaderTokens.pageHorizontalInset;
+  static const double contentHorizontalInset =
+      AmoraHeaderTokens.contentHorizontalInset;
+  static const double safeTopSpacing = AmoraHeaderTokens.safeTopSpacing;
+  static const double contentSpacing = AmoraHeaderTokens.mainBodyGap;
+  static const double compactHeight = AmoraHeaderTokens.singleLineHeight;
+  static const double scaledHeight = AmoraHeaderTokens.scaledMainHeight;
   static const double verticalPadding = 0;
-  static const double actionSize = 48;
-  static const double actionIconSize = 20;
-  static const double actionSpacing = 8;
-  static const double textActionSpacing = 8;
-  static const TextStyle titleStyle = AmoraTextStyles.pageHeaderTitle;
-  static const TextStyle subtitleStyle = AmoraTextStyles.pageHeaderSubtitle;
+  static const double actionSize = AmoraHeaderTokens.touchTarget;
+  static const double actionIconSize = AmoraHeaderTokens.iconSize;
+  static const double actionSpacing = AmoraHeaderTokens.actionGap;
+  static const double textActionSpacing = AmoraHeaderTokens.actionGap;
+  static const TextStyle titleStyle = AmoraHeaderTokens.titleStyle;
+  static const TextStyle subtitleStyle = AmoraHeaderTokens.subtitleStyle;
 
   final String? title;
   final String? subtitle;
@@ -93,7 +95,7 @@ class _HeaderText extends StatelessWidget {
           ),
         ),
         if (subtitle != null) ...[
-          const SizedBox(height: 2),
+          const SizedBox(height: AmoraHeaderTokens.titleSubtitleGap),
           Text(
             subtitle!,
             maxLines: 2,

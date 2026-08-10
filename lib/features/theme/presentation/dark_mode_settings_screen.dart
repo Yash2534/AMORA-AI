@@ -1,6 +1,7 @@
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/amora_theme_controller.dart';
+import 'package:amora_ai/core/widgets/amora_app_bar.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:flutter/material.dart';
@@ -14,7 +15,10 @@ class DarkModeSettingsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Scaffold(
-      appBar: AppBar(title: const Text('Appearance')),
+      appBar: AmoraAppBar(
+        title: 'Appearance',
+        onBack: () => Navigator.of(context).maybePop(),
+      ),
       body: SafeArea(
         child: ResponsiveMobileFrame(
           child: ListView(

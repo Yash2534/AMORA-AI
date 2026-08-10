@@ -6,6 +6,7 @@ import 'package:amora_ai/core/branding/amora_brand_assets.dart';
 import 'package:amora_ai/core/constants/app_images.dart';
 import 'package:amora_ai/core/data/image_repository.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
+import 'package:amora_ai/core/theme/amora_header_tokens.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/amora_profile_image.dart';
@@ -22,6 +23,7 @@ import 'package:amora_ai/features/discover/presentation/discover_action_controll
 import 'package:amora_ai/features/discover/data/discover_api_service.dart';
 import 'package:amora_ai/features/notifications/presentation/notifications_hub_screen.dart';
 import 'package:amora_ai/features/profile/domain/profile_interest_policy.dart';
+import 'package:amora_ai/features/profile/domain/communication_style.dart';
 import 'package:amora_ai/features/profile/presentation/controllers/profile_relationship_controller.dart';
 import 'package:amora_ai/features/profile/presentation/profile_detail_screen.dart';
 import 'package:flutter/material.dart';
@@ -117,7 +119,13 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
   Future<void> _loadProfiles() async {
     _loadingTimer?.cancel();
     setState(() => _loading = true);
-    final result = await _discoverApi.getFeed(page: 1);
+    final result = await _discoverApi.getFeed(
+      page: 1,
+      communicationStyles: appliedProfilePreferenceFilters
+          .value
+          .communicationStyles
+          .map((style) => style.storageValue),
+    );
     if (!mounted) return;
     if (!result.success || result.data == null) {
       setState(() {
@@ -141,7 +149,13 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
   Future<void> _loadNextPage() async {
     if (_loadingMore || !_hasMore) return;
     _loadingMore = true;
-    final result = await _discoverApi.getFeed(page: _nextPage);
+    final result = await _discoverApi.getFeed(
+      page: _nextPage,
+      communicationStyles: appliedProfilePreferenceFilters
+          .value
+          .communicationStyles
+          .map((style) => style.storageValue),
+    );
     _loadingMore = false;
     if (!mounted) return;
     if (!result.success || result.data == null) {
@@ -227,6 +241,9 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
       sexuality: text(values['sexuality']),
       preferredTalkingHours: strings(values['preferredTalkingHours']),
       loveLanguages: strings(values['loveLanguages']),
+      communicationStyle: CommunicationStyle.fromStorageValue(
+        values['communicationStyle'],
+      ),
     );
   }
 
@@ -867,8 +884,8 @@ class _DiscoverHeader extends StatelessWidget {
           alignment: Alignment.centerLeft,
           child: Image.asset(
             AmoraBrandAssets.wordmark,
-            width: 92,
-            height: 18,
+            width: AmoraHeaderTokens.discoverLogoWidth,
+            height: AmoraHeaderTokens.discoverLogoHeight,
             fit: BoxFit.contain,
             alignment: Alignment.centerLeft,
             filterQuality: FilterQuality.high,

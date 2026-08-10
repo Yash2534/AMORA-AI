@@ -1,4 +1,5 @@
 import 'package:amora_ai/core/theme/amora_spacing.dart';
+import 'package:amora_ai/core/theme/amora_header_tokens.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/amora_theme.dart';
 import 'package:amora_ai/core/widgets/amora_app_bar.dart';
@@ -29,12 +30,12 @@ void main() {
           appBar: AmoraAppBar(
             title: title,
             subtitle: subtitle,
-            leading: AmoraHeaderBackButton(onPressed: () {}),
+            onBack: () {},
             actions: [
-              IconButton(
+              AmoraHeaderActionButton(
                 tooltip: 'More',
+                icon: Icons.more_horiz_rounded,
                 onPressed: () {},
-                icon: const Icon(Icons.more_horiz_rounded),
               ),
             ],
           ),
@@ -55,7 +56,7 @@ void main() {
     );
 
     final appBar = tester.widget<AmoraAppBar>(find.byType(AmoraAppBar));
-    expect(appBar.preferredSize.height, AmoraSpacing.appBarWithSubtitleHeight);
+    expect(appBar.preferredSize.height, AmoraHeaderTokens.titleSubtitleHeight);
     expect(
       tester.widget<Text>(find.text('Profile settings')).style,
       AmoraTextStyles.pageHeaderTitle,
@@ -69,6 +70,10 @@ void main() {
       matching: find.byType(IconButton),
     );
     expect(tester.getSize(backIconButton), const Size.square(48));
+    expect(
+      tester.getSize(find.byType(AmoraHeaderActionButton)),
+      const Size.square(AmoraHeaderTokens.touchTarget),
+    );
     expect(tester.takeException(), isNull);
   });
 
@@ -82,7 +87,7 @@ void main() {
     );
 
     final appBar = tester.widget<AmoraAppBar>(find.byType(AmoraAppBar));
-    expect(appBar.preferredSize.height, AmoraSpacing.appBarHeight);
+    expect(appBar.preferredSize.height, AmoraHeaderTokens.singleLineHeight);
     expect(find.byTooltip('Back'), findsOneWidget);
     expect(find.byTooltip('More'), findsOneWidget);
     expect(tester.takeException(), isNull);
@@ -138,5 +143,28 @@ void main() {
       tester.widget<Text>(find.text('Your progress dashboard')).style,
       AmoraTextStyles.pageHeaderSubtitle,
     );
+  });
+
+  testWidgets('secondary headers stay overflow-free at supported widths', (
+    tester,
+  ) async {
+    for (final width in <double>[320, 360, 390, 412, 430, 600, 768]) {
+      for (final scale in <double>[1, 1.15, 1.3]) {
+        await pumpHeader(
+          tester,
+          title: 'Notification Preferences',
+          subtitle: 'Stay informed without the noise.',
+          width: width,
+          textScale: scale,
+        );
+        expect(find.byTooltip('Back'), findsOneWidget);
+        expect(find.byTooltip('More'), findsOneWidget);
+        expect(
+          tester.takeException(),
+          isNull,
+          reason: 'Secondary header overflow at $width px and ${scale}x',
+        );
+      }
+    }
   });
 }

@@ -1,5 +1,7 @@
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
+import 'package:amora_ai/core/widgets/amora_app_bar.dart';
+import 'package:amora_ai/core/widgets/amora_screen_title.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/events/domain/event_models.dart';
 import 'package:amora_ai/features/events/presentation/controllers/event_participation_controller.dart';
@@ -70,25 +72,12 @@ class _EventWaitlistScreenState extends State<EventWaitlistScreen> {
               children: [
                 Row(
                   children: [
-                    IconButton(
-                      tooltip: 'Back',
-                      constraints: const BoxConstraints.tightFor(
-                        width: 48,
-                        height: 48,
-                      ),
+                    AmoraHeaderBackButton(
                       onPressed: () => Navigator.of(context).maybePop(),
-                      icon: const Icon(Icons.arrow_back_rounded),
                     ),
                     const SizedBox(width: 8),
                     const Expanded(
-                      child: Text(
-                        'Event Waitlist',
-                        style: TextStyle(
-                          color: AppColors.primary,
-                          fontSize: 24,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
+                      child: AmoraScreenTitle(title: 'Event Waitlist'),
                     ),
                     const EventsMemberBadge(compact: true),
                   ],

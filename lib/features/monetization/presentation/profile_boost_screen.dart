@@ -4,6 +4,8 @@ import 'package:amora_ai/core/theme/amora_icons.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
+import 'package:amora_ai/core/widgets/amora_app_bar.dart';
+import 'package:amora_ai/core/widgets/amora_screen_title.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/monetization/data/monetization_data.dart';
@@ -153,21 +155,9 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Row(
     children: [
-      IconButton.filledTonal(
-        onPressed: () => Navigator.of(context).maybePop(),
-        icon: const Icon(AmoraIcons.back),
-      ),
-      const SizedBox(width: 10),
-      const Expanded(
-        child: Text(
-          'Profile Boost',
-          style: TextStyle(
-            color: AppColors.deepWine,
-            fontSize: 26,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-      ),
+      AmoraHeaderBackButton(onPressed: () => Navigator.of(context).maybePop()),
+      const SizedBox(width: AmoraSpacing.space8),
+      const Expanded(child: AmoraScreenTitle(title: 'Profile Boost')),
     ],
   );
 }

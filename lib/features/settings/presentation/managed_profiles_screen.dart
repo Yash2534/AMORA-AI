@@ -3,6 +3,7 @@ import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/amora_profile_image.dart';
+import 'package:amora_ai/core/widgets/amora_app_bar.dart';
 import 'package:amora_ai/core/widgets/amoraa_identity_badge.dart';
 import 'package:amora_ai/core/widgets/amoraa_confirm_action_sheet.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
@@ -117,7 +118,10 @@ class ManagedProfilesScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(title: Text(title)),
+      appBar: AmoraAppBar(
+        title: title,
+        onBack: () => Navigator.of(context).maybePop(),
+      ),
       body: SafeArea(
         top: false,
         child: ResponsiveMobileFrame(
