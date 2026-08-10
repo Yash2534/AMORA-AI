@@ -1,30 +1,42 @@
 import 'dart:async';
-
 import 'package:amora_ai/core/theme/amora_icons.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
-import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/amora_app_bar.dart';
 import 'package:amora_ai/core/widgets/amora_screen_title.dart';
+import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/monetization/data/monetization_data.dart';
+import 'package:amora_ai/features/monetization/data/monetization_repository.dart';
+import 'package:amora_ai/features/monetization/domain/monetization_models.dart';
+import 'package:amora_ai/features/monetization/presentation/widgets/monetization_widgets.dart';
 import 'package:amora_ai/features/payment/presentation/payment_screen.dart';
 import 'package:flutter/material.dart';
 
 class ProfileBoostScreen extends StatefulWidget {
   const ProfileBoostScreen({super.key});
-
   static const routeName = '/profile-boost';
-
   @override
   State<ProfileBoostScreen> createState() => _ProfileBoostScreenState();
 }
 
 class _ProfileBoostScreenState extends State<ProfileBoostScreen> {
-  Timer? _timer;
-  int _seconds = 0;
+  List<BoostProduct> _products = const [];
+  BoostState? _boost;
   int _selected = 0;
+  bool _loading = true;
+  bool _acting = false;
+  String? _error;
+  Timer? _timer;
+  @override
+  void initState() {
+    super.initState();
+    _load();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted && _boost?.active == true) setState(() {});
+    });
+  }
 
   @override
   void dispose() {
@@ -32,211 +44,201 @@ class _ProfileBoostScreenState extends State<ProfileBoostScreen> {
     super.dispose();
   }
 
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final repo = MonetizationRepository.instance;
+      final products = await repo.boostProducts();
+      final boost = await repo.boostState();
+      if (mounted) {
+        setState(() {
+          _products = products;
+          _boost = boost;
+          _selected = _selected.clamp(
+            0,
+            products.isEmpty ? 0 : products.length - 1,
+          );
+          _loading = false;
+        });
+      }
+    } catch (error) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _error = error.toString();
+        });
+      }
+    }
+  }
+
+  int get _seconds => _boost?.activeUntil == null
+      ? 0
+      : (_boost!.activeUntil!.difference(DateTime.now()).inSeconds).clamp(
+          0,
+          86400,
+        );
+
   @override
-  Widget build(BuildContext context) {
-    final active = _seconds > 0;
-    return Scaffold(
-      body: SafeArea(
-        child: ResponsiveMobileFrame(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(
-              AmoraSpacing.space20,
-              AmoraSpacing.space20,
-              AmoraSpacing.space20,
-              AmoraSpacing.navigationContentInset,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const _Header(),
-                const SizedBox(height: 18),
-                PremiumCard(
-                  color: AppColors.premiumGold.withValues(alpha: .14),
-                  child: Column(
+  Widget build(BuildContext context) => Scaffold(
+    body: SafeArea(
+      child: ResponsiveMobileFrame(
+        child: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : _error != null
+            ? Center(
+                child: FilledButton(
+                  onPressed: _load,
+                  child: const Text('Retry Boost'),
+                ),
+              )
+            : ListView(
+                padding: const EdgeInsets.fromLTRB(
+                  20,
+                  20,
+                  20,
+                  AmoraSpacing.navigationContentInset,
+                ),
+                children: [
+                  Row(
                     children: [
-                      Text(
-                        active ? _format(_seconds) : 'Peak Visibility',
-                        style: const TextStyle(
-                          color: AppColors.deepWine,
-                          fontSize: 34,
-                          fontWeight: FontWeight.w900,
-                        ),
+                      AmoraHeaderBackButton(
+                        onPressed: () => Navigator.of(context).maybePop(),
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        active
-                            ? 'Boost is live in nearby discovery.'
-                            : 'Activate during high-intent evening windows.',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: AppColors.textGray,
-                          fontWeight: FontWeight.w800,
-                        ),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: AmoraScreenTitle(title: 'Profile Boost'),
                       ),
                     ],
                   ),
-                ),
-                const SizedBox(height: 16),
-                GridView.count(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  crossAxisCount: 2,
-                  childAspectRatio: 1.0,
-                  mainAxisSpacing: 10,
-                  crossAxisSpacing: 10,
-                  children: const [
-                    _Benefit('5x visibility', Icons.visibility_rounded),
-                    _Benefit('Priority Nearby', Icons.near_me_rounded),
-                    _Benefit('More profile visits', Icons.trending_up_rounded),
-                    _Benefit('Peak time boost', Icons.schedule_rounded),
+                  const SizedBox(height: 18),
+                  PremiumCard(
+                    color: AppColors.premiumGold.withValues(alpha: .14),
+                    child: Column(
+                      children: [
+                        Text(
+                          _seconds > 0
+                              ? _format(_seconds)
+                              : '${_boost?.available ?? 0} available',
+                          style: const TextStyle(
+                            color: AppColors.deepWine,
+                            fontSize: 34,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          _seconds > 0
+                              ? 'Boost is live in nearby discovery.'
+                              : 'Inventory and activation are controlled by AMORAA.',
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  for (var index = 0; index < _products.length; index++)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: ListTile(
+                        leading: Icon(
+                          _selected == index
+                              ? Icons.radio_button_checked_rounded
+                              : Icons.radio_button_off_rounded,
+                          color: AppColors.primaryPurple,
+                        ),
+                        title: Text(_products[index].name),
+                        subtitle: Text(
+                          '${_products[index].durationMinutes} minutes · ${_products[index].walletCost} credits · ₹${_products[index].priceMinor ~/ 100}',
+                        ),
+                        onTap: _acting
+                            ? null
+                            : () => setState(() => _selected = index),
+                      ),
+                    ),
+                  if (_products.isEmpty)
+                    const PremiumCard(
+                      child: Text('No Boost products are available.'),
+                    ),
+                  if ((_boost?.available ?? 0) > 0)
+                    AppPrimaryButton(
+                      label: _seconds > 0 ? 'Boost Active' : 'Activate Boost',
+                      icon: AmoraIcons.boost,
+                      onPressed: _seconds > 0 || _acting ? null : _activate,
+                    ),
+                  if ((_boost?.available ?? 0) == 0 &&
+                      _products.isNotEmpty) ...[
+                    AppPrimaryButton(
+                      label: 'Buy with Wallet',
+                      icon: AmoraIcons.wallet,
+                      onPressed: _acting ? null : _buyWithWallet,
+                    ),
+                    const SizedBox(height: 10),
+                    AppPrimaryButton(
+                      label: 'Pay with Razorpay',
+                      icon: Icons.payment_rounded,
+                      variant: AppPrimaryButtonVariant.outlined,
+                      onPressed: _acting ? null : _pay,
+                    ),
                   ],
-                ),
-                const SizedBox(height: 16),
-                for (var i = 0; i < _packages.length; i++)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: _PackageTile(
-                      package: _packages[i],
-                      selected: _selected == i,
-                      onTap: () => setState(() => _selected = i),
-                    ),
-                  ),
-                const SizedBox(height: 8),
-                AppPrimaryButton(
-                  label: active ? 'Boost Active' : 'Activate Boost',
-                  icon: AmoraIcons.boost,
-                  onPressed: active ? null : _activate,
-                ),
-                const SizedBox(height: 10),
-                AppPrimaryButton(
-                  label: 'Pay Instead',
-                  icon: AmoraIcons.wallet,
-                  variant: AppPrimaryButtonVariant.outlined,
-                  onPressed: () => Navigator.of(context).pushNamed(
-                    PaymentScreen.routeName,
-                    arguments: PaymentArgs(
-                      title: _packages[_selected].$1,
-                      subtitle: 'AMORAA Boost',
-                      billingCycle: 'One-time profile visibility boost',
-                      amount: _packages[_selected].$3,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
+                ],
+              ),
+      ),
+    ),
+  );
+
+  Future<void> _activate() async {
+    setState(() => _acting = true);
+    try {
+      _boost = await MonetizationRepository.instance.activateBoost(
+        MonetizationRepository.instance.newIdempotencyKey('boost-activation'),
+      );
+    } catch (_) {
+      if (mounted) {
+        showPremiumSnack(context, 'A valid Boost entitlement is required');
+      }
+    } finally {
+      if (mounted) setState(() => _acting = false);
+    }
+  }
+
+  Future<void> _buyWithWallet() async {
+    setState(() => _acting = true);
+    try {
+      _boost = await MonetizationRepository.instance.purchaseBoost(
+        _products[_selected].id,
+        'wallet',
+        MonetizationRepository.instance.newIdempotencyKey('boost-wallet'),
+      );
+      if (mounted) showPremiumSnack(context, 'Boost added to inventory');
+    } catch (_) {
+      if (mounted) {
+        showPremiumSnack(context, 'Boost purchase could not be completed');
+      }
+    } finally {
+      if (mounted) setState(() => _acting = false);
+    }
+  }
+
+  Future<void> _pay() async {
+    final product = _products[_selected];
+    await Navigator.of(context).pushNamed(
+      PaymentScreen.routeName,
+      arguments: PaymentArgs(
+        productId: product.id,
+        productType: 'boost',
+        title: product.name,
+        subtitle: 'AMORAA Boost',
+        billingCycle: 'One-time boost entitlement',
+        amountMinor: product.priceMinor,
+        currency: product.currency,
       ),
     );
+    if (mounted) _load();
   }
 
-  void _activate() {
-    setState(() => _seconds = _packages[_selected].$2 * 60);
-    _timer?.cancel();
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (_seconds <= 1) {
-        timer.cancel();
-        setState(() => _seconds = 0);
-      } else {
-        setState(() => _seconds--);
-      }
-    });
-  }
-
-  String _format(int seconds) {
-    final minutes = (seconds ~/ 60).toString().padLeft(2, '0');
-    final rest = (seconds % 60).toString().padLeft(2, '0');
-    return '$minutes:$rest';
-  }
+  String _format(int seconds) =>
+      '${(seconds ~/ 60).toString().padLeft(2, '0')}:${(seconds % 60).toString().padLeft(2, '0')}';
 }
-
-class _Header extends StatelessWidget {
-  const _Header();
-  @override
-  Widget build(BuildContext context) => Row(
-    children: [
-      AmoraHeaderBackButton(onPressed: () => Navigator.of(context).maybePop()),
-      const SizedBox(width: AmoraSpacing.space8),
-      const Expanded(child: AmoraScreenTitle(title: 'Profile Boost')),
-    ],
-  );
-}
-
-class _Benefit extends StatelessWidget {
-  const _Benefit(this.label, this.icon);
-  final String label;
-  final IconData icon;
-  @override
-  Widget build(BuildContext context) => PremiumCard(
-    padding: const EdgeInsets.all(8),
-    radius: 24,
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, color: AppColors.primaryPurple, size: 20),
-        const Spacer(),
-        Text(
-          label,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            color: AppColors.deepWine,
-            fontSize: 12,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
-class _PackageTile extends StatelessWidget {
-  const _PackageTile({
-    required this.package,
-    required this.selected,
-    required this.onTap,
-  });
-  final (String, int, int) package;
-  final bool selected;
-  final VoidCallback onTap;
-  @override
-  Widget build(BuildContext context) => InkWell(
-    borderRadius: BorderRadius.circular(24),
-    onTap: onTap,
-    child: PremiumCard(
-      padding: const EdgeInsets.all(16),
-      color: selected
-          ? AppColors.primaryPurple.withValues(alpha: .10)
-          : AppColors.surface,
-      child: Row(
-        children: [
-          Icon(
-            selected
-                ? Icons.radio_button_checked_rounded
-                : Icons.radio_button_off_rounded,
-            color: AppColors.primaryPurple,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  package.$1,
-                  style: const TextStyle(fontWeight: FontWeight.w900),
-                ),
-                Text('${package.$2} minutes - Rs ${package.$3}'),
-              ],
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
-}
-
-const _packages = [
-  ('Starter Boost', 30, 299),
-  ('Peak Boost', 60, 499),
-  ('VIP Evening Boost', 120, 899),
-];

@@ -1,0 +1,10 @@
+const express = require('express');
+const { body } = require('express-validator');
+const requireAuth = require('../middleware/authMiddleware');
+const validateRequest = require('../middleware/validateRequest');
+const controller = require('../controllers/giftController');
+const { giftSendLimiter } = require('../middleware/rateLimiter');
+const router = express.Router();
+router.get('/', controller.catalog);
+router.post('/send', requireAuth, giftSendLimiter, [body('recipientId').isInt({ min: 1 }).toInt(), body('giftId').isString().trim().notEmpty(), body('conversationId').optional().isInt({ min: 1 }).toInt(), body('note').optional().isString().trim().isLength({ max: 280 }), body('idempotencyKey').optional().isString().isLength({ min: 8, max: 100 })], validateRequest, controller.send);
+module.exports = router;

@@ -4,18 +4,19 @@ import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/theme/amora_header_tokens.dart';
 import 'package:amora_ai/core/widgets/amora_app_bar.dart';
 import 'package:amora_ai/core/widgets/amora_screen_title.dart';
-import 'package:amora_ai/core/widgets/amora_dialog.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/amoraa_select_field.dart';
 import 'package:amora_ai/core/widgets/premium_motion.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
-import 'package:amora_ai/features/discover/presentation/browse_grid_screen.dart';
 import 'package:amora_ai/features/events/presentation/events_screen.dart';
 import 'package:amora_ai/features/monetization/data/monetization_data.dart';
+import 'package:amora_ai/features/monetization/data/monetization_repository.dart';
+import 'package:amora_ai/features/monetization/domain/monetization_models.dart';
 import 'package:amora_ai/features/monetization/presentation/widgets/monetization_widgets.dart';
 import 'package:amora_ai/features/subscription/presentation/subscription_screen.dart';
 import 'package:amora_ai/features/subscription/presentation/testing/membership_test_flow.dart';
 import 'package:flutter/material.dart';
+import 'package:razorpay_flutter/razorpay_flutter.dart';
 
 enum _PaymentViewState {
   review,
@@ -41,16 +42,30 @@ class _PaymentScreenState extends State<PaymentScreen> {
   bool _termsAccepted = false;
   bool _productionFailed = false;
   Timer? _processingTimer;
+  late final Razorpay _razorpay;
+  PaymentOrder? _pendingOrder;
+
+  @override
+  void initState() {
+    super.initState();
+    _razorpay = Razorpay()
+      ..on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess)
+      ..on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentFailure)
+      ..on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
+  }
 
   @override
   void dispose() {
     _processingTimer?.cancel();
+    _razorpay.clear();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final review = _reviewData(context);
+    final membershipPayment =
+        membershipTestMode || review.productType == 'subscription';
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -73,27 +88,37 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     setState(() => _termsAccepted = value),
                 onPay: () => _pay(review),
               ),
-              _PaymentViewState.processing => const PaymentStateView(
-                key: ValueKey('payment-processing'),
+              _PaymentViewState.processing => PaymentStateView(
+                key: const ValueKey('payment-processing'),
                 icon: Icons.sync_rounded,
-                title: 'Confirming your membership',
+                title: membershipPayment
+                    ? 'Confirming your membership'
+                    : 'Confirming your payment',
                 subtitle: 'Please keep this screen open.',
                 processing: true,
               ),
               _PaymentViewState.success => PaymentStateView(
                 key: const ValueKey('payment-success'),
                 icon: Icons.favorite_rounded,
-                title: 'Welcome to AMORAA Membership',
-                subtitle: 'Your premium experience is ready.',
-                benefits: const [
-                  'Premium Events',
-                  'Enhanced AI Matches',
-                  'Advanced Filters',
-                ],
-                primaryLabel: 'Explore Events',
-                onPrimary: _openEvents,
-                secondaryLabel: 'View Membership',
-                onSecondary: _openMembership,
+                title: membershipPayment
+                    ? 'Welcome to AMORAA Membership'
+                    : 'Payment confirmed',
+                subtitle: membershipPayment
+                    ? 'Your premium experience is ready.'
+                    : 'Your purchase is now available on your account.',
+                benefits: membershipPayment
+                    ? const [
+                        'Premium Events',
+                        'Enhanced AI Matches',
+                        'Advanced Filters',
+                      ]
+                    : const [],
+                primaryLabel: membershipPayment ? 'Explore Events' : 'Done',
+                onPrimary: membershipPayment
+                    ? _openEvents
+                    : () => Navigator.of(context).maybePop(),
+                secondaryLabel: membershipPayment ? 'View Membership' : null,
+                onSecondary: membershipPayment ? _openMembership : null,
               ),
               _PaymentViewState.failure => PaymentStateView(
                 key: const ValueKey('payment-failure'),
@@ -144,11 +169,18 @@ class _PaymentScreenState extends State<PaymentScreen> {
     }
     if (args is PaymentArgs) return _PaymentReviewData.production(args);
     return _PaymentReviewData.production(
-      const PaymentArgs(title: 'Gold', billingCycle: 'Monthly', amount: 1999),
+      const PaymentArgs(
+        productId: '',
+        productType: 'subscription',
+        title: 'Membership',
+        billingCycle: 'Monthly',
+        amountMinor: 0,
+        currency: 'INR',
+      ),
     );
   }
 
-  void _pay(_PaymentReviewData review) {
+  Future<void> _pay(_PaymentReviewData review) async {
     if (_selectedMethod == null) {
       showPremiumSnack(context, 'Select a payment method');
       return;
@@ -158,7 +190,36 @@ class _PaymentScreenState extends State<PaymentScreen> {
       return;
     }
     if (!membershipTestMode) {
-      _runExistingProductionPresentation(review);
+      setState(() {
+        _state = _PaymentViewState.processing;
+        _productionFailed = false;
+      });
+      try {
+        final order = await MonetizationRepository.instance.createPaymentOrder(
+          productType: review.productType!,
+          productId: review.productId!,
+          idempotencyKey: MonetizationRepository.instance.newIdempotencyKey(
+            'payment-order',
+          ),
+        );
+        _pendingOrder = order;
+        _razorpay.open({
+          'key': order.checkoutKey,
+          'order_id': order.providerOrderId,
+          'amount': order.amountMinor,
+          'currency': order.currency,
+          'name': 'AMORAA',
+          'description': review.title,
+          'retry': {'enabled': true, 'max_count': 2},
+        });
+      } catch (_) {
+        if (mounted) {
+          setState(() {
+            _state = _PaymentViewState.failure;
+            _productionFailed = true;
+          });
+        }
+      }
       return;
     }
 
@@ -183,26 +244,42 @@ class _PaymentScreenState extends State<PaymentScreen> {
     });
   }
 
-  void _runExistingProductionPresentation(_PaymentReviewData review) {
-    if (_selectedMethod == 'Razorpay Gateway' && !_productionFailed) {
-      setState(() => _productionFailed = true);
-      showPremiumSnack(context, 'Payment could not be completed. Try again.');
+  Future<void> _handlePaymentSuccess(PaymentSuccessResponse response) async {
+    final order = _pendingOrder;
+    if (order == null ||
+        response.paymentId == null ||
+        response.signature == null) {
+      if (mounted) setState(() => _state = _PaymentViewState.failure);
       return;
     }
-    showAmoraDialog<void>(
-      context: context,
-      title: 'Payment successful',
-      message: 'Your ${review.title} plan is now active.',
-      icon: Icons.check_rounded,
-      primaryLabel: 'Continue',
-      onPrimary: () => Navigator.of(
-        context,
-      ).pushNamedAndRemoveUntil(BrowseGridScreen.routeName, (route) => false),
-    );
+    try {
+      await MonetizationRepository.instance.verifyPayment(
+        providerOrderId: order.providerOrderId,
+        providerPaymentId: response.paymentId!,
+        signature: response.signature!,
+      );
+      if (mounted) setState(() => _state = _PaymentViewState.success);
+    } catch (_) {
+      if (mounted) setState(() => _state = _PaymentViewState.failure);
+    }
+  }
+
+  void _handlePaymentFailure(PaymentFailureResponse response) {
+    if (mounted) {
+      setState(
+        () => _state = response.code == Razorpay.PAYMENT_CANCELLED
+            ? _PaymentViewState.cancelled
+            : _PaymentViewState.failure,
+      );
+    }
+  }
+
+  void _handleExternalWallet(ExternalWalletResponse response) {
+    if (mounted) setState(() => _state = _PaymentViewState.pending);
   }
 
   void _openEvents() {
-    if (!membershipTestMode ||
+    if (membershipTestMode &&
         !MembershipTestFlowController.instance.membershipActive) {
       return;
     }
@@ -279,7 +356,9 @@ class _PaymentReview extends StatelessWidget {
                     ),
                   )
               else
-                for (final method in paymentMethods)
+                for (final method in paymentMethods.where(
+                  (item) => item.name == 'Razorpay Gateway',
+                ))
                   Padding(
                     padding: const EdgeInsets.only(bottom: 9),
                     child: PaymentMethodOption(
@@ -627,12 +706,16 @@ class _BenefitPill extends StatelessWidget {
         children: [
           const Icon(Icons.check_rounded, color: AppColors.secondary, size: 16),
           const SizedBox(width: 5),
-          Text(
-            label,
-            style: const TextStyle(
-              color: AppColors.text,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: AppColors.text,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
@@ -873,6 +956,8 @@ class _PaymentReviewData {
     required this.duration,
     required this.interval,
     required this.amount,
+    this.productId,
+    this.productType,
   });
 
   factory _PaymentReviewData.test(MembershipTestPlan plan) {
@@ -889,7 +974,9 @@ class _PaymentReviewData {
       title: args.title,
       duration: args.billingCycle,
       interval: args.billingCycle,
-      amount: args.amount,
+      amount: args.amountMinor ~/ 100,
+      productId: args.productId,
+      productType: args.productType,
     );
   }
 
@@ -897,6 +984,8 @@ class _PaymentReviewData {
   final String duration;
   final String interval;
   final int amount;
+  final String? productId;
+  final String? productType;
 }
 
 String _outcomeLabel(TestPaymentOutcome outcome) => switch (outcome) {

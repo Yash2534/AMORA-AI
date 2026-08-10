@@ -14,5 +14,10 @@ module.exports = {
   realtimeTokenLimiter: rateLimit(options(60 * 1000, 20, (req) => String(req.user?.sub || req.ip))),
   eventActionLimiter: rateLimit(options(60 * 1000, 30, (req) => String(req.user?.sub || req.ip))),
   eventMessageLimiter: rateLimit(options(60 * 1000, 60, (req) => String(req.user?.sub || req.ip))),
-  eventFeedbackLimiter: rateLimit(options(60 * 60 * 1000, 10, (req) => String(req.user?.sub || req.ip)))
+  eventFeedbackLimiter: rateLimit(options(60 * 60 * 1000, 10, (req) => String(req.user?.sub || req.ip))),
+  paymentOrderLimiter: rateLimit(options(15 * 60 * 1000, 20, (req) => String(req.user?.sub || req.ip))),
+  paymentVerifyLimiter: rateLimit(options(15 * 60 * 1000, 30, (req) => String(req.user?.sub || req.ip))),
+  paymentWebhookLimiter: rateLimit(options(60 * 1000, 300, (req) => String(req.ip))),
+  walletValueLimiter: rateLimit(options(5 * 60 * 1000, 30, (req) => String(req.user?.sub || req.ip))),
+  giftSendLimiter: rateLimit(options(5 * 60 * 1000, 30, (req) => String(req.user?.sub || req.ip)))
 };

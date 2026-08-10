@@ -1,0 +1,52 @@
+{
+  "info": {
+    "_postman_id": "a7be0a34-6e0a-4d88-97a4-amoraa-phase5",
+    "name": "AMORAA Phase 5 - Monetization",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000" },
+    { "key": "accessToken", "value": "" },
+    { "key": "planId", "value": "amoraa_gold_monthly" },
+    { "key": "walletTopUpProductId", "value": "credits_100" },
+    { "key": "walletRedemptionProductId", "value": "redeem_boost_30" },
+    { "key": "boostProductId", "value": "boost_starter_30" },
+    { "key": "recipientId", "value": "2" },
+    { "key": "giftId", "value": "rose_ritual" },
+    { "key": "providerOrderId", "value": "" },
+    { "key": "providerPaymentId", "value": "" },
+    { "key": "providerSignature", "value": "" }
+  ],
+  "item": [
+    { "name": "Subscriptions", "item": [
+      { "name": "Plans", "request": { "auth": { "type": "noauth" }, "method": "GET", "url": "{{baseUrl}}/api/subscriptions/plans" } },
+      { "name": "My Membership", "request": { "method": "GET", "url": "{{baseUrl}}/api/subscriptions/me" } },
+      { "name": "Cancel Renewal", "request": { "method": "POST", "url": "{{baseUrl}}/api/subscriptions/cancel" } },
+      { "name": "Restore Purchase", "request": { "method": "POST", "url": "{{baseUrl}}/api/subscriptions/restore" } }
+    ]},
+    { "name": "Payments", "item": [
+      { "name": "Create Subscription Order", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Idempotency-Key", "value": "postman-subscription-{{$guid}}" }], "body": { "mode": "raw", "raw": "{\n  \"planId\": \"{{planId}}\"\n}" }, "url": "{{baseUrl}}/api/payments/orders" } },
+      { "name": "Verify Provider Payment", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"providerOrderId\": \"{{providerOrderId}}\",\n  \"providerPaymentId\": \"{{providerPaymentId}}\",\n  \"signature\": \"{{providerSignature}}\"\n}" }, "url": "{{baseUrl}}/api/payments/verify" } },
+      { "name": "Webhook (signature required)", "request": { "auth": { "type": "noauth" }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "X-Razorpay-Signature", "value": "{{webhookSignature}}" }, { "key": "X-Razorpay-Event-Id", "value": "{{providerEventId}}" }], "body": { "mode": "raw", "raw": "{\n  \"event\": \"payment.captured\",\n  \"payload\": {}\n}" }, "url": "{{baseUrl}}/api/payments/webhook", "description": "Generate the signature over the exact raw JSON using RAZORPAY_WEBHOOK_SECRET. Never commit a real webhook secret." } },
+      { "name": "Invalid Client Price Is Ignored", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Idempotency-Key", "value": "postman-price-check-{{$guid}}" }], "body": { "mode": "raw", "raw": "{\n  \"planId\": \"{{planId}}\",\n  \"amount\": 1,\n  \"currency\": \"USD\"\n}" }, "url": "{{baseUrl}}/api/payments/orders", "description": "Response amount/currency must come from MySQL, never these client fields." } }
+    ]},
+    { "name": "Wallet", "item": [
+      { "name": "Balance", "request": { "method": "GET", "url": "{{baseUrl}}/api/wallet" } },
+      { "name": "Products", "request": { "method": "GET", "url": "{{baseUrl}}/api/wallet/products" } },
+      { "name": "Transactions Page", "request": { "method": "GET", "url": "{{baseUrl}}/api/wallet/transactions?page=1&limit=20" } },
+      { "name": "Redeem Boost", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Idempotency-Key", "value": "postman-redemption-{{$guid}}" }], "body": { "mode": "raw", "raw": "{\n  \"productId\": \"{{walletRedemptionProductId}}\"\n}" }, "url": "{{baseUrl}}/api/wallet/redemptions" } },
+      { "name": "Top-Up Order", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Idempotency-Key", "value": "postman-topup-{{$guid}}" }], "body": { "mode": "raw", "raw": "{\n  \"productId\": \"{{walletTopUpProductId}}\"\n}" }, "url": "{{baseUrl}}/api/wallet/top-up/orders" } }
+    ]},
+    { "name": "Boosts", "item": [
+      { "name": "Products", "request": { "method": "GET", "url": "{{baseUrl}}/api/boosts/products" } },
+      { "name": "Inventory", "request": { "method": "GET", "url": "{{baseUrl}}/api/boosts/me" } },
+      { "name": "Purchase With Wallet", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Idempotency-Key", "value": "postman-boost-purchase-{{$guid}}" }], "body": { "mode": "raw", "raw": "{\n  \"productId\": \"{{boostProductId}}\",\n  \"source\": \"wallet\"\n}" }, "url": "{{baseUrl}}/api/boosts/purchase" } },
+      { "name": "Activate Entitled Boost", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Idempotency-Key", "value": "postman-boost-activation-{{$guid}}" }], "body": { "mode": "raw", "raw": "{}" }, "url": "{{baseUrl}}/api/discover/boost" } }
+    ]},
+    { "name": "Gifts", "item": [
+      { "name": "Catalog", "request": { "auth": { "type": "noauth" }, "method": "GET", "url": "{{baseUrl}}/api/gifts" } },
+      { "name": "Send Gift", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Idempotency-Key", "value": "postman-gift-{{$guid}}" }], "body": { "mode": "raw", "raw": "{\n  \"recipientId\": {{recipientId}},\n  \"giftId\": \"{{giftId}}\",\n  \"note\": \"A thoughtful rose\"\n}" }, "url": "{{baseUrl}}/api/gifts/send" } }
+    ]}
+  ]
+}

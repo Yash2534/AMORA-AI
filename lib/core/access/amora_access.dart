@@ -8,6 +8,7 @@ import 'package:amora_ai/core/navigation/main_shell.dart';
 import 'package:amora_ai/features/auth/presentation/account_verification_screen.dart';
 import 'package:amora_ai/features/onboarding/data/local_onboarding_repository.dart';
 import 'package:amora_ai/features/onboarding/presentation/profile_onboarding_flow.dart';
+import 'package:amora_ai/features/monetization/data/monetization_repository.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
 
@@ -47,6 +48,7 @@ class AmoraSession {
     user.value = null;
     profileStrength.value = 20;
     _pendingAction = null;
+    MonetizationRepository.instance.clearSessionState();
     unawaited(AuthService.instance.logout());
   }
 
@@ -54,6 +56,15 @@ class AmoraSession {
     final restored = await AuthService.instance.restoreSession();
     isLoggedIn.value = restored;
     user.value = restored ? AuthService.instance.currentUser : null;
+    if (restored) {
+      try {
+        await MonetizationRepository.instance.refreshMembership();
+      } catch (_) {
+        // Authentication remains valid; monetization screens expose retry UI.
+      }
+    } else {
+      MonetizationRepository.instance.clearSessionState();
+    }
   }
 
   static void completeProfileStep(int strength) {

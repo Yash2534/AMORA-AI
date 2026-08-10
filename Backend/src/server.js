@@ -19,6 +19,11 @@ const messageRoutes = require("./routes/messageRoutes");
 const realtimeRoutes = require("./routes/realtimeRoutes");
 const eventRoutes = require("./routes/eventRoutes");
 const hostEventRoutes = require("./routes/hostEventRoutes");
+const subscriptionRoutes = require("./routes/subscriptionRoutes");
+const paymentRoutes = require("./routes/paymentRoutes");
+const walletRoutes = require("./routes/walletRoutes");
+const boostRoutes = require("./routes/boostRoutes");
+const giftRoutes = require("./routes/giftRoutes");
 const { attachRealtimeServer } = require("./realtime/realtimeHub");
 const errorHandler = require("./middleware/errorHandler");
 const { port } = require("./config/env");
@@ -37,7 +42,9 @@ app.use(
     credentials: origin !== "*",
   }),
 );
-app.use(express.json({ limit: "20kb" }));
+app.use(express.json({ limit: "100kb", verify: (req, _res, buffer) => {
+  if (req.originalUrl === "/api/payments/webhook") req.rawBody = Buffer.from(buffer);
+} }));
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 app.get("/health", (_req, res) =>
   res.json({
@@ -59,6 +66,11 @@ app.use("/api/messages", messageRoutes);
 app.use("/api/realtime", realtimeRoutes);
 app.use("/api/events", eventRoutes);
 app.use("/api/host", hostEventRoutes);
+app.use("/api/subscriptions", subscriptionRoutes);
+app.use("/api/payments", paymentRoutes);
+app.use("/api/wallet", walletRoutes);
+app.use("/api/boosts", boostRoutes);
+app.use("/api/gifts", giftRoutes);
 app.use((_req, res) =>
   res
     .status(404)

@@ -10,6 +10,8 @@ import 'package:amora_ai/core/widgets/premium_motion.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/events/presentation/events_screen.dart';
 import 'package:amora_ai/features/monetization/data/monetization_data.dart';
+import 'package:amora_ai/features/monetization/data/monetization_repository.dart';
+import 'package:amora_ai/features/monetization/domain/monetization_models.dart';
 import 'package:amora_ai/features/monetization/presentation/widgets/monetization_widgets.dart';
 import 'package:amora_ai/features/payment/presentation/payment_screen.dart';
 import 'package:amora_ai/features/subscription/presentation/testing/membership_test_flow.dart';
@@ -27,17 +29,72 @@ class SubscriptionScreen extends StatefulWidget {
 }
 
 class _SubscriptionScreenState extends State<SubscriptionScreen> {
-  var _selectedProductionPlan = 1;
+  var _selectedProductionPlan = 0;
+  var _plans = const <MonetizationPlan>[];
+  var _membership = MembershipState.none;
+  var _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    if (!membershipTestMode) _load();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final plans = await MonetizationRepository.instance.plans();
+      final membership = await MonetizationRepository.instance
+          .refreshMembership();
+      if (!mounted) return;
+      setState(() {
+        _plans = plans;
+        _membership = membership;
+        _selectedProductionPlan = plans.length > 1 ? 1 : 0;
+        _loading = false;
+      });
+    } catch (error) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _error = error.toString();
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final testFlow = MembershipTestFlowController.instance;
+    if (!membershipTestMode && _loading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    if (!membershipTestMode && _error != null) {
+      return Scaffold(
+        body: SafeArea(
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('Membership could not be loaded.'),
+                const SizedBox(height: 12),
+                FilledButton(onPressed: _load, child: const Text('Try again')),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
     return ListenableBuilder(
       listenable: testFlow,
       builder: (context, _) {
-        final activeProductionPlan = subscriptionPlans
-            .where((plan) => plan.current)
-            .firstOrNull;
+        final activeProductionPlan = _membership.premium
+            ? _membership.plan
+            : null;
         final memberActive =
             testFlow.membershipActive || activeProductionPlan != null;
         final manageView =
@@ -51,7 +108,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 ? '${formatMembershipAmount(testFlow.selectedPlan.amount)} · ${testFlow.selectedPlan.intervalLabel}'
                 : activeProductionPlan == null
                 ? 'No billing schedule'
-                : '${formatMembershipAmount(activeProductionPlan.monthlyPrice)} · billed monthly',
+                : '${formatMembershipAmount(activeProductionPlan.priceMajor)} · billed ${activeProductionPlan.billingPeriod}',
           );
         }
         return Scaffold(
@@ -93,6 +150,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                             )
                           else
                             _ProductionPlanSelector(
+                              plans: _plans,
                               selectedIndex: _selectedProductionPlan,
                               onSelected: (index) => setState(
                                 () => _selectedProductionPlan = index,
@@ -118,9 +176,13 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                           AppPrimaryButton(
                             label: membershipTestMode
                                 ? 'Continue with ${testFlow.selectedPlan.title}'
-                                : 'Continue with ${subscriptionPlans[_selectedProductionPlan].name}',
+                                : _plans.isEmpty
+                                ? 'No plans available'
+                                : 'Continue with ${_plans[_selectedProductionPlan].name}',
                             icon: Icons.arrow_forward_rounded,
-                            onPressed: _continueToPayment,
+                            onPressed: !membershipTestMode && _plans.isEmpty
+                                ? null
+                                : _continueToPayment,
                           )
                         else
                           AppPrimaryButton(
@@ -285,18 +347,21 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       );
       return;
     }
-    final plan = subscriptionPlans[_selectedProductionPlan];
+    final plan = _plans[_selectedProductionPlan];
     Navigator.of(context).pushNamed(
       PaymentScreen.routeName,
       arguments: PaymentArgs(
+        productId: plan.id,
+        productType: 'subscription',
         title: plan.name,
-        billingCycle: 'Monthly',
-        amount: plan.monthlyPrice,
+        billingCycle: '${plan.billingInterval} ${plan.billingPeriod}',
+        amountMinor: plan.priceMinor,
+        currency: plan.currency,
       ),
     );
   }
 
-  void _restoreOrManage() {
+  Future<void> _restoreOrManage() async {
     if (membershipTestMode) {
       showPremiumSnack(
         context,
@@ -306,16 +371,41 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       );
       return;
     }
-    showPremiumSnack(context, 'No previous purchase was found');
+    try {
+      final restored = await MonetizationRepository.instance
+          .restoreMembership();
+      if (!mounted) return;
+      setState(() => _membership = restored);
+      showPremiumSnack(
+        context,
+        restored.premium
+            ? 'Membership restored'
+            : 'No previous purchase was found',
+      );
+    } catch (_) {
+      if (mounted) {
+        showPremiumSnack(context, 'Membership could not be restored');
+      }
+    }
   }
 
-  void _manageMembership() {
+  Future<void> _manageMembership() async {
     if (membershipTestMode) {
       MembershipTestFlowController.instance.reset();
       showPremiumSnack(context, 'Test membership reset');
       return;
     }
-    showPremiumSnack(context, 'Membership management opened');
+    try {
+      final updated = await MonetizationRepository.instance.cancelMembership();
+      if (!mounted) return;
+      setState(() => _membership = updated);
+      showPremiumSnack(
+        context,
+        'Renewal cancelled; access remains until the period ends',
+      );
+    } catch (_) {
+      if (mounted) showPremiumSnack(context, 'Membership could not be updated');
+    }
   }
 }
 
@@ -505,10 +595,12 @@ class _TestPlanSelector extends StatelessWidget {
 
 class _ProductionPlanSelector extends StatelessWidget {
   const _ProductionPlanSelector({
+    required this.plans,
     required this.selectedIndex,
     required this.onSelected,
   });
 
+  final List<MonetizationPlan> plans;
   final int selectedIndex;
   final ValueChanged<int> onSelected;
 
@@ -516,14 +608,14 @@ class _ProductionPlanSelector extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        for (var index = 0; index < subscriptionPlans.length; index++) ...[
+        for (var index = 0; index < plans.length; index++) ...[
           SubscriptionPlanCard.production(
-            key: ValueKey(subscriptionPlans[index].name),
-            plan: subscriptionPlans[index],
+            key: ValueKey(plans[index].id),
+            plan: plans[index],
             selected: selectedIndex == index,
             onTap: () => onSelected(index),
           ),
-          if (index != subscriptionPlans.length - 1) const SizedBox(height: 10),
+          if (index != plans.length - 1) const SizedBox(height: 10),
         ],
       ],
     );
@@ -547,17 +639,18 @@ class SubscriptionPlanCard extends StatelessWidget {
 
   SubscriptionPlanCard.production({
     super.key,
-    required SubscriptionPlan plan,
+    required MonetizationPlan plan,
     required this.selected,
     required this.onTap,
   }) : _title = plan.name,
-       _duration = 'Monthly',
-       _amount = plan.monthlyPrice,
-       _monthly = plan.monthlyPrice,
-       _bestValue = plan.highlight,
-       _tagline = plan.tagline,
+       _duration = '${plan.billingInterval} ${plan.billingPeriod}',
+       _amount = plan.priceMajor,
+       _monthly = plan.priceMajor,
+       _bestValue = plan.offerText != null,
+       _tagline = plan.description ?? '',
        _features = plan.features,
-       _billingTerms = 'Billed monthly';
+       _billingTerms =
+           'Billed every ${plan.billingInterval} ${plan.billingPeriod}';
 
   final String _title;
   final String _duration;

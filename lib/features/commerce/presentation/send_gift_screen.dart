@@ -1,163 +1,87 @@
-import 'package:amora_ai/core/constants/app_images.dart';
-import 'package:amora_ai/core/theme/amora_icons.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
-import 'package:amora_ai/core/theme/amora_text_styles.dart';
-import 'package:amora_ai/core/theme/app_colors.dart';
-import 'package:amora_ai/core/widgets/app_primary_button.dart';
-import 'package:amora_ai/core/widgets/premium_asset_image.dart';
+import 'package:amora_ai/core/widgets/amora_app_bar.dart';
+import 'package:amora_ai/core/widgets/amora_screen_title.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
+import 'package:amora_ai/features/monetization/data/monetization_repository.dart';
+import 'package:amora_ai/features/monetization/domain/monetization_models.dart';
 import 'package:flutter/material.dart';
 
-class SendGiftScreen extends StatelessWidget {
+class SendGiftScreen extends StatefulWidget {
   const SendGiftScreen({super.key});
-
   static const routeName = '/send-gift';
+  @override
+  State<SendGiftScreen> createState() => _SendGiftScreenState();
+}
+
+class _SendGiftScreenState extends State<SendGiftScreen> {
+  List<GiftProduct>? _gifts;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final gifts = await MonetizationRepository.instance.gifts();
+      if (mounted) setState(() => _gifts = gifts);
+    } catch (_) {
+      if (mounted) setState(() => _error = 'Gift catalog could not be loaded.');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final gifts = const [
-      _GiftOption(
-        'Coffee Date',
-        'A thoughtful cafe invite',
-        Icons.coffee_rounded,
-      ),
-      _GiftOption('Flowers', 'Classic and warm', Icons.local_florist_rounded),
-      _GiftOption(
-        'Book Note',
-        'For readers and slow conversations',
-        Icons.menu_book_rounded,
-      ),
-    ];
-
     return Scaffold(
       body: SafeArea(
         child: ResponsiveMobileFrame(
-          child: SingleChildScrollView(
+          child: ListView(
             padding: const EdgeInsets.fromLTRB(
-              AmoraSpacing.space20,
-              AmoraSpacing.space20,
-              AmoraSpacing.space20,
+              20,
+              20,
+              20,
               AmoraSpacing.navigationContentInset,
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  children: [
-                    IconButton.filledTonal(
-                      onPressed: () => Navigator.of(context).maybePop(),
-                      icon: const Icon(AmoraIcons.back),
-                    ),
-                    const SizedBox(width: AmoraSpacing.space12),
-                    Expanded(
-                      child: Text(
-                        'Send a Gift',
-                        style: AmoraTextStyles.headlineSmall.copyWith(
-                          color: AppColors.textDark,
-                          fontWeight: FontWeight.w700,
-                        ),
+            children: [
+              Row(
+                children: [
+                  AmoraHeaderBackButton(
+                    onPressed: () => Navigator.of(context).maybePop(),
+                  ),
+                  const SizedBox(width: 8),
+                  const Expanded(child: AmoraScreenTitle(title: 'Send a Gift')),
+                ],
+              ),
+              const SizedBox(height: 20),
+              if (_gifts == null && _error == null)
+                const Center(child: CircularProgressIndicator()),
+              if (_error != null) PremiumCard(child: Text(_error!)),
+              if (_gifts != null) ...[
+                for (final gift in _gifts!)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: PremiumCard(
+                      child: ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(gift.name),
+                        subtitle: Text(gift.description ?? gift.type),
+                        trailing: Text('${gift.priceCredits} credits'),
                       ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 18),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(28),
-                  child: SizedBox(
-                    height: 220,
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        const PremiumAssetImage(
-                          imageUrl: AppImages.eventCoffee,
-                          fallbackAsset: AppImages.fallbackEvent,
-                          initials: 'GF',
-                          borderRadius: BorderRadius.zero,
-                        ),
-                        DecoratedBox(
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: .42),
-                          ),
-                        ),
-                        const Positioned(
-                          left: 18,
-                          right: 18,
-                          bottom: 18,
-                          child: Text(
-                            'Pick something simple, premium, and personal.',
-                            style: TextStyle(
-                              color: AppColors.surface,
-                              fontSize: 22,
-                              height: 1.08,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
                   ),
-                ),
-                const SizedBox(height: 18),
-                for (final gift in gifts) ...[
-                  PremiumCard(
-                    child: Row(
-                      children: [
-                        CircleAvatar(
-                          backgroundColor: AppColors.lavenderBackground,
-                          child: Icon(
-                            gift.icon,
-                            color: AppColors.primaryPurple,
-                          ),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                gift.title,
-                                style: const TextStyle(
-                                  color: AppColors.textDark,
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                              ),
-                              const SizedBox(height: 3),
-                              Text(
-                                gift.subtitle,
-                                style: const TextStyle(
-                                  color: AppColors.textGray,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const Icon(Icons.chevron_right_rounded),
-                      ],
-                    ),
+                const PremiumCard(
+                  child: Text(
+                    'Choose Send Gift from a profile to securely select the recipient.',
                   ),
-                  const SizedBox(height: 12),
-                ],
-                AppPrimaryButton(
-                  label: 'Send Gift',
-                  icon: Icons.card_giftcard_rounded,
-                  onPressed: null,
                 ),
               ],
-            ),
+            ],
           ),
         ),
       ),
     );
   }
-}
-
-class _GiftOption {
-  const _GiftOption(this.title, this.subtitle, this.icon);
-
-  final String title;
-  final String subtitle;
-  final IconData icon;
 }

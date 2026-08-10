@@ -9,10 +9,13 @@ exports.getPublicProfile = async (req, res, next) => {
   try {
     const viewerUserId = Number(req.user.sub);
     const targetUserId = Number(req.params.userId);
-    const { User, OnboardingProfile, DiscoverAction, Match } = getModels();
+    const { User, OnboardingProfile, DiscoverAction, Match, Subscription } = getModels();
     const target = await User.findOne({
       where: activeAccountWhere({ id: targetUserId }),
-      include: [{ model: OnboardingProfile, required: true, where: { onboardingCompleted: true } }],
+      include: [
+        { model: OnboardingProfile, required: true, where: { onboardingCompleted: true } },
+        { model: Subscription, as: 'subscription', required: false, attributes: ['status', 'currentPeriodEnd'] },
+      ],
     });
     if (!target || await areUsersBlocked(viewerUserId, targetUserId)) return unavailable(res);
 

@@ -3,14 +3,17 @@ const { getModels } = require('../models');
 const { activeAccountWhere, visibleMatchSql } = require('../services/accessControlService');
 const { serializePublicProfile } = require('../services/publicProfileService');
 
-function matchIncludes(User, OnboardingProfile) {
+function matchIncludes(User, OnboardingProfile, Subscription) {
   const userInclude = (as) => ({
     model: User,
     as,
     required: true,
     where: activeAccountWhere(),
     attributes: ['id', 'name', 'isVerified'],
-    include: [{ model: OnboardingProfile, required: true, where: { onboardingCompleted: true } }],
+    include: [
+      { model: OnboardingProfile, required: true, where: { onboardingCompleted: true } },
+      { model: Subscription, as: 'subscription', required: false, attributes: ['status', 'currentPeriodEnd'] },
+    ],
   });
   return [userInclude('userOne'), userInclude('userTwo')];
 }
@@ -30,7 +33,7 @@ function serializeMatch(req, row, viewerUserId, viewerProfile) {
 exports.list = async (req, res, next) => {
   try {
     const userId = Number(req.user.sub);
-    const { Match, User, OnboardingProfile } = getModels();
+    const { Match, User, OnboardingProfile, Subscription } = getModels();
     const rows = await Match.findAll({
       where: {
         [Op.and]: [
@@ -38,7 +41,7 @@ exports.list = async (req, res, next) => {
           visibleMatchSql(Match.sequelize, userId),
         ],
       },
-      include: matchIncludes(User, OnboardingProfile),
+      include: matchIncludes(User, OnboardingProfile, Subscription),
       order: [['matchedAt', 'DESC'], ['id', 'DESC']],
       subQuery: false,
     });
@@ -52,7 +55,7 @@ exports.list = async (req, res, next) => {
 exports.detail = async (req, res, next) => {
   try {
     const userId = Number(req.user.sub);
-    const { Match, User, OnboardingProfile } = getModels();
+    const { Match, User, OnboardingProfile, Subscription } = getModels();
     const row = await Match.findOne({
       where: {
         id: req.params.matchId,
@@ -61,7 +64,7 @@ exports.detail = async (req, res, next) => {
           visibleMatchSql(Match.sequelize, userId),
         ],
       },
-      include: matchIncludes(User, OnboardingProfile),
+      include: matchIncludes(User, OnboardingProfile, Subscription),
       subQuery: false,
     });
     if (!row) return res.status(404).json({ success: false, message: 'Match is not available.', code: 'MATCH_NOT_AVAILABLE', errors: [] });

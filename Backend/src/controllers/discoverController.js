@@ -204,7 +204,7 @@ exports.getFeed = async (req, res, next) => {
   try {
     const viewer = await requireCompleted(res, req.user.sub);
     if (!viewer) return;
-    const { User, OnboardingProfile, DiscoverAction } = getModels();
+    const { User, OnboardingProfile, DiscoverAction, Subscription } = getModels();
     const page = Number(req.query.page || 1);
     const limit = Number(req.query.limit || 10);
     const filters = await filtersFor(req.user.sub, req.query);
@@ -239,7 +239,7 @@ exports.getFeed = async (req, res, next) => {
           ],
         },
         attributes: { include: [[literal(scoreSql), 'compatibilityScore']] },
-      }],
+      }, { model: Subscription, as: 'subscription', required: false, attributes: ['status', 'currentPeriodEnd'] }],
       order: [
         [literal(boostSql), 'DESC'],
         [literal(scoreSql), 'DESC'],
@@ -341,8 +341,10 @@ exports.boost = async (req, res, next) => {
   try {
     const viewer = await requireCompleted(res, req.user.sub);
     if (!viewer) return;
-    const { Boost } = getModels();
-    const now = new Date();
+    const key = String(req.get('Idempotency-Key') || req.body?.idempotencyKey || '').trim();
+    if (!/^[A-Za-z0-9._:-]{8,100}$/.test(key)) return fail(res, 400, 'A valid Idempotency-Key is required.', 'IDEMPOTENCY_KEY_REQUIRED');
+    const { Boost, BoostEntitlement, User } = getModels();
+    const now = new Date(Math.floor(Date.now() / 1000) * 1000);
     const active = await Boost.findOne({
       where: { userId: req.user.sub, active: true, expiresAt: { [Op.gt]: now } },
       order: [['expiresAt', 'DESC']],
@@ -355,15 +357,30 @@ exports.boost = async (req, res, next) => {
         remainingSeconds: Math.max(0, Math.ceil((new Date(active.expiresAt).getTime() - now.getTime()) / 1000)),
       });
     }
-    await Boost.update({ active: false }, { where: { userId: req.user.sub, active: true } });
-    const expiresAt = new Date(now.getTime() + 30 * 60 * 1000);
-    const boost = await Boost.create({ userId: req.user.sub, startedAt: now, expiresAt, active: true });
-    // TODO(monetization): require a verified entitlement before activation in the monetization phase.
+    let boost;
+    await Boost.sequelize.transaction(async (transaction) => {
+      await User.findByPk(req.user.sub, { attributes: ['id'], transaction, lock: transaction.LOCK.UPDATE });
+      const retried = await Boost.findOne({ where: { userId: req.user.sub, idempotencyKey: key }, transaction, lock: transaction.LOCK.UPDATE });
+      if (retried) { boost = retried; return; }
+      const concurrentlyActive = await Boost.findOne({ where: { userId: req.user.sub, active: true, expiresAt: { [Op.gt]: now } }, order: [['expiresAt', 'DESC']], transaction, lock: transaction.LOCK.UPDATE });
+      if (concurrentlyActive) { boost = concurrentlyActive; return; }
+      const entitlement = await BoostEntitlement.findOne({
+        where: { userId: req.user.sub, status: 'active', remainingQuantity: { [Op.gt]: 0 }, [Op.or]: [{ expiresAt: null }, { expiresAt: { [Op.gt]: now } }] },
+        order: [['expiresAt', 'ASC'], ['id', 'ASC']], transaction, lock: transaction.LOCK.UPDATE,
+      });
+      if (!entitlement) return;
+      await Boost.update({ active: false }, { where: { userId: req.user.sub, active: true }, transaction });
+      const expiresAt = new Date(now.getTime() + Number(entitlement.durationMinutes) * 60 * 1000);
+      boost = await Boost.create({ userId: req.user.sub, boostEntitlementId: entitlement.id, idempotencyKey: key, startedAt: now, expiresAt, active: true }, { transaction });
+      const remainingQuantity = Number(entitlement.remainingQuantity) - 1;
+      await entitlement.update({ remainingQuantity, status: remainingQuantity === 0 ? 'consumed' : 'active' }, { transaction });
+    });
+    if (!boost) return fail(res, 402, 'A boost entitlement is required.', 'BOOST_ENTITLEMENT_REQUIRED');
     return success(res, 'Boost activated.', {
       active: true,
       startedAt: boost.startedAt,
       expiresAt: boost.expiresAt,
-      remainingSeconds: 1800,
+      remainingSeconds: Math.max(0, Math.ceil((new Date(boost.expiresAt).getTime() - now.getTime()) / 1000)),
     });
   } catch (error) {
     return next(error);

@@ -16,6 +16,7 @@ import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
 import 'package:amora_ai/features/profile/data/public_profile_mapper.dart';
 import 'package:amora_ai/features/profile/presentation/controllers/profile_relationship_controller.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_rose_gift_sheet.dart';
+import 'package:amora_ai/features/monetization/data/monetization_repository.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_public_profile_view.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_preference_display.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_photo_view.dart';
@@ -387,6 +388,9 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
     }
     if (!mounted) return;
     String? retryMessageId;
+    final giftKey = MonetizationRepository.instance.newIdempotencyKey(
+      'rose-gift',
+    );
     setState(() => _giftSheetOpen = true);
     final sent = await showAmoraaRoseGiftSheet(
       context: context,
@@ -408,6 +412,13 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
             }
             return false;
           }
+          await MonetizationRepository.instance.sendGift(
+            recipientId: _profile.id,
+            giftId: 'rose_ritual',
+            idempotencyKey: giftKey,
+            conversationId: conversationId,
+            note: note,
+          );
           final updated = await repository.sendMessage(
             conversationId,
             note.isEmpty ? 'Rose' : note,

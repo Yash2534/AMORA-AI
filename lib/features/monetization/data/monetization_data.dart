@@ -20,15 +20,21 @@ class SubscriptionPlan {
 
 class PaymentArgs {
   const PaymentArgs({
+    required this.productId,
+    required this.productType,
     required this.title,
     required this.billingCycle,
-    required this.amount,
+    required this.amountMinor,
+    required this.currency,
     this.subtitle = 'AMORAA Premium',
   });
 
+  final String productId;
+  final String productType;
   final String title;
   final String billingCycle;
-  final int amount;
+  final int amountMinor;
+  final String currency;
   final String subtitle;
 }
 
@@ -78,44 +84,6 @@ class ReferralStat {
   final String value;
   final IconData icon;
 }
-
-const subscriptionPlans = [
-  SubscriptionPlan(
-    name: 'AMORAA Plus',
-    monthlyPrice: 1199,
-    tagline: 'A calmer way to meet more compatible people.',
-    features: [
-      'Unlimited likes',
-      'See who liked you',
-      'Advanced intent filters',
-      '3 Super Likes each week',
-    ],
-  ),
-  SubscriptionPlan(
-    name: 'AMORAA Gold',
-    monthlyPrice: 1999,
-    tagline: 'Premium visibility for more intentional conversations.',
-    highlight: true,
-    features: [
-      'Priority profiles',
-      'Read receipts',
-      'Incognito browsing',
-      'Boost discount',
-    ],
-  ),
-  SubscriptionPlan(
-    name: 'AMORAA Platinum',
-    monthlyPrice: 3499,
-    tagline: 'The most complete AMORAA experience for intentional dating.',
-    features: [
-      'Top visibility',
-      'Unlimited Super Likes',
-      'Video date access',
-      'Premium events',
-      'Concierge match signals',
-    ],
-  ),
-];
 
 const featureMatrix = [
   FeatureMatrixItem(
@@ -199,28 +167,6 @@ const icebreakers = [
   'Movie discussion: What film feels like your comfort rewatch?',
   'Food conversation: What is your most reliable cafe order?',
   'Coffee date idea: Quiet corner, one hour, and a dessert we can split.',
-];
-
-const walletPackages = [
-  WalletPackage(100, 100, 'Starter'),
-  WalletPackage(500, 499, 'Popular'),
-  WalletPackage(1000, 899, 'Best value'),
-  WalletPackage(2500, 1999, 'VIP pack'),
-];
-
-const redemptionOptions = [
-  'Super Like',
-  'Boost',
-  'Gift Rose',
-  'Event Discount',
-  'AI Coach',
-];
-
-const walletTransactions = [
-  WalletTransaction('Referral Bonus', 100, 'Today', true),
-  WalletTransaction('Icebreaker Pack', 199, 'Yesterday', false),
-  WalletTransaction('Rose Gift', 99, '26 Jun', false),
-  WalletTransaction('Event Attendance', 200, '24 Jun', true),
 ];
 
 const referralStats = [

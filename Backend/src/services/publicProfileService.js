@@ -23,6 +23,10 @@ function serializePublicProfile(req, user, profile, options = {}) {
   const score = options.score ?? (queriedScore === undefined || queriedScore === null
     ? (options.viewer ? computeCompatibilityScore(options.viewer, profile) : 0)
     : Number(queriedScore));
+  const subscription = user.subscription;
+  const premium = Boolean(subscription
+    && ['active', 'trialing', 'cancelled'].includes(subscription.status)
+    && new Date(subscription.currentPeriodEnd) > new Date());
   return {
     id: String(user.id),
     gender: profile.gender || '',
@@ -42,7 +46,7 @@ function serializePublicProfile(req, user, profile, options = {}) {
     gallery: photos.map((photo) => publicUrl(req, photo)).filter(Boolean),
     languages: list(profile.languages),
     verification: user.isVerified ? 'Verified' : 'Unverified',
-    premium: false,
+    premium,
     lifestyle: profile.lifestyle || {},
     promptAnswers: profile.prompts || {},
     travelPreference: profile.travelPreference || '',
