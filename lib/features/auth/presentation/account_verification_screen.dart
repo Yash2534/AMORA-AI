@@ -636,13 +636,10 @@ class _UnifiedMobileNumberFieldState extends State<_UnifiedMobileNumberField> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.only(left: AmoraSpacing.space4),
-          child: Text(
-            'Mobile number',
-            style: AmoraTextStyles.labelMedium.copyWith(
-              color: focused ? AppColors.primary : AppColors.text,
-            ),
+        Text(
+          'Mobile number',
+          style: AmoraTextStyles.labelMedium.copyWith(
+            color: focused ? AppColors.primary : AppColors.text,
           ),
         ),
         const SizedBox(height: AmoraSpacing.space8),
@@ -668,6 +665,7 @@ class _UnifiedMobileNumberFieldState extends State<_UnifiedMobileNumberField> {
                 : null,
           ),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Semantics(
                 button: true,
@@ -680,43 +678,62 @@ class _UnifiedMobileNumberFieldState extends State<_UnifiedMobileNumberField> {
                   borderRadius: const BorderRadius.horizontal(
                     left: Radius.circular(17),
                   ),
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(minWidth: 116),
+                  child: SizedBox(
+                    width: 112,
                     child: SizedBox(
-                      height: AmoraSpacing.controlHeight - 2,
+                      height: double.infinity,
                       child: Padding(
                         padding: const EdgeInsets.symmetric(
                           horizontal: AmoraSpacing.space12,
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Text('🇮🇳', style: TextStyle(fontSize: 20)),
-                            const SizedBox(width: AmoraSpacing.space8),
-                            Text(
-                              widget.country.dialCode,
-                              style: AmoraTextStyles.bodyLarge.copyWith(
-                                color: AppColors.primary,
-                                fontWeight: FontWeight.w700,
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: FittedBox(
+                                  fit: BoxFit.contain,
+                                  child: Text(
+                                    '🇮🇳',
+                                    style: TextStyle(fontSize: 20),
+                                  ),
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: AmoraSpacing.space4),
-                            const Icon(
-                              Icons.keyboard_arrow_down_rounded,
-                              color: AppColors.primary,
-                              size: 20,
-                            ),
-                          ],
+                              const SizedBox(width: AmoraSpacing.space8),
+                              Text(
+                                widget.country.dialCode,
+                                style: AmoraTextStyles.bodyLarge.copyWith(
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(width: AmoraSpacing.space4),
+                              const Icon(
+                                Icons.keyboard_arrow_down_rounded,
+                                color: AppColors.primary,
+                                size: 20,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
                   ),
                 ),
               ),
-              Container(
-                width: 1,
-                height: 32,
-                color: borderColor.withValues(alpha: focused ? .72 : .82),
+              Align(
+                alignment: Alignment.center,
+                child: SizedBox(
+                  width: 1,
+                  height: 32,
+                  child: ColoredBox(
+                    color: borderColor.withValues(alpha: focused ? .72 : .82),
+                  ),
+                ),
               ),
               Expanded(
                 child: Semantics(
@@ -738,13 +755,21 @@ class _UnifiedMobileNumberFieldState extends State<_UnifiedMobileNumberField> {
                     ],
                     onFieldSubmitted: widget.onSubmitted,
                     style: AmoraTextStyles.bodyLarge,
+                    textAlignVertical: TextAlignVertical.center,
                     cursorColor: AppColors.secondary,
                     decoration: const InputDecoration(
+                      isDense: true,
                       hintText: '9723653140',
-                      prefixIcon: Icon(
-                        Icons.phone_iphone_rounded,
-                        color: AppColors.primary,
-                        size: 21,
+                      prefixIcon: Center(
+                        child: Icon(
+                          Icons.phone_iphone_rounded,
+                          color: AppColors.primary,
+                          size: 21,
+                        ),
+                      ),
+                      prefixIconConstraints: BoxConstraints.tightFor(
+                        width: AmoraSpacing.space48,
+                        height: AmoraSpacing.controlHeight,
                       ),
                       border: InputBorder.none,
                       enabledBorder: InputBorder.none,
@@ -752,9 +777,8 @@ class _UnifiedMobileNumberFieldState extends State<_UnifiedMobileNumberField> {
                       disabledBorder: InputBorder.none,
                       errorBorder: InputBorder.none,
                       focusedErrorBorder: InputBorder.none,
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: AmoraSpacing.space12,
-                        vertical: 17,
+                      contentPadding: EdgeInsets.only(
+                        right: AmoraSpacing.space12,
                       ),
                     ),
                   ),

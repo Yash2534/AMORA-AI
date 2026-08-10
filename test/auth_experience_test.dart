@@ -643,6 +643,99 @@ void main() {
     );
 
     testWidgets(
+      'mobile number field remains aligned and contained at supported widths',
+      (tester) async {
+        const configurations = <(double, double)>[
+          (320, 1.3),
+          (360, 1.0),
+          (390, 1.0),
+          (412, 1.0),
+          (430, 1.0),
+          (600, 1.15),
+          (768, 1.0),
+        ];
+
+        for (final configuration in configurations) {
+          final (width, textScale) = configuration;
+          await tester.binding.setSurfaceSize(Size(width, 900));
+          await tester.pumpWidget(
+            app(
+              home: MediaQuery(
+                data: MediaQueryData(textScaler: TextScaler.linear(textScale)),
+                child: const AccountVerificationScreen(
+                  arguments: MobileVerificationArguments(
+                    phoneNumber: '9876543210',
+                  ),
+                ),
+              ),
+            ),
+          );
+          await settleEntrance(tester);
+
+          final field = tester.getRect(
+            find.byKey(const ValueKey('unified-mobile-number-field')),
+          );
+          final country = tester.getRect(
+            find.byKey(const ValueKey('country-code-selector')),
+          );
+          final number = tester.getRect(
+            find.byKey(const ValueKey('mobile-number-field')),
+          );
+          final phoneIcon = tester.getRect(
+            find.descendant(
+              of: find.byKey(const ValueKey('unified-mobile-number-field')),
+              matching: find.byIcon(Icons.phone_iphone_rounded),
+            ),
+          );
+
+          expect(field.height, AmoraSpacing.controlHeight);
+          expect(country.left, greaterThanOrEqualTo(field.left));
+          expect(country.right, lessThanOrEqualTo(field.right));
+          expect(number.left, greaterThanOrEqualTo(country.right));
+          expect(number.right, closeTo(field.right, 1.1));
+          expect(number.width, greaterThan(72));
+          expect(country.center.dy, closeTo(field.center.dy, 1));
+          expect(number.center.dy, closeTo(field.center.dy, 1));
+          expect(phoneIcon.center.dy, closeTo(field.center.dy, 1));
+          expect(field.left, greaterThanOrEqualTo(0));
+          expect(field.right, lessThanOrEqualTo(width));
+          expect(tester.takeException(), isNull);
+        }
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+      },
+    );
+
+    testWidgets('mobile number error leaves the field geometry unchanged', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        app(
+          home: AccountVerificationScreen(
+            arguments: const MobileVerificationArguments(
+              phoneNumber: '9876543210',
+            ),
+            requestOtp: (_) async =>
+                throw const MobileVerificationException('OTP_SEND_FAILED'),
+          ),
+        ),
+      );
+      await settleEntrance(tester);
+      final before = tester.getRect(
+        find.byKey(const ValueKey('unified-mobile-number-field')),
+      );
+
+      await tester.tap(find.byKey(const ValueKey('send-otp-button')));
+      await tester.pump();
+
+      final after = tester.getRect(
+        find.byKey(const ValueKey('unified-mobile-number-field')),
+      );
+      expect(find.textContaining("Couldn't send the code"), findsOneWidget);
+      expect(after, before);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets(
       'resend failure does not restart countdown and invalid OTP is shown safely',
       (tester) async {
         var sends = 0;
