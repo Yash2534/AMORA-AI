@@ -124,7 +124,11 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Popular questions'), findsOneWidget);
+    expect(find.text('Popular questions'), findsNothing);
+    expect(
+      find.text('Quick answers members look for most often'),
+      findsNothing,
+    );
     expect(find.text('Browse by topic'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });

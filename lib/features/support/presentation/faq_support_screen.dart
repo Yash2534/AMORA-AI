@@ -51,9 +51,6 @@ class _FaqSupportScreenState extends State<FaqSupportScreen> {
   @override
   Widget build(BuildContext context) {
     final filtered = _filteredFaqs;
-    final popular = supportFaqs
-        .where((faq) => faq.popular)
-        .toList(growable: false);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -92,22 +89,6 @@ class _FaqSupportScreenState extends State<FaqSupportScreen> {
                             },
                     ),
                     const SizedBox(height: 24),
-                    if (_query.isEmpty &&
-                        _selectedCategory == FaqCategory.all) ...[
-                      const _SectionHeading(
-                        title: 'Popular questions',
-                        subtitle: 'Quick answers members look for most often',
-                      ),
-                      const SizedBox(height: 12),
-                      _PopularQuestions(
-                        faqs: popular,
-                        onSelected: (faq) => setState(() {
-                          _selectedCategory = FaqCategory.all;
-                          _expandedId = faq.id;
-                        }),
-                      ),
-                      const SizedBox(height: 24),
-                    ],
                     const _SectionHeading(
                       title: 'Browse by topic',
                       subtitle: 'Choose a category to narrow the answers',
@@ -702,81 +683,6 @@ class LegalSupportLinks extends StatelessWidget {
           ],
         ),
       ],
-    );
-  }
-}
-
-class _PopularQuestions extends StatelessWidget {
-  const _PopularQuestions({required this.faqs, required this.onSelected});
-
-  final List<SupportFaqItem> faqs;
-  final ValueChanged<SupportFaqItem> onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final width = constraints.maxWidth >= 720
-            ? (constraints.maxWidth - 12) / 2
-            : constraints.maxWidth;
-        return Wrap(
-          spacing: 12,
-          runSpacing: 10,
-          children: [
-            for (final faq in faqs)
-              SizedBox(
-                width: width,
-                child: Material(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(20),
-                  child: InkWell(
-                    onTap: () => onSelected(faq),
-                    borderRadius: BorderRadius.circular(20),
-                    child: Container(
-                      constraints: const BoxConstraints(minHeight: 64),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: AppColors.tertiary.withValues(alpha: .68),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            faq.category.icon,
-                            color: AppColors.secondary,
-                            size: 21,
-                          ),
-                          const SizedBox(width: 11),
-                          Expanded(
-                            child: Text(
-                              faq.question,
-                              style: const TextStyle(
-                                color: AppColors.text,
-                                fontSize: 14,
-                                height: 1.3,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                          const Icon(
-                            Icons.arrow_forward_rounded,
-                            color: AppColors.primary,
-                            size: 18,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        );
-      },
     );
   }
 }
