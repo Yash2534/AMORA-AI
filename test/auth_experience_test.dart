@@ -1,6 +1,3 @@
-import 'dart:async';
-import 'dart:io';
-
 import 'package:amora_ai/core/branding/amora_brand_assets.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_theme.dart';
@@ -310,6 +307,7 @@ void main() {
       semantics.dispose();
     });
 
+    /* Replaced by mobile verification coverage below.
     testWidgets(
       'email verification accepts six digits and replaces OTP on success',
       (tester) async {
@@ -550,6 +548,146 @@ void main() {
       expect(onboardingSource, isNot(contains('demoVerificationCode')));
       expect(onboardingSource, isNot(contains('verifyCode(String code)')));
     });
+
+    */
+
+    testWidgets(
+      'mobile verification sends an E.164 number and completes OTP verification',
+      (tester) async {
+        var requestedPhone = '';
+        var verifiedPayload = '';
+        await tester.pumpWidget(
+          app(
+            home: AccountVerificationScreen(
+              arguments: const MobileVerificationArguments(
+                phoneNumber: '9876543210',
+              ),
+              requestOtp: (phone) async => requestedPhone = phone,
+              verifyOtp: (phone, code) async =>
+                  verifiedPayload = '$phone:$code',
+            ),
+            routes: {
+              ProfileOnboardingFlow.routeName: (_) => const Scaffold(
+                body: Center(child: Text('Profile Onboarding reached')),
+              ),
+            },
+          ),
+        );
+        await settleEntrance(tester);
+        expect(find.text('Verify your mobile number'), findsOneWidget);
+        expect(find.text('Verify your email'), findsNothing);
+        expect(
+          find.byKey(const ValueKey('country-code-selector')),
+          findsOneWidget,
+        );
+        await tester.tap(find.byKey(const ValueKey('send-otp-button')));
+        await tester.pump(const Duration(milliseconds: 250));
+        expect(requestedPhone, '+919876543210');
+        expect(
+          find.byKey(const ValueKey('account-verification-otp')),
+          findsOneWidget,
+        );
+        await tester.enterText(
+          find.byKey(const ValueKey('otp-native-input')),
+          '123456',
+        );
+        await tester.pump();
+        await tester.tap(find.byKey(const ValueKey('verify-mobile-button')));
+        await tester.pump();
+        expect(verifiedPayload, '+919876543210:123456');
+        expect(find.text('Verification complete'), findsOneWidget);
+        await tester.pump(const Duration(milliseconds: 500));
+        await tester.pump();
+        expect(find.text('Profile Onboarding reached'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'mobile verification blocks invalid numbers and supports changing the number',
+      (tester) async {
+        await tester.pumpWidget(
+          app(
+            home: const AccountVerificationScreen(
+              arguments: MobileVerificationArguments(phoneNumber: ''),
+            ),
+          ),
+        );
+        await settleEntrance(tester);
+        expect(
+          tester
+              .widget<AuthPrimaryButton>(
+                find.byKey(const ValueKey('send-otp-button')),
+              )
+              .onPressed,
+          isNull,
+        );
+        await tester.tap(find.byKey(const ValueKey('country-code-selector')));
+        await tester.pumpAndSettle();
+        expect(find.text('Select country code'), findsOneWidget);
+        await tester.tap(find.text('India'));
+        await tester.pumpAndSettle();
+        await tester.enterText(
+          find.byKey(const ValueKey('mobile-number-field')),
+          '9876543210',
+        );
+        await tester.pump();
+        expect(
+          tester
+              .widget<AuthPrimaryButton>(
+                find.byKey(const ValueKey('send-otp-button')),
+              )
+              .onPressed,
+          isNotNull,
+        );
+      },
+    );
+
+    testWidgets(
+      'resend failure does not restart countdown and invalid OTP is shown safely',
+      (tester) async {
+        var sends = 0;
+        await tester.pumpWidget(
+          app(
+            home: AccountVerificationScreen(
+              arguments: const MobileVerificationArguments(
+                phoneNumber: '9876543210',
+              ),
+              resendSeconds: 1,
+              requestOtp: (_) async {
+                sends++;
+                if (sends == 2) {
+                  throw const MobileVerificationException('NETWORK_ERROR');
+                }
+              },
+              verifyOtp: (_, _) async =>
+                  throw const MobileVerificationException('OTP_INVALID'),
+            ),
+          ),
+        );
+        await settleEntrance(tester);
+        await tester.tap(find.byKey(const ValueKey('send-otp-button')));
+        await tester.pump(const Duration(milliseconds: 250));
+        await tester.pump(const Duration(seconds: 1));
+        await tester.tap(find.byKey(const ValueKey('verification-resend')));
+        await tester.pump();
+        expect(
+          find.text("Couldn't resend the code. Please try again."),
+          findsOneWidget,
+        );
+        expect(
+          find.byKey(const ValueKey('verification-resend')),
+          findsOneWidget,
+        );
+        await tester.enterText(
+          find.byKey(const ValueKey('otp-native-input')),
+          '123456',
+        );
+        await tester.pump();
+        await tester.tap(find.byKey(const ValueKey('verify-mobile-button')));
+        await tester.pump();
+        expect(find.textContaining('Incorrect code'), findsOneWidget);
+      },
+    );
 
     testWidgets(
       'forgot password uses email request and verification callbacks',

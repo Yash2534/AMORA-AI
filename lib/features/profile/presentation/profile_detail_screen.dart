@@ -16,6 +16,7 @@ import 'package:amora_ai/features/profile/presentation/widgets/amoraa_rose_gift_
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_public_profile_view.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_preference_display.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_photo_view.dart';
+import 'package:amora_ai/features/profile/presentation/widgets/amoraa_connection_profile_details.dart';
 import 'package:amora_ai/features/chat/data/local_chat_repository.dart';
 import 'package:amora_ai/features/chat/presentation/chat_detail_screen.dart';
 import 'package:amora_ai/features/discover/presentation/browse_grid_screen.dart';
@@ -960,6 +961,9 @@ class ProfileStory extends StatelessWidget {
       ...profile.preferredTalkingHours,
       ...profile.loveLanguages,
     ].any((value) => value.trim().isNotEmpty);
+    final hasConnectionDetails =
+        profile.iceBreaker.trim().isNotEmpty ||
+        profile.communicationStyle != null;
     final sections = <Widget>[
       if (hasQuickFacts)
         _SectionReveal(
@@ -985,6 +989,13 @@ class ProfileStory extends StatelessWidget {
         _SectionReveal(
           key: const ValueKey('public-profile-section-preferences'),
           child: AmoraaProfilePreferenceDisplay(profile: profile),
+        ),
+      if (hasConnectionDetails)
+        _SectionReveal(
+          child: AmoraaConnectionProfileDetails(
+            iceBreaker: profile.iceBreaker,
+            communicationStyle: profile.communicationStyle,
+          ),
         ),
       if (hasInterests)
         _SectionReveal(

@@ -240,6 +240,7 @@ class _AmoraaProfileFormState extends State<AmoraaProfileForm> {
                           ),
                           _EditSection(
                             id: null,
+                            keyName: 'personal-details',
                             icon: Icons.person_search_rounded,
                             title: 'Personal Details',
                             child: AmoraaPersonalPreferencesEditor(
@@ -283,14 +284,6 @@ class _AmoraaProfileFormState extends State<AmoraaProfileForm> {
                             ),
                           ),
                           _EditSection(
-                            id: null,
-                            icon: Icons.favorite_border_rounded,
-                            title: 'Connection Preferences',
-                            child: AmoraaConnectionPreferencesEditor(
-                              controller: _controller,
-                            ),
-                          ),
-                          _EditSection(
                             id: ProfileCompletionSectionId.prompt,
                             icon: Icons.forum_outlined,
                             title: 'Profile Prompt',
@@ -300,6 +293,15 @@ class _AmoraaProfileFormState extends State<AmoraaProfileForm> {
                               showValidation: _showValidation,
                               navigationTargets: _navigationTargets,
                               highlightedField: _highlightedField,
+                            ),
+                          ),
+                          _EditSection(
+                            id: null,
+                            keyName: 'connection-preferences',
+                            icon: Icons.favorite_border_rounded,
+                            title: 'Connection Preferences',
+                            child: AmoraaConnectionPreferencesEditor(
+                              controller: _controller,
                             ),
                           ),
                           _EditSection(
@@ -559,6 +561,7 @@ class _EditSection extends StatelessWidget {
     required this.title,
     required this.child,
     this.unframed = false,
+    this.keyName,
   });
 
   final ProfileCompletionSectionId? id;
@@ -566,12 +569,15 @@ class _EditSection extends StatelessWidget {
   final String title;
   final Widget child;
   final bool unframed;
+  final String? keyName;
+
+  String get _keyName => keyName ?? id?.name ?? 'verification';
 
   @override
   Widget build(BuildContext context) {
     if (unframed) {
       return KeyedSubtree(
-        key: ValueKey('edit-section-${id?.name ?? 'verification'}'),
+        key: ValueKey('edit-section-$_keyName'),
         child: Padding(
           padding: const EdgeInsets.only(
             bottom: AmoraSpacing.space16,
@@ -585,7 +591,7 @@ class _EditSection extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: AmoraSpacing.space16),
       child: PremiumCard(
-        key: ValueKey('edit-section-${id?.name ?? 'verification'}'),
+        key: ValueKey('edit-section-$_keyName'),
         radius: 22,
         padding: const EdgeInsets.all(AmoraSpacing.space20),
         child: Column(

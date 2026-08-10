@@ -5,6 +5,7 @@ import 'package:amora_ai/core/widgets/amoraa_main_page_header.dart';
 import 'package:amora_ai/features/chat/presentation/chat_list_screen.dart';
 import 'package:amora_ai/features/events/presentation/widgets/events_widgets.dart';
 import 'package:amora_ai/features/matches/presentation/matches_screen.dart';
+import 'package:amora_ai/features/matches/presentation/widgets/amoraa_inline_compatibility_filter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -171,6 +172,25 @@ void main() {
       ),
       findsOneWidget,
     );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('main-page body controls share the header content line', (
+    tester,
+  ) async {
+    await pumpMainShell(tester, width: 320);
+
+    for (final finder in <Finder>[
+      find.byKey(const ValueKey('discover-filter-rail'), skipOffstage: false),
+      find.byKey(const ValueKey('chats-search-container'), skipOffstage: false),
+      find.byType(AmoraaInlineCompatibilityFilter, skipOffstage: false),
+    ]) {
+      expect(finder, findsOneWidget);
+      expect(
+        tester.getRect(finder).left,
+        closeTo(AmoraaMainPageHeader.contentHorizontalInset, .1),
+      );
+    }
     expect(tester.takeException(), isNull);
   });
 

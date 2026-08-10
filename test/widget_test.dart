@@ -232,7 +232,7 @@ void main() {
     expect(find.text('Step 1 of 6'), findsOneWidget);
   });
 
-  testWidgets('signup opens email verification before profile onboarding', (
+  testWidgets('signup opens mobile verification before profile onboarding', (
     tester,
   ) async {
     AmoraSession.logOut();
@@ -263,12 +263,9 @@ void main() {
     await tester.pump(const Duration(milliseconds: 750));
     await tester.pump(const Duration(milliseconds: 400));
 
-    expect(find.text('Verify your email'), findsOneWidget);
-    expect(find.text('new.member@amora.ai'), findsOneWidget);
-    expect(
-      find.byKey(const ValueKey('account-verification-otp')),
-      findsOneWidget,
-    );
+    expect(find.text('Verify your mobile number'), findsOneWidget);
+    expect(find.byKey(const ValueKey('mobile-number-field')), findsOneWidget);
+    expect(find.byKey(const ValueKey('send-otp-button')), findsOneWidget);
     expect(find.text("When's your birthday?"), findsNothing);
     expect(find.text('Step 1 of 6'), findsNothing);
   });

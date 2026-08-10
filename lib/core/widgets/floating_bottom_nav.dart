@@ -28,7 +28,7 @@ class FloatingBottomNav extends StatelessWidget {
   static const double iconContainerHeight = 28;
   static const double labelSize = 11;
   static const double horizontalMargin = 16;
-  static const double minimumBottomSpacing = 8;
+  static const double minimumBottomSpacing = 6;
 
   static double navigationHeightFor(BuildContext context) =>
       barHeight +

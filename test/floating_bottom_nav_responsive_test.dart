@@ -263,7 +263,10 @@ void main() {
       FloatingBottomNav.barHeight + FloatingBottomNav.minimumBottomSpacing,
     );
     expect(withSystemInset.height, FloatingBottomNav.barHeight + 34);
-    expect(withSystemInset.height - withoutSystemInset.height, 26);
+    expect(
+      withSystemInset.height - withoutSystemInset.height,
+      34 - FloatingBottomNav.minimumBottomSpacing,
+    );
     expect(tester.takeException(), isNull);
   });
 

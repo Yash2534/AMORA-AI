@@ -97,12 +97,17 @@ class _ChatListScreenState extends State<ChatListScreen> {
                   children: [
                     ChatsAppBar(onCompose: _showComposeSheet),
                     const SizedBox(height: AmoraSpacing.space12),
-                    ChatSearchField(
-                      controller: _searchController,
-                      focusNode: _searchFocusNode,
-                      hasQuery: _query.isNotEmpty,
-                      onChanged: (value) => setState(() => _query = value),
-                      onClear: _clearSearch,
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AmoraSpacing.space4,
+                      ),
+                      child: ChatSearchField(
+                        controller: _searchController,
+                        focusNode: _searchFocusNode,
+                        hasQuery: _query.isNotEmpty,
+                        onChanged: (value) => setState(() => _query = value),
+                        onClear: _clearSearch,
+                      ),
                     ),
                   ],
                 ),
@@ -126,9 +131,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
                         SliverToBoxAdapter(
                           child: Padding(
                             padding: const EdgeInsets.fromLTRB(
-                              AmoraSpacing.space16,
+                              AmoraSpacing.space20,
                               AmoraSpacing.space8,
-                              AmoraSpacing.space16,
+                              AmoraSpacing.space20,
                               AmoraSpacing.space12,
                             ),
                             child: ChatFilterBar(
@@ -473,7 +478,7 @@ class _ChatSearchFieldState extends State<ChatSearchField> {
     return AnimatedContainer(
       key: const ValueKey('chats-search-container'),
       duration: const Duration(milliseconds: 200),
-      curve: Curves.easeOutBack,
+      curve: Curves.easeOutCubic,
       height: 54,
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -486,17 +491,11 @@ class _ChatSearchFieldState extends State<ChatSearchField> {
         ),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withValues(alpha: focused ? .08 : .05),
-            blurRadius: focused ? 20 : 16,
-            spreadRadius: -6,
-            offset: const Offset(0, 8),
+            color: AppColors.primary.withValues(alpha: focused ? .07 : .04),
+            blurRadius: focused ? 12 : 8,
+            spreadRadius: -5,
+            offset: const Offset(0, 4),
           ),
-          if (focused)
-            BoxShadow(
-              color: AppColors.secondary.withValues(alpha: .14),
-              blurRadius: 18,
-              spreadRadius: -5,
-            ),
         ],
       ),
       child: ClipRRect(
@@ -521,7 +520,7 @@ class _ChatSearchFieldState extends State<ChatSearchField> {
               hintText: 'Search chats...',
               hintFadeDuration: const Duration(milliseconds: 200),
               hintStyle: AmoraTextStyles.bodyLarge.copyWith(
-                color: AppColors.text.withValues(alpha: .56),
+                color: AppColors.text.withValues(alpha: .68),
                 fontSize: 15,
                 fontWeight: FontWeight.w400,
               ),
@@ -539,13 +538,7 @@ class _ChatSearchFieldState extends State<ChatSearchField> {
                 width: 48,
                 height: 54,
                 child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 200),
-                  switchInCurve: Curves.easeOutBack,
-                  switchOutCurve: Curves.easeInCubic,
-                  transitionBuilder: (child, animation) => FadeTransition(
-                    opacity: animation,
-                    child: ScaleTransition(scale: animation, child: child),
-                  ),
+                  duration: Duration.zero,
                   child: widget.hasQuery
                       ? Semantics(
                           key: const ValueKey('chats-search-clear-visible'),
@@ -625,7 +618,7 @@ class ActiveMatchesSection extends StatelessWidget {
             height: 96,
             child: ListView.separated(
               padding: const EdgeInsets.symmetric(
-                horizontal: AmoraSpacing.space16,
+                horizontal: AmoraSpacing.space20,
               ),
               scrollDirection: Axis.horizontal,
               itemCount: chats.length,
@@ -728,9 +721,9 @@ class ConversationSectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(
-        AmoraSpacing.space16,
+        AmoraSpacing.space20,
         AmoraSpacing.space8,
-        AmoraSpacing.space16,
+        AmoraSpacing.space20,
         AmoraSpacing.space8,
       ),
       child: Text(
@@ -793,94 +786,149 @@ class _ConversationTileState extends State<ConversationTile> {
               onLongPress: widget.onLongPress,
               focusColor: AppColors.tertiary.withValues(alpha: .28),
               hoverColor: AppColors.tertiary.withValues(alpha: .24),
-              child: Container(
-                height: 82,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AmoraSpacing.space16,
-                  vertical: 9,
-                ),
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    border: Border(
-                      bottom: BorderSide(
-                        color: AppColors.tertiary.withValues(alpha: .46),
-                      ),
-                      left: highlighted || unread
-                          ? const BorderSide(
-                              color: AppColors.secondary,
-                              width: 2.5,
-                            )
-                          : BorderSide.none,
-                    ),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 76),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AmoraSpacing.space20,
+                    vertical: AmoraSpacing.space8,
                   ),
-                  child: Row(
-                    children: [
-                      Semantics(
-                        button: true,
-                        label: 'Open ${chat.user.name} profile',
-                        child: GestureDetector(
-                          onTap: widget.onOpenProfile,
-                          child: ConversationAvatar(
-                            profile: chat.user,
-                            online: chat.online,
-                            radius: 26,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      border: Border(
+                        left: highlighted || unread
+                            ? const BorderSide(
+                                color: AppColors.secondary,
+                                width: 2.5,
+                              )
+                            : BorderSide.none,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Semantics(
+                          button: true,
+                          label: 'Open ${chat.user.name} profile',
+                          child: GestureDetector(
+                            onTap: widget.onOpenProfile,
+                            child: ConversationAvatar(
+                              key: ValueKey('conversation-avatar-${chat.id}'),
+                              profile: chat.user,
+                              online: chat.online,
+                              radius: 24,
+                              showVerified: false,
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: AmoraSpacing.space12),
-                      Expanded(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    chat.user.name,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: AmoraTextStyles.titleMedium.copyWith(
-                                      color: AppColors.text,
-                                      fontWeight: unread
-                                          ? FontWeight.w800
-                                          : FontWeight.w600,
-                                    ),
+                        const SizedBox(width: AmoraSpacing.space12),
+                        Expanded(
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              border: Border(
+                                bottom: BorderSide(
+                                  color: AppColors.tertiary.withValues(
+                                    alpha: .46,
                                   ),
                                 ),
-                                const SizedBox(width: AmoraSpacing.space8),
-                                Text(
-                                  chat.time,
-                                  maxLines: 1,
-                                  style: AmoraTextStyles.labelSmall.copyWith(
-                                    color: unread
-                                        ? AppColors.secondary
-                                        : AppColors.text.withValues(alpha: .56),
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
+                              ),
                             ),
-                            const SizedBox(height: AmoraSpacing.space4),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: MessagePreview(
-                                    message: chat.lastMessage,
-                                    unread: unread,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: AmoraSpacing.space4,
+                              ),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Row(
+                                          children: [
+                                            Flexible(
+                                              child: Text(
+                                                key: ValueKey(
+                                                  'conversation-name-${chat.id}',
+                                                ),
+                                                chat.user.name,
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: AmoraTextStyles
+                                                    .titleMedium
+                                                    .copyWith(
+                                                      color: AppColors.text,
+                                                      fontWeight: unread
+                                                          ? FontWeight.w800
+                                                          : FontWeight.w600,
+                                                    ),
+                                              ),
+                                            ),
+                                            if (chat.user.verified) ...[
+                                              const SizedBox(
+                                                width: AmoraSpacing.space4,
+                                              ),
+                                              Icon(
+                                                key: ValueKey(
+                                                  'conversation-verified-badge-${chat.id}',
+                                                ),
+                                                Icons.verified_rounded,
+                                                color: AppColors.secondary,
+                                                size: 16,
+                                              ),
+                                            ],
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(
+                                        width: AmoraSpacing.space8,
+                                      ),
+                                      Text(
+                                        key: ValueKey(
+                                          'conversation-time-${chat.id}',
+                                        ),
+                                        chat.time,
+                                        maxLines: 1,
+                                        style: AmoraTextStyles.labelSmall
+                                            .copyWith(
+                                              color: unread
+                                                  ? AppColors.secondary
+                                                  : AppColors.text.withValues(
+                                                      alpha: .64,
+                                                    ),
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                      ),
+                                    ],
                                   ),
-                                ),
-                                if (unread) ...[
-                                  const SizedBox(width: AmoraSpacing.space8),
-                                  UnreadCountBadge(count: chat.unread),
+                                  const SizedBox(height: AmoraSpacing.space4),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: MessagePreview(
+                                          key: ValueKey(
+                                            'conversation-message-${chat.id}',
+                                          ),
+                                          message: chat.lastMessage,
+                                          unread: unread,
+                                        ),
+                                      ),
+                                      if (unread) ...[
+                                        const SizedBox(
+                                          width: AmoraSpacing.space8,
+                                        ),
+                                        UnreadCountBadge(count: chat.unread),
+                                      ],
+                                    ],
+                                  ),
                                 ],
-                              ],
+                              ),
                             ),
-                          ],
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -898,15 +946,22 @@ class ConversationAvatar extends StatelessWidget {
     required this.profile,
     required this.online,
     this.radius = 28,
+    this.showVerified = true,
   });
 
   final DummyProfile profile;
   final bool online;
   final double radius;
+  final bool showVerified;
 
   @override
   Widget build(BuildContext context) {
-    return ChatPresenceAvatar(profile: profile, radius: radius, online: online);
+    return ChatPresenceAvatar(
+      profile: profile,
+      radius: radius,
+      online: online,
+      showVerified: showVerified,
+    );
   }
 }
 
@@ -928,7 +983,7 @@ class MessagePreview extends StatelessWidget {
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
       style: AmoraTextStyles.bodyMedium.copyWith(
-        color: AppColors.textNeutral.withValues(alpha: unread ? .88 : .62),
+        color: AppColors.textNeutral.withValues(alpha: unread ? .88 : .72),
         fontWeight: unread ? FontWeight.w600 : FontWeight.w400,
       ),
     );
@@ -1042,7 +1097,7 @@ class OfflineChatsBanner extends StatelessWidget {
         ),
         child: Padding(
           padding: const EdgeInsets.symmetric(
-            horizontal: AmoraSpacing.space16,
+            horizontal: AmoraSpacing.space20,
             vertical: AmoraSpacing.space8,
           ),
           child: Row(
@@ -1082,7 +1137,7 @@ class ChatsSkeleton extends StatelessWidget {
         itemBuilder: (context, index) {
           return Padding(
             padding: const EdgeInsets.symmetric(
-              horizontal: AmoraSpacing.space16,
+              horizontal: AmoraSpacing.space20,
               vertical: AmoraSpacing.space12,
             ),
             child: Row(

@@ -10,7 +10,10 @@ class AmoraApiConfig {
   );
 
   static String get baseUrl {
-    final configured = _configuredBaseUrl.trim().replaceFirst(RegExp(r'/$'), '');
+    final configured = _configuredBaseUrl.trim().replaceFirst(
+      RegExp(r'/$'),
+      '',
+    );
     if (configured.isNotEmpty) return configured;
     if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
       return 'http://localhost:5000';

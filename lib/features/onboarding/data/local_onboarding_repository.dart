@@ -177,11 +177,38 @@ class LocalOnboardingRepository extends ChangeNotifier
       } else {
         final decoded = jsonDecode(stored);
         if (decoded is Map) {
-          final json = decoded.map((key, value) => MapEntry(key.toString(), value));
+          final json = decoded.map(
+            (key, value) => MapEntry(key.toString(), value),
+          );
           final stageName = json['stage'] as String?;
-          final stage = OnboardingStage.values.where((value) => value.name == stageName).firstOrNull;
+          final stage = OnboardingStage.values
+              .where((value) => value.name == stageName)
+              .firstOrNull;
           final birthDateValue = json['birthDate'] as String?;
-          _state = LocalOnboardingState(stage: stage ?? OnboardingStage.gender, birthDate: birthDateValue == null ? null : DateTime.tryParse(birthDateValue), gender: json['gender'] as String?, customGender: json['customGender'] as String? ?? '', showGender: json['showGender'] as bool? ?? true, interestedIn: (json['interestedIn'] as List?)?.whereType<String>().toSet() ?? const <String>{}, relationshipGoals: (json['relationshipGoals'] as List?)?.whereType<String>().toSet() ?? const <String>{}, relationshipGoal: json['relationshipGoal'] as String?, city: json['city'] as String?, preferredDistance: (json['preferredDistance'] as num?)?.toDouble() ?? 50, accountVerified: json['accountVerified'] as bool? ?? false, onboardingCompleted: json['onboardingCompleted'] as bool? ?? false, profileCompleted: json['profileCompleted'] as bool? ?? false);
+          _state = LocalOnboardingState(
+            stage: stage ?? OnboardingStage.gender,
+            birthDate: birthDateValue == null
+                ? null
+                : DateTime.tryParse(birthDateValue),
+            gender: json['gender'] as String?,
+            customGender: json['customGender'] as String? ?? '',
+            showGender: json['showGender'] as bool? ?? true,
+            interestedIn:
+                (json['interestedIn'] as List?)?.whereType<String>().toSet() ??
+                const <String>{},
+            relationshipGoals:
+                (json['relationshipGoals'] as List?)
+                    ?.whereType<String>()
+                    .toSet() ??
+                const <String>{},
+            relationshipGoal: json['relationshipGoal'] as String?,
+            city: json['city'] as String?,
+            preferredDistance:
+                (json['preferredDistance'] as num?)?.toDouble() ?? 50,
+            accountVerified: json['accountVerified'] as bool? ?? false,
+            onboardingCompleted: json['onboardingCompleted'] as bool? ?? false,
+            profileCompleted: json['profileCompleted'] as bool? ?? false,
+          );
           notifyListeners();
         }
       }
@@ -300,7 +327,11 @@ class LocalOnboardingRepository extends ChangeNotifier
 
   Future<void> _enqueueSync(LocalOnboardingState state) {
     _syncQueue = _syncQueue.then((_) => _syncState(state)).catchError((error) {
-      developer.log('Onboarding sync queue failed.', name: 'AmoraOnboarding', error: error);
+      developer.log(
+        'Onboarding sync queue failed.',
+        name: 'AmoraOnboarding',
+        error: error,
+      );
     });
     return _syncQueue;
   }
@@ -308,19 +339,36 @@ class LocalOnboardingRepository extends ChangeNotifier
   Future<void> _syncState(LocalOnboardingState state) async {
     switch (state.stage) {
       case OnboardingStage.age:
-        if (state.birthDate != null) await _record('age', _api.saveAge(state.birthDate!));
+        if (state.birthDate != null)
+          await _record('age', _api.saveAge(state.birthDate!));
         break;
       case OnboardingStage.gender:
-        if (state.gender != null && state.gender!.isNotEmpty) await _record('gender', _api.saveGender(state.gender!, customGender: state.customGender));
+        if (state.gender != null && state.gender!.isNotEmpty)
+          await _record(
+            'gender',
+            _api.saveGender(state.gender!, customGender: state.customGender),
+          );
         break;
       case OnboardingStage.interestedIn:
-        if (state.interestedIn.isNotEmpty) await _record('interestedIn', _api.saveInterestedIn(state.interestedIn));
+        if (state.interestedIn.isNotEmpty)
+          await _record(
+            'interestedIn',
+            _api.saveInterestedIn(state.interestedIn),
+          );
         break;
       case OnboardingStage.relationshipGoal:
-        if (state.selectedRelationshipGoals.isNotEmpty) await _record('relationshipGoal', _api.saveRelationshipGoals(state.selectedRelationshipGoals));
+        if (state.selectedRelationshipGoals.isNotEmpty)
+          await _record(
+            'relationshipGoal',
+            _api.saveRelationshipGoals(state.selectedRelationshipGoals),
+          );
         break;
       case OnboardingStage.location:
-        if (state.city != null && state.city!.trim().isNotEmpty) await _record('location', _api.saveLocation(state.city!.trim(), state.preferredDistance));
+        if (state.city != null && state.city!.trim().isNotEmpty)
+          await _record(
+            'location',
+            _api.saveLocation(state.city!.trim(), state.preferredDistance),
+          );
         break;
       case OnboardingStage.starterProfile:
         await _syncProfileData(includeStarter: true, includeCompletion: false);
@@ -340,30 +388,82 @@ class LocalOnboardingRepository extends ChangeNotifier
   }
 
   Future<void> _syncAll(LocalOnboardingState state) async {
-    if (state.birthDate != null) await _record('age', _api.saveAge(state.birthDate!));
-    if (state.gender != null && state.gender!.isNotEmpty) await _record('gender', _api.saveGender(state.gender!, customGender: state.customGender));
-    if (state.interestedIn.isNotEmpty) await _record('interestedIn', _api.saveInterestedIn(state.interestedIn));
-    if (state.selectedRelationshipGoals.isNotEmpty) await _record('relationshipGoal', _api.saveRelationshipGoals(state.selectedRelationshipGoals));
-    if (state.city != null && state.city!.trim().isNotEmpty) await _record('location', _api.saveLocation(state.city!.trim(), state.preferredDistance));
+    if (state.birthDate != null)
+      await _record('age', _api.saveAge(state.birthDate!));
+    if (state.gender != null && state.gender!.isNotEmpty)
+      await _record(
+        'gender',
+        _api.saveGender(state.gender!, customGender: state.customGender),
+      );
+    if (state.interestedIn.isNotEmpty)
+      await _record('interestedIn', _api.saveInterestedIn(state.interestedIn));
+    if (state.selectedRelationshipGoals.isNotEmpty)
+      await _record(
+        'relationshipGoal',
+        _api.saveRelationshipGoals(state.selectedRelationshipGoals),
+      );
+    if (state.city != null && state.city!.trim().isNotEmpty)
+      await _record(
+        'location',
+        _api.saveLocation(state.city!.trim(), state.preferredDistance),
+      );
     await _syncProfileData(includeStarter: true, includeCompletion: true);
     await _syncPhotos();
     await _record('complete', _api.complete());
   }
 
-  Future<void> _syncProfileData({required bool includeStarter, required bool includeCompletion}) async {
+  Future<void> _syncProfileData({
+    required bool includeStarter,
+    required bool includeCompletion,
+  }) async {
     final profile = LocalProfileRepository.instance.profile;
-    if (includeStarter && profile.profession.trim().isNotEmpty && profile.education.trim().isNotEmpty) {
-      await _record('starterProfile', _api.saveStarterProfile(profession: profile.profession.trim(), company: profile.company.trim(), education: profile.education.trim()));
+    if (includeStarter &&
+        profile.profession.trim().isNotEmpty &&
+        profile.education.trim().isNotEmpty) {
+      await _record(
+        'starterProfile',
+        _api.saveStarterProfile(
+          profession: profile.profession.trim(),
+          company: profile.company.trim(),
+          education: profile.education.trim(),
+        ),
+      );
     }
     if (includeCompletion) {
-      await _record('profileCompletion', _api.saveProfileCompletion(<String, dynamic>{'bio': profile.bio, 'interests': profile.interests, 'lifestyle': profile.lifestyle, 'prompts': profile.prompts, 'hometown': profile.hometown, 'pronouns': profile.pronouns, 'sexuality': profile.sexuality, 'valuedQualities': profile.valuedQualities, 'loveLanguages': profile.loveLanguages, 'preferredTalkingHours': profile.preferredTalkingHours, 'voicePromptUrl': profile.voicePrompt, 'videoPromptUrl': profile.videoPrompt}));
+      await _record(
+        'profileCompletion',
+        _api.saveProfileCompletion(<String, dynamic>{
+          'bio': profile.bio,
+          'interests': profile.interests,
+          'lifestyle': profile.lifestyle,
+          'prompts': profile.prompts,
+          'hometown': profile.hometown,
+          'pronouns': profile.pronouns,
+          'sexuality': profile.sexuality,
+          'valuedQualities': profile.valuedQualities,
+          'loveLanguages': profile.loveLanguages,
+          'preferredTalkingHours': profile.preferredTalkingHours,
+          'voicePromptUrl': profile.voicePrompt,
+          'videoPromptUrl': profile.videoPrompt,
+        }),
+      );
     }
   }
 
   Future<void> _syncPhotos() async {
     final profileRepository = LocalProfileRepository.instance;
     final photos = profileRepository.currentPhotos;
-    final uploads = <OnboardingPhotoUpload>[for (final photo in photos) if (photo.bytes != null && photo.bytes!.isNotEmpty && !photo.source.startsWith('/uploads/')) OnboardingPhotoUpload(bytes: photo.bytes!, mimeType: photo.mimeType ?? 'image/jpeg', fileName: '${photo.id}.${_extensionForMimeType(photo.mimeType)}')];
+    final uploads = <OnboardingPhotoUpload>[
+      for (final photo in photos)
+        if (photo.bytes != null &&
+            photo.bytes!.isNotEmpty &&
+            !photo.source.startsWith('/uploads/'))
+          OnboardingPhotoUpload(
+            bytes: photo.bytes!,
+            mimeType: photo.mimeType ?? 'image/jpeg',
+            fileName: '${photo.id}.${_extensionForMimeType(photo.mimeType)}',
+          ),
+    ];
     if (uploads.isNotEmpty) {
       final result = await _api.uploadPhotos(uploads);
       if (!result.success || result.data == null) {
@@ -372,35 +472,133 @@ class LocalOnboardingRepository extends ChangeNotifier
       }
       final serverPhotos = _strings(result.data!.values['photos']);
       if (serverPhotos.length == photos.length) {
-        await profileRepository.updatePhotosPersisted(serverPhotos, result.data!.values['primaryPhotoIndex'] as int? ?? 0);
+        await profileRepository.updatePhotosPersisted(
+          serverPhotos,
+          result.data!.values['primaryPhotoIndex'] as int? ?? 0,
+        );
       }
     }
     final current = profileRepository.profile;
-    if (current.photos.isNotEmpty) await _record('primaryPhoto', _api.setPrimaryPhoto(current.primaryPhotoIndex));
+    if (current.photos.isNotEmpty)
+      await _record(
+        'primaryPhoto',
+        _api.setPrimaryPhoto(current.primaryPhotoIndex),
+      );
   }
 
-  Future<void> _record(String operation, Future<OnboardingApiResult<OnboardingRemoteProfile>> request) async {
+  Future<void> _record(
+    String operation,
+    Future<OnboardingApiResult<OnboardingRemoteProfile>> request,
+  ) async {
     final result = await request;
     if (!result.success) _logFailure(operation, result.message);
   }
 
   void _applyServerProfile(OnboardingRemoteProfile remote) {
     final values = remote.values;
-    final birthDate = values['birthDate'] is String ? DateTime.tryParse(values['birthDate'] as String) : null;
+    final birthDate = values['birthDate'] is String
+        ? DateTime.tryParse(values['birthDate'] as String)
+        : null;
     final gender = values['gender'] as String?;
     final interestedIn = _strings(values['interestedIn']);
     final relationshipGoals = _strings(values['relationshipGoals']);
     final city = values['city'] as String?;
-    final serverStage = OnboardingStage.values.where((stage) => stage.name == values['stage']).firstOrNull ?? OnboardingStage.age;
-    _state = LocalOnboardingState(stage: serverStage, birthDate: birthDate ?? _state.birthDate, gender: gender?.isNotEmpty == true ? gender : _state.gender, customGender: values['customGender'] as String? ?? _state.customGender, showGender: _state.showGender, interestedIn: interestedIn.isEmpty ? _state.interestedIn : interestedIn.toSet(), relationshipGoals: relationshipGoals.isEmpty ? _state.relationshipGoals : relationshipGoals.toSet(), relationshipGoal: relationshipGoals.isEmpty ? _state.relationshipGoal : relationshipGoals.first, city: city?.isNotEmpty == true ? city : _state.city, preferredDistance: (values['preferredDistance'] as num?)?.toDouble() ?? _state.preferredDistance, accountVerified: _state.accountVerified, onboardingCompleted: values['onboardingCompleted'] as bool? ?? _state.onboardingCompleted, profileCompleted: _state.profileCompleted || (values['bio'] as String? ?? '').isNotEmpty);
+    final serverStage =
+        OnboardingStage.values
+            .where((stage) => stage.name == values['stage'])
+            .firstOrNull ??
+        OnboardingStage.age;
+    _state = LocalOnboardingState(
+      stage: serverStage,
+      birthDate: birthDate ?? _state.birthDate,
+      gender: gender?.isNotEmpty == true ? gender : _state.gender,
+      customGender: values['customGender'] as String? ?? _state.customGender,
+      showGender: _state.showGender,
+      interestedIn: interestedIn.isEmpty
+          ? _state.interestedIn
+          : interestedIn.toSet(),
+      relationshipGoals: relationshipGoals.isEmpty
+          ? _state.relationshipGoals
+          : relationshipGoals.toSet(),
+      relationshipGoal: relationshipGoals.isEmpty
+          ? _state.relationshipGoal
+          : relationshipGoals.first,
+      city: city?.isNotEmpty == true ? city : _state.city,
+      preferredDistance:
+          (values['preferredDistance'] as num?)?.toDouble() ??
+          _state.preferredDistance,
+      accountVerified: _state.accountVerified,
+      onboardingCompleted:
+          values['onboardingCompleted'] as bool? ?? _state.onboardingCompleted,
+      profileCompleted:
+          _state.profileCompleted ||
+          (values['bio'] as String? ?? '').isNotEmpty,
+    );
     final profile = LocalProfileRepository.instance.profile;
     final photos = _strings(values['photos']);
-    LocalProfileRepository.instance.save(profile.copyWith(birthdate: birthDate == null ? null : AmoraDateOfBirth.format(birthDate), gender: gender?.isNotEmpty == true ? ProfileFormOptions.storedGenderValue(gender, customValue: values['customGender'] as String? ?? '') : null, bio: values['bio'] as String? ?? profile.bio, profession: values['profession'] as String? ?? profile.profession, company: values['company'] as String? ?? profile.company, education: values['education'] as String? ?? profile.education, location: city?.isNotEmpty == true ? city : null, datingIntention: relationshipGoals.isEmpty ? null : relationshipGoals.first, interests: _strings(values['interests']).isEmpty ? profile.interests : _strings(values['interests']), prompts: _stringMap(values['prompts']).isEmpty ? profile.prompts : _stringMap(values['prompts']), lifestyle: _stringMap(values['lifestyle']).isEmpty ? profile.lifestyle : _stringMap(values['lifestyle']), photos: photos.isEmpty ? profile.photos : photos, primaryPhotoIndex: values['primaryPhotoIndex'] as int? ?? profile.primaryPhotoIndex, voicePrompt: values['voicePromptUrl'] as String? ?? profile.voicePrompt, videoPrompt: values['videoPromptUrl'] as String? ?? profile.videoPrompt, hometown: values['hometown'] as String? ?? profile.hometown, valuedQualities: _strings(values['valuedQualities']).isEmpty ? profile.valuedQualities : _strings(values['valuedQualities']), pronouns: _strings(values['pronouns']).isEmpty ? profile.pronouns : _strings(values['pronouns']), sexuality: values['sexuality'] as String? ?? profile.sexuality, preferredTalkingHours: _strings(values['preferredTalkingHours']).isEmpty ? profile.preferredTalkingHours : _strings(values['preferredTalkingHours']), loveLanguages: _strings(values['loveLanguages']).isEmpty ? profile.loveLanguages : _strings(values['loveLanguages'])));
+    LocalProfileRepository.instance.save(
+      profile.copyWith(
+        birthdate: birthDate == null
+            ? null
+            : AmoraDateOfBirth.format(birthDate),
+        gender: gender?.isNotEmpty == true
+            ? ProfileFormOptions.storedGenderValue(
+                gender,
+                customValue: values['customGender'] as String? ?? '',
+              )
+            : null,
+        bio: values['bio'] as String? ?? profile.bio,
+        profession: values['profession'] as String? ?? profile.profession,
+        company: values['company'] as String? ?? profile.company,
+        education: values['education'] as String? ?? profile.education,
+        location: city?.isNotEmpty == true ? city : null,
+        datingIntention: relationshipGoals.isEmpty
+            ? null
+            : relationshipGoals.first,
+        interests: _strings(values['interests']).isEmpty
+            ? profile.interests
+            : _strings(values['interests']),
+        prompts: _stringMap(values['prompts']).isEmpty
+            ? profile.prompts
+            : _stringMap(values['prompts']),
+        lifestyle: _stringMap(values['lifestyle']).isEmpty
+            ? profile.lifestyle
+            : _stringMap(values['lifestyle']),
+        photos: photos.isEmpty ? profile.photos : photos,
+        primaryPhotoIndex:
+            values['primaryPhotoIndex'] as int? ?? profile.primaryPhotoIndex,
+        voicePrompt: values['voicePromptUrl'] as String? ?? profile.voicePrompt,
+        videoPrompt: values['videoPromptUrl'] as String? ?? profile.videoPrompt,
+        hometown: values['hometown'] as String? ?? profile.hometown,
+        valuedQualities: _strings(values['valuedQualities']).isEmpty
+            ? profile.valuedQualities
+            : _strings(values['valuedQualities']),
+        pronouns: _strings(values['pronouns']).isEmpty
+            ? profile.pronouns
+            : _strings(values['pronouns']),
+        sexuality: values['sexuality'] as String? ?? profile.sexuality,
+        preferredTalkingHours: _strings(values['preferredTalkingHours']).isEmpty
+            ? profile.preferredTalkingHours
+            : _strings(values['preferredTalkingHours']),
+        loveLanguages: _strings(values['loveLanguages']).isEmpty
+            ? profile.loveLanguages
+            : _strings(values['loveLanguages']),
+      ),
+    );
   }
 
-  List<String> _strings(Object? value) => (value as List? ?? const <Object?>[]).whereType<String>().toList(growable: false);
-  Map<String, String> _stringMap(Object? value) => (value as Map? ?? const <Object?, Object?>{}).map((key, item) => MapEntry(key.toString(), item.toString()));
-  String _extensionForMimeType(String? mimeType) => switch (mimeType) { 'image/png' => 'png', 'image/webp' => 'webp', _ => 'jpg' };
+  List<String> _strings(Object? value) => (value as List? ?? const <Object?>[])
+      .whereType<String>()
+      .toList(growable: false);
+  Map<String, String> _stringMap(Object? value) =>
+      (value as Map? ?? const <Object?, Object?>{}).map(
+        (key, item) => MapEntry(key.toString(), item.toString()),
+      );
+  String _extensionForMimeType(String? mimeType) => switch (mimeType) {
+    'image/png' => 'png',
+    'image/webp' => 'webp',
+    _ => 'jpg',
+  };
   void _logFailure(String operation, String message) {
     developer.log(
       'Onboarding $operation sync failed: $message',

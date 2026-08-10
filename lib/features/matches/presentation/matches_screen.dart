@@ -168,11 +168,11 @@ class _MatchesScreenState extends State<MatchesScreen> {
                               padding: EdgeInsets.fromLTRB(
                                 desktop
                                     ? AmoraSpacing.space24
-                                    : AmoraSpacing.space16,
+                                    : AmoraSpacing.space20,
                                 AmoraSpacing.space8,
                                 desktop
                                     ? AmoraSpacing.space24
-                                    : AmoraSpacing.space16,
+                                    : AmoraSpacing.space20,
                                 AmoraSpacing.space12,
                               ),
                               sliver: SliverToBoxAdapter(
@@ -211,11 +211,11 @@ class _MatchesScreenState extends State<MatchesScreen> {
                                 padding: EdgeInsets.fromLTRB(
                                   desktop
                                       ? AmoraSpacing.space24
-                                      : AmoraSpacing.space16,
+                                      : AmoraSpacing.space20,
                                   AmoraSpacing.space8,
                                   desktop
                                       ? AmoraSpacing.space24
-                                      : AmoraSpacing.space16,
+                                      : AmoraSpacing.space20,
                                   AmoraSpacing.space20,
                                 ),
                                 child: AiMatchFilterBar(
@@ -258,7 +258,7 @@ class _MatchesScreenState extends State<MatchesScreen> {
                                 padding: EdgeInsets.symmetric(
                                   horizontal: desktop
                                       ? AmoraSpacing.space24
-                                      : AmoraSpacing.space16,
+                                      : AmoraSpacing.space20,
                                 ),
                                 sliver: SliverToBoxAdapter(
                                   child: Column(
@@ -347,7 +347,7 @@ class _MatchesScreenState extends State<MatchesScreen> {
                                 else
                                   SliverPadding(
                                     padding: const EdgeInsets.symmetric(
-                                      horizontal: AmoraSpacing.space16,
+                                      horizontal: AmoraSpacing.space20,
                                     ),
                                     sliver: SliverList.separated(
                                       itemCount: feed.length,

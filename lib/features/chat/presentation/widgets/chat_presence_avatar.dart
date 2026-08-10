@@ -27,37 +27,26 @@ class ChatPresenceAvatar extends StatelessWidget {
       label:
           '${profile.name} profile photo${online ? ', online now' : ''}${profile.verified && showVerified ? ', verified' : ''}',
       child: SizedBox(
-        width: dimension + 4,
-        height: dimension + 4,
+        width: dimension,
+        height: dimension,
         child: Stack(
           clipBehavior: Clip.none,
           children: [
-            Positioned(
-              left: 2,
-              top: 2,
+            Positioned.fill(
               child: Container(
-                width: dimension,
-                height: dimension,
-                padding: const EdgeInsets.all(1.5),
+                padding: const EdgeInsets.all(1),
                 decoration: BoxDecoration(
                   color: AppColors.surface,
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: AppColors.tertiary.withValues(alpha: .58),
+                    color: AppColors.tertiary.withValues(alpha: .48),
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primary.withValues(alpha: .07),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
                 ),
                 child: PremiumAvatar(
                   imageUrl: profile.imageUrl,
                   fallbackAsset: profile.fallbackAsset,
                   initials: profile.initials,
-                  radius: radius - 1.5,
+                  radius: radius - 1,
                   semanticLabel: '${profile.name} profile photo',
                 ),
               ),
@@ -67,8 +56,8 @@ class ChatPresenceAvatar extends StatelessWidget {
                 right: -1,
                 top: -1,
                 child: Container(
-                  width: 18,
-                  height: 18,
+                  width: 16,
+                  height: 16,
                   decoration: BoxDecoration(
                     color: AppColors.primary,
                     shape: BoxShape.circle,
@@ -77,14 +66,14 @@ class ChatPresenceAvatar extends StatelessWidget {
                   child: const Icon(
                     Icons.check_rounded,
                     color: AppColors.surface,
-                    size: 11,
+                    size: 10,
                   ),
                 ),
               ),
             if (online)
               Positioned(
-                right: 0,
-                bottom: 0,
+                right: -1,
+                bottom: -1,
                 child: Container(
                   key: const ValueKey('chat-presence-online-indicator'),
                   width: 12,
@@ -93,13 +82,6 @@ class ChatPresenceAvatar extends StatelessWidget {
                     color: onlineGreen,
                     shape: BoxShape.circle,
                     border: Border.all(color: AppColors.surface, width: 2),
-                    boxShadow: [
-                      BoxShadow(
-                        color: onlineGreen.withValues(alpha: .3),
-                        blurRadius: 6,
-                        spreadRadius: 1,
-                      ),
-                    ],
                   ),
                 ),
               ),

@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:amora_ai/core/constants/app_images.dart';
 import 'package:amora_ai/core/widgets/amora_dob_field.dart';
 import 'package:amora_ai/features/profile/domain/profile_completion_calculator.dart';
+import 'package:amora_ai/features/profile/domain/communication_style.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -34,6 +35,8 @@ class UserProfile {
     this.sexuality = '',
     this.preferredTalkingHours = const <String>[],
     this.loveLanguages = const <String>[],
+    this.iceBreaker = '',
+    this.communicationStyle,
   });
 
   final String name;
@@ -60,6 +63,8 @@ class UserProfile {
   final String sexuality;
   final List<String> preferredTalkingHours;
   final List<String> loveLanguages;
+  final String iceBreaker;
+  final CommunicationStyle? communicationStyle;
 
   DateTime? get dateOfBirth => AmoraDateOfBirth.parse(birthdate);
 
@@ -135,6 +140,8 @@ class UserProfile {
     String? sexuality,
     List<String>? preferredTalkingHours,
     List<String>? loveLanguages,
+    String? iceBreaker,
+    CommunicationStyle? communicationStyle,
   }) {
     return UserProfile(
       name: name ?? this.name,
@@ -163,6 +170,8 @@ class UserProfile {
         preferredTalkingHours ?? this.preferredTalkingHours,
       ),
       loveLanguages: List<String>.of(loveLanguages ?? this.loveLanguages),
+      iceBreaker: iceBreaker ?? this.iceBreaker,
+      communicationStyle: communicationStyle ?? this.communicationStyle,
     );
   }
 
@@ -191,6 +200,8 @@ class UserProfile {
     'sexuality': sexuality,
     'preferredTalkingHours': preferredTalkingHours,
     'loveLanguages': loveLanguages,
+    'iceBreaker': iceBreaker,
+    'communicationStyle': communicationStyle?.storageValue,
   };
 
   factory UserProfile.fromJson(Map<String, Object?> json) {
@@ -228,6 +239,10 @@ class UserProfile {
       sexuality: json['sexuality'] as String? ?? '',
       preferredTalkingHours: strings('preferredTalkingHours'),
       loveLanguages: strings('loveLanguages'),
+      iceBreaker: json['iceBreaker'] as String? ?? '',
+      communicationStyle: CommunicationStyle.fromStorageValue(
+        json['communicationStyle'],
+      ),
     );
   }
 }

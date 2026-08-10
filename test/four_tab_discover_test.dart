@@ -1,6 +1,7 @@
 import 'package:amora_ai/core/navigation/main_shell.dart';
 import 'package:amora_ai/core/theme/amora_theme.dart';
 import 'package:amora_ai/core/widgets/floating_bottom_nav.dart';
+import 'package:amora_ai/features/discover/presentation/browse_grid_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -27,11 +28,11 @@ void main() {
     expect(find.text('Discover'), findsOneWidget);
     final shellScaffold = tester.widget<Scaffold>(find.byType(Scaffold).first);
     expect(shellScaffold.extendBody, isTrue);
-    final contentMedia = tester.widget<MediaQuery>(
-      find.byKey(const ValueKey('main-shell-navigation-content-inset')),
+    final contentMedia = MediaQuery.of(
+      tester.element(find.byType(BrowseGridScreen)),
     );
     expect(
-      contentMedia.data.padding.bottom,
+      contentMedia.padding.bottom,
       FloatingBottomNav.barHeight + FloatingBottomNav.minimumBottomSpacing,
     );
 

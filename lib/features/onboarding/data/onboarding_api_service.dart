@@ -7,12 +7,10 @@ import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 
 class OnboardingApiResult<T> {
-  const OnboardingApiResult.success(this.data)
-      : success = true,
-        message = '';
+  const OnboardingApiResult.success(this.data) : success = true, message = '';
   const OnboardingApiResult.failure(this.message)
-      : success = false,
-        data = null;
+    : success = false,
+      data = null;
 
   final bool success;
   final T? data;
@@ -38,7 +36,8 @@ class OnboardingPhotoUpload {
 }
 
 class OnboardingApiService {
-  OnboardingApiService({http.Client? client}) : _client = client ?? http.Client();
+  OnboardingApiService({http.Client? client})
+    : _client = client ?? http.Client();
 
   static const _accessTokenKey = 'amora_access_token';
   static const _timeout = Duration(seconds: 10);
@@ -50,58 +49,63 @@ class OnboardingApiService {
 
   Future<OnboardingApiResult<OnboardingRemoteProfile>> saveAge(
     DateTime birthDate,
-  ) =>
-      _request('PUT', '/api/onboarding/age', body: {
-        'birthDate': birthDate.toIso8601String().split('T').first,
-      });
+  ) => _request(
+    'PUT',
+    '/api/onboarding/age',
+    body: {'birthDate': birthDate.toIso8601String().split('T').first},
+  );
 
   Future<OnboardingApiResult<OnboardingRemoteProfile>> saveGender(
     String gender, {
     String customGender = '',
-  }) =>
-      _request('PUT', '/api/onboarding/gender', body: {
-        'gender': gender,
-        'customGender': customGender,
-      });
+  }) => _request(
+    'PUT',
+    '/api/onboarding/gender',
+    body: {'gender': gender, 'customGender': customGender},
+  );
 
   Future<OnboardingApiResult<OnboardingRemoteProfile>> saveInterestedIn(
     Iterable<String> interestedIn,
-  ) =>
-      _request('PUT', '/api/onboarding/interested-in', body: {
-        'interestedIn': interestedIn.toList(growable: false),
-      });
+  ) => _request(
+    'PUT',
+    '/api/onboarding/interested-in',
+    body: {'interestedIn': interestedIn.toList(growable: false)},
+  );
 
   Future<OnboardingApiResult<OnboardingRemoteProfile>> saveRelationshipGoals(
     Iterable<String> relationshipGoals,
-  ) =>
-      _request('PUT', '/api/onboarding/relationship-goal', body: {
-        'relationshipGoals': relationshipGoals.toList(growable: false),
-      });
+  ) => _request(
+    'PUT',
+    '/api/onboarding/relationship-goal',
+    body: {'relationshipGoals': relationshipGoals.toList(growable: false)},
+  );
 
   Future<OnboardingApiResult<OnboardingRemoteProfile>> saveLocation(
     String city,
     double preferredDistance,
-  ) =>
-      _request('PUT', '/api/onboarding/location', body: {
-        'city': city,
-        'preferredDistance': preferredDistance.round(),
-      });
+  ) => _request(
+    'PUT',
+    '/api/onboarding/location',
+    body: {'city': city, 'preferredDistance': preferredDistance.round()},
+  );
 
   Future<OnboardingApiResult<OnboardingRemoteProfile>> saveStarterProfile({
     required String profession,
     required String company,
     required String education,
-  }) =>
-      _request('PUT', '/api/onboarding/starter-profile', body: {
-        'profession': profession,
-        'company': company,
-        'education': education,
-      });
+  }) => _request(
+    'PUT',
+    '/api/onboarding/starter-profile',
+    body: {
+      'profession': profession,
+      'company': company,
+      'education': education,
+    },
+  );
 
   Future<OnboardingApiResult<OnboardingRemoteProfile>> saveProfileCompletion(
     Map<String, dynamic> values,
-  ) =>
-      _request('PUT', '/api/onboarding/profile-completion', body: values);
+  ) => _request('PUT', '/api/onboarding/profile-completion', body: values);
 
   Future<OnboardingApiResult<OnboardingRemoteProfile>> uploadPhotos(
     List<OnboardingPhotoUpload> photos,
@@ -114,7 +118,9 @@ class OnboardingApiService {
     }
     try {
       final request = http.MultipartRequest('POST', setup.uri)
-        ..headers.addAll(Map<String, String>.from(setup.headers)..remove('Content-Type'));
+        ..headers.addAll(
+          Map<String, String>.from(setup.headers)..remove('Content-Type'),
+        );
       for (final photo in photos) {
         request.files.add(
           http.MultipartFile.fromBytes(
@@ -130,7 +136,9 @@ class OnboardingApiService {
       );
       return _parse(response);
     } on TimeoutException {
-      return const OnboardingApiResult.failure('The onboarding request timed out.');
+      return const OnboardingApiResult.failure(
+        'The onboarding request timed out.',
+      );
     } catch (_) {
       return const OnboardingApiResult.failure(
         'Unable to sync onboarding data right now.',
@@ -143,10 +151,11 @@ class OnboardingApiService {
 
   Future<OnboardingApiResult<OnboardingRemoteProfile>> setPrimaryPhoto(
     int index,
-  ) =>
-      _request('PUT', '/api/onboarding/photos/primary', body: {
-        'primaryPhotoIndex': index,
-      });
+  ) => _request(
+    'PUT',
+    '/api/onboarding/photos/primary',
+    body: {'primaryPhotoIndex': index},
+  );
 
   Future<OnboardingApiResult<OnboardingRemoteProfile>> complete() =>
       _request('POST', '/api/onboarding/complete');
@@ -163,14 +172,17 @@ class OnboardingApiService {
       );
     }
     try {
-      final request = http.Request(method, setup.uri)..headers.addAll(setup.headers);
+      final request = http.Request(method, setup.uri)
+        ..headers.addAll(setup.headers);
       if (body != null) request.body = jsonEncode(body);
       final response = await http.Response.fromStream(
         await _client.send(request).timeout(_timeout),
       );
       return _parse(response);
     } on TimeoutException {
-      return const OnboardingApiResult.failure('The onboarding request timed out.');
+      return const OnboardingApiResult.failure(
+        'The onboarding request timed out.',
+      );
     } catch (_) {
       return const OnboardingApiResult.failure(
         'Unable to sync onboarding data right now.',
@@ -183,10 +195,11 @@ class OnboardingApiService {
       final baseUrl = AmoraApiConfig.baseUrl;
       final token = await _storage.read(key: _accessTokenKey);
       if (baseUrl.isEmpty || token == null || token.isEmpty) return null;
-      return _RequestSetup(
-        Uri.parse('$baseUrl$path'),
-        {'Authorization': 'Bearer $token', 'Accept': 'application/json', 'Content-Type': 'application/json'},
-      );
+      return _RequestSetup(Uri.parse('$baseUrl$path'), {
+        'Authorization': 'Bearer $token',
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      });
     } catch (_) {
       return null;
     }
@@ -197,7 +210,9 @@ class OnboardingApiService {
       final body = response.body.isEmpty
           ? <String, dynamic>{}
           : jsonDecode(response.body) as Map<String, dynamic>;
-      if (response.statusCode >= 200 && response.statusCode < 300 && body['success'] == true) {
+      if (response.statusCode >= 200 &&
+          response.statusCode < 300 &&
+          body['success'] == true) {
         final data = body['data'] as Map?;
         final profile = data?['onboarding'] as Map?;
         if (profile != null) {
@@ -207,7 +222,8 @@ class OnboardingApiService {
         }
       }
       return OnboardingApiResult.failure(
-        body['message'] as String? ?? 'Unable to sync onboarding data right now.',
+        body['message'] as String? ??
+            'Unable to sync onboarding data right now.',
       );
     } catch (_) {
       return const OnboardingApiResult.failure(

@@ -1,8 +1,8 @@
 import 'dart:async';
 
-import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/access/amora_access.dart';
 import 'package:amora_ai/core/auth/auth_service.dart';
+import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
@@ -11,54 +11,51 @@ import 'package:amora_ai/features/onboarding/data/local_onboarding_repository.da
 import 'package:amora_ai/features/onboarding/presentation/profile_onboarding_flow.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
-typedef EmailVerificationCodeRequester = Future<void> Function(String email);
-typedef EmailVerificationCodeVerifier =
-    Future<void> Function(String email, String code);
+typedef MobileOtpRequester = Future<void> Function(String phoneNumber);
+typedef MobileOtpVerifier =
+    Future<void> Function(String phoneNumber, String code);
 
-enum VerificationPurpose { signup }
+enum MobileVerificationStep { phoneEntry, otpEntry, success }
 
-enum EmailVerificationFailure {
-  incorrectCode,
-  expiredCode,
-  tooManyAttempts,
-  network,
-  unavailable,
-}
-
-class EmailVerificationException implements Exception {
-  const EmailVerificationException(this.failure);
-
-  final EmailVerificationFailure failure;
-}
-
+/// Route arguments deliberately contain only phone data. Email verification is
+/// handled by its own backend flow and is not part of this screen anymore.
 @immutable
-class EmailVerificationArguments {
-  const EmailVerificationArguments({
-    required this.email,
-    this.verificationPurpose = VerificationPurpose.signup,
-    this.codeAlreadySent = false,
+class MobileVerificationArguments {
+  const MobileVerificationArguments({
+    this.phoneNumber,
+    this.country = const MobileCountry(
+      code: 'IN',
+      name: 'India',
+      dialCode: '+91',
+    ),
   });
 
-  final String email;
-  final VerificationPurpose verificationPurpose;
-  final bool codeAlreadySent;
+  final String? phoneNumber;
+  final MobileCountry country;
+}
+
+class MobileVerificationException implements Exception {
+  const MobileVerificationException(this.code);
+
+  final String code;
 }
 
 class AccountVerificationScreen extends StatefulWidget {
   const AccountVerificationScreen({
     super.key,
     this.arguments,
-    this.requestCode,
-    this.verifyCode,
-    this.resendSeconds = 45,
+    this.requestOtp,
+    this.verifyOtp,
+    this.resendSeconds = 30,
   });
 
   static const routeName = '/account-verification';
 
-  final EmailVerificationArguments? arguments;
-  final EmailVerificationCodeRequester? requestCode;
-  final EmailVerificationCodeVerifier? verifyCode;
+  final MobileVerificationArguments? arguments;
+  final MobileOtpRequester? requestOtp;
+  final MobileOtpVerifier? verifyOtp;
   final int resendSeconds;
 
   @override
@@ -68,63 +65,62 @@ class AccountVerificationScreen extends StatefulWidget {
 
 class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
   static const _codeLength = 6;
-  final _controllers = List.generate(
+  final _phoneController = TextEditingController();
+  final _otpControllers = List.generate(
     _codeLength,
     (_) => TextEditingController(),
   );
-  final _nodes = List.generate(_codeLength, (_) => FocusNode());
-
-  EmailVerificationArguments? _arguments;
+  final _otpNodes = List.generate(_codeLength, (_) => FocusNode());
   Timer? _timer;
+  late MobileCountry _country;
+  MobileVerificationStep _step = MobileVerificationStep.phoneEntry;
   String? _error;
   String? _confirmation;
-  bool _loading = false;
-  bool _sending = false;
-  bool _initialRequestStarted = false;
-  bool _codeSent = false;
+  bool _isSendingOtp = false;
+  bool _isVerifyingOtp = false;
+  bool _isResendingOtp = false;
   int _secondsLeft = 0;
+  bool _initialized = false;
 
-  String get _code => _controllers.map((controller) => controller.text).join();
-  String get _email => _arguments?.email.trim() ?? '';
-  bool get _completeCode => RegExp(r'^\d{6}$').hasMatch(_code);
+  String get _localNumber =>
+      _phoneController.text.replaceAll(RegExp(r'\D'), '');
+  String get _normalizedPhone => '${_country.dialCode}$_localNumber';
+  String get _otp =>
+      _otpControllers.map((controller) => controller.text).join();
+  bool get _isCompleteOtp => RegExp(r'^\d{6}$').hasMatch(_otp);
+  bool get _isBusy => _isSendingOtp || _isVerifyingOtp || _isResendingOtp;
+  bool get _isValidPhone =>
+      _country.code == 'IN' && RegExp(r'^[6-9]\d{9}$').hasMatch(_localNumber);
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _arguments ??=
-        widget.arguments ?? _routeArguments() ?? _recoveryArguments();
-    if (_arguments!.codeAlreadySent && !_codeSent) {
-      _codeSent = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _startCountdown();
-      });
-    }
-    if (_arguments!.codeAlreadySent) return;
-    if (_initialRequestStarted) return;
-    _initialRequestStarted = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) unawaited(_requestCode(initial: true));
-    });
-  }
-
-  EmailVerificationArguments? _routeArguments() {
-    final arguments = ModalRoute.of(context)?.settings.arguments;
-    return arguments is EmailVerificationArguments ? arguments : null;
-  }
-
-  EmailVerificationArguments _recoveryArguments() {
-    return EmailVerificationArguments(
-      email: LocalProfileRepository.instance.profile.email.trim(),
+    if (_initialized) return;
+    _initialized = true;
+    final routeArguments = ModalRoute.of(context)?.settings.arguments;
+    final arguments =
+        widget.arguments ??
+        (routeArguments is MobileVerificationArguments ? routeArguments : null);
+    _country =
+        arguments?.country ??
+        const MobileCountry(code: 'IN', name: 'India', dialCode: '+91');
+    _phoneController.text = _nationalNumber(
+      arguments?.phoneNumber ??
+          LocalProfileRepository.instance.profile.phoneNumber,
     );
+    _phoneController.addListener(_onPhoneChanged);
   }
 
   @override
   void dispose() {
     _timer?.cancel();
-    for (final controller in _controllers) {
+    _phoneController
+      ..removeListener(_onPhoneChanged)
+      ..dispose();
+    for (final controller in _otpControllers) {
       controller.dispose();
     }
-    for (final node in _nodes) {
+    for (final node in _otpNodes) {
       node.dispose();
     }
     super.dispose();
@@ -132,40 +128,82 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final destination = _email.isEmpty ? 'your registered email' : _email;
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 220),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeOutCubic,
+        child: switch (_step) {
+          MobileVerificationStep.phoneEntry => _phoneEntry(context),
+          MobileVerificationStep.otpEntry => _otpEntry(context),
+          MobileVerificationStep.success => _success(context),
+        },
+      ),
+    );
+  }
+
+  Widget _phoneEntry(BuildContext context) {
     return AmoraAuthShell(
-      title: 'Verify your email',
-      subtitle: _codeSent
-          ? 'We sent a 6-digit verification code to:'
-          : 'Email verification is required before profile setup.',
-      stepLabel: 'Email verification',
+      key: const ValueKey('mobile-verification-phone-step'),
+      title: 'Verify your mobile number',
+      subtitle:
+          "We'll send a 6-digit verification code to confirm your number.",
+      stepLabel: 'Mobile verification',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Semantics(
-            label: 'Verification email destination: $destination',
-            child: Text(
-              destination,
-              key: const ValueKey('verification-email'),
-              textAlign: TextAlign.center,
-              style: AmoraTextStyles.titleMedium.copyWith(
-                color: AppColors.primary,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
+          _UnifiedMobileNumberField(
+            controller: _phoneController,
+            country: _country,
+            enabled: !_isBusy,
+            hasError: _error != null,
+            onCountryTap: _showCountrySelector,
+            onSubmitted: (_) => _sendOtp(),
           ),
+          if (_error != null) ...[
+            const SizedBox(height: AmoraSpacing.space12),
+            Semantics(
+              liveRegion: true,
+              child: AuthInlineAlert(message: _error!),
+            ),
+          ],
           const SizedBox(height: AmoraSpacing.space20),
+          AuthPrimaryButton(
+            key: const ValueKey('send-otp-button'),
+            label: _isSendingOtp ? 'Sending OTP…' : 'Send OTP',
+            icon: Icons.sms_outlined,
+            isLoading: _isSendingOtp,
+            onPressed: _isValidPhone && !_isBusy ? _sendOtp : null,
+          ),
+          const SizedBox(height: AmoraSpacing.space16),
+          const AuthTrustNote(text: 'Standard SMS charges may apply.'),
+        ],
+      ),
+    );
+  }
+
+  Widget _otpEntry(BuildContext context) {
+    return AmoraAuthShell(
+      key: const ValueKey('mobile-verification-otp-step'),
+      title: 'Enter verification code',
+      subtitle: 'We sent a 6-digit code to ${_maskedPhone()}',
+      stepLabel: 'Mobile verification',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
           AmoraOtpInput(
             key: const ValueKey('account-verification-otp'),
-            controllers: _controllers,
-            nodes: _nodes,
+            controllers: _otpControllers,
+            nodes: _otpNodes,
             hasError: _error != null,
-            enabled: !_loading,
+            enabled: !_isBusy,
             onChanged: () => setState(() {
               _error = null;
               _confirmation = null;
             }),
-            onPaste: _paste,
+            onPaste: _pasteOtp,
           ),
           if (_error != null) ...[
             const SizedBox(height: AmoraSpacing.space12),
@@ -182,47 +220,76 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
             ),
           ],
           const SizedBox(height: AmoraSpacing.space16),
-          const AuthTrustNote(
-            text:
-                'Only enter a code requested by you. AMORAA support will never ask for it.',
-          ),
-          const SizedBox(height: AmoraSpacing.space20),
-          AuthPrimaryButton(
-            key: const ValueKey('verify-account-button'),
-            label: _loading ? 'Verifyingâ€¦' : 'Verify Email',
-            icon: Icons.verified_user_outlined,
-            isLoading: _loading,
-            onPressed: _completeCode && !_loading ? _verify : null,
-          ),
-          const SizedBox(height: AmoraSpacing.space16),
           Text(
-            'Didnâ€™t receive the code?',
+            "Didn't receive the code?",
             textAlign: TextAlign.center,
             style: AmoraTextStyles.bodyMedium,
           ),
           const SizedBox(height: AmoraSpacing.space4),
-          Center(child: _buildResendAction()),
-          const SizedBox(height: AmoraSpacing.space8),
+          Center(child: _resendAction()),
+          const SizedBox(height: AmoraSpacing.space4),
           AppPrimaryButton(
-            key: const ValueKey('verification-change-email'),
-            label: 'Change email',
+            key: const ValueKey('verification-change-mobile'),
+            label: 'Change mobile number',
             variant: AppPrimaryButtonVariant.text,
             size: AmoraButtonSize.compact,
             fullWidth: false,
-            onPressed: _loading || _sending
-                ? null
-                : () => Navigator.of(context).pushReplacementNamed('/signup'),
+            onPressed: _isBusy ? null : _changeMobileNumber,
+          ),
+          const SizedBox(height: AmoraSpacing.space16),
+          AuthPrimaryButton(
+            key: const ValueKey('verify-mobile-button'),
+            label: _isVerifyingOtp ? 'Verifying…' : 'Verify Mobile Number',
+            icon: Icons.verified_user_outlined,
+            isLoading: _isVerifyingOtp,
+            onPressed: _isCompleteOtp && !_isBusy ? _verifyOtp : null,
           ),
         ],
       ),
     );
   }
 
-  Widget _buildResendAction() {
-    if (_sending) {
+  Widget _success(BuildContext context) {
+    return AmoraAuthShell(
+      key: const ValueKey('mobile-verification-success-step'),
+      title: 'Verification complete',
+      subtitle: 'Your mobile number has been verified successfully.',
+      stepLabel: 'Mobile verification',
+      child: Semantics(
+        liveRegion: true,
+        label: 'Mobile number verification complete',
+        child: Column(
+          children: [
+            TweenAnimationBuilder<double>(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOutCubic,
+              tween: Tween(begin: .86, end: 1),
+              builder: (context, value, child) =>
+                  Transform.scale(scale: value, child: child),
+              child: const Icon(
+                Icons.verified_rounded,
+                size: 56,
+                color: AppColors.secondary,
+              ),
+            ),
+            const SizedBox(height: AmoraSpacing.space16),
+            Text(
+              _maskedPhone(),
+              style: AmoraTextStyles.titleMedium.copyWith(
+                color: AppColors.primary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _resendAction() {
+    if (_isResendingOtp) {
       return Semantics(
         liveRegion: true,
-        label: 'Sending verification code',
+        label: 'Resending verification code',
         child: SizedBox.square(
           dimension: 48,
           child: Center(
@@ -257,77 +324,134 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
       variant: AppPrimaryButtonVariant.text,
       size: AmoraButtonSize.compact,
       fullWidth: false,
-      onPressed: _loading ? null : _requestCode,
+      onPressed: _isVerifyingOtp ? null : () => _sendOtp(resend: true),
     );
   }
 
-  void _paste(String value) {
+  void _onPhoneChanged() {
+    if (mounted) {
+      setState(() => _error = null);
+    }
+  }
+
+  void _pasteOtp(String value) {
     final digits = value.replaceAll(RegExp(r'\D'), '');
     if (digits.length != _codeLength) return;
     for (var index = 0; index < _codeLength; index++) {
-      _controllers[index].text = digits[index];
+      _otpControllers[index].text = digits[index];
     }
-    setState(() {
-      _error = null;
-      _confirmation = null;
-    });
   }
 
-  Future<void> _requestCode({bool initial = false}) async {
-    if (_sending || _loading || (!initial && _secondsLeft > 0)) return;
-    final request = widget.requestCode;
-    if (_email.isEmpty || request == null) {
+  Future<void> _showCountrySelector() async {
+    // The current signup API accepts Indian national mobile numbers only.
+    final country = await showModalBottomSheet<MobileCountry>(
+      context: context,
+      showDragHandle: true,
+      useSafeArea: true,
+      builder: (context) => Padding(
+        padding: AmoraSpacing.bottomSheet,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Select country code', style: AmoraTextStyles.titleMedium),
+            const SizedBox(height: AmoraSpacing.space12),
+            Semantics(
+              selected: true,
+              label: 'India, +91, selected',
+              child: ListTile(
+                contentPadding: EdgeInsets.zero,
+                minVerticalPadding: AmoraSpacing.space8,
+                leading: const Text('🇮🇳', style: TextStyle(fontSize: 24)),
+                title: const Text('India'),
+                trailing: const Text('+91'),
+                onTap: () => Navigator.pop(
+                  context,
+                  const MobileCountry(
+                    code: 'IN',
+                    name: 'India',
+                    dialCode: '+91',
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (country != null && mounted) {
+      setState(() => _country = country);
+    }
+  }
+
+  Future<void> _sendOtp({bool resend = false}) async {
+    if (_isBusy || (resend && _secondsLeft > 0) || !resend && !_isValidPhone) {
+      return;
+    }
+    FocusManager.instance.primaryFocus?.unfocus();
+    final request = widget.requestOtp;
+    if (request == null) {
       setState(() {
         _error =
-            'Email verification is unavailable right now. Please try again later.';
+            'Mobile verification is unavailable right now. Please try again shortly.';
         _confirmation = null;
       });
       return;
     }
     setState(() {
-      _sending = true;
+      if (resend) {
+        _isResendingOtp = true;
+      } else {
+        _isSendingOtp = true;
+      }
       _error = null;
       _confirmation = null;
     });
     try {
-      await request(_email);
+      await request(_normalizedPhone);
       if (!mounted) return;
       setState(() {
-        _sending = false;
-        _codeSent = true;
-        _confirmation = initial
-            ? null
-            : 'A new verification code has been sent.';
+        _isSendingOtp = false;
+        _isResendingOtp = false;
+        _step = MobileVerificationStep.otpEntry;
+        _confirmation = resend
+            ? 'A new verification code has been sent.'
+            : null;
       });
       _startCountdown();
-      _nodes.first.requestFocus();
+      _otpNodes.first.requestFocus();
     } catch (error) {
       if (!mounted) return;
       setState(() {
-        _sending = false;
-        _error = _messageFor(error, sending: true);
+        _isSendingOtp = false;
+        _isResendingOtp = false;
+        _error = _messageFor(error, sending: true, resend: resend);
       });
     }
   }
 
-  Future<void> _verify() async {
-    if (_loading || !_completeCode) return;
-    final verify = widget.verifyCode;
-    if (verify == null) {
-      setState(() {
-        _error =
-            'Verification is unavailable right now. Please try again later.';
-      });
+  Future<void> _verifyOtp() async {
+    if (_isBusy || !_isCompleteOtp) {
       return;
     }
+    final verify = widget.verifyOtp;
+    if (verify == null) {
+      setState(
+        () => _error =
+            'Mobile verification is unavailable right now. Please try again shortly.',
+      );
+      return;
+    }
+    FocusManager.instance.primaryFocus?.unfocus();
     setState(() {
-      _loading = true;
+      _isVerifyingOtp = true;
       _error = null;
       _confirmation = null;
     });
     try {
-      await verify(_email, _code);
+      await verify(_normalizedPhone, _otp);
       if (!mounted) return;
+      _timer?.cancel();
       AmoraSession.logIn();
       LocalOnboardingRepository.instance.update(
         LocalOnboardingRepository.instance.state.copyWith(
@@ -336,10 +460,10 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
         ),
       );
       setState(() {
-        _loading = false;
-        _confirmation = 'Email verified';
+        _isVerifyingOtp = false;
+        _step = MobileVerificationStep.success;
       });
-      await Future<void>.delayed(const Duration(milliseconds: 300));
+      await Future<void>.delayed(const Duration(milliseconds: 420));
       if (!mounted) return;
       Navigator.of(context).pushNamedAndRemoveUntil(
         ProfileOnboardingFlow.routeName,
@@ -348,43 +472,23 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
     } catch (error) {
       if (!mounted) return;
       setState(() {
-        _loading = false;
+        _isVerifyingOtp = false;
         _error = _messageFor(error);
       });
     }
   }
 
-  String _messageFor(Object error, {bool sending = false}) {
-    if (error is AuthException) {
-      return switch (error.code) {
-        'OTP_EXPIRED' => 'This code has expired. Request a new code.',
-        'OTP_MAX_ATTEMPTS' => 'Too many attempts. Please request a new code.',
-        'OTP_INVALID' => 'That code doesn’t match. Please try again.',
-        'RATE_LIMITED' => 'Please wait before requesting another code.',
-        _ => error.message,
-      };
+  void _changeMobileNumber() {
+    _timer?.cancel();
+    for (final controller in _otpControllers) {
+      controller.clear();
     }
-    if (error is EmailVerificationException) {
-      return switch (error.failure) {
-        EmailVerificationFailure.incorrectCode =>
-          'That code doesnâ€™t match. Please try again.',
-        EmailVerificationFailure.expiredCode =>
-          'This code has expired. Request a new one.',
-        EmailVerificationFailure.tooManyAttempts =>
-          'Too many attempts. Please request a new code.',
-        EmailVerificationFailure.network =>
-          sending
-              ? 'We couldnâ€™t send a code. Check your connection and retry.'
-              : 'We couldnâ€™t verify your email. Please try again.',
-        EmailVerificationFailure.unavailable =>
-          sending
-              ? 'Email verification is unavailable right now. Please try again later.'
-              : 'Verification is unavailable right now. Please try again later.',
-      };
-    }
-    return sending
-        ? 'We couldnâ€™t send a code. Please try again.'
-        : 'We couldnâ€™t verify your email. Please try again.';
+    setState(() {
+      _step = MobileVerificationStep.phoneEntry;
+      _secondsLeft = 0;
+      _error = null;
+      _confirmation = null;
+    });
   }
 
   void _startCountdown() {
@@ -399,5 +503,267 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
         setState(() => _secondsLeft--);
       }
     });
+  }
+
+  String _maskedPhone() {
+    final number = _localNumber;
+    if (number.length < 4) {
+      return _normalizedPhone;
+    }
+    return '${_country.dialCode} ${number.substring(0, 2)}••• ••${number.substring(number.length - 3)}';
+  }
+
+  String _nationalNumber(String raw) {
+    final digits = raw.replaceAll(RegExp(r'\D'), '');
+    if (digits.startsWith('91') && digits.length > 10) {
+      return digits.substring(2);
+    }
+    return digits.length > 10 ? digits.substring(digits.length - 10) : digits;
+  }
+
+  String _messageFor(
+    Object error, {
+    bool sending = false,
+    bool resend = false,
+  }) {
+    final code = error is AuthException
+        ? error.code
+        : error is MobileVerificationException
+        ? error.code
+        : null;
+    return switch (code) {
+      'INVALID_PHONE_NUMBER' =>
+        'Invalid mobile number. Check the number and try again.',
+      'OTP_INVALID' => "Incorrect code. That code doesn't match. Try again.",
+      'OTP_EXPIRED' => 'Code expired. Request a new verification code.',
+      'OTP_ATTEMPTS_EXCEEDED' ||
+      'OTP_MAX_ATTEMPTS' => 'Too many attempts. Please request a new code.',
+      'RATE_LIMITED' => 'Too many requests. Please try again shortly.',
+      'NETWORK_ERROR' =>
+        resend
+            ? "Couldn't resend the code. Please try again."
+            : 'Check your connection and try again.',
+      'SERVICE_UNAVAILABLE' =>
+        'Verification unavailable. Please try again shortly.',
+      _ =>
+        sending
+            ? (resend
+                  ? "Couldn't resend the code. Please try again."
+                  : "Couldn't send the code. Please try again.")
+            : 'Verification unavailable. Please try again shortly.',
+    };
+  }
+}
+
+@immutable
+class MobileCountry {
+  const MobileCountry({
+    required this.code,
+    required this.name,
+    required this.dialCode,
+  });
+
+  final String code;
+  final String name;
+  final String dialCode;
+}
+
+class _UnifiedMobileNumberField extends StatefulWidget {
+  const _UnifiedMobileNumberField({
+    required this.controller,
+    required this.country,
+    required this.enabled,
+    required this.hasError,
+    required this.onCountryTap,
+    required this.onSubmitted,
+  });
+
+  final TextEditingController controller;
+  final MobileCountry country;
+  final bool enabled;
+  final bool hasError;
+  final VoidCallback onCountryTap;
+  final ValueChanged<String> onSubmitted;
+
+  @override
+  State<_UnifiedMobileNumberField> createState() =>
+      _UnifiedMobileNumberFieldState();
+}
+
+class _UnifiedMobileNumberFieldState extends State<_UnifiedMobileNumberField> {
+  late final FocusNode _focusNode;
+
+  @override
+  void initState() {
+    super.initState();
+    _focusNode = FocusNode()..addListener(_refresh);
+    widget.controller.addListener(_refresh);
+  }
+
+  @override
+  void didUpdateWidget(covariant _UnifiedMobileNumberField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller.removeListener(_refresh);
+      widget.controller.addListener(_refresh);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_refresh);
+    _focusNode
+      ..removeListener(_refresh)
+      ..dispose();
+    super.dispose();
+  }
+
+  void _refresh() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final focused = _focusNode.hasFocus;
+    final filled = widget.controller.text.isNotEmpty;
+    final borderColor = widget.hasError
+        ? AppColors.primary
+        : focused
+        ? AppColors.secondary
+        : filled
+        ? AppColors.primary.withValues(alpha: .42)
+        : AppColors.tertiary;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: AmoraSpacing.space4),
+          child: Text(
+            'Mobile number',
+            style: AmoraTextStyles.labelMedium.copyWith(
+              color: focused ? AppColors.primary : AppColors.text,
+            ),
+          ),
+        ),
+        const SizedBox(height: AmoraSpacing.space8),
+        AnimatedContainer(
+          key: const ValueKey('unified-mobile-number-field'),
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOutCubic,
+          height: AmoraSpacing.controlHeight,
+          decoration: BoxDecoration(
+            color: widget.enabled
+                ? AppColors.surface
+                : AppColors.tertiary.withValues(alpha: .26),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: borderColor, width: focused ? 1.5 : 1),
+            boxShadow: focused
+                ? [
+                    BoxShadow(
+                      color: AppColors.secondary.withValues(alpha: .10),
+                      blurRadius: 16,
+                      spreadRadius: 1,
+                    ),
+                  ]
+                : null,
+          ),
+          child: Row(
+            children: [
+              Semantics(
+                button: true,
+                enabled: widget.enabled,
+                label:
+                    'Select country code. ${widget.country.name}, ${widget.country.dialCode}',
+                child: InkWell(
+                  key: const ValueKey('country-code-selector'),
+                  onTap: widget.enabled ? widget.onCountryTap : null,
+                  borderRadius: const BorderRadius.horizontal(
+                    left: Radius.circular(17),
+                  ),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(minWidth: 116),
+                    child: SizedBox(
+                      height: AmoraSpacing.controlHeight - 2,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AmoraSpacing.space12,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text('🇮🇳', style: TextStyle(fontSize: 20)),
+                            const SizedBox(width: AmoraSpacing.space8),
+                            Text(
+                              widget.country.dialCode,
+                              style: AmoraTextStyles.bodyLarge.copyWith(
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(width: AmoraSpacing.space4),
+                            const Icon(
+                              Icons.keyboard_arrow_down_rounded,
+                              color: AppColors.primary,
+                              size: 20,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Container(
+                width: 1,
+                height: 32,
+                color: borderColor.withValues(alpha: focused ? .72 : .82),
+              ),
+              Expanded(
+                child: Semantics(
+                  textField: true,
+                  label: 'Mobile number',
+                  child: TextFormField(
+                    key: const ValueKey('mobile-number-field'),
+                    controller: widget.controller,
+                    focusNode: _focusNode,
+                    enabled: widget.enabled,
+                    keyboardType: TextInputType.phone,
+                    textInputAction: TextInputAction.done,
+                    autofillHints: const [
+                      AutofillHints.telephoneNumberNational,
+                    ],
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      LengthLimitingTextInputFormatter(10),
+                    ],
+                    onFieldSubmitted: widget.onSubmitted,
+                    style: AmoraTextStyles.bodyLarge,
+                    cursorColor: AppColors.secondary,
+                    decoration: const InputDecoration(
+                      hintText: '9723653140',
+                      prefixIcon: Icon(
+                        Icons.phone_iphone_rounded,
+                        color: AppColors.primary,
+                        size: 21,
+                      ),
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      disabledBorder: InputBorder.none,
+                      errorBorder: InputBorder.none,
+                      focusedErrorBorder: InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: AmoraSpacing.space12,
+                        vertical: 17,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
   }
 }

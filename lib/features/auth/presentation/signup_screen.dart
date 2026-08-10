@@ -234,7 +234,10 @@ class _SignupScreenState extends State<SignupScreen> {
       return;
     }
     if (!(_formKey.currentState?.validate() ?? false)) return;
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       await AuthService.instance.signUp(
         name: _nameController.text.trim(),
@@ -245,15 +248,29 @@ class _SignupScreenState extends State<SignupScreen> {
       );
       if (!mounted) return;
       LocalOnboardingRepository.instance.resetForNewAccount();
-      LocalProfileRepository.instance.startNewProfile(_nameController.text.trim(), email: _emailController.text.trim(), phoneNumber: '+91 ${_phoneController.text.trim()}');
-      Navigator.of(context).pushReplacementNamed(AccountVerificationScreen.routeName, arguments: EmailVerificationArguments(email: _emailController.text.trim(), codeAlreadySent: true));
+      LocalProfileRepository.instance.startNewProfile(
+        _nameController.text.trim(),
+        email: _emailController.text.trim(),
+        phoneNumber: '+91 ${_phoneController.text.trim()}',
+      );
+      Navigator.of(context).pushReplacementNamed(
+        AccountVerificationScreen.routeName,
+        arguments: MobileVerificationArguments(
+          phoneNumber: _phoneController.text.trim(),
+        ),
+      );
     } on AuthException catch (error) {
-      if (mounted) setState(() { _loading = false; _error = error.message; });
+      if (mounted)
+        setState(() {
+          _loading = false;
+          _error = error.message;
+        });
     } catch (_) {
       if (mounted) {
         setState(() {
           _loading = false;
-          _error = 'Account creation is unavailable right now. Please try again.';
+          _error =
+              'Account creation is unavailable right now. Please try again.';
         });
       }
     }
@@ -266,7 +283,11 @@ class _SignupScreenState extends State<SignupScreen> {
       if (!mounted) return;
       await AmoraSession.completeAuthentication(context);
     } on AuthException catch (error) {
-      if (mounted) setState(() { _googleLoading = false; _error = error.message; });
+      if (mounted)
+        setState(() {
+          _googleLoading = false;
+          _error = error.message;
+        });
     } catch (_) {
       if (mounted) {
         setState(() {

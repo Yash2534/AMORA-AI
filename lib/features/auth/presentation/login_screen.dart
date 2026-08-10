@@ -165,7 +165,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (error.code == 'ACCOUNT_NOT_VERIFIED') {
         Navigator.of(context).pushNamed(
           AccountVerificationScreen.routeName,
-          arguments: EmailVerificationArguments(email: _emailController.text.trim()),
+          arguments: const MobileVerificationArguments(),
         );
         setState(() => _loading = false);
         return;

@@ -1,6 +1,7 @@
 import 'package:amora_ai/core/widgets/amora_dob_field.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
 import 'package:amora_ai/features/profile/domain/profile_form_options.dart';
+import 'package:amora_ai/features/profile/domain/communication_style.dart';
 import 'package:amora_ai/features/profile/domain/profile_interest_policy.dart';
 import 'package:flutter/foundation.dart' show mapEquals, setEquals;
 import 'package:flutter/material.dart';
@@ -33,6 +34,7 @@ class ProfileFormController extends ChangeNotifier {
       text: ProfileFormOptions.normalizeCity(_baseProfile.location),
     );
     bio = TextEditingController(text: _baseProfile.bio);
+    iceBreaker = TextEditingController(text: _baseProfile.iceBreaker);
     datingIntention = TextEditingController(
       text: ProfileFormOptions.normalizeDatingIntention(
         _baseProfile.datingIntention,
@@ -66,6 +68,7 @@ class ProfileFormController extends ChangeNotifier {
       _baseProfile.loveLanguages,
       ProfileFormOptions.loveLanguages,
     ).toSet();
+    communicationStyle = _baseProfile.communicationStyle;
     final prompt = _baseProfile.prompts.entries
         .where((entry) => entry.value.trim().isNotEmpty)
         .firstOrNull;
@@ -88,6 +91,7 @@ class ProfileFormController extends ChangeNotifier {
   late final TextEditingController customEducation;
   late final TextEditingController city;
   late final TextEditingController bio;
+  late final TextEditingController iceBreaker;
   late final TextEditingController datingIntention;
   late final TextEditingController promptAnswer;
   late DateTime? birthDate;
@@ -101,6 +105,7 @@ class ProfileFormController extends ChangeNotifier {
   late String sexuality;
   late Set<String> preferredTalkingHours;
   late Set<String> loveLanguages;
+  late CommunicationStyle? communicationStyle;
   late String promptTitle;
   late List<String> _retiredInterests;
   String? _originalPromptTitle;
@@ -117,6 +122,7 @@ class ProfileFormController extends ChangeNotifier {
     customEducation,
     city,
     bio,
+    iceBreaker,
     datingIntention,
     promptAnswer,
   ];
@@ -140,6 +146,8 @@ class ProfileFormController extends ChangeNotifier {
       birthdate: birthDate == null ? '' : AmoraDateOfBirth.format(birthDate!),
       gender: ProfileFormOptions.storedGenderValue(gender),
       bio: bio.text.trim(),
+      iceBreaker: iceBreaker.text.trim(),
+      communicationStyle: communicationStyle,
       profession: ProfileFormOptions.storedOccupationValue(
         profession.text,
         customValue: customOccupation.text,
@@ -342,6 +350,12 @@ class ProfileFormController extends ChangeNotifier {
     markDirty();
   }
 
+  void setCommunicationStyle(CommunicationStyle? value) {
+    if (value == null) return;
+    communicationStyle = value;
+    markDirty();
+  }
+
   void toggleInterest(String value, bool selected) {
     if (selected && interests.length >= 10) return;
     selected ? interests.add(value) : interests.remove(value);
@@ -441,11 +455,13 @@ class ProfileFormController extends ChangeNotifier {
         draft.birthdate != _baseProfile.birthdate ||
         draft.gender != _baseProfile.gender ||
         draft.bio != _baseProfile.bio ||
+        draft.iceBreaker != _baseProfile.iceBreaker ||
         draft.profession != _baseProfile.profession ||
         draft.company != _baseProfile.company ||
         draft.education != _baseProfile.education ||
         draft.location != _baseProfile.location ||
         draft.datingIntention != _baseProfile.datingIntention ||
+        draft.communicationStyle != _baseProfile.communicationStyle ||
         draft.hometown != _baseProfile.hometown ||
         !setEquals(
           draft.valuedQualities.toSet(),

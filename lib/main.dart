@@ -132,15 +132,13 @@ class _MyAppState extends State<MyApp> {
             requestCode: AuthService.instance.forgotPassword,
             verifyCode: AuthService.instance.verifyResetCode,
           ),
-          ResetPasswordScreen.routeName: (_) => ResetPasswordScreen(
-            onReset: AuthService.instance.resetPassword,
-          ),
-          AccountVerificationScreen.routeName: (_) => AccountVerificationScreen(
-            requestCode: AuthService.instance.resendVerification,
-            verifyCode: (email, code) async {
-              await AuthService.instance.verifyAccount(email, code);
-            },
-          ),
+          ResetPasswordScreen.routeName: (_) =>
+              ResetPasswordScreen(onReset: AuthService.instance.resetPassword),
+          // Mobile OTP endpoints are not available in the current API contract.
+          // The screen remains callback-ready and reports this safely until they
+          // are supplied by the backend.
+          AccountVerificationScreen.routeName: (_) =>
+              const AccountVerificationScreen(),
           ProfileOnboardingFlow.routeName: (_) => const ProfileOnboardingFlow(),
           ProfileCompletionScreen.routeName: (_) =>
               const ProfileCompletionScreen(),

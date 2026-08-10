@@ -10,11 +10,18 @@ void main() {
   Future<void> pumpChats(
     WidgetTester tester, {
     Size size = const Size(430, 900),
+    double textScale = 1,
   }) async {
     await tester.binding.setSurfaceSize(size);
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(
       MaterialApp(
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(
+            context,
+          ).copyWith(textScaler: TextScaler.linear(textScale)),
+          child: child!,
+        ),
         routes: {
           '/chat-detail': (_) => const _RouteMarker('chat-detail'),
           '/profile-detail': (_) => const _RouteMarker('profile-detail'),
@@ -67,6 +74,11 @@ void main() {
     await tester.enterText(search, chat.user.name);
     await tester.pumpAndSettle();
     expect(find.byKey(ValueKey('conversation-${chat.id}')), findsOneWidget);
+    expect(
+      find.byType(ConversationTile),
+      findsOneWidget,
+      reason: 'Search results must use the production conversation row.',
+    );
 
     await tester.enterText(search, 'not-a-real-chat-keyword');
     await tester.pumpAndSettle();
@@ -115,6 +127,72 @@ void main() {
     expect(clearRect.height, greaterThanOrEqualTo(48));
     expect(clearRect.right, closeTo(containerRect.right, 1));
     expect(clearRect.center.dy, closeTo(containerRect.center.dy, .1));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('search rendering remains crisp without scaled clear control', (
+    tester,
+  ) async {
+    await pumpChats(tester, size: const Size(320, 760));
+
+    final container = find.byKey(const ValueKey('chats-search-container'));
+    final searchSurface = tester.widget<AnimatedContainer>(container);
+    expect(searchSurface.curve, Curves.easeOutCubic);
+    expect(
+      find.descendant(of: container, matching: find.byType(ScaleTransition)),
+      findsNothing,
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chats-search-field')),
+      'A',
+    );
+    await tester.pump();
+    final clearSwitcher = tester.widget<AnimatedSwitcher>(
+      find.descendant(of: container, matching: find.byType(AnimatedSwitcher)),
+    );
+    expect(clearSwitcher.duration, Duration.zero);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('conversation rows keep avatar, profile, and time aligned', (
+    tester,
+  ) async {
+    await pumpChats(tester, size: const Size(320, 760));
+    final chat = AmoraDummyData.chats.firstWhere((chat) => chat.user.verified);
+    final tile = find.byKey(ValueKey('conversation-${chat.id}'));
+    await tester.ensureVisible(tile);
+
+    final tileRect = tester.getRect(tile);
+    final avatarRect = tester.getRect(
+      find.byKey(ValueKey('conversation-avatar-${chat.id}')),
+    );
+    final nameRect = tester.getRect(
+      find.byKey(ValueKey('conversation-name-${chat.id}')),
+    );
+    final timeRect = tester.getRect(
+      find.byKey(ValueKey('conversation-time-${chat.id}')),
+    );
+    final verifiedRect = tester.getRect(
+      find.byKey(ValueKey('conversation-verified-badge-${chat.id}')),
+    );
+
+    expect(avatarRect.size, const Size.square(48));
+    expect(avatarRect.left, closeTo(tileRect.left + 20, 1));
+    expect(timeRect.right, closeTo(tileRect.right - 20, 1));
+    expect(verifiedRect.center.dy, closeTo(nameRect.center.dy, 2));
+    expect(nameRect.right, lessThanOrEqualTo(timeRect.left));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('conversation rows stay usable at 1.3 text scale', (
+    tester,
+  ) async {
+    await pumpChats(tester, size: const Size(320, 760), textScale: 1.3);
+    final chat = AmoraDummyData.chats.first;
+    final tile = find.byKey(ValueKey('conversation-${chat.id}'));
+    await tester.ensureVisible(tile);
+    expect(tester.getSize(tile).height, greaterThanOrEqualTo(76));
     expect(tester.takeException(), isNull);
   });
 

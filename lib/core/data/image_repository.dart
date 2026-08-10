@@ -1,5 +1,6 @@
 import 'package:amora_ai/core/constants/app_images.dart';
 import 'package:amora_ai/features/profile/domain/profile_form_options.dart';
+import 'package:amora_ai/features/profile/domain/communication_style.dart';
 import 'package:flutter/material.dart';
 
 class ImageRepository {
@@ -137,6 +138,8 @@ class DummyProfile {
     this.sexuality = '',
     this.preferredTalkingHours = const <String>[],
     this.loveLanguages = const <String>[],
+    this.iceBreaker = '',
+    this.communicationStyle,
   });
 
   final String id;
@@ -184,6 +187,8 @@ class DummyProfile {
   final String sexuality;
   final List<String> preferredTalkingHours;
   final List<String> loveLanguages;
+  final String iceBreaker;
+  final CommunicationStyle? communicationStyle;
 
   String get fallbackAsset => gender == Gender.female
       ? AppImages.femaleProfileFallback

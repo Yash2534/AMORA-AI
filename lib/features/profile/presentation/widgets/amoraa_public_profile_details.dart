@@ -2,6 +2,7 @@ import 'package:amora_ai/core/constants/app_images.dart';
 import 'package:amora_ai/core/data/image_repository.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
 import 'package:amora_ai/features/profile/domain/profile_form_options.dart';
+import 'package:amora_ai/features/profile/domain/communication_style.dart';
 import 'package:amora_ai/features/profile/domain/profile_interest_policy.dart';
 import 'package:flutter/foundation.dart';
 
@@ -38,6 +39,8 @@ class AmoraaPublicProfileData {
     required this.sexuality,
     required this.preferredTalkingHours,
     required this.loveLanguages,
+    required this.iceBreaker,
+    required this.communicationStyle,
   });
 
   factory AmoraaPublicProfileData.fromProfile(
@@ -114,6 +117,8 @@ class AmoraaPublicProfileData {
         profile.loveLanguages,
         ProfileFormOptions.loveLanguages,
       ),
+      iceBreaker: profile.iceBreaker.trim(),
+      communicationStyle: profile.communicationStyle,
     );
   }
 
@@ -143,6 +148,8 @@ class AmoraaPublicProfileData {
   final String sexuality;
   final List<String> preferredTalkingHours;
   final List<String> loveLanguages;
+  final String iceBreaker;
+  final CommunicationStyle? communicationStyle;
 
   List<ProfilePhotoViewData> get orderedPhotos => <ProfilePhotoViewData>[
     primaryPhoto,
@@ -201,6 +208,8 @@ class AmoraaPublicProfileData {
       sexuality: sexuality,
       preferredTalkingHours: preferredTalkingHours,
       loveLanguages: loveLanguages,
+      iceBreaker: iceBreaker,
+      communicationStyle: communicationStyle,
     );
   }
 

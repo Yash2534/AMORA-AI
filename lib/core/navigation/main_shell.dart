@@ -47,28 +47,18 @@ class _MainShellState extends State<MainShell> {
     return Scaffold(
       extendBody: true,
       backgroundColor: AppColors.background,
-      body: Builder(
-        builder: (context) {
-          final media = MediaQuery.of(context);
-          return MediaQuery(
-            key: const ValueKey('main-shell-navigation-content-inset'),
-            data: media.copyWith(
-              padding: media.padding.copyWith(
-                bottom: FloatingBottomNav.navigationHeightFor(context),
-              ),
-            ),
-            child: IndexedStack(
-              index: _tabs.indexOf(_activeTab),
-              children: const [
-                BrowseGridScreen(showNavigation: false),
-                ChatListScreen(showNavigation: false),
-                MatchesScreen(showNavigation: false),
-                EventsScreen(showNavigation: false),
-                ProfileScreen(showNavigation: false),
-              ],
-            ),
-          );
-        },
+      // With extendBody enabled, Scaffold exposes the occupied navigation
+      // extent through MediaQuery.padding. Each tab's existing SafeArea then
+      // consumes that one inset, without a second shell-level override.
+      body: IndexedStack(
+        index: _tabs.indexOf(_activeTab),
+        children: const [
+          BrowseGridScreen(showNavigation: false),
+          ChatListScreen(showNavigation: false),
+          MatchesScreen(showNavigation: false),
+          EventsScreen(showNavigation: false),
+          ProfileScreen(showNavigation: false),
+        ],
       ),
       bottomNavigationBar: FloatingBottomNav(
         activeTab: _activeTab,

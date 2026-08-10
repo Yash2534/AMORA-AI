@@ -14,7 +14,13 @@ class AuthException implements Exception {
 }
 
 class AmoraUser {
-  const AmoraUser({required this.id, required this.name, required this.email, required this.phoneNumber, required this.isVerified});
+  const AmoraUser({
+    required this.id,
+    required this.name,
+    required this.email,
+    required this.phoneNumber,
+    required this.isVerified,
+  });
 
   final int id;
   final String name;
@@ -23,12 +29,12 @@ class AmoraUser {
   final bool isVerified;
 
   factory AmoraUser.fromJson(Map<String, dynamic> json) => AmoraUser(
-        id: json['id'] as int,
-        name: json['name'] as String? ?? '',
-        email: json['email'] as String? ?? '',
-        phoneNumber: json['phoneNumber'] as String? ?? '',
-        isVerified: json['isVerified'] as bool? ?? false,
-      );
+    id: json['id'] as int,
+    name: json['name'] as String? ?? '',
+    email: json['email'] as String? ?? '',
+    phoneNumber: json['phoneNumber'] as String? ?? '',
+    isVerified: json['isVerified'] as bool? ?? false,
+  );
 }
 
 /// Authentication client. Configure a deployed API with
@@ -62,7 +68,13 @@ class AuthService {
     }
   }
 
-  Future<void> signUp({required String name, required String email, required String phoneNumber, required String password, required String confirmPassword}) async {
+  Future<void> signUp({
+    required String name,
+    required String email,
+    required String phoneNumber,
+    required String password,
+    required String confirmPassword,
+  }) async {
     await _post('/api/auth/signup', {
       'name': name,
       'email': email,
@@ -73,36 +85,59 @@ class AuthService {
     });
   }
 
-  Future<void> resendVerification(String email) async => _post('/api/auth/resend-verification-code', {'email': email});
+  Future<void> resendVerification(String email) async =>
+      _post('/api/auth/resend-verification-code', {'email': email});
 
   Future<AmoraUser> verifyAccount(String email, String code) async {
-    final response = await _post('/api/auth/verify-account', {'email': email, 'code': code});
+    final response = await _post('/api/auth/verify-account', {
+      'email': email,
+      'code': code,
+    });
     return _saveAuthentication(response);
   }
 
   Future<AmoraUser> login(String email, String password) async {
-    final response = await _post('/api/auth/login', {'email': email, 'password': password});
+    final response = await _post('/api/auth/login', {
+      'email': email,
+      'password': password,
+    });
     return _saveAuthentication(response);
   }
 
   Future<AmoraUser> googleSignIn() async {
     final account = await GoogleSignIn(scopes: const ['email']).signIn();
-    if (account == null) throw const AuthException('Google sign-in was cancelled.');
+    if (account == null)
+      throw const AuthException('Google sign-in was cancelled.');
     final authentication = await account.authentication;
     final idToken = authentication.idToken;
-    if (idToken == null) throw const AuthException('Google did not return an ID token. Check the app OAuth configuration.');
+    if (idToken == null)
+      throw const AuthException(
+        'Google did not return an ID token. Check the app OAuth configuration.',
+      );
     final response = await _post('/api/auth/google', {'idToken': idToken});
     return _saveAuthentication(response);
   }
 
-  Future<void> forgotPassword(String email) async => _post('/api/auth/forgot-password', {'email': email});
+  Future<void> forgotPassword(String email) async =>
+      _post('/api/auth/forgot-password', {'email': email});
 
   Future<String> verifyResetCode(String email, String code) async {
-    final response = await _post('/api/auth/verify-reset-code', {'email': email, 'code': code});
+    final response = await _post('/api/auth/verify-reset-code', {
+      'email': email,
+      'code': code,
+    });
     return _data(response)['recoveryToken'] as String;
   }
 
-  Future<void> resetPassword(String email, String recoveryToken, String newPassword) async => _post('/api/auth/reset-password', {'email': email, 'recoveryToken': recoveryToken, 'newPassword': newPassword});
+  Future<void> resetPassword(
+    String email,
+    String recoveryToken,
+    String newPassword,
+  ) async => _post('/api/auth/reset-password', {
+    'email': email,
+    'recoveryToken': recoveryToken,
+    'newPassword': newPassword,
+  });
 
   Future<AmoraUser> me() async {
     final response = await _request('GET', '/api/auth/me', authenticated: true);
@@ -111,7 +146,10 @@ class AuthService {
 
   Future<void> logout() async {
     try {
-      if (_accessToken != null && _refreshToken != null) await _post('/api/auth/logout', {'refreshToken': _refreshToken}, authenticated: true);
+      if (_accessToken != null && _refreshToken != null)
+        await _post('/api/auth/logout', {
+          'refreshToken': _refreshToken,
+        }, authenticated: true);
     } on AuthException {
       // Local token removal is still required if the network is unavailable.
     } finally {
@@ -137,36 +175,78 @@ class AuthService {
     return currentUser!;
   }
 
-  Future<Map<String, dynamic>> _post(String path, Map<String, dynamic> body, {bool authenticated = false}) => _request('POST', path, body: body, authenticated: authenticated);
+  Future<Map<String, dynamic>> _post(
+    String path,
+    Map<String, dynamic> body, {
+    bool authenticated = false,
+  }) => _request('POST', path, body: body, authenticated: authenticated);
 
-  Future<Map<String, dynamic>> _request(String method, String path, {Map<String, dynamic>? body, bool authenticated = false, bool retried = false}) async {
+  Future<Map<String, dynamic>> _request(
+    String method,
+    String path, {
+    Map<String, dynamic>? body,
+    bool authenticated = false,
+    bool retried = false,
+  }) async {
     final uri = Uri.parse('${AmoraApiConfig.baseUrl}$path');
     try {
-      final headers = {'Content-Type': 'application/json', 'Accept': 'application/json'};
-      if (authenticated && _accessToken != null) headers['Authorization'] = 'Bearer $_accessToken';
+      final headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      };
+      if (authenticated && _accessToken != null)
+        headers['Authorization'] = 'Bearer $_accessToken';
       final request = http.Request(method, uri)..headers.addAll(headers);
       if (body != null) request.body = jsonEncode(body);
-      final streamed = await _client.send(request).timeout(const Duration(seconds: 20));
+      final streamed = await _client
+          .send(request)
+          .timeout(const Duration(seconds: 20));
       final response = await http.Response.fromStream(streamed);
-      final decoded = response.body.isEmpty ? <String, dynamic>{} : jsonDecode(response.body) as Map<String, dynamic>;
-      if (response.statusCode == 401 && authenticated && !retried && _refreshToken != null && await _refresh()) {
-        return _request(method, path, body: body, authenticated: authenticated, retried: true);
+      final decoded = response.body.isEmpty
+          ? <String, dynamic>{}
+          : jsonDecode(response.body) as Map<String, dynamic>;
+      if (response.statusCode == 401 &&
+          authenticated &&
+          !retried &&
+          _refreshToken != null &&
+          await _refresh()) {
+        return _request(
+          method,
+          path,
+          body: body,
+          authenticated: authenticated,
+          retried: true,
+        );
       }
-      if (response.statusCode < 200 || response.statusCode >= 300 || decoded['success'] != true) {
-        throw AuthException(decoded['message'] as String? ?? 'The request could not be completed.', code: decoded['code'] as String?, statusCode: response.statusCode);
+      if (response.statusCode < 200 ||
+          response.statusCode >= 300 ||
+          decoded['success'] != true) {
+        throw AuthException(
+          decoded['message'] as String? ??
+              'The request could not be completed.',
+          code: decoded['code'] as String?,
+          statusCode: response.statusCode,
+        );
       }
       return decoded;
     } on AuthException {
       rethrow;
     } catch (_) {
-      throw const AuthException('Unable to reach the service. Check your connection and try again.');
+      throw const AuthException(
+        'Unable to reach the service. Check your connection and try again.',
+      );
     }
   }
 
   Future<bool> _refresh() async {
     if (_refreshToken == null) return false;
     try {
-      final response = await _request('POST', '/api/auth/refresh-token', body: {'refreshToken': _refreshToken}, retried: true);
+      final response = await _request(
+        'POST',
+        '/api/auth/refresh-token',
+        body: {'refreshToken': _refreshToken},
+        retried: true,
+      );
       final data = _data(response);
       _accessToken = data['accessToken'] as String;
       _refreshToken = data['refreshToken'] as String;
@@ -178,5 +258,7 @@ class AuthService {
     }
   }
 
-  Map<String, dynamic> _data(Map<String, dynamic> response) => (response['data'] as Map?)?.cast<String, dynamic>() ?? <String, dynamic>{};
+  Map<String, dynamic> _data(Map<String, dynamic> response) =>
+      (response['data'] as Map?)?.cast<String, dynamic>() ??
+      <String, dynamic>{};
 }

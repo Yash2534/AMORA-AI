@@ -5,6 +5,7 @@ import 'package:amora_ai/core/access/amora_access.dart';
 import 'package:amora_ai/core/branding/amora_brand_assets.dart';
 import 'package:amora_ai/core/constants/app_images.dart';
 import 'package:amora_ai/core/data/image_repository.dart';
+import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/amora_profile_image.dart';
@@ -350,14 +351,26 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
                         ).pushNamed(NotificationsHubScreen.routeName),
                       ),
                       const SizedBox(height: 12),
-                      _DiscoverFilterRail(
-                        filters: _quickFilters,
-                        selected: _selectedQuickFilters,
-                        onFilters: _openFilters,
-                        onToggle: _toggleQuickFilter,
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AmoraSpacing.space4,
+                        ),
+                        child: _DiscoverFilterRail(
+                          filters: _quickFilters,
+                          selected: _selectedQuickFilters,
+                          onFilters: _openFilters,
+                          onToggle: _toggleQuickFilter,
+                        ),
                       ),
                       const SizedBox(height: 12),
-                      Expanded(child: _buildExperience()),
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AmoraSpacing.space4,
+                          ),
+                          child: _buildExperience(),
+                        ),
+                      ),
                     ],
                   ),
                 ),

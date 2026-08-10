@@ -3,8 +3,10 @@ import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/amoraa_select_field.dart';
 import 'package:amora_ai/features/profile/domain/profile_form_options.dart';
+import 'package:amora_ai/features/profile/domain/communication_style.dart';
 import 'package:amora_ai/features/profile/presentation/controllers/profile_form_controller.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class AmoraaPersonalPreferencesEditor extends StatelessWidget {
   const AmoraaPersonalPreferencesEditor({super.key, required this.controller});
@@ -78,6 +80,71 @@ class AmoraaConnectionPreferencesEditor extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        Text('Ice Breaker', style: AmoraTextStyles.titleMedium),
+        const SizedBox(height: AmoraSpacing.space4),
+        Text(
+          'Share one dating non-negotiable that matters to you.',
+          style: AmoraTextStyles.bodySmall.copyWith(
+            color: AppColors.textSecondary,
+          ),
+        ),
+        const SizedBox(height: AmoraSpacing.space8),
+        Semantics(
+          textField: true,
+          label: 'Ice Breaker',
+          hint: 'Share one dating non-negotiable that matters to you.',
+          child: TextFormField(
+            key: const ValueKey('profile-ice-breaker-field'),
+            controller: controller.iceBreaker,
+            minLines: 3,
+            maxLines: 5,
+            maxLength: 180,
+            textCapitalization: TextCapitalization.sentences,
+            keyboardType: TextInputType.multiline,
+            textInputAction: TextInputAction.newline,
+            inputFormatters: [LengthLimitingTextInputFormatter(180)],
+            buildCounter:
+                (
+                  context, {
+                  required currentLength,
+                  required isFocused,
+                  maxLength,
+                }) => Semantics(
+                  liveRegion: true,
+                  label: '$currentLength of 180 characters',
+                  child: Text(
+                    '$currentLength/180',
+                    key: const ValueKey('profile-ice-breaker-counter'),
+                    style: AmoraTextStyles.labelSmall.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+            decoration: InputDecoration(
+              hintText: 'What’s one thing you won’t compromise on?',
+              prefixIcon: const Padding(
+                padding: EdgeInsets.only(bottom: 54),
+                child: Icon(Icons.format_quote_rounded),
+              ),
+              alignLabelWithHint: true,
+            ),
+          ),
+        ),
+        const SizedBox(height: AmoraSpacing.space20),
+        AmoraaSelectField<CommunicationStyle>(
+          key: const ValueKey('profile-communication-style-selector'),
+          label: 'Communication Style',
+          value: controller.communicationStyle,
+          hintText: 'Select your communication style',
+          supportingText: 'Choose the way you like to stay connected.',
+          prefixIcon: Icons.forum_outlined,
+          options: [
+            for (final style in CommunicationStyle.values)
+              AmoraaSelectOption(value: style, label: style.label),
+          ],
+          onChanged: controller.setCommunicationStyle,
+        ),
+        const SizedBox(height: AmoraSpacing.space24),
         Text('Qualities', style: AmoraTextStyles.titleMedium),
         const SizedBox(height: AmoraSpacing.space4),
         Text(
