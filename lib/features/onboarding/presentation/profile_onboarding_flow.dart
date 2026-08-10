@@ -5,6 +5,7 @@ import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/amoraa_select_field.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
+import 'package:amora_ai/core/widgets/amora_snackbar.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/core/navigation/main_shell.dart';
@@ -43,6 +44,7 @@ class _ProfileOnboardingFlowState extends State<ProfileOnboardingFlow> {
   @override
   void initState() {
     super.initState();
+    _repository.syncError.addListener(_showSyncError);
     final stageIndex = _stages.indexOf(_repository.state.stage);
     _page =
         _repository.state.birthDate == null &&
@@ -69,10 +71,18 @@ class _ProfileOnboardingFlowState extends State<ProfileOnboardingFlow> {
 
   @override
   void dispose() {
+    _repository.syncError.removeListener(_showSyncError);
     _pageController.dispose();
     _customGenderController.dispose();
     _cityController.dispose();
     super.dispose();
+  }
+
+  void _showSyncError() {
+    final message = _repository.syncError.value;
+    if (!mounted || message == null || message.isEmpty) return;
+    showAmoraSnackBar(context, message: message);
+    _repository.clearSyncError();
   }
 
   @override

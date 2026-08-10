@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
+import 'package:amora_ai/core/config/amora_api_config.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
@@ -40,22 +40,11 @@ class AuthService {
   static const _accessKey = 'amora_access_token';
   static const _refreshKey = 'amora_refresh_token';
   static const _storage = FlutterSecureStorage();
-  static const _configuredBaseUrl = String.fromEnvironment(
-    'AMORA_API_BASE_URL',
-  );
 
   final http.Client _client = http.Client();
   String? _accessToken;
   String? _refreshToken;
   AmoraUser? currentUser;
-
-  String get _baseUrl {
-    if (_configuredBaseUrl.isNotEmpty) return _configuredBaseUrl;
-    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
-      return 'http://localhost:5000';
-    }
-    return 'http://10.0.2.2:5000';
-  }
 
   Future<void> initialize() async {
     _accessToken = await _storage.read(key: _accessKey);
@@ -151,7 +140,7 @@ class AuthService {
   Future<Map<String, dynamic>> _post(String path, Map<String, dynamic> body, {bool authenticated = false}) => _request('POST', path, body: body, authenticated: authenticated);
 
   Future<Map<String, dynamic>> _request(String method, String path, {Map<String, dynamic>? body, bool authenticated = false, bool retried = false}) async {
-    final uri = Uri.parse('$_baseUrl$path');
+    final uri = Uri.parse('${AmoraApiConfig.baseUrl}$path');
     try {
       final headers = {'Content-Type': 'application/json', 'Accept': 'application/json'};
       if (authenticated && _accessToken != null) headers['Authorization'] = 'Bearer $_accessToken';

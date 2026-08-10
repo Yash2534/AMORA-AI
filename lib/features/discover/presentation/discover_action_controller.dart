@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:amora_ai/features/discover/data/discover_api_service.dart';
 
 enum DiscoverAction { pass, like, superLike, rewind, boost }
 
@@ -23,12 +24,13 @@ class DiscoverActionController extends ChangeNotifier {
   DiscoverActionController({
     required Iterable<String> profileIds,
     Iterable<String> mutualLikeProfileIds = const <String>[],
+    DiscoverApiService? apiService,
     this.transitionDuration = const Duration(milliseconds: 240),
   }) : _deck = List<String>.of(profileIds),
-       _mutualLikeProfileIds = Set<String>.of(mutualLikeProfileIds);
+       _apiService = apiService ?? DiscoverApiService();
 
   final Duration transitionDuration;
-  final Set<String> _mutualLikeProfileIds;
+  final DiscoverApiService _apiService;
   final List<String> _deck;
   final List<DiscoverHistoryEntry> _history = [];
   final Map<String, int> _imageIndices = {};
@@ -40,6 +42,9 @@ class DiscoverActionController extends ChangeNotifier {
   bool _boostRequested = false;
   DiscoverAction? _activeAction;
   String? _matchedProfileId;
+  String? _lastError;
+  String? _matchId;
+  Map<String, dynamic>? _matchedProfile;
 
   bool get isTransitioning => _isTransitioning;
   bool get isEmpty => _deck.isEmpty;
@@ -48,6 +53,9 @@ class DiscoverActionController extends ChangeNotifier {
   DiscoverAction? get activeAction => _activeAction;
   String? get currentProfileId => _deck.firstOrNull;
   String? get matchedProfileId => _matchedProfileId;
+  String? get matchId => _matchId;
+  Map<String, dynamic>? get matchedProfile => _matchedProfile;
+  String? get lastError => _lastError;
   List<String> get remainingProfileIds => List.unmodifiable(_deck);
   List<DiscoverHistoryEntry> get history => List.unmodifiable(_history);
 
@@ -57,16 +65,26 @@ class DiscoverActionController extends ChangeNotifier {
     _imageIndices[profileId] = index;
   }
 
-  Future<void> passProfile() => _advance(DiscoverAction.pass);
+  void appendProfileIds(Iterable<String> profileIds) {
+    for (final profileId in profileIds) {
+      if (!_deck.contains(profileId) &&
+          !_history.any((entry) => entry.profileId == profileId)) {
+        _deck.add(profileId);
+      }
+    }
+    notifyListeners();
+  }
 
-  Future<void> rejectProfile() => _advance(DiscoverAction.pass);
+  Future<bool> passProfile() => _advance(DiscoverAction.pass);
 
-  Future<void> likeProfile() => _advance(DiscoverAction.like);
+  Future<bool> rejectProfile() => _advance(DiscoverAction.pass);
 
-  Future<void> superLikeProfile() => _advance(DiscoverAction.superLike);
+  Future<bool> likeProfile() => _advance(DiscoverAction.like);
 
-  Future<void> rewindProfile() async {
-    if (!canRewind) return;
+  Future<bool> superLikeProfile() => _advance(DiscoverAction.superLike);
+
+  Future<bool> rewindProfile() async {
+    if (!canRewind) return false;
     _isTransitioning = true;
     _activeAction = DiscoverAction.rewind;
     notifyListeners();
@@ -80,13 +98,27 @@ class DiscoverActionController extends ChangeNotifier {
     _activeAction = null;
     _isTransitioning = false;
     notifyListeners();
+    final result = await _apiService.rewind();
+    if (result.success) return true;
+    _lastError = result.message;
+    notifyListeners();
+    return false;
   }
 
-  Future<void> boostProfile() async {
-    if (_isTransitioning) return;
+  Future<bool> boostProfile() async {
+    if (_isTransitioning) return false;
     _activeAction = DiscoverAction.boost;
+    notifyListeners();
+    final result = await _apiService.boost();
+    if (!result.success) {
+      _activeAction = null;
+      _lastError = result.message;
+      notifyListeners();
+      return false;
+    }
     _boostRequested = true;
     notifyListeners();
+    return true;
   }
 
   void consumeBoostRequest() {
@@ -99,12 +131,14 @@ class DiscoverActionController extends ChangeNotifier {
   void consumeMatch() {
     if (_matchedProfileId == null) return;
     _matchedProfileId = null;
+    _matchId = null;
+    _matchedProfile = null;
     notifyListeners();
   }
 
-  Future<void> _advance(DiscoverAction action) async {
+  Future<bool> _advance(DiscoverAction action) async {
     final profileId = currentProfileId;
-    if (_isTransitioning || profileId == null) return;
+    if (_isTransitioning || profileId == null) return false;
     _isTransitioning = true;
     _activeAction = action;
     notifyListeners();
@@ -124,9 +158,6 @@ class DiscoverActionController extends ChangeNotifier {
         break;
       case DiscoverAction.like:
         likedProfileIds.add(profileId);
-        if (_mutualLikeProfileIds.contains(profileId)) {
-          _matchedProfileId = profileId;
-        }
         break;
       case DiscoverAction.superLike:
         superLikedProfileIds.add(profileId);
@@ -138,6 +169,27 @@ class DiscoverActionController extends ChangeNotifier {
     _activeAction = null;
     _isTransitioning = false;
     notifyListeners();
+    final result = await _apiService.swipe(
+      targetUserId: profileId,
+      action: switch (action) {
+        DiscoverAction.pass => 'pass',
+        DiscoverAction.like => 'like',
+        DiscoverAction.superLike => 'superLike',
+        _ => 'pass',
+      },
+    );
+    if (!result.success) {
+      _lastError = result.message;
+      notifyListeners();
+      return false;
+    }
+    if (result.data!.matched) {
+      _matchedProfileId = profileId;
+      _matchId = result.data!.matchId;
+      _matchedProfile = result.data!.matchedProfile;
+      notifyListeners();
+    }
+    return true;
   }
 }
 

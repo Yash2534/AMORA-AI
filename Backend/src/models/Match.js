@@ -1,0 +1,2 @@
+const { DataTypes } = require('sequelize');
+module.exports = (sequelize) => sequelize.define('Match', { id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true }, userOneId: { type: DataTypes.INTEGER, allowNull: false }, userTwoId: { type: DataTypes.INTEGER, allowNull: false }, matchedAt: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW } }, { tableName: 'Matches', updatedAt: false, indexes: [{ unique: true, fields: ['userOneId', 'userTwoId'] }] });

@@ -9,6 +9,7 @@ import 'package:amora_ai/core/widgets/amoraa_select_field.dart';
 import 'package:amora_ai/core/widgets/premium_motion.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/discover/presentation/browse_grid_screen.dart';
+import 'package:amora_ai/features/discover/data/discover_api_service.dart';
 import 'package:amora_ai/features/discover/presentation/widgets/amoraa_minimum_height_picker.dart';
 import 'package:amora_ai/features/profile/domain/profile_form_options.dart';
 import 'package:amora_ai/features/profile/domain/profile_form_validators.dart';
@@ -61,6 +62,7 @@ class AdvancedFiltersScreen extends StatefulWidget {
 }
 
 class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
+  final DiscoverApiService _discoverApi = DiscoverApiService();
   RangeValues _age = const RangeValues(24, 34);
   double _distance = 80;
   double _score = 80;
@@ -117,6 +119,112 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
     super.initState();
     _filterSearchController = TextEditingController();
     _customEducationController = TextEditingController();
+    unawaited(_loadSavedFilters());
+  }
+
+  Future<void> _loadSavedFilters() async {
+    final result = await _discoverApi.getFilters();
+    if (!mounted) return;
+    if (!result.success || result.data == null) {
+      showAmoraSnackBar(
+        context,
+        message: result.message,
+        tone: AmoraSnackBarTone.error,
+      );
+      return;
+    }
+    final filters = result.data!;
+    Set<String> values(String key) =>
+        ((filters[key] as List?) ?? const <dynamic>[])
+            .map((value) => value.toString())
+            .where((value) => value.isNotEmpty)
+            .toSet();
+    String value(String key) => filters[key]?.toString() ?? '';
+    void replace(Set<String> target, Iterable<String> source) {
+      target
+        ..clear()
+        ..addAll(source);
+    }
+
+    setState(() {
+      _age = RangeValues(
+        ((filters['minAge'] as num?)?.toDouble() ?? 18)
+            .clamp(18, 99)
+            .toDouble(),
+        ((filters['maxAge'] as num?)?.toDouble() ?? 45)
+            .clamp(18, 99)
+            .toDouble(),
+      );
+      _distance = ((filters['maxDistanceKm'] as num?)?.toDouble() ?? 80)
+          .clamp(1, 500)
+          .toDouble();
+      _score = ((filters['minScore'] as num?)?.toDouble() ?? 80)
+          .clamp(50, 100)
+          .toDouble();
+      replace(
+        _cities,
+        value('city').isEmpty ? const <String>[] : <String>[value('city')],
+      );
+      replace(_intents, values('datingIntentions'));
+      replace(_lifestyles, values('lifestyleTags'));
+      replace(
+        _education,
+        value('education').isEmpty
+            ? const <String>[]
+            : <String>[value('education')],
+      );
+      replace(
+        _profession,
+        value('profession').isEmpty
+            ? const <String>[]
+            : <String>[value('profession')],
+      );
+      replace(
+        _community,
+        value('community').isEmpty
+            ? const <String>[]
+            : <String>[value('community')],
+      );
+      replace(
+        _religion,
+        value('religion').isEmpty
+            ? const <String>[]
+            : <String>[value('religion')],
+      );
+      replace(_languages, values('languages'));
+      replace(_hometowns, values('hometown'));
+      replace(_qualities, values('qualities'));
+      replace(_pronouns, values('pronouns'));
+      replace(
+        _sexualities,
+        value('sexuality').isEmpty
+            ? const <String>[]
+            : <String>[value('sexuality')],
+      );
+      replace(_preferredTalkingHours, values('preferredTalkingHours'));
+      replace(_loveLanguages, values('loveLanguages'));
+      replace(
+        _smoking,
+        value('smoking').isEmpty
+            ? const <String>[]
+            : <String>[value('smoking')],
+      );
+      replace(
+        _drinking,
+        value('drinking').isEmpty
+            ? const <String>[]
+            : <String>[value('drinking')],
+      );
+      replace(
+        _weed,
+        value('weed').isEmpty ? const <String>[] : <String>[value('weed')],
+      );
+      _minimumHeightCm = (filters['minHeight'] as num?)?.toInt();
+      _verifiedOnly = filters['verifiedOnly'] == true;
+      _onlineNow = filters['onlineNow'] == true;
+      _hasPrompts = filters['hasPrompts'] == true;
+      _eventInterest = filters['hasEventInterest'] == true;
+    });
   }
 
   @override
@@ -1319,7 +1427,7 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
     });
   }
 
-  void _apply() {
+  Future<void> _apply() async {
     final educationError = ProfileFormValidators.customEducation(
       _education.contains('Other') ? 'Other' : null,
       _customEducationController.text,
@@ -1335,6 +1443,44 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
         selection: TextSelection.collapsed(offset: customEducation.length),
       );
     }
+    final filters = <String, dynamic>{
+      'minAge': _age.start.round(),
+      'maxAge': _age.end.round(),
+      'maxDistanceKm': _distance.round(),
+      'minScore': _score.round(),
+      'city': _cities.isEmpty ? '' : _cities.first,
+      'minHeight': _minimumHeightCm?.toString() ?? '',
+      'hometown': _hometowns.toList(),
+      'datingIntentions': _intents.toList(),
+      'lifestyleTags': _lifestyles.toList(),
+      'education': _education.isEmpty ? '' : _education.first,
+      'profession': _profession.isEmpty ? '' : _profession.first,
+      'community': _community.isEmpty ? '' : _community.first,
+      'religion': _religion.isEmpty ? '' : _religion.first,
+      'languages': _languages.toList(),
+      'pronouns': _pronouns.toList(),
+      'sexuality': _sexualities.isEmpty ? '' : _sexualities.first,
+      'qualities': _qualities.toList(),
+      'preferredTalkingHours': _preferredTalkingHours.toList(),
+      'loveLanguages': _loveLanguages.toList(),
+      'smoking': _smoking.isEmpty ? '' : _smoking.first,
+      'drinking': _drinking.isEmpty ? '' : _drinking.first,
+      'weed': _weed.isEmpty ? '' : _weed.first,
+      'verifiedOnly': _verifiedOnly,
+      'onlineNow': _onlineNow,
+      'hasPrompts': _hasPrompts,
+      'hasEventInterest': _eventInterest,
+    };
+    final saved = await _discoverApi.updateFilters(filters);
+    if (!mounted) return;
+    if (!saved.success) {
+      showAmoraSnackBar(
+        context,
+        message: saved.message,
+        tone: AmoraSnackBarTone.error,
+      );
+      return;
+    }
     final navigator = Navigator.of(context);
     appliedProfilePreferenceFilters.value = ProfilePreferenceFilterState(
       hometowns: Set<String>.unmodifiable(_hometowns),
@@ -1346,7 +1492,7 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
     );
     showAmoraSnackBar(context, message: 'Filters applied');
     if (navigator.canPop()) {
-      navigator.pop();
+      navigator.pop(true);
     } else {
       navigator.pushReplacementNamed(BrowseGridScreen.routeName);
     }
