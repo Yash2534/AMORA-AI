@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:amora_ai/core/data/image_repository.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
@@ -8,7 +10,7 @@ import 'package:amora_ai/core/widgets/amoraa_main_page_header.dart';
 import 'package:amora_ai/core/widgets/floating_bottom_nav.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/chat/presentation/chat_detail_screen.dart';
-import 'package:amora_ai/features/chat/data/local_chat_repository.dart';
+import 'package:amora_ai/features/chat/data/chat_repository.dart';
 import 'package:amora_ai/features/chat/presentation/widgets/chat_presence_avatar.dart';
 import 'package:amora_ai/features/profile/presentation/profile_detail_screen.dart';
 import 'package:flutter/material.dart';
@@ -26,7 +28,7 @@ class ChatListScreen extends StatefulWidget {
 }
 
 class _ChatListScreenState extends State<ChatListScreen> {
-  final _repository = LocalChatRepository.instance;
+  final _repository = ChatRepository.instance;
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
   String _query = '';
@@ -62,6 +64,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
   void initState() {
     super.initState();
     _repository.addListener(_refreshConversations);
+    if (_repository.conversations.isEmpty && !_repository.loading) {
+      unawaited(_refreshFromServer());
+    }
   }
 
   @override
@@ -115,84 +120,139 @@ class _ChatListScreenState extends State<ChatListScreen> {
               Expanded(
                 child: Stack(
                   children: [
-                    CustomScrollView(
-                      key: const PageStorageKey<String>('chats-inbox-scroll'),
-                      physics: const BouncingScrollPhysics(
-                        parent: AlwaysScrollableScrollPhysics(),
-                      ),
-                      slivers: [
-                        if (_activeChats.isNotEmpty && _query.isEmpty)
-                          SliverToBoxAdapter(
-                            child: ActiveMatchesSection(
-                              chats: _activeChats,
-                              onOpen: _openConversation,
-                            ),
-                          ),
-                        SliverToBoxAdapter(
-                          child: Padding(
-                            padding: const EdgeInsets.fromLTRB(
-                              AmoraSpacing.space20,
-                              AmoraSpacing.space8,
-                              AmoraSpacing.space20,
-                              AmoraSpacing.space12,
-                            ),
-                            child: ChatFilterBar(
-                              selected: _filter,
-                              onSelected: (filter) =>
-                                  setState(() => _filter = filter),
-                            ),
-                          ),
+                    RefreshIndicator(
+                      onRefresh: _refreshFromServer,
+                      child: CustomScrollView(
+                        key: const PageStorageKey<String>('chats-inbox-scroll'),
+                        physics: const BouncingScrollPhysics(
+                          parent: AlwaysScrollableScrollPhysics(),
                         ),
-                        if (_allChats.isEmpty)
-                          SliverFillRemaining(
-                            hasScrollBody: false,
-                            child: ChatsEmptyState(
-                              onDiscover: () => Navigator.of(
-                                context,
-                              ).pushReplacementNamed('/browse'),
+                        slivers: [
+                          if (_repository.loading && _allChats.isEmpty)
+                            const SliverFillRemaining(
+                              hasScrollBody: false,
+                              child: Center(child: CircularProgressIndicator()),
+                            )
+                          else if (_repository.error != null &&
+                              _allChats.isEmpty)
+                            SliverFillRemaining(
+                              hasScrollBody: false,
+                              child: Center(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(28),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(
+                                        Icons.cloud_off_rounded,
+                                        color: AppColors.primary,
+                                        size: 40,
+                                      ),
+                                      const SizedBox(height: 12),
+                                      const Text(
+                                        'Chats could not be loaded.',
+                                        style: AmoraTextStyles.sectionTitle,
+                                      ),
+                                      const SizedBox(height: 12),
+                                      FilledButton(
+                                        onPressed: _refreshFromServer,
+                                        child: const Text('Retry'),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            )
+                          else ...[
+                            if (_activeChats.isNotEmpty && _query.isEmpty)
+                              SliverToBoxAdapter(
+                                child: ActiveMatchesSection(
+                                  chats: _activeChats,
+                                  onOpen: _openConversation,
+                                ),
+                              ),
+                            SliverToBoxAdapter(
+                              child: Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  AmoraSpacing.space20,
+                                  AmoraSpacing.space8,
+                                  AmoraSpacing.space20,
+                                  AmoraSpacing.space12,
+                                ),
+                                child: ChatFilterBar(
+                                  selected: _filter,
+                                  onSelected: (filter) =>
+                                      setState(() => _filter = filter),
+                                ),
+                              ),
                             ),
-                          )
-                        else if (visibleChats.isEmpty)
-                          SliverFillRemaining(
-                            hasScrollBody: false,
-                            child: ChatsSearchEmptyState(
-                              hasQuery: _query.isNotEmpty,
-                              onClear: _clearSearchAndFilter,
-                            ),
-                          )
-                        else ...[
-                          const SliverToBoxAdapter(
-                            child: ConversationSectionHeader(
-                              title: 'Conversations',
-                            ),
-                          ),
-                          SliverList.builder(
-                            itemCount: visibleChats.length,
-                            itemBuilder: (context, index) {
-                              final chat = visibleChats[index];
-                              return ConversationTile(
-                                key: ValueKey('conversation-${chat.id}'),
-                                chat: chat,
-                                onOpen: () => _openConversation(chat),
-                                onOpenProfile: _openProfile,
-                                onLongPress: () =>
-                                    _showConversationActions(chat),
-                              );
-                            },
-                          ),
-                          SliverToBoxAdapter(
-                            child: SizedBox(
-                              height: keyboardIsOpen
-                                  ? AmoraSpacing.space16
-                                  : widget.showNavigation
-                                  ? FloatingBottomNav.contentBottomPaddingFor(
-                                      context,
-                                    )
-                                  : FloatingBottomNav.contentSpacing,
-                            ),
-                          ),
+                            if (_allChats.isEmpty)
+                              SliverFillRemaining(
+                                hasScrollBody: false,
+                                child: ChatsEmptyState(
+                                  onDiscover: () => Navigator.of(
+                                    context,
+                                  ).pushReplacementNamed('/browse'),
+                                ),
+                              )
+                            else if (visibleChats.isEmpty)
+                              SliverFillRemaining(
+                                hasScrollBody: false,
+                                child: ChatsSearchEmptyState(
+                                  hasQuery: _query.isNotEmpty,
+                                  onClear: _clearSearchAndFilter,
+                                ),
+                              )
+                            else ...[
+                              const SliverToBoxAdapter(
+                                child: ConversationSectionHeader(
+                                  title: 'Conversations',
+                                ),
+                              ),
+                              SliverList.builder(
+                                itemCount: visibleChats.length,
+                                itemBuilder: (context, index) {
+                                  final chat = visibleChats[index];
+                                  return ConversationTile(
+                                    key: ValueKey('conversation-${chat.id}'),
+                                    chat: chat,
+                                    onOpen: () => _openConversation(chat),
+                                    onOpenProfile: _openProfile,
+                                    onLongPress: () =>
+                                        _showConversationActions(chat),
+                                  );
+                                },
+                              ),
+                              SliverToBoxAdapter(
+                                child: Column(
+                                  children: [
+                                    if (_repository.hasMore)
+                                      TextButton(
+                                        onPressed: _repository.loadingMore
+                                            ? null
+                                            : _repository.loadMoreConversations,
+                                        child: Text(
+                                          _repository.loadingMore
+                                              ? 'Loading…'
+                                              : 'Load more',
+                                        ),
+                                      ),
+                                    SizedBox(
+                                      height: keyboardIsOpen
+                                          ? AmoraSpacing.space16
+                                          : widget.showNavigation
+                                          ? FloatingBottomNav.contentBottomPaddingFor(
+                                              context,
+                                            )
+                                          : FloatingBottomNav.contentSpacing,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ],
                         ],
-                      ],
+                      ),
                     ),
                     if (widget.showNavigation && !keyboardIsOpen)
                       const Align(
@@ -224,6 +284,14 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
   void _refreshConversations() {
     if (mounted) setState(() {});
+  }
+
+  Future<void> _refreshFromServer() async {
+    try {
+      await _repository.refreshConversations();
+    } catch (_) {
+      // Repository error state is rendered in the existing page.
+    }
   }
 
   void _openConversation(ChatConversation chat) {

@@ -8,7 +8,7 @@ import 'package:amora_ai/core/widgets/premium_avatar.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/chat/presentation/chat_detail_screen.dart';
-import 'package:amora_ai/features/chat/data/local_chat_repository.dart';
+import 'package:amora_ai/features/chat/data/chat_repository.dart';
 import 'package:amora_ai/features/monetization/data/monetization_data.dart';
 import 'package:amora_ai/features/monetization/presentation/widgets/monetization_widgets.dart';
 import 'package:flutter/material.dart';
@@ -170,13 +170,14 @@ class _AiIcebreakersScreenState extends State<AiIcebreakersScreen> {
     );
   }
 
-  void _send(String text) {
+  Future<void> _send(String text) async {
     final profile = _IcebreakerProfile.fromArgs(
       ModalRoute.of(context)?.settings.arguments,
     );
     final participant = ImageRepository.profileByName(profile.name);
-    final conversationId = LocalChatRepository.instance
-        .ensureConversationForProfile(participant);
+    final conversationId = await ChatRepository.instance
+        .createConversationForProfile(participant);
+    if (!mounted) return;
     Navigator.of(context).pushNamed(
       ChatDetailScreen.routeName,
       arguments: ChatDetailArgs(

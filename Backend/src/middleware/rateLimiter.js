@@ -8,5 +8,11 @@ module.exports = {
   photoUploadLimiter: rateLimit(options(15 * 60 * 1000, 20, (req) => String(req.user?.sub || req.ip))),
   discoverSwipeLimiter: rateLimit(options(5 * 60 * 1000, 120, (req) => String(req.user?.sub || req.ip))),
   reportCreateLimiter: rateLimit(options(60 * 60 * 1000, 5, (req) => String(req.user?.sub || req.ip))),
-  reportEvidenceLimiter: rateLimit(options(60 * 60 * 1000, 10, (req) => String(req.user?.sub || req.ip)))
+  reportEvidenceLimiter: rateLimit(options(60 * 60 * 1000, 10, (req) => String(req.user?.sub || req.ip))),
+  chatMessageLimiter: rateLimit(options(60 * 1000, 60, (req) => String(req.user?.sub || req.ip))),
+  chatMediaLimiter: rateLimit(options(15 * 60 * 1000, 20, (req) => String(req.user?.sub || req.ip))),
+  realtimeTokenLimiter: rateLimit(options(60 * 1000, 20, (req) => String(req.user?.sub || req.ip))),
+  eventActionLimiter: rateLimit(options(60 * 1000, 30, (req) => String(req.user?.sub || req.ip))),
+  eventMessageLimiter: rateLimit(options(60 * 1000, 60, (req) => String(req.user?.sub || req.ip))),
+  eventFeedbackLimiter: rateLimit(options(60 * 60 * 1000, 10, (req) => String(req.user?.sub || req.ip)))
 };

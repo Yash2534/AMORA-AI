@@ -6,11 +6,16 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "test": "node --test",
-    "test:integration": "node --test test/discover.integration.test.js",
+    "test": "node --test --test-concurrency=1",
+    "test:integration": "node --test --test-concurrency=1 test/discover.integration.test.js test/phase2.integration.test.js test/phase3.integration.test.js test/phase4.integration.test.js",
+    "test:phase3": "node --test --test-concurrency=1 test/phase3.integration.test.js",
+    "test:phase4": "node --test --test-concurrency=1 test/phase4.integration.test.js",
     "db:migrate": "node src/migrations/run.js up",
     "db:migrate:status": "node src/migrations/run.js status",
-    "db:migrate:undo": "node src/migrations/run.js down"
+    "db:migrate:undo": "node src/migrations/run.js down",
+    "db:verify:chat": "node scripts/verify-chat-schema.js",
+    "db:verify:events": "node scripts/verify-events-schema.js",
+    "db:seed:events": "node scripts/seed-events-development.js"
   },
   "engines": {
     "node": ">=18"
@@ -29,9 +34,11 @@
     "mysql2": "^3.11.5",
     "nodemailer": "^6.9.16",
     "sequelize": "^6.37.5",
+    "socket.io": "^4.8.3",
     "twilio": "^5.5.2"
   },
   "devDependencies": {
-    "nodemon": "^3.1.7"
+    "nodemon": "^3.1.7",
+    "socket.io-client": "^4.8.3"
   }
 }

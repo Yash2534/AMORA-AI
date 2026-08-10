@@ -1,6 +1,9 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:amora_ai/core/data/image_repository.dart';
+import 'package:amora_ai/core/media/amora_media_picker.dart';
+import 'package:amora_ai/core/api/phase_two_api_service.dart';
 import 'package:amora_ai/core/theme/amora_icon_sizes.dart';
 import 'package:amora_ai/core/theme/amora_header_tokens.dart';
 import 'package:amora_ai/core/theme/amora_icons.dart';
@@ -12,7 +15,7 @@ import 'package:amora_ai/core/widgets/premium_avatar.dart';
 import 'package:amora_ai/core/widgets/premium_motion.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/chat/presentation/chat_list_screen.dart';
-import 'package:amora_ai/features/chat/data/local_chat_repository.dart';
+import 'package:amora_ai/features/chat/data/chat_repository.dart';
 import 'package:amora_ai/features/chat/presentation/widgets/chat_presence_avatar.dart';
 import 'package:amora_ai/features/chat/presentation/widgets/amora_chat_composer.dart';
 import 'package:amora_ai/features/profile/presentation/profile_detail_screen.dart';
@@ -56,16 +59,18 @@ class ChatDetailScreen extends StatefulWidget {
 class _ChatDetailScreenState extends State<ChatDetailScreen> {
   final _controller = TextEditingController();
   final _scrollController = ScrollController();
-  final _repository = LocalChatRepository.instance;
+  final _repository = ChatRepository.instance;
   StreamSubscription<ChatConversation>? _conversationSubscription;
   Timer? _draftTimer;
   bool _seedApplied = false;
   bool _readReceipts = true;
   bool _loading = true;
   bool _sending = false;
+  bool _loadingOlder = false;
   bool _emojiPickerVisible = false;
   Object? _error;
   String? _conversationId;
+  String? _recipientId;
   ChatConversation? _conversation;
   ChatMessageContext? _pendingContext;
 
@@ -82,6 +87,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     final args = ModalRoute.of(context)?.settings.arguments;
     if (args is ChatDetailArgs) {
       _conversationId = args.conversationId;
+      _recipientId = args.recipientId ?? args.profileId;
       _pendingContext = args.messageContext;
       final initialDraft = args.prefillText?.trim().isNotEmpty == true
           ? args.prefillText!
@@ -117,7 +123,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           maxWidth: 760,
           child: LayoutBuilder(
             builder: (context, constraints) =>
-                _buildConversation(compactHeight: constraints.maxHeight < 500),
+                _buildConversation(compactHeight: constraints.maxHeight < 700),
           ),
         ),
       ),
@@ -158,12 +164,17 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             scrollController: _scrollController,
             showReadReceipts: _readReceipts,
             onRetry: _retryMessage,
+            onDelete: _confirmDeleteMessage,
+            hasMore: _conversation!.hasMoreMessages,
+            loadingOlder: _loadingOlder,
+            onLoadOlder: _loadOlder,
           ),
         ),
         AmoraChatComposer(
           controller: _controller,
           sending: _sending,
           onSend: _send,
+          onAttach: _sendPhoto,
           onDraftChanged: _saveDraft,
           enabled: _conversation!.canMessage,
           disabledReason:
@@ -190,7 +201,23 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   }
 
   Future<void> _loadConversation() async {
-    final conversationId = _conversationId;
+    var conversationId = _conversationId;
+    if ((conversationId == null || conversationId.isEmpty) &&
+        _recipientId != null) {
+      try {
+        final profile = ImageRepository.profiles
+            .where((item) => item.id == _recipientId)
+            .firstOrNull;
+        if (profile != null) {
+          conversationId = await _repository.createConversationForProfile(
+            profile,
+          );
+          _conversationId = conversationId;
+        }
+      } catch (error) {
+        _error = error;
+      }
+    }
     if (conversationId == null || conversationId.isEmpty) {
       if (mounted) {
         setState(() {
@@ -200,6 +227,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       }
       return;
     }
+    final resolvedConversationId = conversationId;
     if (mounted) {
       setState(() {
         _loading = true;
@@ -209,16 +237,24 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     try {
       await _conversationSubscription?.cancel();
       _conversationSubscription = null;
-      final conversation = await _repository.loadConversation(conversationId);
+      final conversation = await _repository.loadConversation(
+        resolvedConversationId,
+      );
       if (conversation == null) throw StateError('Conversation not found');
-      await _repository.markRead(conversationId);
+      await _repository.markRead(resolvedConversationId);
       if (!mounted) return;
       setState(() {
-        _conversation = _repository.conversation(conversationId);
+        _conversation = _repository.conversation(resolvedConversationId);
+        if (_controller.text.isEmpty && conversation.draft.isNotEmpty) {
+          _controller.text = conversation.draft;
+          _controller.selection = TextSelection.collapsed(
+            offset: _controller.text.length,
+          );
+        }
         _loading = false;
       });
       _conversationSubscription = _repository
-          .watchConversation(conversationId)
+          .watchConversation(resolvedConversationId)
           .listen(_handleConversationUpdate);
       _scrollToNewest(jump: true);
     } catch (error) {
@@ -281,6 +317,78 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       await _repository.retryMessage(conversationId, message.id);
     } catch (_) {
       if (mounted) _snack('Message is still queued. Try again when connected.');
+    }
+  }
+
+  Future<void> _sendPhoto() async {
+    final conversationId = _conversationId;
+    if (conversationId == null || _sending) return;
+    const picker = DeviceAmoraMediaPicker();
+    final result = await picker.pickImage(source: AmoraMediaSource.gallery);
+    if (!mounted) return;
+    if (!result.succeeded) {
+      showAmoraMediaResult(
+        context,
+        result: result,
+        picker: picker,
+        onRetry: _sendPhoto,
+      );
+      return;
+    }
+    if (result.media!.byteLength > 10 * 1024 * 1024) {
+      _snack('Choose an image smaller than 10 MB.');
+      return;
+    }
+    setState(() => _sending = true);
+    try {
+      await _repository.sendMedia(conversationId, result.media!);
+      _scrollToNewest();
+    } catch (_) {
+      if (mounted) _snack('Photo could not be sent. Try again.');
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  Future<void> _loadOlder() async {
+    final conversationId = _conversationId;
+    if (conversationId == null || _loadingOlder) return;
+    setState(() => _loadingOlder = true);
+    try {
+      await _repository.loadConversation(conversationId, older: true);
+    } catch (_) {
+      if (mounted) _snack('Older messages could not be loaded.');
+    } finally {
+      if (mounted) setState(() => _loadingOlder = false);
+    }
+  }
+
+  Future<void> _confirmDeleteMessage(ChatMessage message) async {
+    if (!message.mine || message.deleted) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete message?'),
+        content: const Text(
+          'This message will be replaced with a deleted-message marker.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await _repository.deleteMessage(message.id);
+    } catch (_) {
+      if (mounted) _snack('Message could not be deleted.');
     }
   }
 
@@ -405,6 +513,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             reason: 'You blocked this member. Messaging is disabled.',
           );
         }
+        await PhaseTwoApiService.instance.block(_profile.id);
         ProfileRelationshipController.instance.blockProfile(_profile);
       },
     );
@@ -604,6 +713,10 @@ class _ChatTimeline extends StatelessWidget {
     required this.scrollController,
     required this.showReadReceipts,
     required this.onRetry,
+    required this.onDelete,
+    required this.hasMore,
+    required this.loadingOlder,
+    required this.onLoadOlder,
   });
 
   final List<ChatMessage> messages;
@@ -611,6 +724,10 @@ class _ChatTimeline extends StatelessWidget {
   final ScrollController scrollController;
   final bool showReadReceipts;
   final ValueChanged<ChatMessage> onRetry;
+  final ValueChanged<ChatMessage> onDelete;
+  final bool hasMore;
+  final bool loadingOlder;
+  final VoidCallback onLoadOlder;
 
   @override
   Widget build(BuildContext context) {
@@ -629,9 +746,20 @@ class _ChatTimeline extends StatelessWidget {
       itemCount: itemCount,
       itemBuilder: (context, index) {
         if (index == 0) {
-          return const Padding(
+          return Padding(
             padding: EdgeInsets.only(bottom: 18),
-            child: ChatDateDivider(label: 'Today'),
+            child: Column(
+              children: [
+                if (hasMore)
+                  TextButton(
+                    onPressed: loadingOlder ? null : onLoadOlder,
+                    child: Text(
+                      loadingOlder ? 'Loading…' : 'Load older messages',
+                    ),
+                  ),
+                const ChatDateDivider(label: 'Today'),
+              ],
+            ),
           );
         }
         final messageIndex = index - 1;
@@ -649,6 +777,7 @@ class _ChatTimeline extends StatelessWidget {
           groupedWithNext: groupedWithNext,
           showReadReceipt: showReadReceipts,
           onRetry: () => onRetry(message),
+          onDelete: message.mine ? () => onDelete(message) : null,
         );
       },
     );
@@ -664,6 +793,7 @@ class MessageBubble extends StatelessWidget {
     this.groupedWithNext = false,
     this.showReadReceipt = true,
     this.onRetry,
+    this.onDelete,
   });
 
   final ChatMessage message;
@@ -672,6 +802,7 @@ class MessageBubble extends StatelessWidget {
   final bool groupedWithNext;
   final bool showReadReceipt;
   final VoidCallback? onRetry;
+  final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -693,106 +824,157 @@ class MessageBubble extends StatelessWidget {
       child: Semantics(
         label:
             '${message.mine ? 'Sent' : 'Received'} message at ${message.time}: ${message.text}',
-        child: Padding(
-          padding: EdgeInsets.only(bottom: groupedWithNext ? 4 : 12),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            mainAxisAlignment: message.mine
-                ? MainAxisAlignment.end
-                : MainAxisAlignment.start,
-            children: [
-              if (!message.mine) ...[
-                if (groupedWithNext)
-                  const SizedBox(width: 32)
-                else
-                  PremiumAvatar(
-                    imageUrl: profile.imageUrl,
-                    fallbackAsset: profile.fallbackAsset,
-                    initials: profile.initials,
-                    radius: 14,
-                    semanticLabel: '${profile.name} profile photo',
-                  ),
-                const SizedBox(width: 8),
-              ],
-              Flexible(
-                child: Container(
-                  constraints: const BoxConstraints(maxWidth: 440),
-                  padding: EdgeInsets.fromLTRB(
-                    15,
-                    11,
-                    15,
-                    showMetadata ? 8 : 11,
-                  ),
-                  decoration: BoxDecoration(
-                    color: message.mine ? AppColors.primary : AppColors.surface,
-                    borderRadius: _bubbleRadius,
-                    border: message.mine
-                        ? null
-                        : Border.all(color: AppColors.tertiary),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.primary.withValues(alpha: .07),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: message.mine
-                        ? CrossAxisAlignment.end
-                        : CrossAxisAlignment.start,
-                    children: [
-                      if (message.context != null) ...[
-                        _MessageContextCard(
-                          context: message.context!,
-                          mine: message.mine,
+        child: GestureDetector(
+          onLongPress: onDelete,
+          child: Padding(
+            padding: EdgeInsets.only(bottom: groupedWithNext ? 4 : 12),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisAlignment: message.mine
+                  ? MainAxisAlignment.end
+                  : MainAxisAlignment.start,
+              children: [
+                if (!message.mine) ...[
+                  if (groupedWithNext)
+                    const SizedBox(width: 32)
+                  else
+                    PremiumAvatar(
+                      imageUrl: profile.imageUrl,
+                      fallbackAsset: profile.fallbackAsset,
+                      initials: profile.initials,
+                      radius: 14,
+                      semanticLabel: '${profile.name} profile photo',
+                    ),
+                  const SizedBox(width: 8),
+                ],
+                Flexible(
+                  child: Container(
+                    constraints: const BoxConstraints(maxWidth: 440),
+                    padding: EdgeInsets.fromLTRB(
+                      15,
+                      11,
+                      15,
+                      showMetadata ? 8 : 11,
+                    ),
+                    decoration: BoxDecoration(
+                      color: message.mine
+                          ? AppColors.primary
+                          : AppColors.surface,
+                      borderRadius: _bubbleRadius,
+                      border: message.mine
+                          ? null
+                          : Border.all(color: AppColors.tertiary),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primary.withValues(alpha: .07),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
                         ),
-                        if (!_isRoseWithoutNote) const SizedBox(height: 8),
                       ],
-                      if (!_isRoseWithoutNote)
-                        Text(
-                          message.text,
-                          style: TextStyle(
-                            color: message.mine
-                                ? AppColors.surface
-                                : AppColors.text,
-                            fontSize: 16,
-                            height: 1.38,
-                            fontWeight: FontWeight.w400,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: message.mine
+                          ? CrossAxisAlignment.end
+                          : CrossAxisAlignment.start,
+                      children: [
+                        if (message.context != null) ...[
+                          _MessageContextCard(
+                            context: message.context!,
+                            mine: message.mine,
                           ),
-                        ),
-                      if (showMetadata) ...[
-                        const SizedBox(height: 5),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
+                          if (!_isRoseWithoutNote) const SizedBox(height: 8),
+                        ],
+                        if (message.deleted)
+                          Text(
+                            'Message deleted',
+                            style: TextStyle(
+                              color: message.mine
+                                  ? AppColors.surface.withValues(alpha: .75)
+                                  : AppColors.text.withValues(alpha: .65),
+                              fontStyle: FontStyle.italic,
+                            ),
+                          )
+                        else if (message.type == 'image' &&
+                            message.mediaUrl != null) ...[
+                          FutureBuilder<Uint8List>(
+                            future: ChatRepository.instance.mediaBytes(
+                              message.mediaUrl!,
+                            ),
+                            builder: (context, snapshot) => ClipRRect(
+                              borderRadius: BorderRadius.circular(14),
+                              child: snapshot.hasData
+                                  ? Image.memory(
+                                      snapshot.data!,
+                                      width: 240,
+                                      height: 220,
+                                      fit: BoxFit.cover,
+                                    )
+                                  : const SizedBox(
+                                      width: 240,
+                                      height: 160,
+                                      child: Center(
+                                        child: CircularProgressIndicator(),
+                                      ),
+                                    ),
+                            ),
+                          ),
+                          if (message.text.isNotEmpty)
+                            const SizedBox(height: 8),
+                          if (message.text.isNotEmpty)
                             Text(
-                              message.time,
+                              message.text,
                               style: TextStyle(
                                 color: message.mine
-                                    ? AppColors.surface.withValues(alpha: .78)
-                                    : AppColors.text.withValues(alpha: .62),
-                                fontSize: 12,
-                                height: 1.2,
-                                fontWeight: FontWeight.w500,
+                                    ? AppColors.surface
+                                    : AppColors.text,
+                                fontSize: 16,
                               ),
                             ),
-                            if (message.mine && showReadReceipt) ...[
-                              const SizedBox(width: 5),
-                              _MessageDeliveryState(
-                                status: message.status,
-                                onRetry: onRetry,
+                        ] else if (!_isRoseWithoutNote)
+                          Text(
+                            message.text,
+                            style: TextStyle(
+                              color: message.mine
+                                  ? AppColors.surface
+                                  : AppColors.text,
+                              fontSize: 16,
+                              height: 1.38,
+                              fontWeight: FontWeight.w400,
+                            ),
+                          ),
+                        if (showMetadata) ...[
+                          const SizedBox(height: 5),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                message.time,
+                                style: TextStyle(
+                                  color: message.mine
+                                      ? AppColors.surface.withValues(alpha: .78)
+                                      : AppColors.text.withValues(alpha: .62),
+                                  fontSize: 12,
+                                  height: 1.2,
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
+                              if (message.mine && showReadReceipt) ...[
+                                const SizedBox(width: 5),
+                                _MessageDeliveryState(
+                                  status: message.status,
+                                  onRetry: onRetry,
+                                ),
+                              ],
                             ],
-                          ],
-                        ),
+                          ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                 ),
-              ),
-              if (message.mine) const SizedBox(width: 2),
-            ],
+                if (message.mine) const SizedBox(width: 2),
+              ],
+            ),
           ),
         ),
       ),
@@ -1177,53 +1359,6 @@ class _ConversationLoadError extends StatelessWidget {
                 OutlinedButton(onPressed: onBack, child: const Text('Back')),
                 FilledButton(onPressed: onRetry, child: const Text('Retry')),
               ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class LocalMessagingBanner extends StatelessWidget {
-  const LocalMessagingBanner({super.key, this.compact = false});
-
-  final bool compact;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      liveRegion: true,
-      label:
-          'Offline messaging. Messages are queued on this device until a server connection is available.',
-      child: Container(
-        width: double.infinity,
-        color: AppColors.tertiary.withValues(alpha: .34),
-        padding: EdgeInsets.symmetric(
-          horizontal: compact ? 10 : 16,
-          vertical: compact ? 2 : 8,
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.cloud_off_outlined,
-              color: AppColors.primary,
-              size: 17,
-            ),
-            const SizedBox(width: 7),
-            Flexible(
-              child: Text(
-                compact
-                    ? 'Offline · queued on this device'
-                    : 'Offline: messages remain queued on this device.',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: AppColors.text,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
             ),
           ],
         ),

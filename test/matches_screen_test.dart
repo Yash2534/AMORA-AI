@@ -28,7 +28,9 @@ void main() {
             builder: (_) => _RouteMarker(settings.name ?? 'unknown'),
           );
         },
-        home: const MatchesScreen(),
+        home: MatchesScreen(
+          initialProfiles: ImageRepository.profiles.skip(18).take(12).toList(),
+        ),
       ),
     );
     await tester.pumpAndSettle();

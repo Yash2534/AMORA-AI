@@ -1,4 +1,5 @@
 import 'package:amora_ai/core/data/image_repository.dart';
+import 'package:amora_ai/core/api/phase_two_api_service.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
@@ -8,7 +9,7 @@ import 'package:amora_ai/core/widgets/amoraa_main_page_header.dart';
 import 'package:amora_ai/core/widgets/amoraa_identity_badge.dart';
 import 'package:amora_ai/core/widgets/floating_bottom_nav.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
-import 'package:amora_ai/features/chat/data/local_chat_repository.dart';
+import 'package:amora_ai/features/chat/data/chat_repository.dart';
 import 'package:amora_ai/features/chat/presentation/chat_detail_screen.dart';
 import 'package:amora_ai/features/discover/presentation/discover_action_controller.dart';
 import 'package:amora_ai/features/matches/presentation/widgets/amoraa_inline_compatibility_filter.dart';
@@ -18,10 +19,20 @@ import 'package:amora_ai/features/profile/presentation/profile_detail_screen.dar
 import 'package:flutter/material.dart';
 
 class MatchesScreen extends StatefulWidget {
-  const MatchesScreen({super.key, this.showNavigation = true});
+  const MatchesScreen({
+    super.key,
+    this.showNavigation = true,
+    this.api,
+    this.initialProfiles = const <DummyProfile>[],
+  });
 
   static const routeName = '/matches';
   final bool showNavigation;
+  final PhaseTwoApiService? api;
+
+  /// Explicit test/preview injection. Production routes leave this empty and
+  /// load matches from [api].
+  final List<DummyProfile> initialProfiles;
 
   @override
   State<MatchesScreen> createState() => _MatchesScreenState();
@@ -39,11 +50,15 @@ class _MatchesScreenState extends State<MatchesScreen> {
   int _bulkCompleted = 0;
   int _bulkTotal = 0;
   int? _successCount;
+  List<MatchApiItem> _matches = const [];
+  bool _loading = false;
+  String? _loadError;
 
   @override
   void initState() {
     super.initState();
     _relationships.addListener(_refreshReactions);
+    if (widget.api != null) _loadMatches();
   }
 
   @override
@@ -57,8 +72,25 @@ class _MatchesScreenState extends State<MatchesScreen> {
   }
 
   List<DummyProfile> get _recommendations {
-    return List<DummyProfile>.of(_uniqueRecommendations)
-      ..sort((a, b) => b.score.compareTo(a.score));
+    return <DummyProfile>[
+      ..._matches.map((item) => item.profile.profile),
+      ...widget.initialProfiles,
+    ]..sort((a, b) => b.score.compareTo(a.score));
+  }
+
+  Future<void> _loadMatches() async {
+    setState(() {
+      _loading = true;
+      _loadError = null;
+    });
+    try {
+      final matches = await widget.api!.matches();
+      if (mounted) setState(() => _matches = matches);
+    } catch (_) {
+      if (mounted) setState(() => _loadError = 'Couldn\'t load matches.');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   List<DummyProfile> get _thresholdRecommendations => _recommendations
@@ -156,226 +188,263 @@ class _MatchesScreenState extends State<MatchesScreen> {
                         ),
                       ),
                       Expanded(
-                        child: CustomScrollView(
-                          key: const PageStorageKey<String>(
-                            'ai-matches-scroll',
-                          ),
-                          physics: const BouncingScrollPhysics(
-                            parent: AlwaysScrollableScrollPhysics(),
-                          ),
-                          slivers: [
-                            SliverPadding(
-                              padding: EdgeInsets.fromLTRB(
-                                desktop
-                                    ? AmoraSpacing.space24
-                                    : AmoraSpacing.space20,
-                                AmoraSpacing.space8,
-                                desktop
-                                    ? AmoraSpacing.space24
-                                    : AmoraSpacing.space20,
-                                AmoraSpacing.space12,
-                              ),
-                              sliver: SliverToBoxAdapter(
+                        child: _loading
+                            ? const Center(child: CircularProgressIndicator())
+                            : _loadError != null
+                            ? Center(
                                 child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.stretch,
+                                  mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Text(
-                                      'Best Matches',
-                                      style: AmoraTextStyles.sectionTitle,
-                                    ),
-                                    const SizedBox(
-                                      height: AmoraSpacing.space12,
-                                    ),
-                                    AmoraaInlineCompatibilityFilter(
-                                      value: _compatibilityThreshold,
-                                      onChanged: (value) {
-                                        if (value == _compatibilityThreshold) {
-                                          return;
-                                        }
-                                        setState(
-                                          () => _compatibilityThreshold = value,
-                                        );
-                                      },
-                                      onReset: () => setState(
-                                        () => _compatibilityThreshold =
-                                            defaultCompatibilityThreshold,
-                                      ),
+                                    Text(_loadError!),
+                                    const SizedBox(height: 12),
+                                    FilledButton(
+                                      onPressed: _loadMatches,
+                                      child: const Text('Try again'),
                                     ),
                                   ],
                                 ),
-                              ),
-                            ),
-                            SliverToBoxAdapter(
-                              child: Padding(
-                                padding: EdgeInsets.fromLTRB(
-                                  desktop
-                                      ? AmoraSpacing.space24
-                                      : AmoraSpacing.space20,
-                                  AmoraSpacing.space8,
-                                  desktop
-                                      ? AmoraSpacing.space24
-                                      : AmoraSpacing.space20,
-                                  AmoraSpacing.space20,
-                                ),
-                                child: AiMatchFilterBar(
-                                  selected: _filter,
-                                  onSelected: (filter) =>
-                                      setState(() => _filter = filter),
-                                ),
-                              ),
-                            ),
-                            if (_recommendations.isEmpty)
-                              SliverFillRemaining(
-                                hasScrollBody: false,
-                                child: AiMatchesEmptyState(
-                                  onDiscover: () => Navigator.of(
-                                    context,
-                                  ).pushReplacementNamed('/browse'),
-                                ),
                               )
-                            else if (_thresholdRecommendations.isEmpty)
-                              SliverFillRemaining(
-                                hasScrollBody: false,
-                                child: AiMatchesThresholdEmptyState(
-                                  onLowerFilter: () => setState(
-                                    () => _compatibilityThreshold =
-                                        defaultCompatibilityThreshold,
-                                  ),
+                            : CustomScrollView(
+                                key: const PageStorageKey<String>(
+                                  'ai-matches-scroll',
                                 ),
-                              )
-                            else if (featured == null)
-                              SliverFillRemaining(
-                                hasScrollBody: false,
-                                child: AiMatchesFilteredEmptyState(
-                                  onShowAll: () => setState(
-                                    () => _filter = AiMatchFilter.all,
-                                  ),
+                                physics: const BouncingScrollPhysics(
+                                  parent: AlwaysScrollableScrollPhysics(),
                                 ),
-                              )
-                            else ...[
-                              SliverPadding(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: desktop
-                                      ? AmoraSpacing.space24
-                                      : AmoraSpacing.space20,
-                                ),
-                                sliver: SliverToBoxAdapter(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.stretch,
-                                    children: [
-                                      const _SectionTitle(
-                                        icon: Icons.auto_awesome_rounded,
-                                        title: 'Featured recommendation',
-                                      ),
-                                      const SizedBox(
-                                        height: AmoraSpacing.space12,
-                                      ),
-                                      _MatchReveal(
-                                        key: ValueKey(
-                                          'featured-reveal-'
-                                          '$_compatibilityThreshold-'
-                                          '${featured.id}',
-                                        ),
-                                        delay: Duration.zero,
-                                        child: SelectableAiMatchCard(
-                                          profile: featured,
-                                          selectionMode: _selectionMode,
-                                          selected: _selectedProfileIds
-                                              .contains(featured.id),
-                                          enabled: _canLike(featured),
-                                          processing: _processingProfileIds
-                                              .contains(featured.id),
-                                          radius: 30,
-                                          onToggle: () =>
-                                              _toggleProfileSelection(featured),
-                                          onLongPress: () =>
-                                              _enterSelectionMode(featured),
-                                          child: FeaturedAiMatchCard(
-                                            key: ValueKey(
-                                              'featured-match-${featured.id}',
-                                            ),
-                                            profile: featured,
-                                            horizontal: desktop,
-                                            onOpenProfile: () =>
-                                                _openProfile(featured),
-                                            onMessage: () =>
-                                                _openConversation(featured),
-                                            onWhyMatch: () =>
-                                                _showWhyThisMatch(featured),
-                                          ),
-                                        ),
-                                      ),
-                                      if (feed.isNotEmpty) ...[
-                                        const SizedBox(
-                                          height: AmoraSpacing.space24,
-                                        ),
-                                        const _SectionTitle(
-                                          icon: Icons.favorite_border_rounded,
-                                          title: 'More recommendations',
-                                        ),
-                                        const SizedBox(
-                                          height: AmoraSpacing.space12,
-                                        ),
-                                      ],
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              if (feed.isNotEmpty)
-                                if (desktop)
+                                slivers: [
                                   SliverPadding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: AmoraSpacing.space24,
+                                    padding: EdgeInsets.fromLTRB(
+                                      desktop
+                                          ? AmoraSpacing.space24
+                                          : AmoraSpacing.space20,
+                                      AmoraSpacing.space8,
+                                      desktop
+                                          ? AmoraSpacing.space24
+                                          : AmoraSpacing.space20,
+                                      AmoraSpacing.space12,
                                     ),
-                                    sliver: SliverGrid.builder(
-                                      gridDelegate:
-                                          const SliverGridDelegateWithFixedCrossAxisCount(
-                                            crossAxisCount: 2,
-                                            mainAxisSpacing:
-                                                AmoraSpacing.space16,
-                                            crossAxisSpacing:
-                                                AmoraSpacing.space16,
-                                            mainAxisExtent: 1024,
+                                    sliver: SliverToBoxAdapter(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.stretch,
+                                        children: [
+                                          Text(
+                                            'Best Matches',
+                                            style: AmoraTextStyles.sectionTitle,
                                           ),
-                                      itemCount: feed.length,
-                                      itemBuilder: (context, index) =>
-                                          _buildFeedCard(feed[index], index),
-                                    ),
-                                  )
-                                else
-                                  SliverPadding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: AmoraSpacing.space20,
-                                    ),
-                                    sliver: SliverList.separated(
-                                      itemCount: feed.length,
-                                      separatorBuilder: (_, _) =>
                                           const SizedBox(
-                                            height: AmoraSpacing.space16,
+                                            height: AmoraSpacing.space12,
                                           ),
-                                      itemBuilder: (context, index) =>
-                                          _buildFeedCard(feed[index], index),
+                                          AmoraaInlineCompatibilityFilter(
+                                            value: _compatibilityThreshold,
+                                            onChanged: (value) {
+                                              if (value ==
+                                                  _compatibilityThreshold) {
+                                                return;
+                                              }
+                                              setState(
+                                                () => _compatibilityThreshold =
+                                                    value,
+                                              );
+                                            },
+                                            onReset: () => setState(
+                                              () => _compatibilityThreshold =
+                                                  defaultCompatibilityThreshold,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
-                              SliverToBoxAdapter(
-                                child: SizedBox(
-                                  height:
-                                      _selectionMode &&
-                                          (_selectedProfileIds.isNotEmpty ||
-                                              _bulkSubmitting)
-                                      ? (widget.showNavigation ? 224 : 132)
-                                      : widget.showNavigation
-                                      ? FloatingBottomNav.contentBottomPaddingFor(
+                                  SliverToBoxAdapter(
+                                    child: Padding(
+                                      padding: EdgeInsets.fromLTRB(
+                                        desktop
+                                            ? AmoraSpacing.space24
+                                            : AmoraSpacing.space20,
+                                        AmoraSpacing.space8,
+                                        desktop
+                                            ? AmoraSpacing.space24
+                                            : AmoraSpacing.space20,
+                                        AmoraSpacing.space20,
+                                      ),
+                                      child: AiMatchFilterBar(
+                                        selected: _filter,
+                                        onSelected: (filter) =>
+                                            setState(() => _filter = filter),
+                                      ),
+                                    ),
+                                  ),
+                                  if (_recommendations.isEmpty)
+                                    SliverFillRemaining(
+                                      hasScrollBody: false,
+                                      child: AiMatchesEmptyState(
+                                        onDiscover: () => Navigator.of(
                                           context,
+                                        ).pushReplacementNamed('/browse'),
+                                      ),
+                                    )
+                                  else if (_thresholdRecommendations.isEmpty)
+                                    SliverFillRemaining(
+                                      hasScrollBody: false,
+                                      child: AiMatchesThresholdEmptyState(
+                                        onLowerFilter: () => setState(
+                                          () => _compatibilityThreshold =
+                                              defaultCompatibilityThreshold,
+                                        ),
+                                      ),
+                                    )
+                                  else if (featured == null)
+                                    SliverFillRemaining(
+                                      hasScrollBody: false,
+                                      child: AiMatchesFilteredEmptyState(
+                                        onShowAll: () => setState(
+                                          () => _filter = AiMatchFilter.all,
+                                        ),
+                                      ),
+                                    )
+                                  else ...[
+                                    SliverPadding(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: desktop
+                                            ? AmoraSpacing.space24
+                                            : AmoraSpacing.space20,
+                                      ),
+                                      sliver: SliverToBoxAdapter(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.stretch,
+                                          children: [
+                                            const _SectionTitle(
+                                              icon: Icons.auto_awesome_rounded,
+                                              title: 'Featured recommendation',
+                                            ),
+                                            const SizedBox(
+                                              height: AmoraSpacing.space12,
+                                            ),
+                                            _MatchReveal(
+                                              key: ValueKey(
+                                                'featured-reveal-'
+                                                '$_compatibilityThreshold-'
+                                                '${featured.id}',
+                                              ),
+                                              delay: Duration.zero,
+                                              child: SelectableAiMatchCard(
+                                                profile: featured,
+                                                selectionMode: _selectionMode,
+                                                selected: _selectedProfileIds
+                                                    .contains(featured.id),
+                                                enabled: _canLike(featured),
+                                                processing:
+                                                    _processingProfileIds
+                                                        .contains(featured.id),
+                                                radius: 30,
+                                                onToggle: () =>
+                                                    _toggleProfileSelection(
+                                                      featured,
+                                                    ),
+                                                onLongPress: () =>
+                                                    _enterSelectionMode(
+                                                      featured,
+                                                    ),
+                                                child: FeaturedAiMatchCard(
+                                                  key: ValueKey(
+                                                    'featured-match-${featured.id}',
+                                                  ),
+                                                  profile: featured,
+                                                  horizontal: desktop,
+                                                  onOpenProfile: () =>
+                                                      _openProfile(featured),
+                                                  onMessage: () =>
+                                                      _openConversation(
+                                                        featured,
+                                                      ),
+                                                  onWhyMatch: () =>
+                                                      _showWhyThisMatch(
+                                                        featured,
+                                                      ),
+                                                ),
+                                              ),
+                                            ),
+                                            if (feed.isNotEmpty) ...[
+                                              const SizedBox(
+                                                height: AmoraSpacing.space24,
+                                              ),
+                                              const _SectionTitle(
+                                                icon: Icons
+                                                    .favorite_border_rounded,
+                                                title: 'More recommendations',
+                                              ),
+                                              const SizedBox(
+                                                height: AmoraSpacing.space12,
+                                              ),
+                                            ],
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                    if (feed.isNotEmpty)
+                                      if (desktop)
+                                        SliverPadding(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: AmoraSpacing.space24,
+                                          ),
+                                          sliver: SliverGrid.builder(
+                                            gridDelegate:
+                                                const SliverGridDelegateWithFixedCrossAxisCount(
+                                                  crossAxisCount: 2,
+                                                  mainAxisSpacing:
+                                                      AmoraSpacing.space16,
+                                                  crossAxisSpacing:
+                                                      AmoraSpacing.space16,
+                                                  mainAxisExtent: 1024,
+                                                ),
+                                            itemCount: feed.length,
+                                            itemBuilder: (context, index) =>
+                                                _buildFeedCard(
+                                                  feed[index],
+                                                  index,
+                                                ),
+                                          ),
                                         )
-                                      : FloatingBottomNav.contentSpacing,
-                                ),
+                                      else
+                                        SliverPadding(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: AmoraSpacing.space20,
+                                          ),
+                                          sliver: SliverList.separated(
+                                            itemCount: feed.length,
+                                            separatorBuilder: (_, _) =>
+                                                const SizedBox(
+                                                  height: AmoraSpacing.space16,
+                                                ),
+                                            itemBuilder: (context, index) =>
+                                                _buildFeedCard(
+                                                  feed[index],
+                                                  index,
+                                                ),
+                                          ),
+                                        ),
+                                    SliverToBoxAdapter(
+                                      child: SizedBox(
+                                        height:
+                                            _selectionMode &&
+                                                (_selectedProfileIds
+                                                        .isNotEmpty ||
+                                                    _bulkSubmitting)
+                                            ? (widget.showNavigation
+                                                  ? 224
+                                                  : 132)
+                                            : widget.showNavigation
+                                            ? FloatingBottomNav.contentBottomPaddingFor(
+                                                context,
+                                              )
+                                            : FloatingBottomNav.contentSpacing,
+                                      ),
+                                    ),
+                                  ],
+                                ],
                               ),
-                            ],
-                          ],
-                        ),
                       ),
                     ],
                   ),
@@ -632,15 +701,49 @@ class _MatchesScreenState extends State<MatchesScreen> {
     }
   }
 
-  void _openProfile(DummyProfile profile) {
-    Navigator.of(
+  Future<void> _openProfile(DummyProfile profile) async {
+    var selected = profile;
+    if (widget.api != null) {
+      final item = _matches
+          .where((match) => match.profile.profile.id == profile.id)
+          .firstOrNull;
+      if (item != null) {
+        try {
+          selected = (await widget.api!.match(item.id)).profile.profile;
+        } catch (_) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('This match is no longer available.'),
+              ),
+            );
+          }
+          await _loadMatches();
+          return;
+        }
+      }
+    }
+    if (!mounted) return;
+    await Navigator.of(
       context,
-    ).pushNamed(ProfileDetailScreen.routeName, arguments: profile);
+    ).pushNamed(ProfileDetailScreen.routeName, arguments: selected);
+    if (mounted && widget.api != null) await _loadMatches();
   }
 
-  void _openConversation(DummyProfile profile) {
-    final conversationId = LocalChatRepository.instance
-        .ensureConversationForProfile(profile);
+  Future<void> _openConversation(DummyProfile profile) async {
+    late final String conversationId;
+    try {
+      conversationId = await ChatRepository.instance
+          .createConversationForProfile(profile);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Chat is no longer available.')),
+        );
+      }
+      return;
+    }
+    if (!mounted) return;
     Navigator.of(context).pushNamed(
       ChatDetailScreen.routeName,
       arguments: ChatDetailArgs(conversationId: conversationId),
@@ -2552,15 +2655,3 @@ DummyProfile _highestScoring(List<DummyProfile> profiles) {
         candidate.score > current.score ? candidate : current,
   );
 }
-
-List<DummyProfile> _buildUniqueRecommendations() {
-  final ids = <String>{};
-  final images = <String>{};
-  return ImageRepository.profiles
-      .skip(18)
-      .take(12)
-      .where((profile) => ids.add(profile.id) && images.add(profile.imageUrl))
-      .toList(growable: false);
-}
-
-final _uniqueRecommendations = _buildUniqueRecommendations();

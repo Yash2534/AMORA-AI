@@ -1,5 +1,7 @@
 import 'dart:ui' as ui;
 import 'package:amora_ai/core/access/amora_access.dart';
+import 'package:amora_ai/core/api/phase_two_api_service.dart';
+import 'package:amora_ai/core/auth/auth_service.dart';
 import 'package:amora_ai/core/data/image_repository.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
@@ -11,6 +13,7 @@ import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/features/profile/domain/profile_interest_policy.dart';
 import 'package:amora_ai/features/profile/domain/profile_form_options.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
+import 'package:amora_ai/features/profile/data/public_profile_mapper.dart';
 import 'package:amora_ai/features/profile/presentation/controllers/profile_relationship_controller.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_rose_gift_sheet.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_public_profile_view.dart';
@@ -18,7 +21,7 @@ import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_pr
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_photo_view.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_connection_profile_details.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/profile_attribute_icons.dart';
-import 'package:amora_ai/features/chat/data/local_chat_repository.dart';
+import 'package:amora_ai/features/chat/data/chat_repository.dart';
 import 'package:amora_ai/features/chat/presentation/chat_detail_screen.dart';
 import 'package:amora_ai/features/discover/presentation/browse_grid_screen.dart';
 import 'package:amora_ai/features/match/presentation/why_we_matched_screen.dart';
@@ -31,11 +34,17 @@ import 'package:flutter/physics.dart';
 enum ProfileDetailDecision { reject, like }
 
 class ProfileDetailScreen extends StatefulWidget {
-  const ProfileDetailScreen({super.key, this.profile, this.onSuperLike});
+  const ProfileDetailScreen({
+    super.key,
+    this.profile,
+    this.onSuperLike,
+    this.api,
+  });
 
   static const routeName = '/profile-detail';
   final DummyProfile? profile;
   final Future<bool> Function()? onSuperLike;
+  final PhaseTwoApiService? api;
 
   @override
   State<ProfileDetailScreen> createState() => _ProfileDetailScreenState();
@@ -51,6 +60,10 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
   bool _giftSheetOpen = false;
   DummyProfile? _routeProfile;
   bool _argumentsRead = false;
+  PublicRelationshipState _serverRelationship = const PublicRelationshipState();
+  bool _loading = false;
+  String? _loadError;
+  bool _profileUnavailable = false;
 
   @override
   void initState() {
@@ -64,15 +77,17 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
     );
   }
 
-  DummyProfile get _profile =>
-      _routeProfile ?? widget.profile ?? _detailProfile;
+  DummyProfile get _profile => (_routeProfile ?? widget.profile)!;
   bool get _saved =>
       ProfileRelationshipController.instance.isSaved(_profile.id);
   bool get _blocked =>
+      _serverRelationship.blocked ||
       ProfileRelationshipController.instance.isBlocked(_profile.id);
   bool get _liked =>
+      _serverRelationship.liked ||
       ProfileRelationshipController.instance.isLiked(_profile.id);
   bool get _superLiked =>
+      _serverRelationship.superLiked ||
       ProfileRelationshipController.instance.isSuperLiked(_profile.id);
 
   List<ProfilePhotoViewData> get _photos {
@@ -103,16 +118,44 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
     final arguments = ModalRoute.of(context)?.settings.arguments;
     if (arguments is DummyProfile) {
       _routeProfile = arguments;
+      if (widget.api != null) _loadProfile(arguments.id);
       return;
     }
+    final id = arguments?.toString();
+    if (id != null && id.isNotEmpty && widget.api != null) _loadProfile(id);
+  }
+
+  Future<void> _loadProfile(String userId) async {
+    setState(() {
+      _loading = true;
+      _loadError = null;
+      _profileUnavailable = false;
+    });
     try {
-      final dynamic value = arguments;
-      final name = value?.name as String?;
-      if (name != null && name.trim().isNotEmpty) {
-        _routeProfile = ImageRepository.profileByName(name);
+      final result = await widget.api!.profile(userId);
+      if (!mounted) return;
+      setState(() {
+        _routeProfile = result.profile;
+        _serverRelationship = result.relationship;
+      });
+    } on AuthException catch (error) {
+      if (mounted) {
+        setState(() {
+          _routeProfile = null;
+          _profileUnavailable = true;
+          _loadError = error.message;
+        });
       }
     } catch (_) {
-      _routeProfile = null;
+      if (mounted) {
+        setState(() {
+          _routeProfile = null;
+          _profileUnavailable = true;
+          _loadError = 'Couldn\'t load this profile.';
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
     }
   }
 
@@ -128,6 +171,16 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
 
   @override
   Widget build(BuildContext context) {
+    if (_loading && _routeProfile == null && widget.profile == null) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    if (_profileUnavailable ||
+        (_routeProfile == null && widget.profile == null)) {
+      return Scaffold(
+        appBar: AppBar(),
+        body: Center(child: Text(_loadError ?? 'Profile is unavailable.')),
+      );
+    }
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -255,13 +308,20 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
     }
   }
 
-  void _startChat() {
+  Future<void> _startChat() async {
     if (AmoraSession.isGuest) {
       _requireAuth(_startChat);
       return;
     }
-    final conversationId = LocalChatRepository.instance
-        .ensureConversationForProfile(_profile);
+    late final String conversationId;
+    try {
+      conversationId = await ChatRepository.instance
+          .createConversationForProfile(_profile);
+    } catch (_) {
+      if (mounted) _snack('Chat is unavailable for this profile.');
+      return;
+    }
+    if (!mounted) return;
     Navigator.of(context).pushNamed(
       ChatDetailScreen.routeName,
       arguments: ChatDetailArgs(
@@ -275,13 +335,24 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
     );
   }
 
-  void _replyToPrompt(String promptId, String prompt, String answer) {
+  Future<void> _replyToPrompt(
+    String promptId,
+    String prompt,
+    String answer,
+  ) async {
     if (AmoraSession.isGuest) {
       _requireAuth(() => _replyToPrompt(promptId, prompt, answer));
       return;
     }
-    final conversationId = LocalChatRepository.instance
-        .ensureConversationForProfile(_profile);
+    late final String conversationId;
+    try {
+      conversationId = await ChatRepository.instance
+          .createConversationForProfile(_profile);
+    } catch (_) {
+      if (mounted) _snack('Chat is unavailable for this profile.');
+      return;
+    }
+    if (!mounted) return;
     Navigator.of(context).pushNamed(
       ChatDetailScreen.routeName,
       arguments: ChatDetailArgs(
@@ -306,8 +377,15 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
       await _requireAuth(_showRoseGift);
       return;
     }
-    final repository = LocalChatRepository.instance;
-    final conversationId = repository.ensureConversationForProfile(_profile);
+    final repository = ChatRepository.instance;
+    late final String conversationId;
+    try {
+      conversationId = await repository.createConversationForProfile(_profile);
+    } catch (_) {
+      if (mounted) _snack('Chat is unavailable for this profile.');
+      return;
+    }
+    if (!mounted) return;
     String? retryMessageId;
     setState(() => _giftSheetOpen = true);
     final sent = await showAmoraaRoseGiftSheet(
@@ -446,10 +524,26 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
                   variant: AppPrimaryButtonVariant.outlined,
                   onPressed: () {
                     Navigator.pop(sheetContext);
-                    Navigator.of(context).pushNamed(ReportFlowScreen.routeName);
+                    Navigator.of(context).pushNamed(
+                      ReportFlowScreen.routeName,
+                      arguments: ReportFlowArgs.profile(_profile),
+                    );
                   },
                 ),
                 const SizedBox(height: AmoraSpacing.space12),
+                if (_serverRelationship.matched &&
+                    _serverRelationship.matchId != null) ...[
+                  AppPrimaryButton(
+                    label: 'Unmatch',
+                    icon: Icons.heart_broken_rounded,
+                    variant: AppPrimaryButtonVariant.outlined,
+                    onPressed: () {
+                      Navigator.pop(sheetContext);
+                      _unmatch();
+                    },
+                  ),
+                  const SizedBox(height: AmoraSpacing.space12),
+                ],
                 AppPrimaryButton(
                   label: _blocked ? 'Blocked' : 'Block Profile',
                   icon: Icons.block_rounded,
@@ -486,14 +580,35 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
     final blocked = await showBlockConfirmationDialog(
       context: context,
       userName: _profile.name,
-      onConfirm: () =>
-          ProfileRelationshipController.instance.blockProfile(_profile),
+      onConfirm: () async {
+        if (widget.api != null) await widget.api!.block(_profile.id);
+        ProfileRelationshipController.instance.blockProfile(_profile);
+      },
     );
     if (blocked != true || !mounted) return;
     await showBlockedUserSuccessSheet(
       context: context,
       userName: _profile.name,
     );
+    if (mounted) Navigator.of(context).maybePop();
+  }
+
+  Future<void> _unmatch() async {
+    final matchId = _serverRelationship.matchId;
+    if (matchId == null || widget.api == null) return;
+    try {
+      await widget.api!.unmatch(matchId);
+      if (!mounted) return;
+      setState(() {
+        _serverRelationship = PublicRelationshipState(
+          liked: _serverRelationship.liked,
+          superLiked: _serverRelationship.superLiked,
+        );
+      });
+      _snack('Match removed');
+    } on AuthException catch (error) {
+      if (mounted) _snack(error.message);
+    }
   }
 
   void _handleRelationshipUpdate() {
@@ -2308,8 +2423,6 @@ class _SymbolicFact {
   final String label;
   final String value;
 }
-
-final _detailProfile = ImageRepository.profileByName('Aadhya');
 
 /// Reusable loading composition for a future real profile loading state.
 class ProfileDetailSkeleton extends StatelessWidget {

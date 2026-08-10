@@ -12,7 +12,7 @@ import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/profile_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/chat/presentation/chat_detail_screen.dart';
-import 'package:amora_ai/features/chat/data/local_chat_repository.dart';
+import 'package:amora_ai/features/chat/data/chat_repository.dart';
 import 'package:amora_ai/features/match/presentation/why_we_matched_screen.dart';
 import 'package:flutter/material.dart';
 
@@ -107,10 +107,11 @@ class MatchScreen extends StatelessWidget {
                     label: 'Message Now',
                     icon: Icons.chat_bubble_rounded,
                     variant: AppPrimaryButtonVariant.outlined,
-                    onPressed: () {
+                    onPressed: () async {
                       final participant = ImageRepository.profileByName(name);
-                      final conversationId = LocalChatRepository.instance
-                          .ensureConversationForProfile(participant);
+                      final conversationId = await ChatRepository.instance
+                          .createConversationForProfile(participant);
+                      if (!context.mounted) return;
                       Navigator.of(context).pushNamed(
                         ChatDetailScreen.routeName,
                         arguments: ChatDetailArgs(

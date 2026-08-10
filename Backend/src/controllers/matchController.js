@@ -76,6 +76,10 @@ exports.remove = async (req, res, next) => {
   try {
     const userId = Number(req.user.sub);
     const { Match } = getModels();
+    const existing = await Match.findByPk(req.params.matchId, { attributes: ['id', 'userOneId', 'userTwoId'] });
+    if (existing && ![Number(existing.userOneId), Number(existing.userTwoId)].includes(userId)) {
+      return res.status(404).json({ success: false, message: 'Match is not available.', code: 'MATCH_NOT_AVAILABLE', errors: [] });
+    }
     const removed = await Match.destroy({
       where: { id: req.params.matchId, [Op.or]: [{ userOneId: userId }, { userTwoId: userId }] },
     });

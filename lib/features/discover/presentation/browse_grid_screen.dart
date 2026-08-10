@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:amora_ai/core/access/amora_access.dart';
+import 'package:amora_ai/core/api/phase_two_api_service.dart';
 import 'package:amora_ai/core/branding/amora_brand_assets.dart';
 import 'package:amora_ai/core/constants/app_images.dart';
 import 'package:amora_ai/core/data/image_repository.dart';
@@ -742,6 +743,7 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
         ),
         builder: (_) => ProfileDetailScreen(
           profile: profile,
+          api: PhaseTwoApiService.instance,
           onSuperLike: () async {
             if (_actions.currentProfileId != profile.id) return false;
             final sent = await _actions.superLikeProfile();

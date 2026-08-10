@@ -1738,15 +1738,21 @@ class EventHostSection extends StatelessWidget {
               ],
             ),
           ),
-          Text(
-            host.rating.toStringAsFixed(1),
-            style: const TextStyle(
-              color: AppColors.primary,
-              fontWeight: FontWeight.w700,
+          if (host.rating > 0) ...[
+            Text(
+              host.rating.toStringAsFixed(1),
+              style: const TextStyle(
+                color: AppColors.primary,
+                fontWeight: FontWeight.w700,
+              ),
             ),
-          ),
-          const SizedBox(width: 4),
-          const Icon(Icons.star_rounded, size: 18, color: AppColors.secondary),
+            const SizedBox(width: 4),
+            const Icon(
+              Icons.star_rounded,
+              size: 18,
+              color: AppColors.secondary,
+            ),
+          ],
         ],
       ),
     );

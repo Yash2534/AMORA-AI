@@ -1,0 +1,64 @@
+{
+  "info": {
+    "name": "AMORAA Phase 3 - Chat + Realtime",
+    "description": "Authenticated Phase 3 verification requests. Configure variables locally; no tokens or credentials are committed.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000" },
+    { "key": "accessToken", "value": "" },
+    { "key": "targetUserId", "value": "" },
+    { "key": "currentUserId", "value": "" },
+    { "key": "conversationId", "value": "" },
+    { "key": "messageId", "value": "" },
+    { "key": "beforeMessageId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Conversations",
+      "item": [
+        {
+          "name": "Create or resolve matched conversation",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"targetUserId\": {{targetUserId}}\n}" },
+            "url": "{{baseUrl}}/api/conversations"
+          }
+        },
+        { "name": "List conversations page 1", "request": { "method": "GET", "url": "{{baseUrl}}/api/conversations?page=1&limit=20" } },
+        { "name": "Reject self conversation", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"targetUserId\": {{currentUserId}}\n}" }, "url": "{{baseUrl}}/api/conversations" } }
+      ]
+    },
+    {
+      "name": "Messages",
+      "item": [
+        { "name": "Get newest history page", "request": { "method": "GET", "url": "{{baseUrl}}/api/conversations/{{conversationId}}/messages?limit=30" } },
+        { "name": "Get older history page", "request": { "method": "GET", "url": "{{baseUrl}}/api/conversations/{{conversationId}}/messages?limit=30&beforeId={{beforeMessageId}}" } },
+        { "name": "Send text", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"text\": \"Hello from Postman\"\n}" }, "url": "{{baseUrl}}/api/conversations/{{conversationId}}/messages" } },
+        { "name": "Reject empty text", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"text\": \"   \"\n}" }, "url": "{{baseUrl}}/api/conversations/{{conversationId}}/messages" } },
+        { "name": "Mark read", "request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"messageId\": {{messageId}}\n}" }, "url": "{{baseUrl}}/api/conversations/{{conversationId}}/read" } },
+        { "name": "Upload image", "request": { "method": "POST", "body": { "mode": "formdata", "formdata": [{ "key": "media", "type": "file", "src": "" }] }, "url": "{{baseUrl}}/api/conversations/{{conversationId}}/media" } },
+        { "name": "Delete own message", "request": { "method": "DELETE", "url": "{{baseUrl}}/api/messages/{{messageId}}" } }
+      ]
+    },
+    {
+      "name": "Realtime",
+      "item": [
+        { "name": "Issue realtime token", "request": { "method": "POST", "url": "{{baseUrl}}/api/realtime/token" } },
+        { "name": "Missing Bearer token is rejected", "auth": { "type": "noauth" }, "request": { "method": "POST", "url": "{{baseUrl}}/api/realtime/token" } }
+      ]
+    },
+    {
+      "name": "Drafts",
+      "item": [
+        { "name": "Save draft", "request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"text\": \"Server-backed draft\"\n}" }, "url": "{{baseUrl}}/api/conversations/{{conversationId}}/draft" } },
+        { "name": "Clear draft", "request": { "method": "DELETE", "url": "{{baseUrl}}/api/conversations/{{conversationId}}/draft" } }
+      ]
+    }
+  ]
+}

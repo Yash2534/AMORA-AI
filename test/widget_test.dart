@@ -87,7 +87,6 @@ const _hiddenRoutes = [
   '/refer-earn',
   '/liveness-check',
   '/admin-panel',
-  '/host-dashboard',
   '/voice-prompt',
   '/video-prompt',
   '/stories',

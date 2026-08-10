@@ -24,6 +24,18 @@ class EventModel {
     this.agenda = const <(String, String)>[],
     this.startAt,
     this.endAt,
+    this.description = '',
+    this.capacity = 0,
+    this.registeredCount = 0,
+    this.waitlistCount = 0,
+    this.waitlistCapacity = 0,
+    this.eventStatus = 'published',
+    this.registrationOpen = true,
+    this.waitlistEnabled = false,
+    this.checkedIn = false,
+    this.checkInCount = 0,
+    this.attendees = const <EventAttendee>[],
+    this.participationStatus,
   });
 
   final String id;
@@ -48,6 +60,18 @@ class EventModel {
   final List<(String, String)> agenda;
   final DateTime? startAt;
   final DateTime? endAt;
+  final String description;
+  final int capacity;
+  final int registeredCount;
+  final int waitlistCount;
+  final int waitlistCapacity;
+  final String eventStatus;
+  final bool registrationOpen;
+  final bool waitlistEnabled;
+  final bool checkedIn;
+  final int checkInCount;
+  final List<EventAttendee> attendees;
+  final TicketStatus? participationStatus;
 
   /// Local content can contain a venue descriptor in this legacy field. Only
   /// render it as distance when it is actually a numeric kilometre value.
@@ -123,6 +147,26 @@ class UserEventRegistration {
   final TicketStatus status;
   final DateTime registeredAt;
   final DateTime? cancelledAt;
+}
+
+class EventGroupMessage {
+  const EventGroupMessage({
+    required this.id,
+    required this.eventId,
+    required this.senderId,
+    required this.senderName,
+    required this.text,
+    required this.createdAt,
+    this.verified = false,
+  });
+
+  final String id;
+  final String eventId;
+  final String senderId;
+  final String senderName;
+  final String text;
+  final DateTime createdAt;
+  final bool verified;
 }
 
 enum TicketStatus { upcoming, attended, waitlisted, cancelled }

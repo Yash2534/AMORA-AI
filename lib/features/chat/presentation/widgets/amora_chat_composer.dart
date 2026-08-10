@@ -21,6 +21,7 @@ class AmoraChatComposer extends StatefulWidget {
     this.contextTitle,
     this.contextDetail,
     this.onRemoveContext,
+    this.onAttach,
   });
 
   static const maximumMessageLength = 2000;
@@ -37,6 +38,7 @@ class AmoraChatComposer extends StatefulWidget {
   final String? contextTitle;
   final String? contextDetail;
   final VoidCallback? onRemoveContext;
+  final VoidCallback? onAttach;
 
   @override
   State<AmoraChatComposer> createState() => _AmoraChatComposerState();
@@ -193,6 +195,18 @@ class _AmoraChatComposerState extends State<AmoraChatComposer> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
+                  if (widget.onAttach != null)
+                    SizedBox.square(
+                      dimension: 44,
+                      child: IconButton(
+                        key: const ValueKey('chat-attach-button'),
+                        tooltip: 'Send photo',
+                        onPressed: widget.enabled && !widget.sending
+                            ? widget.onAttach
+                            : null,
+                        icon: const Icon(Icons.image_outlined),
+                      ),
+                    ),
                   Semantics(
                     button: true,
                     enabled: widget.enabled,

@@ -1,4 +1,5 @@
 import 'package:amora_ai/core/theme/app_colors.dart';
+import 'package:amora_ai/core/api/phase_two_api_service.dart';
 import 'package:amora_ai/core/widgets/floating_bottom_nav.dart';
 import 'package:amora_ai/features/chat/presentation/chat_list_screen.dart';
 import 'package:amora_ai/features/discover/presentation/browse_grid_screen.dart';
@@ -52,12 +53,15 @@ class _MainShellState extends State<MainShell> {
       // consumes that one inset, without a second shell-level override.
       body: IndexedStack(
         index: _tabs.indexOf(_activeTab),
-        children: const [
-          BrowseGridScreen(showNavigation: false),
-          ChatListScreen(showNavigation: false),
-          MatchesScreen(showNavigation: false),
-          EventsScreen(showNavigation: false),
-          ProfileScreen(showNavigation: false),
+        children: [
+          const BrowseGridScreen(showNavigation: false),
+          const ChatListScreen(showNavigation: false),
+          MatchesScreen(
+            showNavigation: false,
+            api: PhaseTwoApiService.instance,
+          ),
+          const EventsScreen(showNavigation: false),
+          const ProfileScreen(showNavigation: false),
         ],
       ),
       bottomNavigationBar: FloatingBottomNav(

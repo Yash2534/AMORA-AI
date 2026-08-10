@@ -1,6 +1,7 @@
 require("./config/bootstrapEnv");
 require("./config/env");
 const express = require("express");
+const http = require("http");
 const helmet = require("helmet");
 const cors = require("cors");
 const path = require("path");
@@ -13,6 +14,12 @@ const blockRoutes = require("./routes/blockRoutes");
 const reportRoutes = require("./routes/reportRoutes");
 const accountRoutes = require("./routes/accountRoutes");
 const matchRoutes = require("./routes/matchRoutes");
+const conversationRoutes = require("./routes/conversationRoutes");
+const messageRoutes = require("./routes/messageRoutes");
+const realtimeRoutes = require("./routes/realtimeRoutes");
+const eventRoutes = require("./routes/eventRoutes");
+const hostEventRoutes = require("./routes/hostEventRoutes");
+const { attachRealtimeServer } = require("./realtime/realtimeHub");
 const errorHandler = require("./middleware/errorHandler");
 const { port } = require("./config/env");
 const { logGoogleStatus } = require("./controllers/authController");
@@ -47,6 +54,11 @@ app.use("/api/blocks", blockRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/account", accountRoutes);
 app.use("/api/matches", matchRoutes);
+app.use("/api/conversations", conversationRoutes);
+app.use("/api/messages", messageRoutes);
+app.use("/api/realtime", realtimeRoutes);
+app.use("/api/events", eventRoutes);
+app.use("/api/host", hostEventRoutes);
 app.use((_req, res) =>
   res
     .status(404)
@@ -62,15 +74,22 @@ async function startServer() {
   await initializeDatabase();
   return new Promise((resolve) => {
     logGoogleStatus();
-    const server = app.listen(port, () => {
+    const server = createHttpServer();
+    server.listen(port, () => {
       console.log(`[Server] Amora AI backend listening on port ${port}`);
       resolve(server);
     });
   });
 }
 
+function createHttpServer() {
+  const server = http.createServer(app);
+  attachRealtimeServer(server);
+  return server;
+}
+
 if (require.main === module) {
   startServer().catch(() => process.exit(1));
 }
 
-module.exports = { app, startServer };
+module.exports = { app, startServer, createHttpServer };

@@ -1,0 +1,91 @@
+{
+  "info": {
+    "name": "AMORAA Phase 2",
+    "description": "Authenticated Phase 2 verification requests. Set variables locally; no credentials are committed.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000" },
+    { "key": "accessToken", "value": "" },
+    { "key": "profileUserId", "value": "" },
+    { "key": "reportId", "value": "" },
+    { "key": "matchId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Profiles",
+      "item": [
+        { "name": "Get public profile", "request": { "method": "GET", "url": "{{baseUrl}}/api/profiles/{{profileUserId}}" } },
+        { "name": "Missing profile", "request": { "method": "GET", "url": "{{baseUrl}}/api/profiles/999999999" } }
+      ]
+    },
+    {
+      "name": "Blocks",
+      "item": [
+        { "name": "List blocked profiles", "request": { "method": "GET", "url": "{{baseUrl}}/api/blocks" } },
+        { "name": "Block profile", "request": { "method": "POST", "url": "{{baseUrl}}/api/blocks/{{profileUserId}}" } },
+        { "name": "Unblock profile", "request": { "method": "DELETE", "url": "{{baseUrl}}/api/blocks/{{profileUserId}}" } }
+      ]
+    },
+    {
+      "name": "Reports",
+      "item": [
+        {
+          "name": "Report profile",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"targetType\": \"profile\",\n  \"targetUserId\": {{profileUserId}},\n  \"reason\": \"harassment\",\n  \"notes\": \"Representative verification note\"\n}" },
+            "url": "{{baseUrl}}/api/reports"
+          }
+        },
+        {
+          "name": "Reject invalid report reason",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"targetType\": \"profile\",\n  \"targetUserId\": {{profileUserId}},\n  \"reason\": \"client_defined\"\n}" },
+            "url": "{{baseUrl}}/api/reports"
+          }
+        },
+        {
+          "name": "Upload report evidence",
+          "request": {
+            "method": "POST",
+            "body": { "mode": "formdata", "formdata": [{ "key": "evidence", "type": "file", "src": "" }] },
+            "url": "{{baseUrl}}/api/reports/{{reportId}}/evidence"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Account lifecycle",
+      "item": [
+        { "name": "Deactivate account", "request": { "method": "POST", "url": "{{baseUrl}}/api/account/deactivate" } },
+        { "name": "Reactivate account", "request": { "method": "POST", "url": "{{baseUrl}}/api/account/reactivate" } },
+        {
+          "name": "Delete account",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"reason\": \"privacy_concerns\"\n}" },
+            "url": "{{baseUrl}}/api/account"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Matches",
+      "item": [
+        { "name": "List matches", "request": { "method": "GET", "url": "{{baseUrl}}/api/matches" } },
+        { "name": "Get match detail", "request": { "method": "GET", "url": "{{baseUrl}}/api/matches/{{matchId}}" } },
+        { "name": "Unmatch", "request": { "method": "DELETE", "url": "{{baseUrl}}/api/matches/{{matchId}}" } },
+        { "name": "Reject another user's match", "request": { "method": "GET", "url": "{{baseUrl}}/api/matches/999999999" } }
+      ]
+    }
+  ]
+}

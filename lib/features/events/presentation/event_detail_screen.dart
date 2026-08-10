@@ -5,7 +5,7 @@ import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/premium_avatar.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
-import 'package:amora_ai/features/events/data/events_dummy_data.dart';
+import 'package:amora_ai/features/events/data/event_repository.dart';
 import 'package:amora_ai/features/events/domain/event_models.dart';
 import 'package:amora_ai/features/events/presentation/controllers/event_participation_controller.dart';
 import 'package:amora_ai/features/events/presentation/event_group_chat_screen.dart';
@@ -18,12 +18,18 @@ import 'package:amora_ai/features/subscription/presentation/testing/membership_t
 import 'package:flutter/material.dart';
 
 class EventDetailScreen extends StatefulWidget {
-  const EventDetailScreen({super.key, this.event, this.controller});
+  const EventDetailScreen({
+    super.key,
+    this.event,
+    this.controller,
+    this.repository,
+  });
 
   static const routeName = '/event-detail';
 
   final EventModel? event;
   final EventParticipationController? controller;
+  final EventRepository? repository;
 
   @override
   State<EventDetailScreen> createState() => _EventDetailScreenState();
@@ -35,24 +41,51 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   bool _celebrateJoin = false;
   TicketStatus? _status;
   String? _eventId;
-  Timer? _loadingTimer;
+  EventModel? _event;
+  Object? _loadError;
+  bool _startedLoad = false;
   Timer? _celebrationTimer;
 
   EventParticipationController get _controller =>
       widget.controller ?? EventParticipationController.instance;
+  EventRepository get _repository =>
+      widget.repository ?? EventRepository.instance;
 
   @override
   void initState() {
     super.initState();
-    _loadingTimer = Timer(const Duration(milliseconds: 260), () {
-      if (mounted) setState(() => _loading = false);
-    });
     _controller.addListener(_syncStatus);
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_startedLoad) return;
+    _startedLoad = true;
+    final args = ModalRoute.of(context)?.settings.arguments;
+    final seed = widget.event ?? (args is EventModel ? args : null);
+    if (seed == null) {
+      setState(() {
+        _loading = false;
+        _loadError = StateError('Event identifier is required.');
+      });
+      return;
+    }
+    _event = seed;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (widget.controller != null) {
+        Future<void>.delayed(const Duration(milliseconds: 260), () {
+          if (mounted) setState(() => _loading = false);
+        });
+      } else {
+        _loadDetail(seed.id);
+      }
+    });
+  }
+
+  @override
   void dispose() {
-    _loadingTimer?.cancel();
     _celebrationTimer?.cancel();
     _controller.removeListener(_syncStatus);
     super.dispose();
@@ -67,13 +100,12 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final args = ModalRoute.of(context)?.settings.arguments;
-    final event = widget.event ?? (args is EventModel ? args : events.first);
+    final event = _event;
     final textScaleDelta = (MediaQuery.textScalerOf(context).scale(1) - 1)
         .clamp(0.0, .3);
     final heroTextAllowance = textScaleDelta * 104;
     final attendeeTextAllowance = textScaleDelta * 44;
-    if (_eventId != event.id) {
+    if (event != null && _eventId != event.id) {
       _eventId = event.id;
       _status = _existingStatus(event);
     }
@@ -87,6 +119,20 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
           child: ResponsiveMobileFrame(
             maxWidth: 940,
             child: EventDetailSkeleton(),
+          ),
+        ),
+      );
+    }
+    if (event == null || _loadError != null) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        body: SafeArea(
+          child: Center(
+            child: EventsErrorState(
+              onRetry: event == null
+                  ? () => Navigator.of(context).maybePop()
+                  : () => _loadDetail(event.id),
+            ),
           ),
         ),
       );
@@ -146,7 +192,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                         title: 'About this gathering',
                         delay: const Duration(milliseconds: 55),
                         child: ExpandableEventDescription(
-                          description: _eventDescription(event),
+                          description: event.description,
                         ),
                       ),
                       const SizedBox(height: 28),
@@ -167,44 +213,46 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                         child: _Requirements(event: event),
                       ),
                       const SizedBox(height: 28),
-                      EventDetailSection(
-                        title: 'Why this event may suit you',
-                        subtitle:
-                            'Based on the compatibility and interests already available',
-                        delay: const Duration(milliseconds: 130),
-                        child: _SuitabilityCard(event: event),
-                      ),
-                      const SizedBox(height: 28),
-                      EventDetailSection(
-                        title: 'Who’s joining',
-                        subtitle:
-                            'Members currently visible for this gathering',
-                        delay: const Duration(milliseconds: 155),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            EventAttendeePreview(attendees: eventAttendees),
-                            const SizedBox(height: 18),
-                            SizedBox(
-                              height: 116 + attendeeTextAllowance,
-                              child: ListView.separated(
-                                key: const ValueKey('event-detail-attendees'),
-                                scrollDirection: Axis.horizontal,
-                                itemCount: eventAttendees.length,
-                                separatorBuilder: (_, _) =>
-                                    const SizedBox(width: 10),
-                                itemBuilder: (_, index) => EventReveal(
-                                  delay: Duration(milliseconds: 25 * index),
-                                  offset: 6,
-                                  child: _AttendeeCard(
-                                    attendee: eventAttendees[index],
+                      if (event.compatibility > 0) ...[
+                        EventDetailSection(
+                          title: 'Why this event may suit you',
+                          subtitle: 'Based on your available event preferences',
+                          delay: const Duration(milliseconds: 130),
+                          child: _SuitabilityCard(event: event),
+                        ),
+                        const SizedBox(height: 28),
+                      ],
+                      if (event.attendees.isNotEmpty)
+                        EventDetailSection(
+                          title: 'Who’s joining',
+                          subtitle:
+                              'Members currently visible for this gathering',
+                          delay: const Duration(milliseconds: 155),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              EventAttendeePreview(attendees: event.attendees),
+                              const SizedBox(height: 18),
+                              SizedBox(
+                                height: 116 + attendeeTextAllowance,
+                                child: ListView.separated(
+                                  key: const ValueKey('event-detail-attendees'),
+                                  scrollDirection: Axis.horizontal,
+                                  itemCount: event.attendees.length,
+                                  separatorBuilder: (_, _) =>
+                                      const SizedBox(width: 10),
+                                  itemBuilder: (_, index) => EventReveal(
+                                    delay: Duration(milliseconds: 25 * index),
+                                    offset: 6,
+                                    child: _AttendeeCard(
+                                      attendee: event.attendees[index],
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
                       if (_status == TicketStatus.upcoming) ...[
                         const SizedBox(height: 28),
                         EventDetailSection(
@@ -219,10 +267,21 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                                   size: 18,
                                 ),
                                 label: const Text('Group Chat'),
-                                onPressed: () => Navigator.of(
-                                  context,
-                                ).pushNamed(EventGroupChatScreen.routeName),
+                                onPressed: () =>
+                                    Navigator.of(context).pushNamed(
+                                      EventGroupChatScreen.routeName,
+                                      arguments: event,
+                                    ),
                               ),
+                              if (!event.checkedIn)
+                                ActionChip(
+                                  avatar: const Icon(
+                                    Icons.how_to_reg_rounded,
+                                    size: 18,
+                                  ),
+                                  label: const Text('Check in'),
+                                  onPressed: () => _checkIn(event),
+                                ),
                             ],
                           ),
                         ),
@@ -235,9 +294,10 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                             label: 'Share feedback',
                             icon: Icons.rate_review_rounded,
                             variant: AppPrimaryButtonVariant.outlined,
-                            onPressed: () => Navigator.of(
-                              context,
-                            ).pushNamed(PostEventFeedbackScreen.routeName),
+                            onPressed: () => Navigator.of(context).pushNamed(
+                              PostEventFeedbackScreen.routeName,
+                              arguments: event,
+                            ),
                           ),
                         ),
                       ],
@@ -248,9 +308,16 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                           onGuidelines: () => Navigator.of(
                             context,
                           ).pushNamed(SafetyPrivacyScreen.routeName),
-                          onReport: () => Navigator.of(
-                            context,
-                          ).pushNamed(ReportFlowScreen.routeName),
+                          onReport: () => Navigator.of(context).pushNamed(
+                            ReportFlowScreen.routeName,
+                            arguments: ReportFlowArgs(
+                              targetType: 'event',
+                              targetId: event.id,
+                              title: event.title,
+                              imageUrl: event.image.imageUrl,
+                              fallbackAsset: event.image.assetPath,
+                            ),
+                          ),
                         ),
                       ),
                     ],
@@ -264,8 +331,35 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     );
   }
 
+  Future<void> _loadDetail(String eventId) async {
+    setState(() {
+      _loading = true;
+      _loadError = null;
+    });
+    try {
+      final minimumSkeleton = Future<void>.delayed(
+        const Duration(milliseconds: 260),
+      );
+      final event = await _repository.detail(eventId);
+      await minimumSkeleton;
+      _controller.syncCatalog([event]);
+      if (!mounted) return;
+      setState(() {
+        _event = event;
+        _status = event.participationStatus;
+        _loading = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _loadError = error;
+      });
+    }
+  }
+
   TicketStatus? _existingStatus(EventModel event) {
-    return _controller.statusFor(event.id);
+    return event.participationStatus ?? _controller.statusFor(event.id);
   }
 
   void _handlePrimaryAction(EventModel event) {
@@ -277,7 +371,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       return;
     }
     if (_status == TicketStatus.attended) {
-      Navigator.of(context).pushNamed(PostEventFeedbackScreen.routeName);
+      Navigator.of(
+        context,
+      ).pushNamed(PostEventFeedbackScreen.routeName, arguments: event);
       return;
     }
     if (_status == TicketStatus.upcoming) {
@@ -295,17 +391,39 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     }
     AmoraSession.requireAuth(
       context: context,
-      onAuthenticated: () {
+      onAuthenticated: () async {
         if (!mounted) return;
-        _controller.registerEvent(event);
         setState(() {
           _actionBusy = true;
-          _celebrateJoin = true;
         });
-        _scheduleJoinMotionEnd();
-        showEventSnack(context, 'You joined ${event.title}');
+        try {
+          if (!event.registrationOpen && event.waitlistEnabled) {
+            await _controller.joinWaitlistRemote(event);
+            if (mounted) showEventSnack(context, 'You joined the waitlist');
+          } else {
+            await _controller.registerRemote(event);
+            if (mounted) {
+              setState(() => _celebrateJoin = true);
+              showEventSnack(context, 'You joined ${event.title}');
+            }
+          }
+        } catch (error) {
+          if (mounted) showEventSnack(context, error.toString());
+        } finally {
+          _scheduleJoinMotionEnd();
+        }
       },
     );
+  }
+
+  Future<void> _checkIn(EventModel event) async {
+    try {
+      await _controller.checkInRemote(event);
+      if (mounted) showEventSnack(context, 'Check-in confirmed');
+      await _loadDetail(event.id);
+    } catch (error) {
+      if (mounted) showEventSnack(context, error.toString());
+    }
   }
 
   void _startJoinMotion() {
@@ -357,17 +475,26 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
             AppPrimaryButton(
               label: 'Leave Event',
               variant: AppPrimaryButtonVariant.outlined,
-              onPressed: () {
+              onPressed: () async {
+                final messenger = ScaffoldMessenger.of(context);
                 Navigator.pop(sheetContext);
                 if (membershipTestMode) {
                   MembershipTestFlowController.instance.leaveEvent(event.id);
                 }
-                _controller.cancelEvent(event);
+                try {
+                  await _controller.cancelRemote(event);
+                } catch (error) {
+                  messenger.showSnackBar(SnackBar(content: Text('$error')));
+                  return;
+                }
+                if (!mounted) return;
                 setState(() {
                   _actionBusy = false;
                   _celebrateJoin = false;
                 });
-                showEventSnack(context, 'You left ${event.title}');
+                messenger.showSnackBar(
+                  SnackBar(content: Text('You left ${event.title}')),
+                );
               },
             ),
             const SizedBox(height: 8),
@@ -381,14 +508,6 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     );
   }
 }
-
-String _eventDescription(EventModel event) =>
-    '${event.title} is a curated ${event.category.toLowerCase()} in '
-    '${event.city}, hosted by ${event.host.name}. It brings together people '
-    'who value ${event.intent.toLowerCase()} through shared interests in '
-    '${event.interests.join(', ').toLowerCase()}. The gathering is planned '
-    'around the existing ${event.language.toLowerCase()} language setting and '
-    '${event.dressCode.toLowerCase()} dress guidance.';
 
 class _DetailMetadata extends StatelessWidget {
   const _DetailMetadata({required this.event});
@@ -724,7 +843,10 @@ class _DetailActionBar extends StatelessWidget {
       TicketStatus.attended => 'Share feedback',
       TicketStatus.waitlisted => 'View Waitlist',
       TicketStatus.cancelled => 'Event Cancelled',
-      null => 'Join Event',
+      null =>
+        !event.registrationOpen && event.waitlistEnabled
+            ? 'Join Waitlist'
+            : 'Join Event',
     };
     final label = busy ? 'Joining…' : statusLabel;
     final icon = switch (status) {
@@ -732,7 +854,10 @@ class _DetailActionBar extends StatelessWidget {
       TicketStatus.attended => Icons.rate_review_rounded,
       TicketStatus.waitlisted => Icons.hourglass_top_rounded,
       TicketStatus.cancelled => Icons.event_busy_rounded,
-      null => Icons.event_available_rounded,
+      null =>
+        !event.registrationOpen && event.waitlistEnabled
+            ? Icons.hourglass_top_rounded
+            : Icons.event_available_rounded,
     };
     return SafeArea(
       top: false,

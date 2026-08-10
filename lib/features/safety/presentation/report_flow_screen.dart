@@ -1,4 +1,6 @@
-import 'package:amora_ai/core/data/amora_image_data.dart';
+import 'package:amora_ai/core/api/phase_two_api_service.dart';
+import 'package:amora_ai/core/auth/auth_service.dart';
+import 'package:amora_ai/core/data/image_repository.dart';
 import 'package:amora_ai/core/media/amora_media_picker.dart';
 import 'package:amora_ai/core/theme/amora_icons.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
@@ -17,14 +19,42 @@ class ReportFlowScreen extends StatefulWidget {
   const ReportFlowScreen({
     super.key,
     this.mediaPicker = const DeviceAmoraMediaPicker(),
+    this.api,
+    this.arguments,
   });
 
   static const routeName = '/report-flow';
 
   final AmoraMediaPicker mediaPicker;
+  final PhaseTwoApiService? api;
+  final ReportFlowArgs? arguments;
 
   @override
   State<ReportFlowScreen> createState() => _ReportFlowScreenState();
+}
+
+class ReportFlowArgs {
+  const ReportFlowArgs({
+    required this.targetType,
+    required this.targetId,
+    required this.title,
+    this.imageUrl = '',
+    this.fallbackAsset = '',
+  });
+
+  factory ReportFlowArgs.profile(DummyProfile profile) => ReportFlowArgs(
+    targetType: 'profile',
+    targetId: profile.id,
+    title: '${profile.name}, ${profile.age}',
+    imageUrl: profile.imageUrl,
+    fallbackAsset: profile.fallbackAsset,
+  );
+
+  final String targetType;
+  final String targetId;
+  final String title;
+  final String imageUrl;
+  final String fallbackAsset;
 }
 
 class _ReportFlowScreenState extends State<ReportFlowScreen> {
@@ -33,6 +63,20 @@ class _ReportFlowScreenState extends State<ReportFlowScreen> {
   AmoraPickedMedia? _screenshot;
   bool _pickingScreenshot = false;
   bool _submitted = false;
+  bool _submitting = false;
+  String? _error;
+  ReportFlowArgs? _arguments;
+  bool _argumentsRead = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_argumentsRead) return;
+    _argumentsRead = true;
+    _arguments = widget.arguments;
+    final value = ModalRoute.of(context)?.settings.arguments;
+    if (value is ReportFlowArgs) _arguments = value;
+  }
 
   @override
   void dispose() {
@@ -73,7 +117,8 @@ class _ReportFlowScreenState extends State<ReportFlowScreen> {
                         icon: Icons.flag_rounded,
                       ),
                       const SizedBox(height: 18),
-                      const _ProfileSummary(),
+                      if (_arguments != null)
+                        _ProfileSummary(data: _arguments!),
                       const SizedBox(height: 16),
                       _SectionCard(
                         title: 'Reason',
@@ -124,7 +169,7 @@ class _ReportFlowScreenState extends State<ReportFlowScreen> {
                               title: const Text('Attach a screenshot'),
                               subtitle: Text(
                                 _screenshot == null
-                                    ? 'Optional · JPEG, PNG, WebP, HEIC, or HEIF · up to 12 MB'
+                                    ? 'Optional · JPEG, PNG, or WebP · up to 12 MB'
                                     : '${_screenshot!.name} attached',
                               ),
                               trailing: _pickingScreenshot
@@ -152,12 +197,20 @@ class _ReportFlowScreenState extends State<ReportFlowScreen> {
                         ),
                       ),
                       const SizedBox(height: 16),
+                      if (_error != null) ...[
+                        Text(
+                          _error!,
+                          style: const TextStyle(color: AppColors.error),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
                       AppPrimaryButton(
                         label: _submitted
                             ? 'Report Submitted'
                             : 'Submit Report',
                         icon: Icons.shield_rounded,
-                        onPressed: _submitted ? null : _submit,
+                        isLoading: _submitting,
+                        onPressed: _submitted || _submitting ? null : _submit,
                       ),
                     ],
                   ),
@@ -170,16 +223,43 @@ class _ReportFlowScreenState extends State<ReportFlowScreen> {
     );
   }
 
-  void _submit() {
-    setState(() => _submitted = true);
-    showAmoraDialog<void>(
-      context: context,
-      title: 'Report submitted',
-      message: 'Thanks for helping keep AMORAA respectful. Reason: $_reason.',
-      icon: AmoraIcons.check,
-      primaryLabel: 'Done',
-      onPrimary: () => Navigator.pop(context),
-    );
+  Future<void> _submit() async {
+    final target = _arguments;
+    final api = widget.api;
+    if (target == null || api == null) {
+      setState(() => _error = 'Choose a profile or item to report first.');
+      return;
+    }
+    setState(() {
+      _submitting = true;
+      _error = null;
+    });
+    try {
+      final reportId = await api.report(
+        targetType: target.targetType,
+        targetUserId: target.targetType == 'profile' ? target.targetId : null,
+        targetId: target.targetType == 'profile' ? null : target.targetId,
+        reason: _reasonCodes[_reason]!,
+        notes: _notes.text,
+      );
+      if (_screenshot != null) await api.uploadEvidence(reportId, _screenshot!);
+      if (!mounted) return;
+      setState(() => _submitted = true);
+      showAmoraDialog<void>(
+        context: context,
+        title: 'Report submitted',
+        message: 'Thanks for helping keep AMORAA respectful.',
+        icon: AmoraIcons.check,
+        primaryLabel: 'Done',
+        onPrimary: () => Navigator.pop(context),
+      );
+    } on AuthException catch (error) {
+      if (mounted) setState(() => _error = error.message);
+    } catch (_) {
+      if (mounted) setState(() => _error = 'Couldn\'t submit the report.');
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
   }
 
   Future<void> _pickScreenshot() async {
@@ -242,7 +322,9 @@ class _Header extends StatelessWidget {
 }
 
 class _ProfileSummary extends StatelessWidget {
-  const _ProfileSummary();
+  const _ProfileSummary({required this.data});
+
+  final ReportFlowArgs data;
 
   @override
   Widget build(BuildContext context) {
@@ -250,18 +332,18 @@ class _ProfileSummary extends StatelessWidget {
       child: Row(
         children: [
           PremiumAvatar(
-            imageUrl: AmoraImageData.profileAadhya,
-            fallbackAsset: AmoraImageData.assetProfileAadhya,
-            initials: 'AA',
+            imageUrl: data.imageUrl,
+            fallbackAsset: data.fallbackAsset,
+            initials: data.title.isEmpty ? '?' : data.title[0],
             radius: 30,
           ),
           const SizedBox(width: 12),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Aadhya, 23',
+                  data.title,
                   style: TextStyle(
                     color: AppColors.deepWine,
                     fontSize: 18,
@@ -320,3 +402,12 @@ const _reasons = [
   'Spam',
   'Other',
 ];
+
+const _reasonCodes = <String, String>{
+  'Fake profile': 'fake_profile',
+  'Harassment': 'harassment',
+  'Inappropriate photo': 'inappropriate_photo',
+  'Scam': 'scam',
+  'Spam': 'spam',
+  'Other': 'other',
+};

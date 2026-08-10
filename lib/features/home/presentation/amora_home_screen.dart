@@ -21,7 +21,7 @@ import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/core/widgets/section_header.dart';
 import 'package:amora_ai/features/ai_coach/presentation/ai_dating_coach_screen.dart';
 import 'package:amora_ai/features/auth/presentation/compatibility_onboarding_screen.dart';
-import 'package:amora_ai/features/chat/data/local_chat_repository.dart';
+import 'package:amora_ai/features/chat/data/chat_repository.dart';
 import 'package:amora_ai/features/chat/presentation/chat_detail_screen.dart';
 import 'package:amora_ai/features/chat/presentation/chat_list_screen.dart';
 import 'package:amora_ai/features/date_spots/presentation/date_spots_map_screen.dart';
@@ -297,10 +297,17 @@ class _AmoraHomeScreenState extends State<AmoraHomeScreen> {
     ).pushNamed(ProfileDetailScreen.routeName, arguments: profile);
   }
 
-  void _openHeroChat() {
+  Future<void> _openHeroChat() async {
     final profile = ImageRepository.profileByName(_heroProfile.name);
-    final conversationId = LocalChatRepository.instance
-        .ensureConversationForProfile(profile);
+    late final String conversationId;
+    try {
+      conversationId = await ChatRepository.instance
+          .createConversationForProfile(profile);
+    } catch (_) {
+      if (mounted) _scrollSnack(context, 'Chat is unavailable for this match');
+      return;
+    }
+    if (!mounted) return;
     Navigator.of(context).pushNamed(
       ChatDetailScreen.routeName,
       arguments: ChatDetailArgs(conversationId: conversationId),

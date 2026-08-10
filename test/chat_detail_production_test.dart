@@ -307,7 +307,7 @@ void main() {
     }
   });
 
-  testWidgets('text and emoji-only messages are queued in selected thread', (
+  testWidgets('text and emoji-only messages persist in selected thread', (
     tester,
   ) async {
     final conversation = repository.conversations.first;
@@ -327,7 +327,7 @@ void main() {
     );
     expect(
       repository.conversation(conversation.id)!.messages.last.status,
-      ChatMessageStatus.queued,
+      ChatMessageStatus.sent,
     );
 
     await tester.enterText(
@@ -429,21 +429,17 @@ void main() {
     }
   });
 
-  test('failed local persistence can be retried without duplication', () async {
+  test('failed API send does not insert a fake message', () async {
     final conversation = repository.conversations.first;
+    final before = conversation.messages.length;
     repository.failNextPersistenceForTesting();
 
     await expectLater(
       repository.sendMessage(conversation.id, 'Retry this'),
       throwsStateError,
     );
-    final failed = repository.conversation(conversation.id)!.messages.last;
-    expect(failed.status, ChatMessageStatus.failed);
-
-    await repository.retryMessage(conversation.id, failed.id);
     final messages = repository.conversation(conversation.id)!.messages;
-    expect(messages.where((message) => message.id == failed.id), hasLength(1));
-    expect(messages.last.status, ChatMessageStatus.queued);
+    expect(messages, hasLength(before));
   });
 }
 

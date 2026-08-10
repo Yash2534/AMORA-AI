@@ -836,7 +836,7 @@ void main() {
           onGenerateRoute: (settings) => MaterialPageRoute<void>(
             settings: const RouteSettings(
               arguments: ResetPasswordArgs(
-                destination: 'member@example.com',
+                phoneNumber: '+919876543210',
                 recoveryToken: 'token',
               ),
             ),

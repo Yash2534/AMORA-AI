@@ -1,4 +1,6 @@
 import 'package:amora_ai/core/data/image_repository.dart';
+import 'package:amora_ai/core/api/phase_two_api_service.dart';
+import 'package:amora_ai/core/auth/auth_service.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
@@ -50,16 +52,107 @@ class SavedProfilesScreen extends StatelessWidget {
   }
 }
 
-class BlockedProfilesScreen extends StatelessWidget {
-  const BlockedProfilesScreen({super.key, this.controller});
+class BlockedProfilesScreen extends StatefulWidget {
+  const BlockedProfilesScreen({super.key, this.controller, this.api});
 
   static const routeName = '/blocked-profiles';
 
   final ProfileRelationshipController? controller;
+  final PhaseTwoApiService? api;
+
+  @override
+  State<BlockedProfilesScreen> createState() => _BlockedProfilesScreenState();
+}
+
+class _BlockedProfilesScreenState extends State<BlockedProfilesScreen> {
+  List<DummyProfile> _profiles = const [];
+  bool _loading = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.api != null) _load();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final values = await widget.api!.blockedProfiles();
+      if (mounted) {
+        setState(() => _profiles = values.map((item) => item.profile).toList());
+      }
+    } on AuthException catch (error) {
+      if (mounted) setState(() => _error = error.message);
+    } catch (_) {
+      if (mounted) setState(() => _error = 'Couldn\'t load blocked profiles.');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _unblock(DummyProfile profile) async {
+    if (widget.api == null) {
+      widget.controller?.unblockProfile(profile.id);
+      return;
+    }
+    try {
+      await widget.api!.unblock(profile.id);
+      if (mounted) {
+        setState(() => _profiles.removeWhere((item) => item.id == profile.id));
+      }
+    } on AuthException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final source = controller ?? ProfileRelationshipController.instance;
+    final source = widget.controller ?? ProfileRelationshipController.instance;
+    if (_loading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    if (_error != null) {
+      return Scaffold(
+        appBar: AmoraAppBar(
+          title: 'Blocked Profiles',
+          onBack: () => Navigator.of(context).maybePop(),
+        ),
+        body: Center(
+          child: TextButton(
+            onPressed: _load,
+            child: Text('$_error\nTry again'),
+          ),
+        ),
+      );
+    }
+    if (widget.api != null) {
+      return ManagedProfilesScreen(
+        title: 'Blocked Profiles',
+        subtitle: 'Private controls for profiles you chose not to see.',
+        icon: Icons.block_rounded,
+        profiles: _profiles,
+        emptyTitle: 'No blocked profiles',
+        emptyMessage: 'Profiles you block will appear here.',
+        actionLabel: 'Unblock Profile',
+        actionSemanticLabel: (profile) => AmoraaProfileAction.unblock
+            .semanticLabel(amoraaProfileActionName(profile.name)),
+        actionIcon: Icons.lock_open_rounded,
+        onAction: (profile) => showAmoraaProfileActionConfirmation(
+          context: context,
+          action: AmoraaProfileAction.unblock,
+          profileName: profile.name,
+          onConfirm: () => _unblock(profile),
+        ),
+      );
+    }
     return AnimatedBuilder(
       animation: source,
       builder: (context, _) => ManagedProfilesScreen(

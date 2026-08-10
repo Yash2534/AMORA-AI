@@ -164,11 +164,26 @@ class _EventWaitlistScreenState extends State<EventWaitlistScreen> {
                   variant: _joined
                       ? AppPrimaryButtonVariant.outlined
                       : AppPrimaryButtonVariant.primary,
-                  onPressed: () {
+                  onPressed: () async {
                     final event = _event;
                     if (_joined && event != null) {
-                      _controller.leaveWaitlist(event.id);
-                      showEventSnack(context, 'You left the event waitlist');
+                      try {
+                        if (widget.controller != null) {
+                          _controller.leaveWaitlist(event.id);
+                        } else {
+                          await _controller.leaveWaitlistRemote(event);
+                        }
+                        if (context.mounted) {
+                          showEventSnack(
+                            context,
+                            'You left the event waitlist',
+                          );
+                        }
+                      } catch (error) {
+                        if (context.mounted) {
+                          showEventSnack(context, error.toString());
+                        }
+                      }
                     } else {
                       Navigator.of(context).maybePop();
                     }

@@ -1,0 +1,93 @@
+{
+  "info": {
+    "name": "AMORAA Phase 4 - Events",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000" },
+    { "key": "accessToken", "value": "" },
+    { "key": "eventId", "value": "1" }
+  ],
+  "item": [
+    {
+      "name": "Browse Events",
+      "request": { "method": "GET", "url": "{{baseUrl}}/api/events?page=1&limit=20&search=coffee&category=Coffee%20Meetup&city=Ahmedabad&timing=upcoming" }
+    },
+    {
+      "name": "Event Detail",
+      "request": { "method": "GET", "url": "{{baseUrl}}/api/events/{{eventId}}" }
+    },
+    {
+      "name": "Register",
+      "request": { "method": "POST", "url": "{{baseUrl}}/api/events/{{eventId}}/registration" }
+    },
+    {
+      "name": "Cancel Registration",
+      "request": { "method": "DELETE", "url": "{{baseUrl}}/api/events/{{eventId}}/registration" }
+    },
+    {
+      "name": "Join Waitlist",
+      "request": { "method": "POST", "url": "{{baseUrl}}/api/events/{{eventId}}/waitlist" }
+    },
+    {
+      "name": "Leave Waitlist",
+      "request": { "method": "DELETE", "url": "{{baseUrl}}/api/events/{{eventId}}/waitlist" }
+    },
+    {
+      "name": "My Events",
+      "request": { "method": "GET", "url": "{{baseUrl}}/api/events/me?category=upcoming&page=1&limit=20" }
+    },
+    {
+      "name": "Check In",
+      "request": { "method": "POST", "url": "{{baseUrl}}/api/events/{{eventId}}/check-in" }
+    },
+    {
+      "name": "Submit Feedback",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"rating\": 5,\n  \"venueRating\": 4,\n  \"feedbackText\": \"A thoughtful event\",\n  \"recommend\": true\n}" },
+        "url": "{{baseUrl}}/api/events/{{eventId}}/feedback"
+      }
+    },
+    {
+      "name": "Event Group Messages",
+      "request": { "method": "GET", "url": "{{baseUrl}}/api/events/{{eventId}}/group-chat/messages?limit=50" }
+    },
+    {
+      "name": "Send Event Group Message",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"text\": \"Hello event attendees\"\n}" },
+        "url": "{{baseUrl}}/api/events/{{eventId}}/group-chat/messages"
+      }
+    },
+    {
+      "name": "Host Dashboard",
+      "request": { "method": "GET", "url": "{{baseUrl}}/api/host/dashboard" }
+    },
+    {
+      "name": "Host Create Event",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"title\": \"Host Event\",\n  \"description\": \"Created through Phase 4\",\n  \"category\": \"Workshop\",\n  \"city\": \"Ahmedabad\",\n  \"venueName\": \"AMORAA Venue\",\n  \"startDateTime\": \"2026-09-01T12:00:00.000Z\",\n  \"endDateTime\": \"2026-09-01T15:00:00.000Z\",\n  \"capacity\": 30,\n  \"waitlistCapacity\": 10,\n  \"status\": \"published\"\n}" },
+        "url": "{{baseUrl}}/api/host/events"
+      }
+    },
+    {
+      "name": "Host Update Event",
+      "request": {
+        "method": "PUT",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"title\": \"Updated Host Event\"\n}" },
+        "url": "{{baseUrl}}/api/host/events/{{eventId}}"
+      }
+    }
+  ]
+}

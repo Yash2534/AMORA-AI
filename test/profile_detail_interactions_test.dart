@@ -302,6 +302,11 @@ void main() {
         find.byKey(const ValueKey('rose-note-field')),
         'Please keep this note.',
       );
+      final conversationId = repository.conversationIdForProfile(profile.id)!;
+      final initialMessageCount = repository
+          .conversation(conversationId)!
+          .messages
+          .length;
       repository.failNextPersistenceForTesting();
       await tester.tap(find.byKey(const ValueKey('send-rose-button')));
       await tester.pump(const Duration(milliseconds: 320));
@@ -311,14 +316,16 @@ void main() {
         find.byKey(const ValueKey('rose-note-field')),
       );
       expect(note.controller?.text, 'Please keep this note.');
-      final conversationId = repository.conversationIdForProfile(profile.id)!;
-      expect(repository.conversation(conversationId)!.messages, hasLength(1));
+      expect(
+        repository.conversation(conversationId)!.messages,
+        hasLength(initialMessageCount),
+      );
 
       await tester.tap(find.byKey(const ValueKey('send-rose-button')));
       await finishRoseSend(tester);
       final messages = repository.conversation(conversationId)!.messages;
-      expect(messages, hasLength(1));
-      expect(messages.single.status, ChatMessageStatus.queued);
+      expect(messages, hasLength(initialMessageCount + 1));
+      expect(messages.last.status, ChatMessageStatus.sent);
     },
   );
 

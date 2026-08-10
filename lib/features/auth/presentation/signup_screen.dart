@@ -260,11 +260,12 @@ class _SignupScreenState extends State<SignupScreen> {
         ),
       );
     } on AuthException catch (error) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _loading = false;
           _error = error.message;
         });
+      }
     } catch (_) {
       if (mounted) {
         setState(() {
@@ -283,11 +284,12 @@ class _SignupScreenState extends State<SignupScreen> {
       if (!mounted) return;
       await AmoraSession.completeAuthentication(context);
     } on AuthException catch (error) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _googleLoading = false;
           _error = error.message;
         });
+      }
     } catch (_) {
       if (mounted) {
         setState(() {

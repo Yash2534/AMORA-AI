@@ -7,7 +7,7 @@ import 'package:amora_ai/core/widgets/amora_app_bar.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/auth/presentation/login_screen.dart';
-import 'package:amora_ai/features/chat/data/local_chat_repository.dart';
+import 'package:amora_ai/features/chat/data/chat_repository.dart';
 import 'package:amora_ai/features/onboarding/data/local_onboarding_repository.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
 import 'package:amora_ai/features/settings/presentation/widgets/amoraa_delete_account_flow.dart';
@@ -44,6 +44,8 @@ class LogoutAccountScreen extends StatelessWidget {
 
 typedef AccountDeactivationCallback = Future<bool> Function();
 typedef AccountDeletionCallback = Future<bool> Function();
+typedef AccountDeletionSelectionCallback =
+    Future<bool> Function(DeleteAccountSelection selection);
 
 class DeactivateAccountScreen extends StatefulWidget {
   const DeactivateAccountScreen({super.key, this.onDeactivate});
@@ -90,7 +92,10 @@ class _DeactivateAccountScreenState extends State<DeactivateAccountScreen> {
       });
       return;
     }
-    Navigator.of(context).pop(true);
+    AmoraSession.logOut();
+    Navigator.of(
+      context,
+    ).pushNamedAndRemoveUntil(LoginScreen.routeName, (_) => false);
   }
 
   @override
@@ -154,11 +159,16 @@ class _DeactivateAccountScreenState extends State<DeactivateAccountScreen> {
 }
 
 class DeleteAccountInformationScreen extends StatefulWidget {
-  const DeleteAccountInformationScreen({super.key, this.onDeleteAccount});
+  const DeleteAccountInformationScreen({
+    super.key,
+    this.onDeleteAccount,
+    this.onDeleteSelection,
+  });
 
   static const routeName = '/delete-account';
 
   final AccountDeletionCallback? onDeleteAccount;
+  final AccountDeletionSelectionCallback? onDeleteSelection;
 
   @override
   State<DeleteAccountInformationScreen> createState() =>
@@ -169,10 +179,13 @@ class _DeleteAccountInformationScreenState
     extends State<DeleteAccountInformationScreen> {
   Future<bool> _deletePermanently(DeleteAccountSelection selection) async {
     final callback = widget.onDeleteAccount;
-    if (callback == null) return false;
+    final selectionCallback = widget.onDeleteSelection;
+    if (callback == null && selectionCallback == null) return false;
     var deleted = false;
     try {
-      deleted = await callback();
+      deleted = selectionCallback != null
+          ? await selectionCallback(selection)
+          : await callback!();
     } catch (_) {
       deleted = false;
     }
@@ -188,7 +201,7 @@ class _DeleteAccountInformationScreenState
 
   Future<void> _clearDeletedAccountState() async {
     for (final clear in <Future<void> Function()>[
-      LocalChatRepository.instance.clearForAccountDeletion,
+      ChatRepository.instance.clearForAccountDeletion,
       LocalProfileRepository.instance.clearForAccountDeletion,
       LocalOnboardingRepository.instance.clearForAccountDeletion,
     ]) {

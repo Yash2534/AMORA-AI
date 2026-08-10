@@ -1,12 +1,14 @@
-import 'package:amora_ai/core/data/amora_dummy_data.dart';
 import 'package:amora_ai/core/widgets/amora_filter_chip.dart';
 import 'package:amora_ai/core/widgets/amoraa_select_field.dart';
 import 'package:amora_ai/core/widgets/floating_bottom_nav.dart';
 import 'package:amora_ai/features/chat/presentation/chat_list_screen.dart';
+import 'package:amora_ai/features/chat/data/chat_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  final repository = ChatRepository.instance;
+  setUp(repository.resetForTesting);
   Future<void> pumpChats(
     WidgetTester tester, {
     Size size = const Size(430, 900),
@@ -68,7 +70,7 @@ void main() {
     tester,
   ) async {
     await pumpChats(tester);
-    final chat = AmoraDummyData.chats[4];
+    final chat = repository.conversations.last;
     final search = find.byKey(const ValueKey('chats-search-field'));
 
     await tester.enterText(search, chat.user.name);
@@ -159,7 +161,9 @@ void main() {
     tester,
   ) async {
     await pumpChats(tester, size: const Size(320, 760));
-    final chat = AmoraDummyData.chats.firstWhere((chat) => chat.user.verified);
+    final chat = repository.conversations.firstWhere(
+      (chat) => chat.user.verified,
+    );
     final tile = find.byKey(ValueKey('conversation-${chat.id}'));
     await tester.ensureVisible(tile);
 
@@ -189,7 +193,7 @@ void main() {
     tester,
   ) async {
     await pumpChats(tester, size: const Size(320, 760), textScale: 1.3);
-    final chat = AmoraDummyData.chats.first;
+    final chat = repository.conversations.first;
     final tile = find.byKey(ValueKey('conversation-${chat.id}'));
     await tester.ensureVisible(tile);
     expect(tester.getSize(tile).height, greaterThanOrEqualTo(76));
@@ -198,10 +202,10 @@ void main() {
 
   testWidgets('unread filter uses existing unread counts', (tester) async {
     await pumpChats(tester);
-    final readChat = AmoraDummyData.chats.firstWhere(
+    final readChat = repository.conversations.firstWhere(
       (chat) => chat.unread == 0,
     );
-    final unreadChat = AmoraDummyData.chats.firstWhere(
+    final unreadChat = repository.conversations.firstWhere(
       (chat) => chat.unread > 0,
     );
 
@@ -288,7 +292,7 @@ void main() {
     tester,
   ) async {
     await pumpChats(tester);
-    final firstChat = AmoraDummyData.chats.first;
+    final firstChat = repository.conversations.first;
     final tile = find.byKey(ValueKey('conversation-${firstChat.id}'));
 
     await tester.tap(tile);
@@ -314,7 +318,7 @@ void main() {
     await tester.tapAt(const Offset(8, 8));
     await tester.pumpAndSettle();
 
-    final firstChat = AmoraDummyData.chats.first;
+    final firstChat = repository.conversations.first;
     await tester.longPress(
       find.byKey(ValueKey('conversation-${firstChat.id}')),
     );

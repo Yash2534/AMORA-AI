@@ -1,15 +1,18 @@
 import 'package:amora_ai/features/events/domain/event_models.dart';
 import 'package:amora_ai/features/events/domain/my_event_category.dart';
+import 'package:amora_ai/features/events/data/event_repository.dart';
 import 'package:flutter/foundation.dart';
 
 class EventParticipationController extends ChangeNotifier {
-  EventParticipationController();
+  EventParticipationController({this.repository});
 
   static final EventParticipationController instance =
       EventParticipationController();
 
   final Map<String, UserEventRegistration> _registrations =
       <String, UserEventRegistration>{};
+  final EventRepository? repository;
+  EventRepository get _remote => repository ?? EventRepository.instance;
   bool _isLoading = false;
   bool _hasLoadError = false;
 
@@ -107,6 +110,87 @@ class EventParticipationController extends ChangeNotifier {
   }
 
   void retry() => completeLoading();
+
+  void syncCatalog(Iterable<EventModel> events) {
+    var changed = false;
+    for (final event in events) {
+      final status = event.participationStatus;
+      if (status == null) continue;
+      _registrations[event.id] = UserEventRegistration(
+        event: event,
+        status: status,
+        registeredAt: DateTime.now(),
+        cancelledAt: status == TicketStatus.cancelled ? DateTime.now() : null,
+      );
+      changed = true;
+    }
+    if (changed) notifyListeners();
+  }
+
+  Future<void> loadMyEvents() async {
+    startLoading();
+    try {
+      final page = await _remote.myEvents('all');
+      _registrations.clear();
+      for (final event in page.events) {
+        final status = event.participationStatus;
+        if (status == null) continue;
+        _registrations[event.id] = UserEventRegistration(
+          event: event,
+          status: status,
+          registeredAt: DateTime.now(),
+          cancelledAt: status == TicketStatus.cancelled ? DateTime.now() : null,
+        );
+      }
+      completeLoading();
+    } catch (_) {
+      reportLoadFailure();
+    }
+  }
+
+  Future<void> registerRemote(EventModel event) async {
+    final status = await _remote.register(event.id);
+    _applyRemoteStatus(event, status);
+  }
+
+  Future<void> joinWaitlistRemote(EventModel event) async {
+    final status = await _remote.joinWaitlist(event.id);
+    _applyRemoteStatus(event, status);
+  }
+
+  Future<void> cancelRemote(EventModel event) async {
+    final status = await _remote.cancelRegistration(event.id);
+    _applyRemoteStatus(event, status);
+  }
+
+  Future<void> leaveWaitlistRemote(EventModel event) async {
+    final status = await _remote.leaveWaitlist(event.id);
+    if (status == null) {
+      _registrations.remove(event.id);
+      notifyListeners();
+    } else {
+      _applyRemoteStatus(event, status);
+    }
+  }
+
+  Future<void> checkInRemote(EventModel event) async {
+    final status = await _remote.checkIn(event.id);
+    _applyRemoteStatus(event, status);
+  }
+
+  void _applyRemoteStatus(EventModel event, TicketStatus? status) {
+    if (status == null) {
+      _registrations.remove(event.id);
+    } else {
+      _registrations[event.id] = UserEventRegistration(
+        event: event,
+        status: status,
+        registeredAt: _registrations[event.id]?.registeredAt ?? DateTime.now(),
+        cancelledAt: status == TicketStatus.cancelled ? DateTime.now() : null,
+      );
+    }
+    notifyListeners();
+  }
 
   @visibleForTesting
   void clear() {

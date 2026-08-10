@@ -5,6 +5,7 @@ import 'package:amora_ai/core/widgets/amora_filter_chip.dart';
 import 'package:amora_ai/core/widgets/amoraa_select_field.dart';
 import 'package:amora_ai/core/widgets/floating_bottom_nav.dart';
 import 'package:amora_ai/features/events/data/events_dummy_data.dart';
+import 'package:amora_ai/features/events/data/event_repository.dart';
 import 'package:amora_ai/features/events/data/event_asset_catalog.dart';
 import 'package:amora_ai/features/events/domain/event_models.dart';
 import 'package:amora_ai/features/events/presentation/event_detail_screen.dart';
@@ -15,10 +16,17 @@ import 'package:amora_ai/features/events/presentation/widgets/events_widgets.dar
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'support/fixture_event_repository.dart';
 
 void main() {
-  setUp(EventParticipationController.instance.clear);
-  tearDown(EventParticipationController.instance.clear);
+  setUp(() {
+    EventParticipationController.instance.clear();
+    EventRepository.debugOverride = FixtureEventRepository(events);
+  });
+  tearDown(() {
+    EventParticipationController.instance.clear();
+    EventRepository.debugOverride = null;
+  });
 
   testWidgets('all local event assets load and core events map uniquely', (
     tester,

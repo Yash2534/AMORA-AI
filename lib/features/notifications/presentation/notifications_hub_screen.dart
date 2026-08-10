@@ -6,7 +6,6 @@ import 'package:amora_ai/core/widgets/amora_filter_chip.dart';
 import 'package:amora_ai/core/widgets/premium_asset_image.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/chat/presentation/chat_detail_screen.dart';
-import 'package:amora_ai/features/chat/data/local_chat_repository.dart';
 import 'package:amora_ai/features/events/presentation/event_detail_screen.dart';
 import 'package:amora_ai/features/profile/presentation/kyc_verification_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_detail_screen.dart';
@@ -1470,10 +1469,7 @@ _NotificationItem _profileNotification({
 }) {
   final profile = ImageRepository.profileByName(profileName);
   final arguments = route == ChatDetailScreen.routeName
-      ? ChatDetailArgs(
-          conversationId: LocalChatRepository.instance
-              .ensureConversationForProfile(profile),
-        )
+      ? ChatDetailArgs(conversationId: '', recipientId: profile.id)
       : profile;
   return _NotificationItem(
     id: id,

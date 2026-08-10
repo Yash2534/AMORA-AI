@@ -1,11 +1,9 @@
-import 'dart:async';
-
 import 'package:amora_ai/core/access/amora_access.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/floating_bottom_nav.dart';
 import 'package:amora_ai/core/widgets/amoraa_main_page_header.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
-import 'package:amora_ai/features/events/data/events_dummy_data.dart';
+import 'package:amora_ai/features/events/data/event_repository.dart';
 import 'package:amora_ai/features/events/data/event_asset_catalog.dart';
 import 'package:amora_ai/features/events/domain/event_models.dart';
 import 'package:amora_ai/features/events/presentation/controllers/event_participation_controller.dart';
@@ -42,9 +40,10 @@ class EventsBrowseScreen extends StatelessWidget {
 
 /// Public for focused widget tests and rendered directly by the Events route.
 class EventsMemberExperience extends StatefulWidget {
-  const EventsMemberExperience({super.key, this.controller});
+  const EventsMemberExperience({super.key, this.controller, this.repository});
 
   final EventParticipationController? controller;
+  final EventRepository? repository;
 
   @override
   State<EventsMemberExperience> createState() => _EventsMemberExperienceState();
@@ -66,26 +65,36 @@ class _EventsMemberExperienceState extends State<EventsMemberExperience> {
     'AMORAA Circles',
   ];
 
-  Timer? _loadingTimer;
   var _loading = true;
+  var _loadError = false;
+  var _loadingMore = false;
+  var _hasMore = false;
+  int? _nextPage;
+  List<EventModel> _events = const [];
+  final ScrollController _scrollController = ScrollController();
+  String? _activeCategory;
+  String? _activeCity;
+  DateTime? _activeDateTo;
   Set<String> _selectedCategories = <String>{};
   var _didPrecache = false;
 
   EventParticipationController get _controller =>
       widget.controller ?? EventParticipationController.instance;
+  EventRepository get _repository =>
+      widget.repository ?? EventRepository.instance;
 
   Map<String, TicketStatus> get _participation => _controller.statuses;
 
   List<String> get _categories => _categoryOptions;
 
-  String get _city => events.isEmpty ? '' : events.first.city;
+  String get _city => _events.isEmpty ? '' : _events.first.city;
 
   List<EventModel> get _filteredEvents {
     if (_selectedCategories.isEmpty ||
         _selectedCategories.contains(_allCategory)) {
-      return events;
+      return _events;
     }
-    return events
+    return _events
         .where(
           (event) => _selectedCategories.any(
             (category) => _matchesCategory(event, category),
@@ -107,9 +116,8 @@ class _EventsMemberExperienceState extends State<EventsMemberExperience> {
   void initState() {
     super.initState();
     _controller.addListener(_handleParticipationChanged);
-    _loadingTimer = Timer(const Duration(milliseconds: 480), () {
-      if (mounted) setState(() => _loading = false);
-    });
+    _scrollController.addListener(_handleScroll);
+    _loadEvents();
   }
 
   @override
@@ -124,8 +132,10 @@ class _EventsMemberExperienceState extends State<EventsMemberExperience> {
 
   @override
   void dispose() {
-    _loadingTimer?.cancel();
     _controller.removeListener(_handleParticipationChanged);
+    _scrollController
+      ..removeListener(_handleScroll)
+      ..dispose();
     super.dispose();
   }
 
@@ -140,6 +150,9 @@ class _EventsMemberExperienceState extends State<EventsMemberExperience> {
         padding: EdgeInsets.fromLTRB(20, 18, 20, 32),
         child: EventsSkeleton(),
       );
+    }
+    if (_loadError) {
+      return Center(child: EventsErrorState(onRetry: _loadEvents));
     }
 
     final filtered = _filteredEvents;
@@ -170,6 +183,7 @@ class _EventsMemberExperienceState extends State<EventsMemberExperience> {
 
     return CustomScrollView(
       key: const PageStorageKey('events-member-feed'),
+      controller: _scrollController,
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       slivers: [
         SliverPersistentHeader(
@@ -193,7 +207,9 @@ class _EventsMemberExperienceState extends State<EventsMemberExperience> {
           sliver: SliverList.list(
             children: [
               EventsContextBar(
-                eventCount: events.where((event) => event.city == _city).length,
+                eventCount: _events
+                    .where((event) => event.city == _city)
+                    .length,
                 city: _city,
                 joinedCount: _joinedEvents.length,
               ),
@@ -201,9 +217,7 @@ class _EventsMemberExperienceState extends State<EventsMemberExperience> {
               EventCategoryBar(
                 categories: _categories,
                 selectedValues: _selectedCategories,
-                onChanged: (categories) => setState(
-                  () => _selectedCategories = Set<String>.of(categories),
-                ),
+                onChanged: _applyCategories,
               ),
               const SizedBox(height: 24),
               if (featured != null) ...[
@@ -214,7 +228,7 @@ class _EventsMemberExperienceState extends State<EventsMemberExperience> {
                 const SizedBox(height: 12),
                 FeaturedEventCard(
                   event: featured,
-                  attendees: eventAttendees,
+                  attendees: featured.attendees,
                   status: _participation[featured.id],
                   onOpen: () => _openDetail(featured),
                   onJoin: () => _handleParticipation(featured),
@@ -461,12 +475,18 @@ class _EventsMemberExperienceState extends State<EventsMemberExperience> {
     return terms.any(normalized.contains);
   }
 
-  void _showAll() => setState(_selectedCategories.clear);
+  void _showAll() {
+    _selectedCategories.clear();
+    _loadEvents();
+  }
 
   void _showSearch() {
     showSearch<EventModel?>(
       context: context,
-      delegate: _EventSearchDelegate(source: events, onOpen: _openDetail),
+      delegate: _EventSearchDelegate(
+        repository: _repository,
+        onOpen: _openDetail,
+      ),
     );
   }
 
@@ -494,19 +514,108 @@ class _EventsMemberExperienceState extends State<EventsMemberExperience> {
     }
     AmoraSession.requireAuth(
       context: context,
-      onAuthenticated: () {
+      onAuthenticated: () async {
         if (!mounted) return;
-        _controller.registerEvent(event);
-        showEventSnack(context, 'You joined ${event.title}');
+        try {
+          await _controller.registerRemote(event);
+          if (mounted) showEventSnack(context, 'You joined ${event.title}');
+        } catch (error) {
+          if (mounted) showEventSnack(context, error.toString());
+        }
       },
     );
+  }
+
+  Future<void> _loadEvents({
+    String? category,
+    String? city,
+    DateTime? dateTo,
+  }) async {
+    _activeCategory = category;
+    _activeCity = city;
+    _activeDateTo = dateTo;
+    setState(() {
+      _loading = true;
+      _loadError = false;
+    });
+    try {
+      final page = await _repository.browse(
+        category: category,
+        city: city,
+        dateTo: dateTo,
+      );
+      _controller.syncCatalog(page.events);
+      if (!mounted) return;
+      setState(() {
+        _events = page.events;
+        _hasMore = page.hasMore;
+        _nextPage = page.nextPage;
+        _loading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _loadError = true;
+      });
+    }
+  }
+
+  void _handleScroll() {
+    if (_scrollController.position.extentAfter < 500) _loadNextPage();
+  }
+
+  Future<void> _loadNextPage() async {
+    final nextPage = _nextPage;
+    if (!_hasMore || _loadingMore || nextPage == null) return;
+    setState(() => _loadingMore = true);
+    try {
+      final page = await _repository.browse(
+        page: nextPage,
+        category: _activeCategory,
+        city: _activeCity,
+        dateTo: _activeDateTo,
+      );
+      final known = _events.map((event) => event.id).toSet();
+      final additions = page.events
+          .where((event) => known.add(event.id))
+          .toList(growable: false);
+      _controller.syncCatalog(additions);
+      if (!mounted) return;
+      setState(() {
+        _events = [..._events, ...additions];
+        _hasMore = page.hasMore;
+        _nextPage = page.nextPage;
+      });
+    } finally {
+      if (mounted) setState(() => _loadingMore = false);
+    }
+  }
+
+  void _applyCategories(Set<String> categories) {
+    _selectedCategories = Set<String>.of(categories);
+    final selected = categories.isEmpty ? null : categories.last;
+    if (selected == null || selected == _allCategory) {
+      _loadEvents();
+      return;
+    }
+    if (selected == 'This Week') {
+      _loadEvents(dateTo: DateTime.now().add(const Duration(days: 7)));
+      return;
+    }
+    if (selected == 'Near You') {
+      _loadEvents(city: _city);
+      return;
+    }
+    const categoryMap = {'Coffee': 'Coffee Meetup', 'Outdoors': 'Travel'};
+    _loadEvents(category: categoryMap[selected] ?? selected);
   }
 }
 
 class _EventSearchDelegate extends SearchDelegate<EventModel?> {
-  _EventSearchDelegate({required this.source, required this.onOpen});
+  _EventSearchDelegate({required this.repository, required this.onOpen});
 
-  final List<EventModel> source;
+  final EventRepository repository;
   final ValueChanged<EventModel> onOpen;
 
   @override
@@ -536,33 +645,36 @@ class _EventSearchDelegate extends SearchDelegate<EventModel?> {
   Widget buildSuggestions(BuildContext context) => _results(context);
 
   Widget _results(BuildContext context) {
-    final normalized = query.trim().toLowerCase();
-    final matches = source
-        .where(
-          (event) =>
-              normalized.isEmpty ||
-              event.title.toLowerCase().contains(normalized) ||
-              event.category.toLowerCase().contains(normalized) ||
-              event.city.toLowerCase().contains(normalized),
-        )
-        .toList(growable: false);
-    return ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemCount: matches.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 10),
-      itemBuilder: (_, index) {
-        final event = matches[index];
-        return ListTile(
-          tileColor: AppColors.surface,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
-          ),
-          leading: Icon(event.image.icon, color: AppColors.secondary),
-          title: Text(event.title),
-          subtitle: Text('${event.category} · ${event.city}'),
-          onTap: () {
-            close(context, event);
-            onOpen(event);
+    return FutureBuilder<EventPage>(
+      future: repository.browse(search: query.trim(), limit: 50),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return EventsErrorState(onRetry: () => showResults(context));
+        }
+        final matches = snapshot.data?.events ?? const <EventModel>[];
+        if (matches.isEmpty) return const EventsEmptyState();
+        return ListView.separated(
+          padding: const EdgeInsets.all(16),
+          itemCount: matches.length,
+          separatorBuilder: (_, _) => const SizedBox(height: 10),
+          itemBuilder: (_, index) {
+            final event = matches[index];
+            return ListTile(
+              tileColor: AppColors.surface,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(18),
+              ),
+              leading: Icon(event.image.icon, color: AppColors.secondary),
+              title: Text(event.title),
+              subtitle: Text('${event.category} · ${event.city}'),
+              onTap: () {
+                close(context, event);
+                onOpen(event);
+              },
+            );
           },
         );
       },
@@ -692,7 +804,7 @@ class _CircleRail extends StatelessWidget {
             width: itemWidth,
             child: AmoraCircleCard(
               event: event,
-              attendees: eventAttendees,
+              attendees: event.attendees,
               status: participation[event.id],
               onOpen: () => onOpen(event),
               onJoin: () => onJoin(event),

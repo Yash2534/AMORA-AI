@@ -2,8 +2,10 @@ import 'dart:convert';
 
 import 'package:amora_ai/core/config/amora_api_config.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 
 class AuthException implements Exception {
   const AuthException(this.message, {this.code, this.statusCode});
@@ -20,6 +22,7 @@ class AmoraUser {
     required this.email,
     required this.phoneNumber,
     required this.isVerified,
+    this.accountStatus = 'active',
   });
 
   final int id;
@@ -27,6 +30,7 @@ class AmoraUser {
   final String email;
   final String phoneNumber;
   final bool isVerified;
+  final String accountStatus;
 
   factory AmoraUser.fromJson(Map<String, dynamic> json) => AmoraUser(
     id: json['id'] as int,
@@ -34,6 +38,7 @@ class AmoraUser {
     email: json['email'] as String? ?? '',
     phoneNumber: json['phoneNumber'] as String? ?? '',
     isVerified: json['isVerified'] as bool? ?? false,
+    accountStatus: json['accountStatus'] as String? ?? 'active',
   );
 }
 
@@ -101,7 +106,7 @@ class AuthService {
       'email': email,
       'password': password,
     });
-    return _saveAuthentication(response);
+    return _saveAuthentication(response, reactivateIfRequired: true);
   }
 
   Future<AmoraUser> googleSignIn() async {
@@ -117,7 +122,7 @@ class AuthService {
       );
     }
     final response = await _post('/api/auth/google', {'idToken': idToken});
-    return _saveAuthentication(response);
+    return _saveAuthentication(response, reactivateIfRequired: true);
   }
 
   Future<void> forgotPassword(String phoneNumber) async =>
@@ -164,18 +169,144 @@ class AuthService {
     _accessToken = null;
     _refreshToken = null;
     currentUser = null;
-    await _storage.delete(key: _accessKey);
-    await _storage.delete(key: _refreshKey);
+    try {
+      await _storage.delete(key: _accessKey);
+      await _storage.delete(key: _refreshKey);
+    } on MissingPluginException {
+      // The secure-storage platform channel is absent in widget tests.
+    }
   }
 
-  Future<AmoraUser> _saveAuthentication(Map<String, dynamic> response) async {
+  Future<AmoraUser> _saveAuthentication(
+    Map<String, dynamic> response, {
+    bool reactivateIfRequired = false,
+  }) async {
     final data = _data(response);
     _accessToken = data['accessToken'] as String;
     _refreshToken = data['refreshToken'] as String;
     await _storage.write(key: _accessKey, value: _accessToken);
     await _storage.write(key: _refreshKey, value: _refreshToken);
     currentUser = AmoraUser.fromJson(data['user'] as Map<String, dynamic>);
+    if (reactivateIfRequired && data['requiresReactivation'] == true) {
+      try {
+        final reactivated = await authenticatedRequest(
+          'POST',
+          '/api/account/reactivate',
+        );
+        currentUser = AmoraUser.fromJson(
+          _data(reactivated)['user'] as Map<String, dynamic>,
+        );
+      } catch (_) {
+        await clearSession();
+        rethrow;
+      }
+    }
     return currentUser!;
+  }
+
+  Future<Map<String, dynamic>> authenticatedRequest(
+    String method,
+    String path, {
+    Map<String, dynamic>? body,
+  }) => _request(method, path, body: body, authenticated: true);
+
+  Future<Uint8List> authenticatedBytes(
+    String path, {
+    bool retried = false,
+  }) async {
+    final request = http.Request(
+      'GET',
+      Uri.parse('${AmoraApiConfig.baseUrl}$path'),
+    )..headers['Accept'] = 'image/*';
+    if (_accessToken != null) {
+      request.headers['Authorization'] = 'Bearer $_accessToken';
+    }
+    try {
+      final response = await http.Response.fromStream(
+        await _client.send(request).timeout(const Duration(seconds: 20)),
+      );
+      if (response.statusCode == 401 &&
+          !retried &&
+          _refreshToken != null &&
+          await _refresh()) {
+        return authenticatedBytes(path, retried: true);
+      }
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw AuthException(
+          'Media is unavailable.',
+          statusCode: response.statusCode,
+        );
+      }
+      return response.bodyBytes;
+    } on AuthException {
+      rethrow;
+    } catch (_) {
+      throw const AuthException('Unable to load this media.');
+    }
+  }
+
+  Future<Map<String, dynamic>> authenticatedMultipart(
+    String path, {
+    required String field,
+    required List<int> bytes,
+    required String filename,
+    required String mimeType,
+    Map<String, String> fields = const {},
+    bool retried = false,
+  }) async {
+    final uri = Uri.parse('${AmoraApiConfig.baseUrl}$path');
+    try {
+      final request = http.MultipartRequest('POST', uri)
+        ..headers['Accept'] = 'application/json';
+      if (_accessToken != null) {
+        request.headers['Authorization'] = 'Bearer $_accessToken';
+      }
+      request.fields.addAll(fields);
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          field,
+          bytes,
+          filename: filename,
+          contentType: MediaType.parse(mimeType),
+        ),
+      );
+      final response = await http.Response.fromStream(
+        await _client.send(request).timeout(const Duration(seconds: 30)),
+      );
+      final decoded = response.body.isEmpty
+          ? <String, dynamic>{}
+          : jsonDecode(response.body) as Map<String, dynamic>;
+      if (response.statusCode == 401 &&
+          !retried &&
+          _refreshToken != null &&
+          await _refresh()) {
+        return authenticatedMultipart(
+          path,
+          field: field,
+          bytes: bytes,
+          filename: filename,
+          mimeType: mimeType,
+          fields: fields,
+          retried: true,
+        );
+      }
+      if (response.statusCode < 200 ||
+          response.statusCode >= 300 ||
+          decoded['success'] != true) {
+        throw AuthException(
+          decoded['message'] as String? ?? 'The upload could not be completed.',
+          code: decoded['code'] as String?,
+          statusCode: response.statusCode,
+        );
+      }
+      return decoded;
+    } on AuthException {
+      rethrow;
+    } catch (_) {
+      throw const AuthException(
+        'Unable to reach the service. Check your connection and try again.',
+      );
+    }
   }
 
   Future<Map<String, dynamic>> _post(

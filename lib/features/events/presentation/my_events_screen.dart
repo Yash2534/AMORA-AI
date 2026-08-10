@@ -38,6 +38,11 @@ class _MyEventsScreenState extends State<MyEventsScreen>
       vsync: this,
     );
     _controller.addListener(_handleStateChanged);
+    if (widget.controller == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _controller.loadMyEvents();
+      });
+    }
   }
 
   @override
@@ -86,7 +91,11 @@ class _MyEventsScreenState extends State<MyEventsScreen>
       );
     }
     if (_controller.hasLoadError) {
-      return _MyEventsError(onRetry: _controller.retry);
+      return _MyEventsError(
+        onRetry: widget.controller == null
+            ? _controller.loadMyEvents
+            : _controller.retry,
+      );
     }
     return TabBarView(
       controller: _tabController,
@@ -131,12 +140,26 @@ class _MyEventsScreenState extends State<MyEventsScreen>
             AppPrimaryButton(
               label: 'Cancel booking',
               variant: AppPrimaryButtonVariant.outlined,
-              onPressed: () {
+              onPressed: () async {
+                final messenger = ScaffoldMessenger.of(context);
                 Navigator.pop(sheetContext);
-                _controller.cancelEvent(registration.event);
-                showEventSnack(
-                  context,
-                  '${registration.event.title} booking cancelled',
+                if (widget.controller != null) {
+                  _controller.cancelEvent(registration.event);
+                } else {
+                  try {
+                    await _controller.cancelRemote(registration.event);
+                  } catch (error) {
+                    messenger.showSnackBar(SnackBar(content: Text('$error')));
+                    return;
+                  }
+                }
+                if (!mounted) return;
+                messenger.showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      '${registration.event.title} booking cancelled',
+                    ),
+                  ),
                 );
               },
             ),
@@ -151,9 +174,20 @@ class _MyEventsScreenState extends State<MyEventsScreen>
     );
   }
 
-  void _leaveWaitlist(UserEventRegistration registration) {
-    _controller.leaveWaitlist(registration.event.id);
-    showEventSnack(context, 'You left ${registration.event.title} waitlist');
+  Future<void> _leaveWaitlist(UserEventRegistration registration) async {
+    if (widget.controller != null) {
+      _controller.leaveWaitlist(registration.event.id);
+    } else {
+      try {
+        await _controller.leaveWaitlistRemote(registration.event);
+      } catch (error) {
+        if (mounted) showEventSnack(context, error.toString());
+        return;
+      }
+    }
+    if (mounted) {
+      showEventSnack(context, 'You left ${registration.event.title} waitlist');
+    }
   }
 }
 
@@ -404,9 +438,10 @@ class _MyEventCard extends StatelessWidget {
                   _CardAction(
                     icon: Icons.rate_review_rounded,
                     label: 'Share feedback',
-                    onPressed: () => Navigator.of(
-                      context,
-                    ).pushNamed(PostEventFeedbackScreen.routeName),
+                    onPressed: () => Navigator.of(context).pushNamed(
+                      PostEventFeedbackScreen.routeName,
+                      arguments: registration.event,
+                    ),
                   ),
               ],
             ),

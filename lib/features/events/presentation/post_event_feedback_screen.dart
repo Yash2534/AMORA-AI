@@ -10,17 +10,23 @@ import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/app_text_field.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
+import 'package:amora_ai/features/events/data/event_repository.dart';
+import 'package:amora_ai/features/events/domain/event_models.dart';
 import 'package:flutter/material.dart';
 
 class PostEventFeedbackScreen extends StatefulWidget {
   const PostEventFeedbackScreen({
     super.key,
     this.mediaPicker = const DeviceAmoraMediaPicker(),
+    this.event,
+    this.repository,
   });
 
   static const routeName = '/post-event-feedback';
 
   final AmoraMediaPicker mediaPicker;
+  final EventModel? event;
+  final EventRepository? repository;
 
   @override
   State<PostEventFeedbackScreen> createState() =>
@@ -40,6 +46,27 @@ class _PostEventFeedbackScreenState extends State<PostEventFeedbackScreen> {
   bool _recommend = true;
   AmoraPickedMedia? _photo;
   bool _pickingPhoto = false;
+  bool _submitting = false;
+  EventModel? _event;
+  bool _argumentsRead = false;
+
+  EventRepository get _repository =>
+      widget.repository ?? EventRepository.instance;
+
+  @override
+  void initState() {
+    super.initState();
+    _event = widget.event;
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_argumentsRead) return;
+    _argumentsRead = true;
+    final arguments = ModalRoute.of(context)?.settings.arguments;
+    if (_event == null && arguments is EventModel) _event = arguments;
+  }
 
   @override
   void dispose() {
@@ -136,7 +163,8 @@ class _PostEventFeedbackScreenState extends State<PostEventFeedbackScreen> {
                 AppPrimaryButton(
                   label: 'Submit Feedback',
                   icon: AmoraIcons.send,
-                  onPressed: _submit,
+                  isLoading: _submitting,
+                  onPressed: _submitting ? null : _submit,
                 ),
               ],
             ),
@@ -146,15 +174,45 @@ class _PostEventFeedbackScreenState extends State<PostEventFeedbackScreen> {
     );
   }
 
-  void _submit() {
-    showAmoraDialog<void>(
-      context: context,
-      title: 'Feedback submitted',
-      message: 'Your event feedback was saved locally for this session.',
-      icon: AmoraIcons.check,
-      primaryLabel: 'Done',
-      onPrimary: () => Navigator.pop(context),
-    );
+  Future<void> _submit() async {
+    final event = _event;
+    if (event == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Open an attended event first.')),
+      );
+      return;
+    }
+    setState(() => _submitting = true);
+    try {
+      await _repository.submitFeedback(
+        eventId: event.id,
+        rating: _ratings['Overall Rating']!.round(),
+        venueRating: _ratings['Venue Rating']!.round(),
+        hostRating: _ratings['Host Rating']!.round(),
+        safetyRating: _ratings['Safety Rating']!.round(),
+        experienceRating: _ratings['Experience Rating']!.round(),
+        feedbackText: _comment.text,
+        recommend: _recommend,
+        media: _photo,
+      );
+      if (!mounted) return;
+      showAmoraDialog<void>(
+        context: context,
+        title: 'Feedback submitted',
+        message: 'Your event feedback was saved.',
+        icon: AmoraIcons.check,
+        primaryLabel: 'Done',
+        onPrimary: () => Navigator.pop(context),
+      );
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.toString())));
+      }
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
   }
 
   Future<void> _pickPhoto() async {

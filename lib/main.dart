@@ -1,6 +1,7 @@
 import 'package:amora_ai/core/constants/app_images.dart';
 import 'package:amora_ai/core/access/amora_access.dart';
 import 'package:amora_ai/core/auth/auth_service.dart';
+import 'package:amora_ai/core/api/phase_two_api_service.dart';
 import 'package:amora_ai/core/theme/amora_theme.dart';
 import 'package:amora_ai/core/theme/amora_theme_controller.dart';
 import 'package:amora_ai/core/navigation/main_shell.dart';
@@ -14,7 +15,7 @@ import 'package:amora_ai/features/auth/presentation/reset_password_screen.dart';
 import 'package:amora_ai/features/ai_coach/presentation/ai_icebreakers_screen.dart';
 import 'package:amora_ai/features/chat/presentation/chat_detail_screen.dart';
 import 'package:amora_ai/features/chat/presentation/chat_list_screen.dart';
-import 'package:amora_ai/features/chat/data/local_chat_repository.dart';
+import 'package:amora_ai/features/chat/data/chat_repository.dart';
 import 'package:amora_ai/features/discover/presentation/discover_screen.dart';
 import 'package:amora_ai/features/discover/presentation/advanced_filters_screen.dart';
 import 'package:amora_ai/features/discover/presentation/browse_grid_screen.dart';
@@ -24,6 +25,7 @@ import 'package:amora_ai/features/events/presentation/event_group_chat_screen.da
 import 'package:amora_ai/features/events/presentation/event_waitlist_screen.dart';
 import 'package:amora_ai/features/events/presentation/my_events_screen.dart';
 import 'package:amora_ai/features/events/presentation/post_event_feedback_screen.dart';
+import 'package:amora_ai/features/host/presentation/host_dashboard_screen.dart';
 import 'package:amora_ai/features/insights/presentation/dating_recap_screen.dart';
 import 'package:amora_ai/features/legal/presentation/legal_document_screen.dart';
 import 'package:amora_ai/features/legal/presentation/community_guidelines_screen.dart';
@@ -73,7 +75,7 @@ Future<void> main() async {
   await LocalProfileRepository.instance.initialize();
   await LocalOnboardingRepository.instance.initialize();
   LocalOnboardingRepository.instance.hydrateFromUserProfile();
-  await LocalChatRepository.instance.initialize();
+  await ChatRepository.instance.initialize();
   runApp(const MyApp());
 }
 
@@ -157,7 +159,8 @@ class _MyAppState extends State<MyApp> {
           DiscoverScreen.routeName: (_) => const MainShell(),
           ProfileScreen.routeName: (_) =>
               const MainShell(initialTab: AmoraNavTab.profile),
-          ProfileDetailScreen.routeName: (_) => const ProfileDetailScreen(),
+          ProfileDetailScreen.routeName: (_) =>
+              ProfileDetailScreen(api: PhaseTwoApiService.instance),
           MatchesScreen.routeName: (_) =>
               const MainShell(initialTab: AmoraNavTab.matches),
           MatchScreen.routeName: (_) => const MatchScreen(),
@@ -177,7 +180,8 @@ class _MyAppState extends State<MyApp> {
           PaymentScreen.routeName: (_) => const PaymentScreen(),
           ProfileSettingsScreen.routeName: (_) => const ProfileSettingsScreen(),
           SavedProfilesScreen.routeName: (_) => const SavedProfilesScreen(),
-          BlockedProfilesScreen.routeName: (_) => const BlockedProfilesScreen(),
+          BlockedProfilesScreen.routeName: (_) =>
+              BlockedProfilesScreen(api: PhaseTwoApiService.instance),
           LikesSuperLikesScreen.routeName: (_) => const LikesSuperLikesScreen(),
           SafetyPrivacyScreen.routeName: (_) => const SafetyPrivacyScreen(),
           SafetyPrivacyScreen.legacyRouteName: (_) =>
@@ -185,7 +189,8 @@ class _MyAppState extends State<MyApp> {
           FaqSupportScreen.routeName: (_) => const FaqSupportScreen(),
           FaqSupportScreen.legacyRouteName: (_) => const FaqSupportScreen(),
           SettingsScreen.routeName: (_) => const SettingsScreen(),
-          ReportFlowScreen.routeName: (_) => const ReportFlowScreen(),
+          ReportFlowScreen.routeName: (_) =>
+              ReportFlowScreen(api: PhaseTwoApiService.instance),
           SosCheckinScreen.routeName: (_) => const SosCheckinScreen(),
           PhotoManagerScreen.routeName: (_) => const PhotoManagerScreen(),
           ProfileEditScreen.routeName: (_) => const ProfileEditScreen(),
@@ -193,6 +198,7 @@ class _MyAppState extends State<MyApp> {
               const PostEventFeedbackScreen(),
           EventGroupChatScreen.routeName: (_) => const EventGroupChatScreen(),
           EventWaitlistScreen.routeName: (_) => const EventWaitlistScreen(),
+          HostDashboardScreen.routeName: (_) => const HostDashboardScreen(),
           WhyWeMatchedScreen.routeName: (_) => const WhyWeMatchedScreen(),
           ProfileBoostScreen.routeName: (_) => const ProfileBoostScreen(),
           LikedYouPaywallScreen.routeName: (_) => const LikedYouPaywallScreen(),
@@ -215,10 +221,23 @@ class _MyAppState extends State<MyApp> {
           CommunityGuidelinesScreen.routeName: (_) =>
               const CommunityGuidelinesScreen(),
           LogoutAccountScreen.routeName: (_) => const LogoutAccountScreen(),
-          DeactivateAccountScreen.routeName: (_) =>
-              const DeactivateAccountScreen(),
+          DeactivateAccountScreen.routeName: (_) => DeactivateAccountScreen(
+            onDeactivate: () async {
+              await PhaseTwoApiService.instance.deactivate();
+              await AuthService.instance.clearSession();
+              return true;
+            },
+          ),
           DeleteAccountInformationScreen.routeName: (_) =>
-              const DeleteAccountInformationScreen(),
+              DeleteAccountInformationScreen(
+                onDeleteSelection: (selection) async {
+                  await PhaseTwoApiService.instance.deleteAccount(
+                    reason: selection.backendValue,
+                    details: selection.details,
+                  );
+                  return true;
+                },
+              ),
         },
         onUnknownRoute: (_) {
           return MaterialPageRoute<void>(
