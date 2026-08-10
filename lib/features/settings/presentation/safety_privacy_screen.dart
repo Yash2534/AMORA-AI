@@ -3,6 +3,7 @@ import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
+import 'package:amora_ai/core/widgets/amora_app_bar.dart';
 import 'package:amora_ai/features/legal/presentation/community_guidelines_screen.dart';
 import 'package:amora_ai/features/profile/presentation/controllers/profile_relationship_controller.dart';
 import 'package:amora_ai/features/settings/presentation/managed_profiles_screen.dart';
@@ -45,35 +46,30 @@ class SafetyPrivacyScreen extends StatelessWidget {
                     ),
                     surfaceTintColor: AppColors.background,
                     toolbarHeight: AmoraSpacing.appBarWithSubtitleHeight,
-                    leadingWidth: 64,
+                    leadingWidth: AmoraSpacing.space56,
                     leading: Padding(
-                      padding: const EdgeInsets.only(
-                        left: AmoraSpacing.space12,
-                      ),
-                      child: IconButton.filledTonal(
-                        tooltip: 'Back',
+                      padding: const EdgeInsets.only(left: AmoraSpacing.space4),
+                      child: AmoraHeaderBackButton(
                         onPressed: () => Navigator.of(context).maybePop(),
-                        icon: const Icon(Icons.arrow_back_rounded),
                       ),
                     ),
                     titleSpacing: AmoraSpacing.space8,
-                    title: const Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text('Safety Center'),
-                        SizedBox(height: 2),
-                        Text(
-                          'Tools and guidance for dating with confidence',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
+                    title: Semantics(
+                      header: true,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text('Safety Center'),
+                          SizedBox(height: 2),
+                          Text(
+                            'Tools and guidance for dating with confidence',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AmoraTextStyles.pageHeaderSubtitle,
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                   SliverPadding(

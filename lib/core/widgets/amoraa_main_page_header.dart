@@ -1,4 +1,5 @@
 import 'package:amora_ai/core/theme/app_colors.dart';
+import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:flutter/material.dart';
 
 /// The compact, transparent header for AMORAA's five primary destinations.
@@ -25,20 +26,8 @@ class AmoraaMainPageHeader extends StatelessWidget {
   static const double actionIconSize = 20;
   static const double actionSpacing = 8;
   static const double textActionSpacing = 8;
-  static const TextStyle titleStyle = TextStyle(
-    color: AppColors.primary,
-    fontSize: 20,
-    height: 1.15,
-    fontWeight: FontWeight.w600,
-    letterSpacing: -0.1,
-  );
-  static const TextStyle subtitleStyle = TextStyle(
-    color: AppColors.textSecondary,
-    fontSize: 12,
-    height: 1.2,
-    fontWeight: FontWeight.w400,
-    letterSpacing: 0.2,
-  );
+  static const TextStyle titleStyle = AmoraTextStyles.pageHeaderTitle;
+  static const TextStyle subtitleStyle = AmoraTextStyles.pageHeaderSubtitle;
 
   final String? title;
   final String? subtitle;

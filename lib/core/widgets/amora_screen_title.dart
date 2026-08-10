@@ -1,8 +1,7 @@
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
-import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 
-/// The single title treatment used by AMORAA's primary destinations.
+/// The shared title block used by headers that retain an existing subtitle.
 class AmoraScreenTitle extends StatelessWidget {
   const AmoraScreenTitle({
     super.key,
@@ -28,7 +27,7 @@ class AmoraScreenTitle extends StatelessWidget {
             title,
             maxLines: titleMaxLines,
             overflow: TextOverflow.ellipsis,
-            style: AmoraTextStyles.screenTitle,
+            style: AmoraTextStyles.pageHeaderTitle,
           ),
           if (subtitle case final subtitle?) ...[
             const SizedBox(height: 2),
@@ -36,9 +35,7 @@ class AmoraScreenTitle extends StatelessWidget {
               subtitle,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: AmoraTextStyles.caption.copyWith(
-                color: AppColors.textSecondary,
-              ),
+              style: AmoraTextStyles.pageHeaderSubtitle,
             ),
           ],
         ],

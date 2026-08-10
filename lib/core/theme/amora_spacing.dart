@@ -18,8 +18,11 @@ abstract final class AmoraSpacing {
   static const double minimumTouchTarget = 48;
   static const double controlHeight = 56;
   static const double compactControlHeight = 48;
-  static const double appBarHeight = 64;
-  static const double appBarWithSubtitleHeight = 80;
+
+  /// Header heights exclude the system status-bar inset, which is owned by
+  /// Scaffold/AppBar or the containing SafeArea exactly once.
+  static const double appBarHeight = 56;
+  static const double appBarWithSubtitleHeight = 64;
   static const double navigationBarHeight = 80;
   static const double navigationContentInset = 136;
   static const double assistantNavigationInset = 96;

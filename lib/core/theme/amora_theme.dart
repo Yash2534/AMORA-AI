@@ -81,16 +81,14 @@ abstract final class AmoraTheme {
         foregroundColor: AppColors.primary,
         surfaceTintColor: AppColors.transparent,
         titleSpacing: AmoraSpacing.space20,
-        titleTextStyle: AmoraTextStyles.titleLarge.copyWith(
-          color: AppColors.primary,
-        ),
+        titleTextStyle: AmoraTextStyles.pageHeaderTitle,
         iconTheme: IconThemeData(
           color: AppColors.primary,
-          size: AmoraIconSizes.standard,
+          size: AmoraIconSizes.medium,
         ),
         actionsIconTheme: IconThemeData(
           color: AppColors.primary,
-          size: AmoraIconSizes.standard,
+          size: AmoraIconSizes.medium,
         ),
       ),
       dividerColor: AppColors.divider,

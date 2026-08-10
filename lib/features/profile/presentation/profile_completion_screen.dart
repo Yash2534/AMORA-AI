@@ -82,7 +82,7 @@ class _ProfileCompletionScreenState extends State<ProfileCompletionScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        titleSpacing: 0,
+        titleSpacing: AmoraSpacing.space8,
         title: const AmoraScreenTitle(
           title: 'Profile Completion',
           subtitle: 'Your progress dashboard',

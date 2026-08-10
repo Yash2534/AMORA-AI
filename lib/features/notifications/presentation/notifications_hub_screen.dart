@@ -295,13 +295,14 @@ class _NotificationsAppBar extends StatelessWidget {
         ],
       ),
       child: SizedBox(
-        height: 64,
+        height: AmoraSpacing.appBarHeight,
         child: LayoutBuilder(
           builder: (context, constraints) {
             final showMarkAllLabel = constraints.maxWidth >= 520;
-            final compact = constraints.maxWidth < 380;
             return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AmoraSpacing.space16,
+              ),
               child: Row(
                 children: [
                   _AppBarButton(
@@ -317,11 +318,7 @@ class _NotificationsAppBar extends StatelessWidget {
                       'Notifications',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: AmoraTextStyles.titleLarge.copyWith(
-                        color: AppColors.primary,
-                        fontSize: compact ? 21 : 24,
-                        fontWeight: FontWeight.w800,
-                      ),
+                      style: AmoraTextStyles.pageHeaderTitle,
                     ),
                   ),
                   if (showMarkAllLabel)
@@ -484,7 +481,7 @@ class _AppBarButton extends StatelessWidget {
             focusColor: AppColors.tertiary.withValues(alpha: .24),
             highlightColor: AppColors.tertiary.withValues(alpha: .2),
           ),
-          icon: Icon(icon, size: 22),
+          icon: Icon(icon, size: 20),
         ),
       ),
     );

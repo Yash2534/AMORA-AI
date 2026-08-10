@@ -51,6 +51,22 @@ abstract final class AmoraTextStyles {
     fontWeight: FontWeight.w600,
     color: AppColors.primary,
   );
+
+  /// Compact page-heading token shared by primary and secondary headers.
+  static const pageHeaderTitle = TextStyle(
+    fontSize: 20,
+    height: 1.15,
+    fontWeight: FontWeight.w600,
+    letterSpacing: -0.1,
+    color: AppColors.primary,
+  );
+  static const pageHeaderSubtitle = TextStyle(
+    fontSize: 12,
+    height: 1.2,
+    fontWeight: FontWeight.w400,
+    letterSpacing: 0.2,
+    color: AppColors.textSecondary,
+  );
   static const titleMedium = TextStyle(
     fontSize: 16,
     height: 1.35,

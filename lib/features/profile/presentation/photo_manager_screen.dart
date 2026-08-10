@@ -946,7 +946,7 @@ class _ProfilePhotoCropPreviewScreenState
           onPressed: _usingPhoto ? null : () => Navigator.of(context).pop(),
           icon: const Icon(Icons.arrow_back_rounded),
         ),
-        titleSpacing: 0,
+        titleSpacing: AmoraSpacing.space8,
         title: const AmoraScreenTitle(
           title: 'Crop Photo',
           subtitle: 'Drag and zoom to frame your profile',

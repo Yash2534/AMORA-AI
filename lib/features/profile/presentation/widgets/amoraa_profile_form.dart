@@ -97,18 +97,14 @@ class _AmoraaProfileFormState extends State<AmoraaProfileForm> {
         appBar: AppBar(
           backgroundColor: AppColors.surface,
           surfaceTintColor: AppColors.surface,
-          titleSpacing: 0,
+          titleSpacing: AmoraSpacing.space8,
           title: const Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text('Edit profile'),
               Text(
                 'Update your AMORAA story',
-                style: TextStyle(
-                  color: AppColors.text,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w400,
-                ),
+                style: AmoraTextStyles.pageHeaderSubtitle,
               ),
             ],
           ),

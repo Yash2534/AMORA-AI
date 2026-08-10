@@ -1,5 +1,6 @@
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
+import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 
 class AmoraAppBar extends StatelessWidget implements PreferredSizeWidget {
@@ -32,7 +33,7 @@ class AmoraAppBar extends StatelessWidget implements PreferredSizeWidget {
       centerTitle: centerTitle,
       actions: actions,
       toolbarHeight: preferredSize.height,
-      titleSpacing: leading == null ? AmoraSpacing.x5 : 0,
+      titleSpacing: leading == null ? AmoraSpacing.x5 : AmoraSpacing.x2,
       title: Column(
         crossAxisAlignment: centerTitle
             ? CrossAxisAlignment.center
@@ -43,7 +44,7 @@ class AmoraAppBar extends StatelessWidget implements PreferredSizeWidget {
             title,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: AmoraTextStyles.titleMedium,
+            style: AmoraTextStyles.pageHeaderTitle,
           ),
           if (subtitle != null) ...[
             const SizedBox(height: AmoraSpacing.x1),
@@ -51,10 +52,52 @@ class AmoraAppBar extends StatelessWidget implements PreferredSizeWidget {
               subtitle!,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: AmoraTextStyles.bodySmall,
+              style: AmoraTextStyles.pageHeaderSubtitle,
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+/// Shared secondary-header leading control. Its 48 dp box keeps the visual
+/// arrow, focus ring, semantics, and pointer target consistent everywhere.
+class AmoraHeaderBackButton extends StatelessWidget {
+  const AmoraHeaderBackButton({
+    super.key,
+    required this.onPressed,
+    this.tooltip = 'Back',
+  });
+
+  final VoidCallback? onPressed;
+  final String tooltip;
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.center,
+      child: Semantics(
+        button: true,
+        label: 'Back',
+        child: ExcludeSemantics(
+          child: Tooltip(
+            message: tooltip,
+            child: SizedBox.square(
+              dimension: AmoraSpacing.minimumTouchTarget,
+              child: IconButton(
+                onPressed: onPressed,
+                style: IconButton.styleFrom(
+                  foregroundColor: AppColors.primary,
+                  hoverColor: AppColors.tertiary.withValues(alpha: .24),
+                  focusColor: AppColors.tertiary.withValues(alpha: .28),
+                  highlightColor: AppColors.tertiary.withValues(alpha: .2),
+                ),
+                icon: const Icon(Icons.arrow_back_rounded, size: 20),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

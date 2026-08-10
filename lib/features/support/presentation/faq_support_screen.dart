@@ -1,6 +1,8 @@
 import 'package:amora_ai/core/theme/amora_spacing.dart';
+import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
+import 'package:amora_ai/core/widgets/amora_app_bar.dart';
 import 'package:amora_ai/core/widgets/amoraa_select_field.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/legal/presentation/community_guidelines_screen.dart';
@@ -243,21 +245,10 @@ class FaqSupportAppBar extends StatelessWidget {
     return Semantics(
       header: true,
       child: SizedBox(
-        height: 68,
+        height: AmoraSpacing.appBarWithSubtitleHeight,
         child: Row(
           children: [
-            IconButton(
-              tooltip: 'Back',
-              constraints: const BoxConstraints.tightFor(
-                width: AmoraSpacing.minimumTouchTarget,
-                height: AmoraSpacing.minimumTouchTarget,
-              ),
-              onPressed: onBack,
-              icon: const Icon(
-                Icons.arrow_back_rounded,
-                color: AppColors.primary,
-              ),
-            ),
+            AmoraHeaderBackButton(onPressed: onBack),
             const SizedBox(width: 8),
             const Expanded(
               child: Column(
@@ -268,39 +259,31 @@ class FaqSupportAppBar extends StatelessWidget {
                     'Support Center',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: AppColors.primary,
-                      fontSize: 28,
-                      height: 1.08,
-                      fontWeight: FontWeight.w700,
-                    ),
+                    style: AmoraTextStyles.pageHeaderTitle,
                   ),
                   SizedBox(height: 3),
                   Text(
                     'Answers, reporting, and help from AMORAA.',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: AppColors.text,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w400,
-                    ),
+                    style: AmoraTextStyles.pageHeaderSubtitle,
                   ),
                 ],
               ),
             ),
             const SizedBox(width: 8),
             Container(
-              width: 44,
-              height: 44,
+              width: AmoraSpacing.minimumTouchTarget,
+              height: AmoraSpacing.minimumTouchTarget,
               decoration: BoxDecoration(
                 color: AppColors.surface,
-                borderRadius: BorderRadius.circular(15),
+                borderRadius: BorderRadius.circular(AmoraRadius.large),
                 border: Border.all(color: AppColors.tertiary),
               ),
               child: const Icon(
                 Icons.help_outline_rounded,
                 color: AppColors.secondary,
+                size: 20,
               ),
             ),
           ],

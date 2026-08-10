@@ -2,6 +2,7 @@ import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/amora_screen_title.dart';
+import 'package:amora_ai/core/widgets/amora_app_bar.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/premium_motion.dart';
@@ -365,45 +366,36 @@ class MembershipAppBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        IconButton(
-          tooltip: 'Back',
-          constraints: const BoxConstraints.tightFor(width: 48, height: 48),
-          onPressed: () => Navigator.of(context).maybePop(),
-          icon: const Icon(Icons.arrow_back_rounded),
-        ),
-        const SizedBox(width: 8),
-        const Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'AMORAA Membership',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: AppColors.primary,
-                  fontSize: 26,
-                  height: 1.08,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              SizedBox(height: 3),
-              Text(
-                'Connect better. Meet meaningfully.',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: AppColors.text,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w400,
-                ),
-              ),
-            ],
+    return SizedBox(
+      height: AmoraSpacing.appBarWithSubtitleHeight,
+      child: Row(
+        children: [
+          AmoraHeaderBackButton(
+            onPressed: () => Navigator.of(context).maybePop(),
           ),
-        ),
-      ],
+          const SizedBox(width: 8),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'AMORAA Membership',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AmoraTextStyles.pageHeaderTitle,
+                ),
+                SizedBox(height: 3),
+                Text(
+                  'Connect better. Meet meaningfully.',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AmoraTextStyles.pageHeaderSubtitle,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

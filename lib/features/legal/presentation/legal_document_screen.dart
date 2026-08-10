@@ -70,7 +70,7 @@ class LegalDocumentScreen extends StatelessWidget {
                 pinned: true,
                 backgroundColor: AppColors.background.withValues(alpha: .96),
                 surfaceTintColor: AppColors.background,
-                titleSpacing: 0,
+                titleSpacing: AmoraSpacing.space8,
                 title: Text(title, maxLines: 1),
               ),
               SliverPadding(
