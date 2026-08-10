@@ -30,7 +30,7 @@ import 'package:amora_ai/features/legal/presentation/community_guidelines_screen
 import 'package:amora_ai/features/matches/presentation/matches_screen.dart';
 import 'package:amora_ai/features/messaging/presentation/match_screen.dart';
 import 'package:amora_ai/features/notifications/presentation/notifications_hub_screen.dart';
-import 'package:amora_ai/features Support in Industry environment/onboarding/presentation/onboarding_screen.dart';
+import 'package:amora_ai/features/onboarding/presentation/onboarding_screen.dart';
 import 'package:amora_ai/features/onboarding/presentation/profile_onboarding_flow.dart';
 import 'package:amora_ai/features/onboarding/data/local_onboarding_repository.dart';
 import 'package:amora_ai/features/payment/presentation/payment_screen.dart';

@@ -389,15 +389,8 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
       return;
     }
     FocusManager.instance.primaryFocus?.unfocus();
-    final request = widget.requestOtp;
-    if (request == null) {
-      setState(() {
-        _error =
-            'Mobile verification is unavailable right now. Please try again shortly.';
-        _confirmation = null;
-      });
-      return;
-    }
+    final request =
+        widget.requestOtp ?? AuthService.instance.resendVerification;
     setState(() {
       if (resend) {
         _isResendingOtp = true;
@@ -408,7 +401,7 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
       _confirmation = null;
     });
     try {
-      await request(_normalizedPhone);
+      await request(_localNumber);
       if (!mounted) return;
       setState(() {
         _isSendingOtp = false;
@@ -434,14 +427,7 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
     if (_isBusy || !_isCompleteOtp) {
       return;
     }
-    final verify = widget.verifyOtp;
-    if (verify == null) {
-      setState(
-        () => _error =
-            'Mobile verification is unavailable right now. Please try again shortly.',
-      );
-      return;
-    }
+    final verify = widget.verifyOtp ?? AuthService.instance.verifyAccount;
     FocusManager.instance.primaryFocus?.unfocus();
     setState(() {
       _isVerifyingOtp = true;
@@ -449,7 +435,7 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
       _confirmation = null;
     });
     try {
-      await verify(_normalizedPhone, _otp);
+      await verify(_localNumber, _otp);
       if (!mounted) return;
       _timer?.cancel();
       AmoraSession.logIn();

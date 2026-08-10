@@ -8,6 +8,7 @@ import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/features/auth/presentation/reset_password_screen.dart';
 import 'package:amora_ai/features/auth/presentation/widgets/auth_presentation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 typedef RecoveryCodeRequester = Future<void> Function(String destination);
 typedef RecoveryCodeVerifier =
@@ -48,10 +49,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       _codeControllers.map((controller) => controller.text).join();
 
   String get _maskedDestination {
-    final email = _destinationController.text.trim();
-    final at = email.indexOf('@');
-    if (at <= 1) return email;
-    return '${email.substring(0, 1)}••••${email.substring(at)}';
+    final phoneNumber = _destinationController.text.trim();
+    if (phoneNumber.length < 4) return phoneNumber;
+    return '+91 ${phoneNumber.substring(0, 2)}•••••${phoneNumber.substring(phoneNumber.length - 3)}';
   }
 
   @override
@@ -74,7 +74,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       title: enteringCode ? 'Enter verification code' : 'Reset your password',
       subtitle: enteringCode
           ? 'We sent a code to $_maskedDestination.'
-          : 'Enter your registered email and we’ll send a verification code.',
+          : 'Enter your registered mobile number and we’ll send a verification code.',
       stepLabel: enteringCode ? 'Step 2 of 3' : 'Step 1 of 3',
       child: AnimatedSwitcher(
         duration: MediaQuery.disableAnimationsOf(context)
@@ -93,16 +93,20 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           AmoraAuthField(
-            key: const ValueKey('recovery-email-field'),
+            key: const ValueKey('recovery-phone-field'),
             controller: _destinationController,
-            label: 'Registered email',
-            hint: 'you@example.com',
-            icon: Icons.mail_outline_rounded,
-            keyboardType: TextInputType.emailAddress,
+            label: 'Registered mobile number',
+            hint: '10-digit mobile number',
+            icon: Icons.phone_outlined,
+            keyboardType: TextInputType.phone,
             textInputAction: TextInputAction.done,
-            autofillHints: const [AutofillHints.email],
+            autofillHints: const [AutofillHints.telephoneNumber],
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+              LengthLimitingTextInputFormatter(10),
+            ],
             enabled: !_loading,
-            validator: _validateEmail,
+            validator: _validatePhoneNumber,
             onSubmitted: (_) => _requestCode(),
           ),
           if (_error != null) ...[
@@ -179,7 +183,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         ),
         const SizedBox(height: AmoraSpacing.space8),
         AppPrimaryButton(
-          label: 'Change email',
+          label: 'Change mobile number',
           variant: AppPrimaryButtonVariant.text,
           size: AmoraButtonSize.compact,
           fullWidth: false,
@@ -189,11 +193,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     );
   }
 
-  String? _validateEmail(String? value) {
+  String? _validatePhoneNumber(String? value) {
     final text = value?.trim() ?? '';
-    if (text.isEmpty) return 'Email is required';
-    if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(text)) {
-      return 'Enter a valid email address';
+    if (text.isEmpty) return 'Mobile number is required';
+    if (!RegExp(r'^[6-9]\d{9}$').hasMatch(text)) {
+      return 'Enter a valid 10-digit mobile number';
     }
     return null;
   }
@@ -258,7 +262,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       Navigator.of(context).pushNamed(
         ResetPasswordScreen.routeName,
         arguments: ResetPasswordArgs(
-          destination: _destinationController.text.trim(),
+          phoneNumber: _destinationController.text.trim(),
           recoveryToken: token,
         ),
       );

@@ -85,12 +85,12 @@ class AuthService {
     });
   }
 
-  Future<void> resendVerification(String email) async =>
-      _post('/api/auth/resend-verification-code', {'email': email});
+  Future<void> resendVerification(String phoneNumber) async =>
+      _post('/api/auth/resend-verification-code', {'phoneNumber': phoneNumber});
 
-  Future<AmoraUser> verifyAccount(String email, String code) async {
+  Future<AmoraUser> verifyAccount(String phoneNumber, String code) async {
     final response = await _post('/api/auth/verify-account', {
-      'email': email,
+      'phoneNumber': phoneNumber,
       'code': code,
     });
     return _saveAuthentication(response);
@@ -106,35 +106,37 @@ class AuthService {
 
   Future<AmoraUser> googleSignIn() async {
     final account = await GoogleSignIn(scopes: const ['email']).signIn();
-    if (account == null)
+    if (account == null) {
       throw const AuthException('Google sign-in was cancelled.');
+    }
     final authentication = await account.authentication;
     final idToken = authentication.idToken;
-    if (idToken == null)
+    if (idToken == null) {
       throw const AuthException(
         'Google did not return an ID token. Check the app OAuth configuration.',
       );
+    }
     final response = await _post('/api/auth/google', {'idToken': idToken});
     return _saveAuthentication(response);
   }
 
-  Future<void> forgotPassword(String email) async =>
-      _post('/api/auth/forgot-password', {'email': email});
+  Future<void> forgotPassword(String phoneNumber) async =>
+      _post('/api/auth/forgot-password', {'phoneNumber': phoneNumber});
 
-  Future<String> verifyResetCode(String email, String code) async {
+  Future<String> verifyResetCode(String phoneNumber, String code) async {
     final response = await _post('/api/auth/verify-reset-code', {
-      'email': email,
+      'phoneNumber': phoneNumber,
       'code': code,
     });
     return _data(response)['recoveryToken'] as String;
   }
 
   Future<void> resetPassword(
-    String email,
+    String phoneNumber,
     String recoveryToken,
     String newPassword,
   ) async => _post('/api/auth/reset-password', {
-    'email': email,
+    'phoneNumber': phoneNumber,
     'recoveryToken': recoveryToken,
     'newPassword': newPassword,
   });
@@ -146,10 +148,11 @@ class AuthService {
 
   Future<void> logout() async {
     try {
-      if (_accessToken != null && _refreshToken != null)
+      if (_accessToken != null && _refreshToken != null) {
         await _post('/api/auth/logout', {
           'refreshToken': _refreshToken,
         }, authenticated: true);
+      }
     } on AuthException {
       // Local token removal is still required if the network is unavailable.
     } finally {
@@ -194,8 +197,9 @@ class AuthService {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
       };
-      if (authenticated && _accessToken != null)
+      if (authenticated && _accessToken != null) {
         headers['Authorization'] = 'Bearer $_accessToken';
+      }
       final request = http.Request(method, uri)..headers.addAll(headers);
       if (body != null) request.body = jsonEncode(body);
       final streamed = await _client
