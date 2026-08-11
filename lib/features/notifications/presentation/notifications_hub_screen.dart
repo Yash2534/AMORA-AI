@@ -5,6 +5,7 @@ import 'package:amora_ai/core/constants/app_images.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
+import 'package:amora_ai/core/widgets/amora_app_bar.dart';
 import 'package:amora_ai/core/widgets/amora_filter_chip.dart';
 import 'package:amora_ai/core/widgets/premium_asset_image.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
@@ -84,20 +85,51 @@ class _NotificationsHubScreenState extends State<NotificationsHubScreen> {
     final unreadCount = _unreadCount;
     return Scaffold(
       backgroundColor: AppColors.background,
+      appBar: AmoraAppBar(
+        title: 'Notifications',
+        maxContentWidth: 680,
+        leading: AmoraHeaderBackButton(
+          key: const ValueKey('notifications-back-button'),
+          onPressed: _goBack,
+        ),
+        actions: [
+          if (MediaQuery.sizeOf(context).width >= 520)
+            TextButton.icon(
+              key: const ValueKey('notifications-mark-all-read-button'),
+              onPressed: unreadCount == 0 ? null : () => unawaited(_markAllRead()),
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                minimumSize: const Size(48, 48),
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+              ),
+              icon: const Icon(Icons.mark_email_read_rounded, size: 20),
+              label: const Text('Mark all'),
+            )
+          else
+            AmoraHeaderActionButton(
+              key: const ValueKey('notifications-mark-all-read-button'),
+              tooltip: 'Mark all as read',
+              semanticLabel: 'Mark all notifications as read',
+              icon: Icons.mark_email_read_rounded,
+              onPressed: unreadCount == 0 ? null : () => unawaited(_markAllRead()),
+            ),
+          AmoraHeaderActionButton(
+            key: const ValueKey('notifications-settings-button'),
+            tooltip: 'Notification preferences',
+            semanticLabel: 'Open notification preferences',
+            icon: Icons.settings_rounded,
+            onPressed: () => Navigator.of(
+              context,
+            ).pushNamed(NotificationPreferencesScreen.routeName),
+          ),
+        ],
+      ),
       body: SafeArea(
+        top: false,
         child: ResponsiveMobileFrame(
           maxWidth: 680,
           child: Column(
             children: [
-              _NotificationsAppBar(
-                onBack: _goBack,
-                onMarkAllRead: unreadCount == 0
-                    ? null
-                    : () => unawaited(_markAllRead()),
-                onSettings: () => Navigator.of(
-                  context,
-                ).pushNamed(NotificationPreferencesScreen.routeName),
-              ),
               if (unreadCount > 0)
                 _NotificationsSummaryStrip(
                   unreadCount: unreadCount,
@@ -321,111 +353,6 @@ class _NotificationsHubScreenState extends State<NotificationsHubScreen> {
   }
 }
 
-class _NotificationsAppBar extends StatelessWidget {
-  const _NotificationsAppBar({
-    required this.onBack,
-    required this.onMarkAllRead,
-    required this.onSettings,
-  });
-
-  final VoidCallback onBack;
-  final VoidCallback? onMarkAllRead;
-  final VoidCallback onSettings;
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      key: const ValueKey('notifications-header'),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        border: Border(
-          bottom: BorderSide(color: AppColors.tertiary.withValues(alpha: .46)),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withValues(alpha: .045),
-            blurRadius: 14,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: SizedBox(
-        height: AmoraSpacing.appBarHeight,
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final showMarkAllLabel = constraints.maxWidth >= 520;
-            return Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AmoraSpacing.space16,
-              ),
-              child: Row(
-                children: [
-                  _AppBarButton(
-                    key: const ValueKey('notifications-back-button'),
-                    tooltip: 'Back',
-                    semanticLabel: 'Back from notifications',
-                    icon: Icons.arrow_back_rounded,
-                    onTap: onBack,
-                  ),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Text(
-                      'Notifications',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AmoraTextStyles.pageHeaderTitle,
-                    ),
-                  ),
-                  if (showMarkAllLabel)
-                    Tooltip(
-                      message: 'Mark all as read',
-                      child: Semantics(
-                        button: true,
-                        enabled: onMarkAllRead != null,
-                        label: 'Mark all notifications as read',
-                        child: TextButton.icon(
-                          key: const ValueKey(
-                            'notifications-mark-all-read-button',
-                          ),
-                          onPressed: onMarkAllRead,
-                          style: TextButton.styleFrom(
-                            foregroundColor: AppColors.primary,
-                            minimumSize: const Size(48, 48),
-                            padding: const EdgeInsets.symmetric(horizontal: 10),
-                          ),
-                          icon: const Icon(
-                            Icons.mark_email_read_rounded,
-                            size: 20,
-                          ),
-                          label: const Text('Mark all'),
-                        ),
-                      ),
-                    )
-                  else
-                    _AppBarButton(
-                      key: const ValueKey('notifications-mark-all-read-button'),
-                      tooltip: 'Mark all as read',
-                      semanticLabel: 'Mark all notifications as read',
-                      icon: Icons.mark_email_read_rounded,
-                      onTap: onMarkAllRead,
-                    ),
-                  _AppBarButton(
-                    key: const ValueKey('notifications-settings-button'),
-                    tooltip: 'Notification preferences',
-                    semanticLabel: 'Open notification preferences',
-                    icon: Icons.settings_rounded,
-                    onTap: onSettings,
-                  ),
-                ],
-              ),
-            );
-          },
-        ),
-      ),
-    );
-  }
-}
-
 class _NotificationsSummaryStrip extends StatelessWidget {
   const _NotificationsSummaryStrip({
     required this.unreadCount,
@@ -498,45 +425,6 @@ class _NotificationsSummaryStrip extends StatelessWidget {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _AppBarButton extends StatelessWidget {
-  const _AppBarButton({
-    super.key,
-    required this.tooltip,
-    required this.semanticLabel,
-    required this.icon,
-    required this.onTap,
-  });
-
-  final String tooltip;
-  final String semanticLabel;
-  final IconData icon;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      enabled: onTap != null,
-      label: semanticLabel,
-      child: SizedBox.square(
-        dimension: 48,
-        child: IconButton(
-          tooltip: tooltip,
-          onPressed: onTap,
-          style: IconButton.styleFrom(
-            foregroundColor: AppColors.primary,
-            disabledForegroundColor: AppColors.tertiary,
-            hoverColor: AppColors.background,
-            focusColor: AppColors.tertiary.withValues(alpha: .24),
-            highlightColor: AppColors.tertiary.withValues(alpha: .2),
-          ),
-          icon: Icon(icon, size: 20),
         ),
       ),
     );

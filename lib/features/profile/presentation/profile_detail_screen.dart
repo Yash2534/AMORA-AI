@@ -6,6 +6,7 @@ import 'package:amora_ai/core/data/image_repository.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
+import 'package:amora_ai/core/widgets/amora_app_bar.dart';
 import 'package:amora_ai/core/widgets/amora_super_like_animation.dart';
 import 'package:amora_ai/core/widgets/amoraa_confirm_action_sheet.dart';
 import 'package:amora_ai/core/widgets/amoraa_identity_badge.dart';
@@ -183,7 +184,10 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
     if (_profileUnavailable ||
         (_routeProfile == null && widget.profile == null)) {
       return Scaffold(
-        appBar: AppBar(),
+        appBar: AmoraAppBar(
+          title: 'Profile',
+          onBack: () => Navigator.of(context).maybePop(),
+        ),
         body: Center(child: Text(_loadError ?? 'Profile is unavailable.')),
       );
     }

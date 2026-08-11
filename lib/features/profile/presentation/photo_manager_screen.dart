@@ -77,13 +77,20 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
   Widget build(BuildContext context) {
     final photos = _repository.currentPhotos;
     return Scaffold(
+      appBar: AmoraAppBar(
+        title: 'Photo Manager',
+        subtitle: 'Choose clear photos that represent you.',
+        onBack: () => Navigator.of(context).maybePop(),
+        maxContentWidth: 820,
+      ),
       body: SafeArea(
+        top: false,
         child: ResponsiveMobileFrame(
           maxWidth: 820,
           child: LayoutBuilder(
             builder: (context, constraints) => SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(
-                AmoraSpacing.space20,
+                AmoraSpacing.space16,
                 AmoraSpacing.space20,
                 AmoraSpacing.space20,
                 AmoraSpacing.navigationContentInset,
@@ -91,8 +98,6 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const _Header(),
-                  const SizedBox(height: 18),
                   Row(
                     children: [
                       Expanded(
@@ -412,28 +417,6 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
     return uri != null &&
         (uri.scheme == 'http' || uri.scheme == 'https') &&
         uri.host.isNotEmpty;
-  }
-}
-
-class _Header extends StatelessWidget {
-  const _Header();
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        AmoraHeaderBackButton(
-          onPressed: () => Navigator.of(context).maybePop(),
-        ),
-        const SizedBox(width: AmoraSpacing.space8),
-        const Expanded(
-          child: AmoraScreenTitle(
-            title: 'Photo Manager',
-            subtitle: 'Choose clear photos that represent you.',
-          ),
-        ),
-      ],
-    );
   }
 }
 
@@ -817,6 +800,7 @@ class _ProfilePhotoViewerScreenState extends State<ProfilePhotoViewerScreen> {
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: '${_index + 1} of ${widget.photos.length}',
+        maxContentWidth: double.infinity,
       ),
       body: SafeArea(
         top: false,
@@ -948,6 +932,7 @@ class _ProfilePhotoCropPreviewScreenState
         ),
         title: 'Crop Photo',
         subtitle: 'Drag and zoom to frame your profile',
+        maxContentWidth: 720,
       ),
       body: SafeArea(
         top: false,

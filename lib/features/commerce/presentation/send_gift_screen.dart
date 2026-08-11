@@ -1,6 +1,5 @@
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/widgets/amora_app_bar.dart';
-import 'package:amora_ai/core/widgets/amora_screen_title.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/monetization/data/monetization_repository.dart';
@@ -36,26 +35,21 @@ class _SendGiftScreenState extends State<SendGiftScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AmoraAppBar(
+        title: 'Send a Gift',
+        onBack: () => Navigator.of(context).maybePop(),
+      ),
       body: SafeArea(
+        top: false,
         child: ResponsiveMobileFrame(
           child: ListView(
             padding: const EdgeInsets.fromLTRB(
-              20,
+              AmoraSpacing.space16,
               20,
               20,
               AmoraSpacing.navigationContentInset,
             ),
             children: [
-              Row(
-                children: [
-                  AmoraHeaderBackButton(
-                    onPressed: () => Navigator.of(context).maybePop(),
-                  ),
-                  const SizedBox(width: 8),
-                  const Expanded(child: AmoraScreenTitle(title: 'Send a Gift')),
-                ],
-              ),
-              const SizedBox(height: 20),
               if (_gifts == null && _error == null)
                 const Center(child: CircularProgressIndicator()),
               if (_error != null) PremiumCard(child: Text(_error!)),

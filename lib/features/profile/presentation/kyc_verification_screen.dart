@@ -7,7 +7,6 @@ import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/amora_app_bar.dart';
-import 'package:amora_ai/core/widgets/amora_screen_title.dart';
 import 'package:amora_ai/core/widgets/amoraa_adaptive_image.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
@@ -56,7 +55,22 @@ class _KycVerificationScreenState extends State<KycVerificationScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
+      appBar: AmoraAppBar(
+        title: 'Identity Verification',
+        subtitle: 'Secure, guided, and private',
+        onBack: () => Navigator.of(context).maybePop(),
+        actions: [
+          AppPrimaryButton(
+            label: 'Skip',
+            variant: AppPrimaryButtonVariant.text,
+            size: AmoraButtonSize.compact,
+            fullWidth: false,
+            onPressed: _goHome,
+          ),
+        ],
+      ),
       body: SafeArea(
+        top: false,
         child: ResponsiveMobileFrame(
           maxWidth: 720,
           child: CustomScrollView(
@@ -65,18 +79,13 @@ class _KycVerificationScreenState extends State<KycVerificationScreen> {
               SliverPadding(
                 padding: EdgeInsets.fromLTRB(
                   AmoraSpacing.space20,
-                  AmoraSpacing.space12,
+                  AmoraSpacing.space16,
                   AmoraSpacing.space20,
                   AmoraSpacing.space32 +
                       MediaQuery.viewPaddingOf(context).bottom,
                 ),
                 sliver: SliverList.list(
                   children: [
-                    _KycHeader(
-                      onBack: () => Navigator.of(context).maybePop(),
-                      onSkip: _goHome,
-                    ),
-                    const SizedBox(height: AmoraSpacing.space20),
                     _KycHero(progress: _progress, stage: _stage),
                     const SizedBox(height: AmoraSpacing.space16),
                     _VerificationTimeline(stage: _stage),
@@ -285,36 +294,6 @@ class _KycVerificationScreenState extends State<KycVerificationScreen> {
     Navigator.of(
       context,
     ).pushNamedAndRemoveUntil(BrowseGridScreen.routeName, (route) => false);
-  }
-}
-
-class _KycHeader extends StatelessWidget {
-  const _KycHeader({required this.onBack, required this.onSkip});
-
-  final VoidCallback onBack;
-  final VoidCallback onSkip;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        AmoraHeaderBackButton(onPressed: onBack),
-        const SizedBox(width: AmoraSpacing.space8),
-        const Expanded(
-          child: AmoraScreenTitle(
-            title: 'Identity Verification',
-            subtitle: 'Secure, guided, and private',
-          ),
-        ),
-        AppPrimaryButton(
-          label: 'Skip',
-          variant: AppPrimaryButtonVariant.text,
-          size: AmoraButtonSize.compact,
-          fullWidth: false,
-          onPressed: onSkip,
-        ),
-      ],
-    );
   }
 }
 

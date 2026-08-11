@@ -68,20 +68,10 @@ class LegalDocumentScreen extends StatelessWidget {
           maxWidth: 760,
           child: CustomScrollView(
             slivers: [
-              SliverAppBar(
-                pinned: true,
-                backgroundColor: AppColors.background.withValues(alpha: .96),
-                surfaceTintColor: AppColors.background,
-                toolbarHeight: AmoraHeaderTokens.singleLineHeight,
-                leadingWidth: AmoraSpacing.space56,
-                leading: Padding(
-                  padding: const EdgeInsets.only(left: AmoraSpacing.space4),
-                  child: AmoraHeaderBackButton(
-                    onPressed: () => Navigator.of(context).maybePop(),
-                  ),
-                ),
-                titleSpacing: AmoraHeaderTokens.backTitleGap,
-                title: Text(title, maxLines: 1),
+              AmoraSliverAppBar(
+                title: title,
+                onBack: () => Navigator.of(context).maybePop(),
+                maxContentWidth: 760,
               ),
               SliverPadding(
                 padding: EdgeInsets.fromLTRB(
@@ -118,8 +108,6 @@ class LegalDocumentScreen extends StatelessWidget {
                             ],
                           ),
                           const SizedBox(height: AmoraSpacing.space20),
-                          Text(title, style: AmoraTextStyles.headlineLarge),
-                          const SizedBox(height: AmoraSpacing.space8),
                           Text(
                             updated,
                             style: AmoraTextStyles.labelMedium.copyWith(

@@ -1,7 +1,6 @@
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/amora_app_bar.dart';
-import 'package:amora_ai/core/widgets/amora_screen_title.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/events/domain/event_models.dart';
 import 'package:amora_ai/features/events/domain/my_event_category.dart';
@@ -60,14 +59,20 @@ class _MyEventsScreenState extends State<MyEventsScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
+      appBar: AmoraAppBar(
+        title: 'My Events',
+        subtitle: 'Your plans, bookings, and event history.',
+        onBack: () => Navigator.of(context).maybePop(),
+        maxContentWidth: 920,
+      ),
       body: SafeArea(
+        top: false,
         child: ResponsiveMobileFrame(
           maxWidth: 920,
           child: Column(
             children: [
-              const _MyEventsHeader(),
               Padding(
-                padding: const EdgeInsets.fromLTRB(18, 14, 18, 8),
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
                 child: _CategoryTabs(
                   controller: _tabController,
                   participation: _controller,
@@ -188,31 +193,6 @@ class _MyEventsScreenState extends State<MyEventsScreen>
     if (mounted) {
       showEventSnack(context, 'You left ${registration.event.title} waitlist');
     }
-  }
-}
-
-class _MyEventsHeader extends StatelessWidget {
-  const _MyEventsHeader();
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 14, 20, 0),
-      child: Row(
-        children: [
-          AmoraHeaderBackButton(
-            onPressed: () => Navigator.of(context).maybePop(),
-          ),
-          const SizedBox(width: 8),
-          const Expanded(
-            child: AmoraScreenTitle(
-              title: 'My Events',
-              subtitle: 'Your plans, bookings, and event history.',
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }
 

@@ -3,7 +3,6 @@ import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/permissions/amoraa_permission_service.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/amora_app_bar.dart';
-import 'package:amora_ai/core/widgets/amora_screen_title.dart';
 import 'package:amora_ai/core/widgets/amoraa_select_field.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
@@ -50,12 +49,18 @@ class _SosCheckinScreenState extends State<SosCheckinScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AmoraAppBar(
+        title: 'Date Check-in',
+        subtitle: 'Share safety status with people you trust.',
+        onBack: () => Navigator.of(context).maybePop(),
+      ),
       body: SafeArea(
+        top: false,
         child: ResponsiveMobileFrame(
           child: LayoutBuilder(
             builder: (context, constraints) => SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(
-                AmoraSpacing.space20,
+                AmoraSpacing.space16,
                 AmoraSpacing.space20,
                 AmoraSpacing.space20,
                 AmoraSpacing.navigationContentInset,
@@ -65,8 +70,6 @@ class _SosCheckinScreenState extends State<SosCheckinScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _Header(onBack: () => Navigator.of(context).maybePop()),
-                    const SizedBox(height: 18),
                     ScaleTransition(
                       scale: _pulse,
                       child: PremiumCard(
@@ -207,43 +210,6 @@ class _SosCheckinScreenState extends State<SosCheckinScreen>
       category: AmoraaPermissionCategory.location,
       result: result,
       service: _permissionService,
-    );
-  }
-}
-
-class _Header extends StatelessWidget {
-  const _Header({required this.onBack});
-
-  final VoidCallback onBack;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        AmoraHeaderBackButton(onPressed: onBack),
-        const SizedBox(width: AmoraSpacing.space8),
-        Container(
-          width: 52,
-          height: 52,
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [AppColors.secondary, AppColors.primary],
-            ),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: const Icon(
-            Icons.health_and_safety_rounded,
-            color: AppColors.surface,
-          ),
-        ),
-        const SizedBox(width: 12),
-        const Expanded(
-          child: AmoraScreenTitle(
-            title: 'Date Check-in',
-            subtitle: 'Share safety status with people you trust.',
-          ),
-        ),
-      ],
     );
   }
 }

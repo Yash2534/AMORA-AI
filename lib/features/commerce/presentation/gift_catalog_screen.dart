@@ -1,7 +1,6 @@
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/amora_app_bar.dart';
-import 'package:amora_ai/core/widgets/amora_screen_title.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/monetization/data/monetization_repository.dart';
@@ -50,7 +49,13 @@ class _GiftShopCatalogScreenState extends State<GiftShopCatalogScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
+    appBar: AmoraAppBar(
+      title: 'Gift Catalog',
+      subtitle: 'Prices are loaded from AMORAA',
+      onBack: () => Navigator.of(context).maybePop(),
+    ),
     body: SafeArea(
+      top: false,
       child: ResponsiveMobileFrame(
         child: _loading
             ? const Center(child: CircularProgressIndicator())
@@ -66,26 +71,11 @@ class _GiftShopCatalogScreenState extends State<GiftShopCatalogScreen> {
                 child: ListView(
                   padding: const EdgeInsets.fromLTRB(
                     20,
-                    16,
+                    AmoraSpacing.space16,
                     20,
                     AmoraSpacing.navigationContentInset,
                   ),
                   children: [
-                    Row(
-                      children: [
-                        AmoraHeaderBackButton(
-                          onPressed: () => Navigator.of(context).maybePop(),
-                        ),
-                        const SizedBox(width: 8),
-                        const Expanded(
-                          child: AmoraScreenTitle(
-                            title: 'Gift Catalog',
-                            subtitle: 'Prices are loaded from AMORAA',
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 18),
                     if (_gifts.isEmpty)
                       const PremiumCard(
                         child: Text('No gifts are currently available.'),

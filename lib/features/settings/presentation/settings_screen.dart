@@ -2,7 +2,7 @@ import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/floating_bottom_nav.dart';
-import 'package:amora_ai/core/widgets/amora_screen_title.dart';
+import 'package:amora_ai/core/widgets/amora_app_bar.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/events/presentation/events_screen.dart';
@@ -35,23 +35,22 @@ class SettingsScreen extends StatelessWidget {
           child: ResponsiveMobileFrame(
             child: LayoutBuilder(
               builder: (context, constraints) {
-                final padding = constraints.maxWidth < 380 ? 18.0 : 24.0;
                 return Stack(
                   children: [
                     SingleChildScrollView(
                       padding: EdgeInsets.fromLTRB(
-                        padding,
-                        22,
-                        padding,
+                        AmoraSpacing.space20,
+                        AmoraSpacing.space4,
+                        AmoraSpacing.space20,
                         FloatingBottomNav.contentBottomPaddingFor(context),
                       ),
                       child: Column(
                         children: [
-                          const AmoraScreenTitle(
+                          const AmoraInlinePageHeader(
                             title: 'Settings',
                             subtitle: 'Manage premium, safety, and events.',
                           ),
-                          const SizedBox(height: 18),
+                          const SizedBox(height: AmoraSpacing.space16),
                           for (final group in _settingsGroups) ...[
                             _SettingsGroupCard(group: group),
                             const SizedBox(height: 16),

@@ -66,9 +66,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
           maxWidth: 560,
           child: LayoutBuilder(
             builder: (context, constraints) {
-              final horizontalPadding = constraints.maxWidth < 390
-                  ? AmoraSpacing.space16
-                  : AmoraSpacing.space24;
+              const horizontalPadding = AmoraSpacing.space20;
               final bottomPadding =
                   AmoraSpacing.space24 +
                   MediaQuery.viewPaddingOf(context).bottom +
@@ -79,7 +77,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                     ScrollViewKeyboardDismissBehavior.onDrag,
                 padding: EdgeInsets.fromLTRB(
                   horizontalPadding,
-                  AmoraSpacing.space12,
+                  AmoraSpacing.space4,
                   horizontalPadding,
                   bottomPadding,
                 ),
@@ -88,7 +86,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                     minHeight: math.max(
                       0,
                       constraints.maxHeight -
-                          AmoraSpacing.space12 -
+                          AmoraSpacing.space4 -
                           bottomPadding,
                     ),
                   ),
@@ -104,7 +102,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                           canGoBack: Navigator.of(context).canPop(),
                           onBack: () => Navigator.of(context).maybePop(),
                         ),
-                        const SizedBox(height: AmoraSpacing.space24),
+                        const SizedBox(height: AmoraSpacing.space16),
                         Text(
                           'Tell us about yourself',
                           textAlign: TextAlign.center,

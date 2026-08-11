@@ -5,7 +5,6 @@ import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/amora_dialog.dart';
 import 'package:amora_ai/core/widgets/amora_app_bar.dart';
-import 'package:amora_ai/core/widgets/amora_screen_title.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/app_text_field.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
@@ -77,11 +76,16 @@ class _PostEventFeedbackScreenState extends State<PostEventFeedbackScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AmoraAppBar(
+        title: 'Event Feedback',
+        onBack: () => Navigator.of(context).maybePop(),
+      ),
       body: SafeArea(
+        top: false,
         child: ResponsiveMobileFrame(
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(
-              AmoraSpacing.space20,
+              AmoraSpacing.space16,
               AmoraSpacing.space20,
               AmoraSpacing.space20,
               AmoraSpacing.navigationContentInset,
@@ -89,8 +93,6 @@ class _PostEventFeedbackScreenState extends State<PostEventFeedbackScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const _Header(),
-                const SizedBox(height: AmoraSpacing.space20),
                 for (final entry in _ratings.entries)
                   Padding(
                     padding: const EdgeInsets.only(
@@ -233,18 +235,6 @@ class _PostEventFeedbackScreenState extends State<PostEventFeedbackScreen> {
     }
     setState(() => _photo = result.media);
   }
-}
-
-class _Header extends StatelessWidget {
-  const _Header();
-  @override
-  Widget build(BuildContext context) => Row(
-    children: [
-      AmoraHeaderBackButton(onPressed: () => Navigator.of(context).maybePop()),
-      const SizedBox(width: AmoraSpacing.space8),
-      const Expanded(child: AmoraScreenTitle(title: 'Event Feedback')),
-    ],
-  );
 }
 
 class _RatingCard extends StatelessWidget {

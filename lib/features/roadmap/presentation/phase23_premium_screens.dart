@@ -1,5 +1,6 @@
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
+import 'package:amora_ai/core/widgets/amora_app_bar.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/core/widgets/section_header.dart';
@@ -15,7 +16,6 @@ class RelationshipEcosystemHubScreen extends StatelessWidget {
     return _PremiumScaffold(
       title: 'Relationship Ecosystem',
       subtitle: 'Phase 2 and Phase 3 AI modules for deeper connection.',
-      icon: Icons.favorite_rounded,
       children: [
         const _SearchAndFilters(
           hint: 'Search AI modules',
@@ -188,7 +188,6 @@ class _FirstDateQuestionDeckScreenState
     return _PremiumScaffold(
       title: 'First-Date Question Deck',
       subtitle: 'AI-generated conversation cards for natural chemistry.',
-      icon: Icons.style_rounded,
       children: [
         const _SearchAndFilters(
           hint: 'Search categories',
@@ -788,7 +787,6 @@ class _ModuleDashboardScreen extends StatelessWidget {
     return _PremiumScaffold(
       title: spec.title,
       subtitle: spec.subtitle,
-      icon: spec.icon,
       children: [
         _SearchAndFilters(hint: 'Search ${spec.title}', filters: spec.filters),
         const SizedBox(height: 16),
@@ -816,34 +814,32 @@ class _PremiumScaffold extends StatelessWidget {
   const _PremiumScaffold({
     required this.title,
     required this.subtitle,
-    required this.icon,
     required this.children,
   });
 
   final String title;
   final String subtitle;
-  final IconData icon;
   final List<Widget> children;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AmoraAppBar(
+        title: title,
+        subtitle: subtitle,
+        onBack: () => Navigator.of(context).maybePop(),
+      ),
       body: DecoratedBox(
         decoration: const BoxDecoration(color: AppColors.background),
         child: SafeArea(
+          top: false,
           child: ResponsiveMobileFrame(
             child: CustomScrollView(
               slivers: [
                 SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(20, 18, 20, 110),
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 110),
                   sliver: SliverList.list(
                     children: [
-                      _PremiumHeader(
-                        title: title,
-                        subtitle: subtitle,
-                        icon: icon,
-                      ),
-                      const SizedBox(height: 18),
                       ...children,
                     ],
                   ),
@@ -853,80 +849,6 @@ class _PremiumScaffold extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _PremiumHeader extends StatelessWidget {
-  const _PremiumHeader({
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-  });
-
-  final String title;
-  final String subtitle;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        IconButton.filledTonal(
-          tooltip: 'Back',
-          onPressed: () => Navigator.of(context).maybePop(),
-          icon: const Icon(Icons.arrow_back_rounded),
-        ),
-        const SizedBox(height: 16),
-        PremiumCard(
-          radius: 30,
-          padding: const EdgeInsets.all(20),
-          child: Row(
-            children: [
-              Container(
-                width: 58,
-                height: 58,
-                decoration: BoxDecoration(
-                  color: AppColors.deepWine,
-                  borderRadius: BorderRadius.circular(22),
-                ),
-                child: Icon(icon, color: AppColors.surface, size: 28),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: AppColors.deepWine,
-                        fontSize: 26,
-                        height: 1.06,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      subtitle,
-                      maxLines: 4,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: AppColors.textGray,
-                        height: 1.34,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
     );
   }
 }

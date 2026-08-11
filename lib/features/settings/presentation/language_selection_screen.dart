@@ -2,7 +2,6 @@ import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/amora_app_bar.dart';
-import 'package:amora_ai/core/widgets/amora_screen_title.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:flutter/material.dart';
@@ -29,11 +28,16 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AmoraAppBar(
+        title: 'Language',
+        onBack: () => Navigator.of(context).maybePop(),
+      ),
       body: SafeArea(
+        top: false,
         child: ResponsiveMobileFrame(
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(
-              AmoraSpacing.space20,
+              AmoraSpacing.space16,
               AmoraSpacing.space20,
               AmoraSpacing.space20,
               AmoraSpacing.navigationContentInset,
@@ -41,16 +45,6 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Row(
-                  children: [
-                    AmoraHeaderBackButton(
-                      onPressed: () => Navigator.of(context).maybePop(),
-                    ),
-                    const SizedBox(width: AmoraSpacing.space8),
-                    const Expanded(child: AmoraScreenTitle(title: 'Language')),
-                  ],
-                ),
-                const SizedBox(height: 18),
                 PremiumCard(
                   color: AppColors.lavenderBackground,
                   child: Text(

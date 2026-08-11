@@ -55,20 +55,19 @@ class _FaqSupportScreenState extends State<FaqSupportScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
+      appBar: AmoraAppBar(
+        title: 'Support Center',
+        subtitle: 'Answers, reporting, and help from AMORAA.',
+        onBack: () => Navigator.of(context).maybePop(),
+        maxContentWidth: 920,
+      ),
       body: SafeArea(
+        top: false,
         child: ResponsiveMobileFrame(
           maxWidth: 920,
           child: CustomScrollView(
             keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             slivers: [
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-                  child: FaqSupportAppBar(
-                    onBack: () => Navigator.of(context).maybePop(),
-                  ),
-                ),
-              ),
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
                 sliver: SliverList.list(
@@ -214,49 +213,6 @@ class _FaqSupportScreenState extends State<FaqSupportScreen> {
           ),
         );
     }
-  }
-}
-
-class FaqSupportAppBar extends StatelessWidget {
-  const FaqSupportAppBar({super.key, required this.onBack});
-
-  final VoidCallback onBack;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      header: true,
-      child: SizedBox(
-        height: AmoraHeaderTokens.titleSubtitleHeight,
-        child: Row(
-          children: [
-            AmoraHeaderBackButton(onPressed: onBack),
-            const SizedBox(width: AmoraHeaderTokens.backTitleGap),
-            const Expanded(
-              child: AmoraScreenTitle(
-                title: 'Support Center',
-                subtitle: 'Answers, reporting, and help from AMORAA.',
-              ),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              width: AmoraSpacing.minimumTouchTarget,
-              height: AmoraSpacing.minimumTouchTarget,
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(AmoraRadius.large),
-                border: Border.all(color: AppColors.tertiary),
-              ),
-              child: const Icon(
-                Icons.help_outline_rounded,
-                color: AppColors.secondary,
-                size: 20,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }
 

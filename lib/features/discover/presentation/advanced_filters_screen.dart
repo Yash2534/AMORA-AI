@@ -258,7 +258,26 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
+      appBar: AmoraAppBar(
+        title: 'Filters',
+        subtitle: 'Refine who appears in Discover',
+        onBack: () => Navigator.of(context).maybePop(),
+        maxContentWidth: 860,
+        actions: [
+          TextButton.icon(
+            key: const ValueKey('filters-header-reset'),
+            onPressed: _reset,
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              minimumSize: const Size(72, 48),
+            ),
+            icon: const Icon(Icons.refresh_rounded, size: 18),
+            label: const Text('Reset', maxLines: 1),
+          ),
+        ],
+      ),
       body: SafeArea(
+        top: false,
         child: ResponsiveMobileFrame(
           maxWidth: 860,
           child: LayoutBuilder(
@@ -273,10 +292,6 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
                   children: [
                     Column(
                       children: [
-                        _FiltersHeader(
-                          onBack: () => Navigator.of(context).maybePop(),
-                          onReset: _reset,
-                        ),
                         Expanded(
                           child: SingleChildScrollView(
                             keyboardDismissBehavior:
@@ -1584,65 +1599,6 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
     } else {
       navigator.pushReplacementNamed(BrowseGridScreen.routeName);
     }
-  }
-}
-
-class _FiltersHeader extends StatelessWidget {
-  const _FiltersHeader({required this.onBack, required this.onReset});
-
-  final VoidCallback onBack;
-  final VoidCallback onReset;
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        border: Border(
-          bottom: BorderSide(color: AppColors.tertiary.withValues(alpha: .78)),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withValues(alpha: .05),
-            blurRadius: 16,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            AmoraHeaderBackButton(
-              key: const ValueKey('filters-back-button'),
-              onPressed: onBack,
-            ),
-            const SizedBox(width: AmoraHeaderTokens.backTitleGap),
-            const Expanded(
-              child: AmoraScreenTitle(
-                title: 'Filters',
-                subtitle: 'Refine who appears in Discover',
-              ),
-            ),
-            const SizedBox(width: 6),
-            TextButton.icon(
-              key: const ValueKey('filters-header-reset'),
-              onPressed: onReset,
-              style: TextButton.styleFrom(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 10,
-                ),
-                minimumSize: const Size(72, 48),
-              ),
-              icon: const Icon(Icons.refresh_rounded, size: 18),
-              label: const Text('Reset', maxLines: 1),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }
 

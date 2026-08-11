@@ -68,7 +68,16 @@ class _PaymentScreenState extends State<PaymentScreen> {
         membershipTestMode || review.productType == 'subscription';
     return Scaffold(
       backgroundColor: AppColors.background,
+      appBar: _state == _PaymentViewState.review
+          ? AmoraAppBar(
+              title: 'Review membership',
+              subtitle: 'Confirm your plan before continuing.',
+              onBack: () => Navigator.of(context).maybePop(),
+              maxContentWidth: 760,
+            )
+          : null,
       body: SafeArea(
+        top: _state != _PaymentViewState.review,
         child: ResponsiveMobileFrame(
           maxWidth: 760,
           child: AnimatedSwitcher(
@@ -325,11 +334,9 @@ class _PaymentReview extends StatelessWidget {
     return CustomScrollView(
       slivers: [
         SliverPadding(
-          padding: const EdgeInsets.fromLTRB(20, 14, 20, 30),
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 30),
           sliver: SliverList.list(
             children: [
-              _PaymentAppBar(onBack: onBack),
-              const SizedBox(height: 20),
               _PaymentReviewCard(data: data, onChangePlan: onChangePlan),
               const SizedBox(height: 22),
               const _PaymentSectionTitle('Included with membership'),
@@ -415,36 +422,6 @@ class _PaymentReview extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _PaymentAppBar extends StatelessWidget {
-  const _PaymentAppBar({required this.onBack});
-
-  final VoidCallback onBack;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: AmoraHeaderTokens.titleSubtitleHeight,
-      child: Row(
-        children: [
-          AmoraHeaderBackButton(onPressed: onBack),
-          const SizedBox(width: AmoraHeaderTokens.backTitleGap),
-          const Expanded(
-            child: AmoraScreenTitle(
-              title: 'Review membership',
-              subtitle: 'Confirm your plan before continuing.',
-            ),
-          ),
-          const Icon(
-            Icons.shield_rounded,
-            color: AppColors.secondary,
-            size: 20,
-          ),
-        ],
-      ),
     );
   }
 }

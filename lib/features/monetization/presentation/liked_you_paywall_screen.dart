@@ -4,7 +4,6 @@ import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/amora_app_bar.dart';
-import 'package:amora_ai/core/widgets/amora_screen_title.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/premium_asset_image.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
@@ -33,11 +32,16 @@ class _LikedYouPaywallScreenState extends State<LikedYouPaywallScreen> {
       'Ananya',
     ].map(ImageRepository.profileByName).toList();
     return Scaffold(
+      appBar: AmoraAppBar(
+        title: 'See Who Liked You',
+        onBack: () => Navigator.of(context).maybePop(),
+      ),
       body: SafeArea(
+        top: false,
         child: ResponsiveMobileFrame(
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(
-              AmoraSpacing.space20,
+              AmoraSpacing.space16,
               AmoraSpacing.space20,
               AmoraSpacing.space20,
               AmoraSpacing.navigationContentInset,
@@ -45,18 +49,6 @@ class _LikedYouPaywallScreenState extends State<LikedYouPaywallScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Row(
-                  children: [
-                    AmoraHeaderBackButton(
-                      onPressed: () => Navigator.of(context).maybePop(),
-                    ),
-                    const SizedBox(width: AmoraSpacing.space8),
-                    const Expanded(
-                      child: AmoraScreenTitle(title: 'See Who Liked You'),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AmoraSpacing.space20),
                 PremiumCard(
                   color: AppColors.lavenderBackground,
                   child: Text(

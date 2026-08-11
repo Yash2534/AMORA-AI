@@ -3,6 +3,7 @@ import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/amora_search_bar.dart';
+import 'package:amora_ai/core/widgets/amora_app_bar.dart';
 import 'package:amora_ai/core/widgets/amoraa_select_field.dart';
 import 'package:amora_ai/core/data/image_repository.dart';
 import 'package:amora_ai/core/widgets/premium_editorial_panel.dart';
@@ -45,6 +46,11 @@ class _DateSpotsMapScreenState extends State<DateSpotsMapScreen> {
         )
         .toList();
     return Scaffold(
+      appBar: AmoraAppBar(
+        title: 'Date Spots',
+        subtitle: 'Curated venues for intentional first dates.',
+        onBack: () => Navigator.of(context).maybePop(),
+      ),
       body: DecoratedBox(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -54,10 +60,11 @@ class _DateSpotsMapScreenState extends State<DateSpotsMapScreen> {
           ),
         ),
         child: SafeArea(
+          top: false,
           child: ResponsiveMobileFrame(
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(
-                AmoraSpacing.space20,
+                AmoraSpacing.space16,
                 AmoraSpacing.space20,
                 AmoraSpacing.space20,
                 AmoraSpacing.navigationContentInset,
@@ -65,39 +72,6 @@ class _DateSpotsMapScreenState extends State<DateSpotsMapScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      IconButton.filledTonal(
-                        tooltip: 'Back',
-                        onPressed: () => Navigator.of(context).maybePop(),
-                        icon: const Icon(AmoraIcons.back),
-                      ),
-                      const SizedBox(width: AmoraSpacing.space12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Date Spots',
-                              style: AmoraTextStyles.headlineLarge.copyWith(
-                                color: AppColors.deepWine,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            SizedBox(height: AmoraSpacing.space4),
-                            Text(
-                              'Curated venues for intentional first dates.',
-                              style: AmoraTextStyles.bodyMedium.copyWith(
-                                color: AppColors.textGray,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 18),
                   PremiumEditorialPanel(
                     title: 'Rooftop, coffee, or quiet gallery?',
                     subtitle:

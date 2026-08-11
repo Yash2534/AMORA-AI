@@ -289,6 +289,7 @@ class _AccountActionScaffold extends StatelessWidget {
       appBar: AmoraAppBar(
         title: title,
         onBack: () => Navigator.of(context).maybePop(),
+        maxContentWidth: 560,
       ),
       body: SafeArea(
         top: false,

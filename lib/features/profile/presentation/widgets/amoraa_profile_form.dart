@@ -136,6 +136,7 @@ class _AmoraaProfileFormState extends State<AmoraaProfileForm> {
         appBar: AmoraAppBar(
           title: 'Edit profile',
           onBack: () => Navigator.of(context).maybePop(),
+          maxContentWidth: 820,
         ),
         body: const Center(
           child: CircularProgressIndicator(
@@ -150,6 +151,7 @@ class _AmoraaProfileFormState extends State<AmoraaProfileForm> {
         appBar: AmoraAppBar(
           title: 'Edit profile',
           onBack: () => Navigator.of(context).maybePop(),
+          maxContentWidth: 820,
         ),
         body: Center(
           child: Padding(
@@ -186,6 +188,7 @@ class _AmoraaProfileFormState extends State<AmoraaProfileForm> {
           title: 'Edit profile',
           subtitle: 'Update your AMORAA story',
           onBack: () => Navigator.of(context).maybePop(),
+          maxContentWidth: 820,
           actions: [
             AmoraHeaderActionButton(
               tooltip: 'Preview profile',

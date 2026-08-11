@@ -2,7 +2,6 @@ import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/amora_app_bar.dart';
-import 'package:amora_ai/core/widgets/amora_screen_title.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:flutter/material.dart';
@@ -45,12 +44,18 @@ class _AccessibilitySettingsScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AmoraAppBar(
+        title: 'Accessibility',
+        subtitle: 'Future-ready controls for inclusive dating UX.',
+        onBack: () => Navigator.of(context).maybePop(),
+      ),
       body: SafeArea(
+        top: false,
         child: ResponsiveMobileFrame(
           child: LayoutBuilder(
             builder: (context, constraints) => SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(
-                AmoraSpacing.space20,
+                AmoraSpacing.space16,
                 AmoraSpacing.space20,
                 AmoraSpacing.space20,
                 AmoraSpacing.navigationContentInset,
@@ -58,8 +63,6 @@ class _AccessibilitySettingsScreenState
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const _Header(),
-                  const SizedBox(height: 18),
                   _ScoreCard(score: _score),
                   const SizedBox(height: 14),
                   PremiumCard(
@@ -187,23 +190,6 @@ class _AccessibilitySettingsScreenState
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(message)));
   }
-}
-
-class _Header extends StatelessWidget {
-  const _Header();
-  @override
-  Widget build(BuildContext context) => Row(
-    children: [
-      AmoraHeaderBackButton(onPressed: () => Navigator.of(context).maybePop()),
-      const SizedBox(width: AmoraSpacing.space8),
-      const Expanded(
-        child: AmoraScreenTitle(
-          title: 'Accessibility',
-          subtitle: 'Future-ready controls for inclusive dating UX.',
-        ),
-      ),
-    ],
-  );
 }
 
 class _ScoreCard extends StatelessWidget {

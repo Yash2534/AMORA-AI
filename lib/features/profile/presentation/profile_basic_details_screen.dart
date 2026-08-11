@@ -74,6 +74,7 @@ class _ProfileBasicDetailsScreenState extends State<ProfileBasicDetailsScreen> {
       appBar: AmoraAppBar(
         title: 'Basic details',
         onBack: () => Navigator.of(context).maybePop(),
+        maxContentWidth: 560,
       ),
       body: SafeArea(
         top: false,

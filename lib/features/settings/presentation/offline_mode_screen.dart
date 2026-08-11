@@ -2,7 +2,6 @@ import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/amora_app_bar.dart';
-import 'package:amora_ai/core/widgets/amora_screen_title.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:flutter/material.dart';
@@ -30,11 +29,16 @@ class _OfflineModeScreenState extends State<OfflineModeScreen> {
   Widget build(BuildContext context) {
     final usage = (_cacheSize / 1024).clamp(0, 1).toDouble();
     return Scaffold(
+      appBar: AmoraAppBar(
+        title: 'Offline Mode',
+        onBack: () => Navigator.of(context).maybePop(),
+      ),
       body: SafeArea(
+        top: false,
         child: ResponsiveMobileFrame(
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(
-              AmoraSpacing.space20,
+              AmoraSpacing.space16,
               AmoraSpacing.space20,
               AmoraSpacing.space20,
               AmoraSpacing.navigationContentInset,
@@ -42,8 +46,6 @@ class _OfflineModeScreenState extends State<OfflineModeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const _Header(),
-                const SizedBox(height: 18),
                 PremiumCard(
                   color: AppColors.lavenderBackground,
                   child: Column(
@@ -183,18 +185,6 @@ class _OfflineModeScreenState extends State<OfflineModeScreen> {
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(message)));
   }
-}
-
-class _Header extends StatelessWidget {
-  const _Header();
-  @override
-  Widget build(BuildContext context) => Row(
-    children: [
-      AmoraHeaderBackButton(onPressed: () => Navigator.of(context).maybePop()),
-      const SizedBox(width: AmoraSpacing.space8),
-      const Expanded(child: AmoraScreenTitle(title: 'Offline Mode')),
-    ],
-  );
 }
 
 class _Toggle extends StatelessWidget {

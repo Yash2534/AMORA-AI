@@ -4,7 +4,6 @@ import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/amora_filter_chip.dart';
 import 'package:amora_ai/core/widgets/amora_app_bar.dart';
-import 'package:amora_ai/core/widgets/amora_screen_title.dart';
 import 'package:amora_ai/core/widgets/amora_snackbar.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/app_text_field.dart';
@@ -44,11 +43,16 @@ class _BioBuilderScreenState extends State<BioBuilderScreen> {
   Widget build(BuildContext context) {
     final count = _bio.text.characters.length;
     return Scaffold(
+      appBar: AmoraAppBar(
+        title: 'Bio Builder',
+        onBack: () => Navigator.of(context).maybePop(),
+      ),
       body: SafeArea(
+        top: false,
         child: ResponsiveMobileFrame(
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(
-              AmoraSpacing.space20,
+              AmoraSpacing.space16,
               AmoraSpacing.space20,
               AmoraSpacing.space20,
               AmoraSpacing.navigationContentInset,
@@ -56,18 +60,6 @@ class _BioBuilderScreenState extends State<BioBuilderScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Row(
-                  children: [
-                    AmoraHeaderBackButton(
-                      onPressed: () => Navigator.of(context).maybePop(),
-                    ),
-                    const SizedBox(width: AmoraSpacing.space8),
-                    const Expanded(
-                      child: AmoraScreenTitle(title: 'Bio Builder'),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AmoraSpacing.space20),
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,

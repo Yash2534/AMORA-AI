@@ -6,6 +6,7 @@ import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/widgets/amora_badge.dart';
+import 'package:amora_ai/core/widgets/amora_app_bar.dart';
 import 'package:amora_ai/core/widgets/amora_snackbar.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
@@ -45,62 +46,14 @@ class DashboardHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        IconButton.filledTonal(
-          tooltip: 'Back',
-          onPressed: () => Navigator.of(context).maybePop(),
-          icon: const Icon(AmoraIcons.back),
-        ),
-        const SizedBox(width: AmoraSpacing.space12),
-        Container(
-          width: AmoraSpacing.controlHeight,
-          height: AmoraSpacing.controlHeight,
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [AppColors.secondary, AppColors.primary],
-            ),
-            borderRadius: AmoraRadius.card,
-          ),
-          child: Icon(icon, color: AppColors.surface),
-        ),
-        const SizedBox(width: AmoraSpacing.space12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AmoraTextStyles.title.copyWith(
-                  color: AppColors.deepWine,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              Text(
-                subtitle,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: AmoraTextStyles.caption.copyWith(
-                  color: AppColors.textGray,
-                  height: 1.25,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        ),
+    return AmoraInlinePageHeader(
+      title: title,
+      subtitle: subtitle,
+      onBack: () => Navigator.of(context).maybePop(),
+      leading: AmoraHeaderBadge(icon: icon),
+      actions: [
         if (badge != null)
-          Flexible(
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: AmoraBadge.status(
-                label: badge!,
-                tone: AmoraBadgeTone.success,
-              ),
-            ),
-          ),
+          AmoraBadge.status(label: badge!, tone: AmoraBadgeTone.success),
       ],
     );
   }

@@ -35,28 +35,11 @@ class MonetizationHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        if (onBack != null) ...[
-          AmoraHeaderBackButton(onPressed: onBack!),
-          const SizedBox(width: AmoraSpacing.space8),
-        ],
-        Container(
-          width: AmoraSpacing.minimumTouchTarget,
-          height: AmoraSpacing.minimumTouchTarget,
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [AppColors.secondary, AppColors.primary],
-            ),
-            borderRadius: AmoraRadius.button,
-          ),
-          child: Icon(icon, color: AppColors.surface),
-        ),
-        const SizedBox(width: AmoraSpacing.space12),
-        Expanded(
-          child: AmoraScreenTitle(title: title, subtitle: subtitle),
-        ),
-      ],
+    return AmoraInlinePageHeader(
+      title: title,
+      subtitle: subtitle,
+      onBack: onBack,
+      leading: AmoraHeaderBadge(icon: icon),
     );
   }
 }

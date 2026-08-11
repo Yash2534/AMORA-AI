@@ -2,7 +2,6 @@ import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/amora_app_bar.dart';
-import 'package:amora_ai/core/widgets/amora_screen_title.dart';
 import 'package:amora_ai/core/widgets/amoraa_select_field.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:flutter/material.dart';
@@ -23,11 +22,16 @@ class _ReferralLeaderboardScreenState extends State<ReferralLeaderboardScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AmoraAppBar(
+        title: 'Referral Leaderboard',
+        onBack: () => Navigator.of(context).maybePop(),
+      ),
       body: SafeArea(
+        top: false,
         child: ResponsiveMobileFrame(
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(
-              AmoraSpacing.space20,
+              AmoraSpacing.space16,
               AmoraSpacing.space20,
               AmoraSpacing.space20,
               AmoraSpacing.navigationContentInset,
@@ -35,8 +39,6 @@ class _ReferralLeaderboardScreenState extends State<ReferralLeaderboardScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const _Header(),
-                const SizedBox(height: 18),
                 AmoraaCompactSelect<String>(
                   key: const ValueKey('referral-period-selector'),
                   label: 'Leaderboard period',
@@ -103,18 +105,6 @@ class _ReferralLeaderboardScreenState extends State<ReferralLeaderboardScreen> {
       ),
     );
   }
-}
-
-class _Header extends StatelessWidget {
-  const _Header();
-  @override
-  Widget build(BuildContext context) => Row(
-    children: [
-      AmoraHeaderBackButton(onPressed: () => Navigator.of(context).maybePop()),
-      const SizedBox(width: AmoraSpacing.space8),
-      const Expanded(child: AmoraScreenTitle(title: 'Referral Leaderboard')),
-    ],
-  );
 }
 
 class _LeaderTile extends StatelessWidget {

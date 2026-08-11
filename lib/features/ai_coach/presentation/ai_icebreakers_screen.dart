@@ -3,6 +3,7 @@ import 'package:amora_ai/core/data/image_repository.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
+import 'package:amora_ai/core/widgets/amora_app_bar.dart';
 import 'package:amora_ai/core/widgets/amoraa_select_field.dart';
 import 'package:amora_ai/core/widgets/premium_avatar.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
@@ -32,6 +33,11 @@ class _AiIcebreakersScreenState extends State<AiIcebreakersScreen> {
       ModalRoute.of(context)?.settings.arguments,
     );
     return Scaffold(
+      appBar: AmoraAppBar(
+        title: 'AI Icebreakers',
+        subtitle: 'Send something specific, warm, and respectful.',
+        onBack: () => Navigator.of(context).maybePop(),
+      ),
       body: DecoratedBox(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -41,10 +47,11 @@ class _AiIcebreakersScreenState extends State<AiIcebreakersScreen> {
           ),
         ),
         child: SafeArea(
+          top: false,
           child: ResponsiveMobileFrame(
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(
-                AmoraSpacing.x5,
+                AmoraSpacing.space16,
                 AmoraSpacing.x5,
                 AmoraSpacing.x5,
                 110,
@@ -52,13 +59,6 @@ class _AiIcebreakersScreenState extends State<AiIcebreakersScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  MonetizationHeader(
-                    title: 'AI Icebreakers',
-                    subtitle: 'Send something specific, warm, and respectful.',
-                    icon: Icons.chat_bubble_rounded,
-                    onBack: () => Navigator.of(context).maybePop(),
-                  ),
-                  const SizedBox(height: AmoraSpacing.x4),
                   _MatchMiniCard(profile: profile),
                   const SizedBox(height: AmoraSpacing.x4),
                   const SectionTitle(title: 'Tone'),

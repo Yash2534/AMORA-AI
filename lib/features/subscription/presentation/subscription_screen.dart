@@ -113,17 +113,22 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         }
         return Scaffold(
           backgroundColor: AppColors.background,
+          appBar: AmoraAppBar(
+            title: 'AMORAA Membership',
+            subtitle: 'Connect better. Meet meaningfully.',
+            onBack: () => Navigator.of(context).maybePop(),
+            maxContentWidth: 980,
+          ),
           body: SafeArea(
+            top: false,
             child: ResponsiveMobileFrame(
               maxWidth: 980,
               child: CustomScrollView(
                 slivers: [
                   SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(20, 14, 20, 34),
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 34),
                     sliver: SliverList.list(
                       children: [
-                        const MembershipAppBar(),
-                        const SizedBox(height: 20),
                         const MembershipHeroCompact(),
                         const SizedBox(height: 26),
                         if (memberActive)
@@ -225,7 +230,14 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   }) {
     return Scaffold(
       backgroundColor: AppColors.background,
+      appBar: AmoraAppBar(
+        title: 'Manage Subscription',
+        subtitle: 'Billing and membership controls',
+        onBack: () => Navigator.of(context).maybePop(),
+        maxContentWidth: 760,
+      ),
       body: SafeArea(
+        top: false,
         child: ResponsiveMobileFrame(
           maxWidth: 760,
           child: CustomScrollView(
@@ -233,29 +245,12 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(
                   AmoraSpacing.space20,
-                  AmoraSpacing.space12,
+                  AmoraSpacing.space16,
                   AmoraSpacing.space20,
                   AmoraSpacing.space32,
                 ),
                 sliver: SliverList.list(
                   children: [
-                    Row(
-                      children: [
-                        IconButton(
-                          tooltip: 'Back',
-                          onPressed: () => Navigator.of(context).maybePop(),
-                          icon: const Icon(Icons.arrow_back_rounded),
-                        ),
-                        const SizedBox(width: AmoraSpacing.space8),
-                        const Expanded(
-                          child: AmoraScreenTitle(
-                            title: 'Manage Subscription',
-                            subtitle: 'Billing and membership controls',
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: AmoraSpacing.space24),
                     if (!memberActive)
                       PremiumCard(
                         radius: 24,
@@ -447,31 +442,6 @@ class _ManageSubscriptionRow extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class MembershipAppBar extends StatelessWidget {
-  const MembershipAppBar({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: AmoraHeaderTokens.titleSubtitleHeight,
-      child: Row(
-        children: [
-          AmoraHeaderBackButton(
-            onPressed: () => Navigator.of(context).maybePop(),
-          ),
-          const SizedBox(width: AmoraHeaderTokens.backTitleGap),
-          const Expanded(
-            child: AmoraScreenTitle(
-              title: 'AMORAA Membership',
-              subtitle: 'Connect better. Meet meaningfully.',
-            ),
-          ),
-        ],
       ),
     );
   }

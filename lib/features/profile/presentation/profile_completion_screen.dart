@@ -134,6 +134,7 @@ class _ProfileCompletionScreenState extends State<ProfileCompletionScreen> {
         appBar: AmoraAppBar(
           title: 'Profile Completion',
           onBack: () => Navigator.of(context).maybePop(),
+          maxContentWidth: 820,
         ),
         body: Center(
           child: Column(
@@ -163,6 +164,7 @@ class _ProfileCompletionScreenState extends State<ProfileCompletionScreen> {
         title: 'Profile Completion',
         subtitle: 'Your progress dashboard',
         onBack: () => Navigator.of(context).maybePop(),
+        maxContentWidth: 820,
       ),
       body: SafeArea(
         top: false,

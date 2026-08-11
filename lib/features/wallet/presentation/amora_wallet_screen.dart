@@ -2,6 +2,7 @@ import 'package:amora_ai/core/theme/amora_icons.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
+import 'package:amora_ai/core/widgets/amora_app_bar.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/monetization/data/monetization_data.dart';
@@ -67,7 +68,13 @@ class _AmoraWalletScreenState extends State<AmoraWalletScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AmoraAppBar(
+        title: 'AMORAA Wallet',
+        subtitle: 'Server-owned credits and complete ledger',
+        onBack: () => Navigator.of(context).maybePop(),
+      ),
       body: SafeArea(
+        top: false,
         child: ResponsiveMobileFrame(
           child: _loading
               ? const Center(child: CircularProgressIndicator())
@@ -89,19 +96,12 @@ class _AmoraWalletScreenState extends State<AmoraWalletScreen> {
                   onRefresh: _load,
                   child: ListView(
                     padding: const EdgeInsets.fromLTRB(
-                      20,
+                      AmoraSpacing.space16,
                       20,
                       20,
                       AmoraSpacing.navigationContentInset,
                     ),
                     children: [
-                      MonetizationHeader(
-                        title: 'AMORAA Wallet',
-                        subtitle: 'Server-owned credits and complete ledger',
-                        icon: AmoraIcons.wallet,
-                        onBack: () => Navigator.of(context).maybePop(),
-                      ),
-                      const SizedBox(height: 18),
                       PremiumCard(
                         color: AppColors.primaryPurple,
                         child: Column(

@@ -7,7 +7,6 @@ import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/amora_app_bar.dart';
-import 'package:amora_ai/core/widgets/amora_screen_title.dart';
 import 'package:amora_ai/core/widgets/amora_dialog.dart';
 import 'package:amora_ai/core/widgets/amoraa_select_field.dart';
 import 'package:amora_ai/core/widgets/premium_avatar.dart';
@@ -87,6 +86,11 @@ class _ReportFlowScreenState extends State<ReportFlowScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AmoraAppBar(
+        title: 'Report a Concern',
+        subtitle: 'AMORAA reviews every report with safety-first moderation.',
+        onBack: () => Navigator.of(context).maybePop(),
+      ),
       body: DecoratedBox(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -96,11 +100,12 @@ class _ReportFlowScreenState extends State<ReportFlowScreen> {
           ),
         ),
         child: SafeArea(
+          top: false,
           child: ResponsiveMobileFrame(
             child: LayoutBuilder(
               builder: (context, constraints) => SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(
-                  AmoraSpacing.space20,
+                  AmoraSpacing.space16,
                   AmoraSpacing.space20,
                   AmoraSpacing.space20,
                   AmoraSpacing.navigationContentInset,
@@ -110,13 +115,6 @@ class _ReportFlowScreenState extends State<ReportFlowScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      _Header(
-                        title: 'Report a Concern',
-                        subtitle:
-                            'AMORAA reviews every report with safety-first moderation.',
-                        icon: Icons.flag_rounded,
-                      ),
-                      const SizedBox(height: 18),
                       if (_arguments != null)
                         _ProfileSummary(data: _arguments!),
                       const SizedBox(height: 16),
@@ -279,45 +277,6 @@ class _ReportFlowScreenState extends State<ReportFlowScreen> {
       return;
     }
     setState(() => _screenshot = result.media);
-  }
-}
-
-class _Header extends StatelessWidget {
-  const _Header({
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-  });
-
-  final String title;
-  final String subtitle;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        AmoraHeaderBackButton(
-          onPressed: () => Navigator.of(context).maybePop(),
-        ),
-        const SizedBox(width: AmoraSpacing.space8),
-        Container(
-          width: 52,
-          height: 52,
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [AppColors.secondary, AppColors.primary],
-            ),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Icon(icon, color: AppColors.surface),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: AmoraScreenTitle(title: title, subtitle: subtitle),
-        ),
-      ],
-    );
   }
 }
 

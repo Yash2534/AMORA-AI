@@ -5,7 +5,6 @@ import 'package:amora_ai/core/permissions/amoraa_permission_service.dart';
 import 'package:amora_ai/core/auth/auth_service.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/amora_app_bar.dart';
-import 'package:amora_ai/core/widgets/amora_screen_title.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:flutter/material.dart';
@@ -105,11 +104,26 @@ class _NotificationPreferencesScreenState
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return Scaffold(
+        appBar: AmoraAppBar(
+          title: 'Notification Preferences',
+          subtitle: 'Stay informed without the noise.',
+          onBack: () => Navigator.of(context).maybePop(),
+          maxContentWidth: 720,
+        ),
+        body: const Center(child: CircularProgressIndicator()),
+      );
     }
     return Scaffold(
       backgroundColor: AppColors.background,
+      appBar: AmoraAppBar(
+        title: 'Notification Preferences',
+        subtitle: 'Stay informed without the noise.',
+        onBack: () => Navigator.of(context).maybePop(),
+        maxContentWidth: 720,
+      ),
       body: SafeArea(
+        top: false,
         child: ResponsiveMobileFrame(
           maxWidth: 720,
           child: CustomScrollView(
@@ -117,15 +131,13 @@ class _NotificationPreferencesScreenState
               SliverPadding(
                 padding: EdgeInsets.fromLTRB(
                   AmoraSpacing.space20,
-                  AmoraSpacing.space12,
+                  AmoraSpacing.space16,
                   AmoraSpacing.space20,
                   AmoraSpacing.space32 +
                       MediaQuery.viewPaddingOf(context).bottom,
                 ),
                 sliver: SliverList.list(
                   children: [
-                    _Header(onBack: () => Navigator.of(context).maybePop()),
-                    const SizedBox(height: AmoraSpacing.space20),
                     const _NotificationHero(),
                     const SizedBox(height: AmoraSpacing.space16),
                     _PreferenceGroup(
@@ -319,28 +331,6 @@ class _NotificationPreferencesScreenState
     } finally {
       if (mounted) setState(() => _saving = false);
     }
-  }
-}
-
-class _Header extends StatelessWidget {
-  const _Header({required this.onBack});
-
-  final VoidCallback onBack;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        AmoraHeaderBackButton(onPressed: onBack),
-        const SizedBox(width: AmoraSpacing.space8),
-        const Expanded(
-          child: AmoraScreenTitle(
-            title: 'Notification Preferences',
-            subtitle: 'Stay informed without the noise.',
-          ),
-        ),
-      ],
-    );
   }
 }
 

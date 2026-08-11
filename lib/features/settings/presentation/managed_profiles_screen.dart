@@ -69,6 +69,7 @@ class _SavedProfilesScreenState extends State<SavedProfilesScreen> {
             appBar: AmoraAppBar(
               title: 'Saved Profiles',
               onBack: () => Navigator.of(context).maybePop(),
+              maxContentWidth: 720,
             ),
             body: Center(
               child: TextButton(
@@ -182,6 +183,7 @@ class _BlockedProfilesScreenState extends State<BlockedProfilesScreen> {
         appBar: AmoraAppBar(
           title: 'Blocked Profiles',
           onBack: () => Navigator.of(context).maybePop(),
+          maxContentWidth: 720,
         ),
         body: Center(
           child: TextButton(
@@ -280,6 +282,7 @@ class ManagedProfilesScreen extends StatelessWidget {
       appBar: AmoraAppBar(
         title: title,
         onBack: () => Navigator.of(context).maybePop(),
+        maxContentWidth: 720,
       ),
       body: SafeArea(
         top: false,

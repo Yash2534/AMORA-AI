@@ -41,29 +41,11 @@ class SafetyPrivacyScreen extends StatelessWidget {
               maxWidth: 760,
               child: CustomScrollView(
                 slivers: [
-                  SliverAppBar(
-                    pinned: true,
-                    backgroundColor: AppColors.background.withValues(
-                      alpha: .96,
-                    ),
-                    surfaceTintColor: AppColors.background,
-                    toolbarHeight: AmoraHeaderTokens.titleSubtitleHeight,
-                    leadingWidth: AmoraSpacing.space56,
-                    leading: Padding(
-                      padding: const EdgeInsets.only(left: AmoraSpacing.space4),
-                      child: AmoraHeaderBackButton(
-                        onPressed: () => Navigator.of(context).maybePop(),
-                      ),
-                    ),
-                    titleSpacing: AmoraHeaderTokens.backTitleGap,
-                    title: Semantics(
-                      header: true,
-                      child: AmoraScreenTitle(
-                        title: 'Safety Center',
-                        subtitle:
-                            'Tools and guidance for dating with confidence',
-                      ),
-                    ),
+                  AmoraSliverAppBar(
+                    title: 'Safety Center',
+                    subtitle: 'Tools and guidance for dating with confidence',
+                    onBack: () => Navigator.of(context).maybePop(),
+                    maxContentWidth: 760,
                   ),
                   SliverPadding(
                     padding: EdgeInsets.fromLTRB(

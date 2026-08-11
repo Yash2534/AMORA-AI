@@ -3,7 +3,6 @@ import 'package:amora_ai/core/theme/amora_icons.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/amora_app_bar.dart';
-import 'package:amora_ai/core/widgets/amora_screen_title.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
@@ -88,7 +87,12 @@ class _ProfileBoostScreenState extends State<ProfileBoostScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
+    appBar: AmoraAppBar(
+      title: 'Profile Boost',
+      onBack: () => Navigator.of(context).maybePop(),
+    ),
     body: SafeArea(
+      top: false,
       child: ResponsiveMobileFrame(
         child: _loading
             ? const Center(child: CircularProgressIndicator())
@@ -101,24 +105,12 @@ class _ProfileBoostScreenState extends State<ProfileBoostScreen> {
               )
             : ListView(
                 padding: const EdgeInsets.fromLTRB(
-                  20,
+                  AmoraSpacing.space16,
                   20,
                   20,
                   AmoraSpacing.navigationContentInset,
                 ),
                 children: [
-                  Row(
-                    children: [
-                      AmoraHeaderBackButton(
-                        onPressed: () => Navigator.of(context).maybePop(),
-                      ),
-                      const SizedBox(width: 8),
-                      const Expanded(
-                        child: AmoraScreenTitle(title: 'Profile Boost'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 18),
                   PremiumCard(
                     color: AppColors.premiumGold.withValues(alpha: .14),
                     child: Column(

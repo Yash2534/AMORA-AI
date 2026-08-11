@@ -1,6 +1,7 @@
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
+import 'package:amora_ai/core/widgets/amora_app_bar.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/admin_shared/presentation/admin_dashboard_widgets.dart';
@@ -29,6 +30,11 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     return DefaultTabController(
       length: 5,
       child: Scaffold(
+        appBar: AmoraAppBar(
+          title: 'Admin Panel',
+          subtitle: 'Platform operations overview',
+          onBack: () => Navigator.of(context).maybePop(),
+        ),
         body: DecoratedBox(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
@@ -38,22 +44,15 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
             ),
           ),
           child: SafeArea(
+            top: false,
             child: ResponsiveMobileFrame(
               child: Column(
                 children: [
-                  const Padding(
-                    padding: EdgeInsets.fromLTRB(20, 20, 20, 12),
-                    child: DashboardHeader(
-                      title: 'Admin Panel',
-                      subtitle: 'Platform operations overview',
-                      icon: Icons.admin_panel_settings_rounded,
-                    ),
-                  ),
                   Expanded(
                     child: SingleChildScrollView(
                       padding: const EdgeInsets.fromLTRB(
                         AmoraSpacing.space20,
-                        AmoraSpacing.space0,
+                        AmoraSpacing.space16,
                         AmoraSpacing.space20,
                         AmoraSpacing.navigationContentInset,
                       ),

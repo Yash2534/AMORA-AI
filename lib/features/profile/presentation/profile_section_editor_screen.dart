@@ -84,6 +84,7 @@ class _ProfileSectionEditorScreenState
       appBar: AmoraAppBar(
         title: _title,
         onBack: () => Navigator.of(context).maybePop(),
+        maxContentWidth: 680,
       ),
       body: SafeArea(
         top: false,

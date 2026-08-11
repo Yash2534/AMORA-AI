@@ -2,7 +2,6 @@ import 'package:amora_ai/core/theme/amora_icons.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/amora_app_bar.dart';
-import 'package:amora_ai/core/widgets/amora_screen_title.dart';
 import 'package:amora_ai/core/widgets/app_text_field.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
@@ -117,27 +116,16 @@ class _EventGroupChatScreenState extends State<EventGroupChatScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
+      appBar: AmoraAppBar(
+        title: _event?.title ?? 'Event Group Chat',
+        subtitle: 'Registered attendees and event host',
+        onBack: () => Navigator.of(context).maybePop(),
+      ),
       body: SafeArea(
+        top: false,
         child: ResponsiveMobileFrame(
           child: Column(
             children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
-                child: Row(
-                  children: [
-                    AmoraHeaderBackButton(
-                      onPressed: () => Navigator.of(context).maybePop(),
-                    ),
-                    const SizedBox(width: AmoraSpacing.space8),
-                    Expanded(
-                      child: AmoraScreenTitle(
-                        title: _event?.title ?? 'Event Group Chat',
-                        subtitle: 'Registered attendees and event host',
-                      ),
-                    ),
-                  ],
-                ),
-              ),
               Expanded(child: _body()),
               if (_event != null && _error == null)
                 _Composer(

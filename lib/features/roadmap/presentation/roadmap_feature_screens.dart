@@ -1,5 +1,6 @@
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
+import 'package:amora_ai/core/widgets/amora_app_bar.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:flutter/material.dart';
@@ -108,21 +109,19 @@ class _RoadmapPremiumScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AmoraAppBar(
+        title: title,
+        subtitle: subtitle,
+        onBack: () => Navigator.of(context).maybePop(),
+      ),
       body: SafeArea(
+        top: false,
         child: ResponsiveMobileFrame(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 18, 20, 110),
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 110),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: IconButton.filledTonal(
-                    onPressed: () => Navigator.of(context).maybePop(),
-                    icon: const Icon(Icons.arrow_back_rounded),
-                  ),
-                ),
-                const SizedBox(height: 18),
                 PremiumCard(
                   radius: 28,
                   padding: const EdgeInsets.all(22),
@@ -139,25 +138,6 @@ class _RoadmapPremiumScreen extends StatelessWidget {
                           borderRadius: BorderRadius.circular(22),
                         ),
                         child: Icon(icon, color: AppColors.surface, size: 28),
-                      ),
-                      const SizedBox(height: 18),
-                      Text(
-                        title,
-                        style: const TextStyle(
-                          color: AppColors.textDark,
-                          fontSize: 28,
-                          height: 1.05,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        subtitle,
-                        style: const TextStyle(
-                          color: AppColors.textGray,
-                          height: 1.4,
-                          fontWeight: FontWeight.w700,
-                        ),
                       ),
                       const SizedBox(height: 18),
                       AppPrimaryButton(

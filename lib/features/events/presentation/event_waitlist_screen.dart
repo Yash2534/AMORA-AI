@@ -1,7 +1,6 @@
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/amora_app_bar.dart';
-import 'package:amora_ai/core/widgets/amora_screen_title.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/events/domain/event_models.dart';
 import 'package:amora_ai/features/events/presentation/controllers/event_participation_controller.dart';
@@ -62,7 +61,14 @@ class _EventWaitlistScreenState extends State<EventWaitlistScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
+      appBar: AmoraAppBar(
+        title: 'Event Waitlist',
+        onBack: () => Navigator.of(context).maybePop(),
+        maxContentWidth: 620,
+        actions: const [EventsMemberBadge(compact: true)],
+      ),
       body: SafeArea(
+        top: false,
         child: ResponsiveMobileFrame(
           maxWidth: 620,
           child: SingleChildScrollView(
@@ -70,19 +76,6 @@ class _EventWaitlistScreenState extends State<EventWaitlistScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Row(
-                  children: [
-                    AmoraHeaderBackButton(
-                      onPressed: () => Navigator.of(context).maybePop(),
-                    ),
-                    const SizedBox(width: 8),
-                    const Expanded(
-                      child: AmoraScreenTitle(title: 'Event Waitlist'),
-                    ),
-                    const EventsMemberBadge(compact: true),
-                  ],
-                ),
-                const SizedBox(height: 22),
                 Container(
                   padding: const EdgeInsets.all(26),
                   decoration: BoxDecoration(

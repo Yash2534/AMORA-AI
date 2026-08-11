@@ -1,5 +1,6 @@
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
+import 'package:amora_ai/core/widgets/amora_app_bar.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/monetization/data/monetization_data.dart';
@@ -14,6 +15,11 @@ class AiDatingCoachScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AmoraAppBar(
+        title: 'AI Dating Coach',
+        subtitle: 'Thoughtful guidance for serious conversations.',
+        onBack: () => Navigator.of(context).maybePop(),
+      ),
       body: DecoratedBox(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -23,19 +29,13 @@ class AiDatingCoachScreen extends StatelessWidget {
           ),
         ),
         child: SafeArea(
+          top: false,
           child: ResponsiveMobileFrame(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 110),
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 110),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  MonetizationHeader(
-                    title: 'AI Dating Coach',
-                    subtitle: 'Thoughtful guidance for serious conversations.',
-                    icon: Icons.psychology_rounded,
-                    onBack: () => Navigator.of(context).maybePop(),
-                  ),
-                  const SizedBox(height: 16),
                   const _PremiumBadge(),
                   const SizedBox(height: 16),
                   const PremiumCard(

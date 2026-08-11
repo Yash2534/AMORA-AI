@@ -83,6 +83,7 @@ class _LikesSuperLikesScreenState extends State<LikesSuperLikesScreen> {
         appBar: AmoraAppBar(
           title: 'Likes & Super Likes',
           onBack: () => Navigator.of(context).maybePop(),
+          maxContentWidth: 720,
         ),
         body: Center(
           child: TextButton(
@@ -97,6 +98,7 @@ class _LikesSuperLikesScreenState extends State<LikesSuperLikesScreen> {
       appBar: AmoraAppBar(
         title: 'Likes & Super Likes',
         onBack: () => Navigator.of(context).maybePop(),
+        maxContentWidth: 720,
       ),
       body: SafeArea(
         top: false,
