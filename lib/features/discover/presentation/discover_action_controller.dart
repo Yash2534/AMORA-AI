@@ -39,6 +39,7 @@ class DiscoverActionController extends ChangeNotifier {
   final Set<String> superLikedProfileIds = {};
 
   bool _isTransitioning = false;
+  bool _boostInFlight = false;
   bool _boostRequested = false;
   DiscoverAction? _activeAction;
   String? _matchedProfileId;
@@ -49,6 +50,7 @@ class DiscoverActionController extends ChangeNotifier {
   Map<String, dynamic>? _boostState;
 
   bool get isTransitioning => _isTransitioning;
+  bool get boostInFlight => _boostInFlight;
   bool get isEmpty => _deck.isEmpty;
   bool get canRewind => _history.isNotEmpty && !_isTransitioning;
   bool get boostRequested => _boostRequested;
@@ -114,20 +116,27 @@ class DiscoverActionController extends ChangeNotifier {
   }
 
   Future<bool> boostProfile() async {
-    if (_isTransitioning) return false;
+    if (_isTransitioning || _boostInFlight || _boostRequested) return false;
+    _boostInFlight = true;
     _activeAction = DiscoverAction.boost;
+    _lastError = null;
     notifyListeners();
     _boostIdempotencyKey ??= _apiService.newIdempotencyKey('boost-activation');
     final result = await _apiService.boost(_boostIdempotencyKey!);
+    _boostInFlight = false;
     if (!result.success) {
       _activeAction = null;
       _lastError = result.message;
+      if (result.statusCode >= 400 && result.statusCode < 500) {
+        _boostIdempotencyKey = null;
+      }
       notifyListeners();
       return false;
     }
     _boostState = result.data;
     _boostIdempotencyKey = null;
     _boostRequested = true;
+    _lastError = null;
     notifyListeners();
     return true;
   }

@@ -1,0 +1,115 @@
+{
+  "info": {
+    "_postman_id": "2ac3ebf1-8571-4ac1-b85c-amoraa-boost-contract",
+    "name": "AMORAA — Discover Boost Contract",
+    "description": "Focused verification for POST /api/discover/boost. Supply isolated test-user Bearer tokens; never store production tokens in this collection.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000" },
+    { "key": "entitledBearerToken", "value": "" },
+    { "key": "noEntitlementBearerToken", "value": "" },
+    { "key": "boostKey", "value": "test-boost-unique-001" }
+  ],
+  "item": [
+    {
+      "name": "1 — Missing idempotency key",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{entitledBearerToken}}", "type": "text" },
+          { "key": "Accept", "value": "application/json", "type": "text" }
+        ],
+        "url": "{{baseUrl}}/api/discover/boost"
+      },
+      "event": [{ "listen": "test", "script": { "exec": [
+        "pm.test('400 IDEMPOTENCY_KEY_REQUIRED', function () {",
+        "  pm.response.to.have.status(400);",
+        "  pm.expect(pm.response.json().code).to.eql('IDEMPOTENCY_KEY_REQUIRED');",
+        "});"
+      ] } }]
+    },
+    {
+      "name": "2 — Valid activation",
+      "event": [
+        { "listen": "prerequest", "script": { "exec": [
+          "pm.collectionVariables.set('boostKey', 'test-boost-' + pm.variables.replaceIn('{{$guid}}'));"
+        ] } },
+        { "listen": "test", "script": { "exec": [
+          "pm.test('Boost is active', function () {",
+          "  pm.response.to.have.status(200);",
+          "  const body = pm.response.json();",
+          "  pm.expect(body.success).to.eql(true);",
+          "  pm.expect(body.data.active).to.eql(true);",
+          "  pm.expect(body.data.startedAt).to.be.ok;",
+          "  pm.expect(body.data.expiresAt).to.be.ok;",
+          "});",
+          "pm.collectionVariables.set('firstBoostExpiry', pm.response.json().data.expiresAt);"
+        ] } }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{entitledBearerToken}}", "type": "text" },
+          { "key": "Idempotency-Key", "value": "{{boostKey}}", "type": "text" },
+          { "key": "Accept", "value": "application/json", "type": "text" }
+        ],
+        "url": "{{baseUrl}}/api/discover/boost"
+      }
+    },
+    {
+      "name": "3 — Same-key retry",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{entitledBearerToken}}", "type": "text" },
+          { "key": "Idempotency-Key", "value": "{{boostKey}}", "type": "text" },
+          { "key": "Accept", "value": "application/json", "type": "text" }
+        ],
+        "url": "{{baseUrl}}/api/discover/boost"
+      },
+      "event": [{ "listen": "test", "script": { "exec": [
+        "pm.test('Retry returns the same activation', function () {",
+        "  pm.response.to.have.status(200);",
+        "  pm.expect(pm.response.json().data.expiresAt).to.eql(pm.collectionVariables.get('firstBoostExpiry'));",
+        "});"
+      ] } }]
+    },
+    {
+      "name": "4 — New key while already active",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{entitledBearerToken}}", "type": "text" },
+          { "key": "Idempotency-Key", "value": "test-boost-new-{{$guid}}", "type": "text" },
+          { "key": "Accept", "value": "application/json", "type": "text" }
+        ],
+        "url": "{{baseUrl}}/api/discover/boost"
+      },
+      "event": [{ "listen": "test", "script": { "exec": [
+        "pm.test('Existing product rule returns the active Boost without stacking', function () {",
+        "  pm.response.to.have.status(200);",
+        "  pm.expect(pm.response.json().data.expiresAt).to.eql(pm.collectionVariables.get('firstBoostExpiry'));",
+        "});"
+      ] } }]
+    },
+    {
+      "name": "5 — No entitlement",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{noEntitlementBearerToken}}", "type": "text" },
+          { "key": "Idempotency-Key", "value": "test-boost-no-entitlement-{{$guid}}", "type": "text" },
+          { "key": "Accept", "value": "application/json", "type": "text" }
+        ],
+        "url": "{{baseUrl}}/api/discover/boost"
+      },
+      "event": [{ "listen": "test", "script": { "exec": [
+        "pm.test('Entitlement is enforced', function () {",
+        "  pm.response.to.have.status(402);",
+        "  pm.expect(pm.response.json().code).to.eql('BOOST_ENTITLEMENT_REQUIRED');",
+        "});"
+      ] } }]
+    }
+  ]
+}

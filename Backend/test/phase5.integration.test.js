@@ -38,7 +38,7 @@ async function credit(user, amount, key) {
 
 before(async () => {
   await migrate({ databaseName: testDatabase, quiet: true }); await initializeDatabase(); models = getModels();
-  await Promise.all([createUser('buyer'), createUser('recipient'), createUser('empty'), createUser('other')]);
+  await Promise.all([createUser('buyer'), createUser('recipient'), createUser('empty'), createUser('other'), createUser('renewal')]);
   for (const value of catalog.plans) await models.SubscriptionPlan.upsert(value);
   for (const value of catalog.walletProducts) await models.WalletProduct.upsert(value);
   for (const value of catalog.boosts) await models.BoostProduct.upsert(value);
@@ -117,11 +117,53 @@ test('verified top-up credits wallet only after provider capture', async () => {
   assert.equal((await request('/api/wallet', { headers: auth(users.empty) })).body.data.wallet.balance, 100);
 });
 
-test('boost requires inventory, consumes exactly one entitlement, and retry is stable', async () => {
-  assert.equal((await json('/api/discover/boost', 'POST', users.other, { idempotencyKey: idem('no-boost') })).status, 402);
+test('boost contract, authentication, entitlement consumption, and retries are database-backed', async () => {
+  const unauthenticated = await request('/api/discover/boost', { method: 'POST', headers: { 'content-type': 'application/json', 'Idempotency-Key': idem('unauthenticated') } });
+  assert.equal(unauthenticated.status, 401);
+
+  const missing = await json('/api/discover/boost', 'POST', users.buyer);
+  assert.equal(missing.status, 400); assert.equal(missing.body.code, 'IDEMPOTENCY_KEY_REQUIRED');
+  const invalid = await json('/api/discover/boost', 'POST', users.buyer, undefined, { 'Idempotency-Key': 'short' });
+  assert.equal(invalid.status, 400); assert.equal(invalid.body.code, 'IDEMPOTENCY_KEY_REQUIRED');
+
+  const noEntitlement = await json('/api/discover/boost', 'POST', users.other, undefined, { 'Idempotency-Key': idem('no-boost') });
+  assert.equal(noEntitlement.status, 402); assert.equal(noEntitlement.body.code, 'BOOST_ENTITLEMENT_REQUIRED');
+  const expiredEntitlement = await models.BoostEntitlement.create({ userId: users.other.id, source: 'admin', quantity: 1, remainingQuantity: 1, durationMinutes: 30, status: 'active', expiresAt: new Date(Date.now() - 60000), idempotencyKey: idem('expired-entitlement') });
+  const expired = await json('/api/discover/boost', 'POST', users.other, undefined, { 'Idempotency-Key': idem('expired-attempt') });
+  assert.equal(expired.status, 402); await expiredEntitlement.reload(); assert.equal(expiredEntitlement.remainingQuantity, 1);
+
+  await users.other.update({ accountStatus: 'deactivated', deactivatedAt: new Date() });
+  const inactive = await json('/api/discover/boost', 'POST', users.other, undefined, { 'Idempotency-Key': idem('inactive') });
+  assert.equal(inactive.status, 403); assert.equal(inactive.body.code, 'ACCOUNT_DEACTIVATED');
+  await users.other.update({ accountStatus: 'active', deactivatedAt: null });
+
   const inventory = await request('/api/boosts/me', { headers: auth(users.buyer) }); assert.ok(inventory.body.data.boost.available >= 1);
-  const key = idem('activate'); const activated = await json('/api/discover/boost', 'POST', users.buyer, { idempotencyKey: key }); assert.equal(activated.status, 200); assert.equal(activated.body.data.active, true);
-  const retried = await json('/api/discover/boost', 'POST', users.buyer, { idempotencyKey: key }); assert.equal(retried.status, 200); assert.equal(retried.body.data.expiresAt, activated.body.data.expiresAt);
+  const entitlement = await models.BoostEntitlement.findOne({ where: { userId: users.buyer.id, status: 'active', remainingQuantity: { [Op.gt]: 0 } }, order: [['id', 'ASC']] });
+  const beforeRemaining = Number(entitlement.remainingQuantity);
+  const beforeBoosts = await models.Boost.count({ where: { userId: users.buyer.id } });
+  const key = idem('activate');
+  const activated = await json('/api/discover/boost', 'POST', users.buyer, undefined, { 'Idempotency-Key': key });
+  assert.equal(activated.status, 200); assert.equal(activated.body.data.active, true); assert.ok(activated.body.data.startedAt); assert.ok(activated.body.data.expiresAt);
+  await entitlement.reload(); assert.equal(Number(entitlement.remainingQuantity), beforeRemaining - 1);
+  assert.equal(await models.Boost.count({ where: { userId: users.buyer.id } }), beforeBoosts + 1);
+
+  const retried = await json('/api/discover/boost', 'POST', users.buyer, undefined, { 'Idempotency-Key': key });
+  assert.equal(retried.status, 200); assert.equal(retried.body.data.expiresAt, activated.body.data.expiresAt);
+  await entitlement.reload(); assert.equal(Number(entitlement.remainingQuantity), beforeRemaining - 1);
+  assert.equal(await models.Boost.count({ where: { userId: users.buyer.id, idempotencyKey: key } }), 1);
+
+  const alreadyActive = await json('/api/discover/boost', 'POST', users.buyer, undefined, { 'Idempotency-Key': idem('while-active') });
+  assert.equal(alreadyActive.status, 200); assert.equal(alreadyActive.body.message, 'Boost is already active.'); assert.equal(alreadyActive.body.data.expiresAt, activated.body.data.expiresAt);
+  await entitlement.reload(); assert.equal(Number(entitlement.remainingQuantity), beforeRemaining - 1);
+
+  const renewalEntitlement = await models.BoostEntitlement.create({ userId: users.renewal.id, source: 'admin', quantity: 2, remainingQuantity: 2, durationMinutes: 30, status: 'active', idempotencyKey: idem('renewal-entitlement') });
+  const firstKey = idem('renewal-first'); const secondKey = idem('renewal-second');
+  const firstActivation = await json('/api/discover/boost', 'POST', users.renewal, undefined, { 'Idempotency-Key': firstKey });
+  assert.equal(firstActivation.status, 200);
+  await models.Boost.update({ active: false, expiresAt: new Date(Date.now() - 1000) }, { where: { userId: users.renewal.id, idempotencyKey: firstKey } });
+  const secondActivation = await json('/api/discover/boost', 'POST', users.renewal, undefined, { 'Idempotency-Key': secondKey });
+  assert.equal(secondActivation.status, 200); await renewalEntitlement.reload(); assert.equal(Number(renewalEntitlement.remainingQuantity), 0);
+  assert.equal(await models.Boost.count({ where: { userId: users.renewal.id } }), 2);
 });
 
 test('gift price is server-owned, blocked recipients are denied, and retry charges once', async () => {

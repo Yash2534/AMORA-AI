@@ -4,10 +4,14 @@ import 'package:flutter_test/flutter_test.dart';
 
 class _FakeDiscoverApi extends DiscoverApiService {
   bool failNextBoost = false;
+  int failureStatusCode = 503;
+  String failureMessage = 'temporary';
+  int generatedKeys = 0;
   final List<String> boostKeys = <String>[];
 
   @override
-  String newIdempotencyKey(String operation) => 'flutter:$operation:test-key';
+  String newIdempotencyKey(String operation) =>
+      'flutter:$operation:test-key-${++generatedKeys}';
 
   @override
   Future<DiscoverApiResult<DiscoverSwipeResult>> swipe({
@@ -27,7 +31,10 @@ class _FakeDiscoverApi extends DiscoverApiService {
     boostKeys.add(key);
     if (failNextBoost) {
       failNextBoost = false;
-      return const DiscoverApiResult.failure('temporary', statusCode: 503);
+      return DiscoverApiResult.failure(
+        failureMessage,
+        statusCode: failureStatusCode,
+      );
     }
     return const DiscoverApiResult.success(<String, dynamic>{
       'active': true,
@@ -111,12 +118,45 @@ void main() {
       expect(controller.boostRequested, isFalse);
       expect(await controller.boostProfile(), isTrue);
       expect(api.boostKeys, <String>[
-        'flutter:boost-activation:test-key',
-        'flutter:boost-activation:test-key',
+        'flutter:boost-activation:test-key-1',
+        'flutter:boost-activation:test-key-1',
       ]);
       expect(controller.boostState?['active'], isTrue);
     },
   );
+
+  test('a new activation after success receives a new key', () async {
+    expect(await controller.boostProfile(), isTrue);
+    controller.consumeBoostRequest();
+    expect(await controller.boostProfile(), isTrue);
+
+    expect(api.boostKeys, <String>[
+      'flutter:boost-activation:test-key-1',
+      'flutter:boost-activation:test-key-2',
+    ]);
+  });
+
+  test('rapid boost taps issue only one request', () async {
+    final first = controller.boostProfile();
+    final repeated = controller.boostProfile();
+
+    expect(await repeated, isFalse);
+    expect(await first, isTrue);
+    expect(api.boostKeys, hasLength(1));
+  });
+
+  test('definitive Boost rejection does not show fake success', () async {
+    api
+      ..failNextBoost = true
+      ..failureStatusCode = 402
+      ..failureMessage = 'A boost entitlement is required.';
+
+    expect(await controller.boostProfile(), isFalse);
+    expect(controller.boostRequested, isFalse);
+    expect(controller.boostState, isNull);
+    expect(controller.lastError, contains('entitlement'));
+    expect(controller.boostIdempotencyKey, isNull);
+  });
 
   test('deck exposes a polished empty state condition', () async {
     await controller.passProfile();

@@ -7,6 +7,8 @@ import 'package:amora_ai/core/config/amora_api_config.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
+typedef DiscoverAccessTokenProvider = Future<String?> Function();
+
 Map<String, String> buildDiscoverFeedQuery({
   required int page,
   required int limit,
@@ -65,12 +67,18 @@ class DiscoverSwipeResult {
 }
 
 class DiscoverApiService {
-  DiscoverApiService({http.Client? client}) : _client = client ?? http.Client();
+  DiscoverApiService({
+    http.Client? client,
+    DiscoverAccessTokenProvider? accessTokenProvider,
+  }) : _client = client ?? http.Client(),
+       _accessTokenProvider =
+           accessTokenProvider ?? (() => _storage.read(key: _accessTokenKey));
 
   static const _accessTokenKey = 'amora_access_token';
   static const _timeout = Duration(seconds: 10);
   static const _storage = FlutterSecureStorage();
   final http.Client _client;
+  final DiscoverAccessTokenProvider _accessTokenProvider;
 
   String newIdempotencyKey(String operation) =>
       'flutter:$operation:${DateTime.now().microsecondsSinceEpoch}:${Random.secure().nextInt(1 << 32)}';
@@ -150,7 +158,6 @@ class DiscoverApiService {
   ) => _request(
     'POST',
     '/api/discover/boost',
-    body: {'idempotencyKey': idempotencyKey},
     headers: {'Idempotency-Key': idempotencyKey},
   );
 
@@ -236,7 +243,7 @@ class DiscoverApiService {
 
   Future<_RequestSetup?> _setup(String path, Map<String, String>? query) async {
     try {
-      final token = await _storage.read(key: _accessTokenKey);
+      final token = await _accessTokenProvider();
       if (AmoraApiConfig.baseUrl.isEmpty || token == null || token.isEmpty) {
         return null;
       }

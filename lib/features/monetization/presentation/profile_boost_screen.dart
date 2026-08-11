@@ -7,6 +7,7 @@ import 'package:amora_ai/core/widgets/amora_screen_title.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
+import 'package:amora_ai/features/discover/data/discover_api_service.dart';
 import 'package:amora_ai/features/monetization/data/monetization_data.dart';
 import 'package:amora_ai/features/monetization/data/monetization_repository.dart';
 import 'package:amora_ai/features/monetization/domain/monetization_models.dart';
@@ -15,8 +16,9 @@ import 'package:amora_ai/features/payment/presentation/payment_screen.dart';
 import 'package:flutter/material.dart';
 
 class ProfileBoostScreen extends StatefulWidget {
-  const ProfileBoostScreen({super.key});
+  const ProfileBoostScreen({super.key, this.discoverApiService});
   static const routeName = '/profile-boost';
+  final DiscoverApiService? discoverApiService;
   @override
   State<ProfileBoostScreen> createState() => _ProfileBoostScreenState();
 }
@@ -28,10 +30,13 @@ class _ProfileBoostScreenState extends State<ProfileBoostScreen> {
   bool _loading = true;
   bool _acting = false;
   String? _error;
+  String? _activationIdempotencyKey;
   Timer? _timer;
+  late final DiscoverApiService _discoverApi;
   @override
   void initState() {
     super.initState();
+    _discoverApi = widget.discoverApiService ?? DiscoverApiService();
     _load();
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted && _boost?.active == true) setState(() {});
@@ -190,14 +195,25 @@ class _ProfileBoostScreenState extends State<ProfileBoostScreen> {
   );
 
   Future<void> _activate() async {
+    if (_acting) return;
     setState(() => _acting = true);
+    _activationIdempotencyKey ??= MonetizationRepository.instance
+        .newIdempotencyKey('boost-activation');
     try {
-      _boost = await MonetizationRepository.instance.activateBoost(
-        MonetizationRepository.instance.newIdempotencyKey('boost-activation'),
-      );
-    } catch (_) {
+      final result = await _discoverApi.boost(_activationIdempotencyKey!);
+      if (!result.success) {
+        if (result.statusCode >= 400 && result.statusCode < 500) {
+          _activationIdempotencyKey = null;
+        }
+        if (mounted) showPremiumSnack(context, result.message);
+        return;
+      }
+      _activationIdempotencyKey = null;
+      final canonical = await MonetizationRepository.instance.boostState();
+      if (mounted) setState(() => _boost = canonical);
+    } catch (error) {
       if (mounted) {
-        showPremiumSnack(context, 'A valid Boost entitlement is required');
+        showPremiumSnack(context, 'Boost activation could not be confirmed');
       }
     } finally {
       if (mounted) setState(() => _acting = false);
