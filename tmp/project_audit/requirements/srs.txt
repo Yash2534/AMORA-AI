@@ -1,0 +1,701 @@
+=== PAGE 1 ===
+AMORA | Software Requirements Specification Kinetic TechArc Private Limited
+A M O R A
+DATING & MATCHMAKING APPLICATION
+Software Requirements Specification
+Complete Functional Feature Reference — All Modules
+PREPARED FOR DOCUMENT VERSION
+Kinetic TechArc Private Limited 1.0 • Final Draft for Review
+SCOPE CLASSIFICATION
+30 functional modules + proposed roadmap items Internal — Product & Engineering
+Page 1 of 22
+
+=== PAGE 2 ===
+AMORA | Software Requirements Specification Kinetic TechArc Private Limited
+Table of Contents
+1. Authentication ..................................................................................................................................................... 4
+2. Onboarding Screens ............................................................................................................................................ 4
+3. Discover ............................................................................................................................................................... 4
+4. Discover Filters .................................................................................................................................................... 5
+5. Chat & Messaging ................................................................................................................................................ 6
+6. AI Matches ........................................................................................................................................................... 6
+7. Events .................................................................................................................................................................. 7
+8. Profile .................................................................................................................................................................. 7
+9. Edit Profile ........................................................................................................................................................... 9
+10. Profile Preview ................................................................................................................................................11
+11. Profile Completion...........................................................................................................................................12
+12. Settings ............................................................................................................................................................13
+13. Profile Details Screen ......................................................................................................................................14
+14. Notifications ....................................................................................................................................................14
+15. Permissions ......................................................................................................................................................15
+16. Report a Concern .............................................................................................................................................15
+17. Send a Rose .....................................................................................................................................................16
+18. Event Details ....................................................................................................................................................16
+19. Identity Verification .........................................................................................................................................16
+20. Safety Center ...................................................................................................................................................17
+21. Terms & Conditions .........................................................................................................................................17
+22. Privacy Policy ...................................................................................................................................................18
+23. Community Guidelines ....................................................................................................................................18
+24. Membership ....................................................................................................................................................19
+25. Profile Settings.................................................................................................................................................19
+26. Support Center ................................................................................................................................................20
+27. Change Password ............................................................................................................................................21
+28. Logout ..............................................................................................................................................................21
+29. Deactivate Account .........................................................................................................................................21
+30. Delete Account ................................................................................................................................................21
+To Be Discussed (Roadmap) ...................................................................................................................................22
+Page 2 of 22
+
+=== PAGE 3 ===
+AMORA | Software Requirements Specification Kinetic TechArc Private Limited
+Document Purpose & Scope
+This Software Requirements Specification (SRS) defines the complete functional scope of the Amora mobile application.
+It documents every module, screen, field, and interactive element exactly as approved in the master feature list — with
+no items added or removed — so that design, engineering, QA, and stakeholder teams operate from a single,
+unambiguous reference.
+Amora is a dating and matchmaking application built around swipe-based discovery, AI-driven compatibility matching,
+real-time chat, in-person and community events, identity verification, and a tiered membership model.
+Each numbered module below corresponds one-to-one with the source documentation. Every table lists the feature or
+field on the left and its functional explanation on the right.
+Page 3 of 22
+
+=== PAGE 4 ===
+AMORA | Software Requirements Specification Kinetic TechArc Private Limited
+1. Authentication
+Module requirement — defines the complete functional scope of the Authentication module described below.
+Feature / Element Functional Explanation
+Allows a returning user to sign in using registered credentials (email/mobile +
+Login
+password or OTP).
+Sign Up Allows a new user to create an Amora account and begin onboarding.
+Forgot Password Lets a user request a password reset when they cannot recall their credentials.
+Google Login Enables sign-in/sign-up via Google OAuth as an alternative to manual credentials.
+The action/screen that finalizes account creation after sign-up details are
+Create Account
+submitted.
+Mobile OTP Verification Verifies the user's mobile number by sending and validating a one-time password.
+2. Onboarding Screens
+Module requirement — defines the complete functional scope of the Onboarding Screens module described below.
+Feature / Element Functional Explanation
+Age Captures the user's age/date of birth to confirm eligibility and set matching range.
+How Do You Identify? Captures the user's own gender identity.
+Who Would You Like to Meet? Captures the gender(s) the user wants to be matched with.
+What Are You Looking For? Captures the user's dating intention (e.g., casual, serious, friendship).
+Captures the user's current location and the maximum distance they want matches
+Location with Preferred Distance
+from.
+Photos Upload Lets the user upload profile photos required to activate discovery.
+3. Discover
+Module requirement — defines the complete functional scope of the Discover module described below.
+Feature / Element Functional Explanation
+Swipe Profiles The core browsing interface where users swipe through candidate profiles.
+Like Registers positive interest in a profile.
+Super Like Registers a stronger, more visible form of interest than a standard Like.
+Undo Profile Reverses the last swipe action (like/pass), typically a premium feature.
+Pass Profile Registers disinterest and removes the profile from the current stack.
+Page 4 of 22
+
+=== PAGE 5 ===
+AMORA | Software Requirements Specification Kinetic TechArc Private Limited
+Feature / Element Functional Explanation
+Profile Details Opens the full profile view of a card before swiping.
+Filters Opens the filter panel to narrow the discovery stack.
+Notification Displays alerts relevant to discovery activity (e.g., new matches).
+4. Discover Filters
+Module requirement — defines the complete functional scope of the Discover Filters module described below.
+Feature / Element Functional Explanation
+Selected Preferences Summary view of currently active filter selections.
+Search Bar Allows keyword search within filter options.
+Core Preferences Group heading for primary matching criteria.
+Age Range Filter to set minimum/maximum age of shown profiles.
+Distance Filter to set maximum distance radius.
+City Filter to restrict results to a specific city.
+Height Filter to set a preferred height range.
+Hometown Filter by the profile's stated hometown.
+Relationship Intentions Filter by what kind of relationship the profile is seeking.
+Dating Intention Filter by short-term/long-term/casual dating goals.
+Lifestyle & Interests Group heading for lifestyle-based filtering.
+Education & Profession Group heading for career/education filters.
+Education Selection Filter by education level or institution type.
+Profession Selection Filter by occupation or industry.
+Identity & Background Group heading for identity-based filters.
+Community Preference Filter by community/caste or cultural group, if disclosed.
+Religion Filter by religion.
+Languages Filter by spoken language(s).
+Pronouns Filter by stated pronouns.
+Sexuality Filter by sexual orientation.
+Compatibility Group heading for personality/compatibility-based filters.
+Their Qualities Filter by desired personal qualities in a match.
+Preferred hours for talking Filter by the match's preferred communication time window.
+Love languages Filter by the match's stated love language.
+Page 5 of 22
+
+=== PAGE 6 ===
+AMORA | Software Requirements Specification Kinetic TechArc Private Limited
+Feature / Element Functional Explanation
+Habits Group heading for personal habit filters.
+Smoking Filter by smoking habit.
+Drinking Filter by drinking habit.
+Weed Filter by cannabis use habit.
+Ice breaker (non negotiable dating Filter based on the match's stated non-negotiable conversation starter/deal-
+point) breaker.
+Communication style Filter by preferred communication style (e.g., texter, caller).
+AI Match Quality & Trust Group heading for AI/trust-based filters.
+Minimum AI Match Score Filter to only show profiles above a set AI compatibility score.
+Verified Profiles Only Filter to show only identity-verified profiles.
+Online Now Filter to show only currently active users.
+Has Profile Prompts Filter to show only profiles that answered prompt questions.
+Has Event Interest Filter to show only profiles interested in attending events.
+Reset Clears all applied filters back to default.
+Apply Filters Confirms selected filters and refreshes the discovery stack.
+5. Chat & Messaging
+Module requirement — defines the complete functional scope of the Chat & Messaging module described below.
+Feature / Element Functional Explanation
+Active Now Profiles Shows matches who are currently online.
+Chat List List of all ongoing conversations.
+Chat Detail Full message thread with a specific match.
+Send Message Action to compose and send a text message.
+Read Receipts Indicator showing whether a sent message has been read.
+Report User Lets a user flag another user for policy violations from within chat.
+Block User Prevents a specific user from contacting or being seen by the account holder.
+Mute Conversation Silences notifications from a specific chat without blocking.
+New Message Initiates a new conversation thread.
+6. AI Matches
+Module requirement — defines the complete functional scope of the AI Matches module described below.
+Page 6 of 22
+
+=== PAGE 7 ===
+AMORA | Software Requirements Specification Kinetic TechArc Private Limited
+Feature / Element Functional Explanation
+Compatibility Score Numerical score representing AI-computed compatibility with a profile.
+Recommended Matches List of profiles the AI engine surfaces as high-compatibility suggestions.
+Why This Recommendation Explanation of the factors behind a given AI match suggestion.
+View Profile Opens the full profile of a recommended match.
+Message Starts a chat directly from the AI match recommendation.
+Bulk Like Send Lets a user send Likes to multiple AI-recommended profiles at once.
+7. Events
+Module requirement — defines the complete functional scope of the Events module described below.
+Feature / Element Functional Explanation
+Browse Events List/discovery view of available in-person or virtual events.
+Event Detail Full details page for a single event.
+Join Event Action to register/RSVP for an event.
+Featured Experience Highlighted/curated event promoted prominently.
+Recommended Events Events suggested based on user preferences/history.
+Near You Events Events filtered by proximity to the user.
+AMORAA Circles Community/interest-group event format.
+My Events User's personal list of events they are involved in.
+Upcoming, Past, Waitlist,
+Status tabs/filters within My Events for tracking event state.
+Cancelled
+8. Profile
+Module requirement — defines the complete functional scope of the Profile module described below.
+Feature / Element Functional Explanation
+Profile Image Primary display photo on the profile.
+Name User's displayed name.
+Profile Details General information block on the profile screen.
+Profile Completion Percentage Indicator showing how much of the profile setup is finished.
+Edit Profile Entry point to modify profile information.
+Preview Profile Shows the profile as other users would see it.
+Page 7 of 22
+
+=== PAGE 8 ===
+AMORA | Software Requirements Specification Kinetic TechArc Private Limited
+Feature / Element Functional Explanation
+About Me Free-text bio section.
+Photo Gallery Collection of all uploaded profile photos.
+Profile Information Group heading for structured fields.
+Occupation User's job title.
+Company User's employer.
+Education User's education background.
+Gender User's gender.
+Zodiac User's zodiac sign.
+Interests Tags representing the user's hobbies/interests.
+Lifestyle Group heading for lifestyle attributes.
+Drinking User's drinking habit.
+Smoking User's smoking habit.
+Weed User's cannabis use habit.
+Exercise User's exercise habit/frequency.
+Food Preference User's dietary preference (e.g., veg/non-veg/vegan).
+Pets User's pet ownership/preference.
+Sleep Habits User's sleep schedule type (e.g., early bird/night owl).
+Ice breaker (non negotiable dating
+User's stated conversation starter/deal-breaker shown on profile.
+point)
+Communication style User's stated preferred communication style.
+Profile Prompts Group heading for guided prompt answers.
+My ideal Sunday is... Prompt question answered by the user.
+A green flag I value is... Prompt question answered by the user.
+Together we could... Prompt question answered by the user.
+Verification & Trust Group heading for trust-related profile elements.
+Photo Verification Status/action confirming uploaded photos match the real user.
+Safety Guidelines Link/section presenting platform safety information.
+Verify profile Button Action button to start the identity verification flow.
+safety Button Action button linking to safety resources.
+Membership Displays the user's current subscription tier.
+Quick Actions Shortcut links to frequently used profile-related pages.
+Likes & Super Likes Shortcut to view profiles the user has liked/super liked.
+Page 8 of 22
+
+=== PAGE 9 ===
+AMORA | Software Requirements Specification Kinetic TechArc Private Limited
+Feature / Element Functional Explanation
+Saved Profiles Shortcut to view bookmarked profiles.
+Blocked Profiles Shortcut to view the block list.
+Support Shortcut to customer support/help.
+9. Edit Profile
+Module requirement — defines the complete functional scope of the Edit Profile module described below.
+Feature / Element Functional Explanation
+Information still pending Indicator listing which profile fields are incomplete.
+Profile Photos Section for managing uploaded photos.
+Add Photo Action to upload a new photo.
+Manage Photos Action to reorder/delete existing photos.
+Basic Details Group heading for identity fields.
+Full Name Editable field for the user's name.
+DOB Editable field for date of birth.
+Gender Editable field for gender.
+Work & Education Group heading for career fields.
+Occupation Editable field for job title.
+Company Editable field for employer.
+Education Editable field for education level.
+Specify Education Free-text field when education isn't in the preset list.
+Location & Dating Intentions Group heading for location fields.
+City Editable field for the user's city.
+Dating Intention Editable field for relationship goal.
+Height, Languages & Religion Group heading for the fields below.
+Height Editable field for height.
+Languages Editable field for spoken languages.
+Religion Editable field for religion.
+Personal Details Group heading for the fields below.
+Hometown Editable field for hometown.
+Pronouns Editable field for pronouns.
+Sexuality Editable field for sexual orientation.
+Page 9 of 22
+
+=== PAGE 10 ===
+AMORA | Software Requirements Specification Kinetic TechArc Private Limited
+Feature / Element Functional Explanation
+Bio Editable free-text About Me field.
+Interests Editable interest tag selector.
+Lifestyle (interest category) Group heading for interest sub-categories.
+Food Interest tag category.
+Travel Interest tag category.
+Music Interest tag category.
+Fitness Interest tag category.
+Creativity Interest tag category.
+Nature & pets Interest tag category.
+Lifestyle (habits) Group heading for habit fields.
+Drinking Editable drinking habit field.
+Smoking Editable smoking habit field.
+Weed Editable cannabis use field.
+Exercise Editable exercise habit field.
+Food Preference Editable dietary preference field.
+Pets Editable pet preference field.
+Sleep Habits Editable sleep schedule field.
+Connection Preferences Group heading for the fields below.
+Their Qualities Editable field for qualities desired in a match.
+Preferred hours for talking Editable field for communication time preference.
+Love languages Editable field for love language.
+Ice breaker (non negotiable dating
+Editable field for conversation deal-breaker.
+point)
+Communication style Editable field for communication style.
+Profile Prompts Group heading for prompt answers.
+My ideal Sunday is... Editable prompt answer.
+A green flag I value is... Editable prompt answer.
+Together we could... Editable prompt answer.
+Verification Group heading for verification status/actions.
+Review Verification Action to check current verification status.
+Profile Preview Action to preview the profile before saving.
+Save Changes Action to commit all edits.
+Page 10 of 22
+
+=== PAGE 11 ===
+AMORA | Software Requirements Specification Kinetic TechArc Private Limited
+10. Profile Preview
+Module requirement — defines the complete functional scope of the Profile Preview module described below.
+Feature / Element Functional Explanation
+Profile Photo Gallery Displays all photos as seen by other users.
+Name Displayed name.
+Age Displayed age.
+Occupation Displayed job title.
+Company Displayed employer.
+Education Displayed education.
+Location Displayed city/location.
+Height Displayed height.
+Languages Displayed languages.
+Looking For / Dating Intention Displayed relationship goal.
+About Me Displayed bio text.
+Interests Displayed interest tags.
+Lifestyle & Personality Group heading for the fields below.
+Activity Displayed activity/exercise level.
+Food Displayed food preference.
+Smoking Displayed smoking habit.
+Drinking Displayed drinking habit.
+Weed Displayed cannabis use.
+Pets Displayed pet preference.
+Weekend Displayed weekend/sleep habit style.
+Beliefs Displayed religion/belief information.
+Connection Style Group heading for the fields below.
+Qualities I value Displayed desired qualities.
+Preferred time to talk Displayed communication time preference.
+Love languages Displayed love language.
+Ice breaker (non negotiable dating
+Displayed deal-breaker.
+point)
+Communication style Displayed communication style.
+Profile Prompts Group heading for the fields below.
+My ideal Sunday is... Displayed prompt answer.
+Page 11 of 22
+
+=== PAGE 12 ===
+AMORA | Software Requirements Specification Kinetic TechArc Private Limited
+Feature / Element Functional Explanation
+A green flag I value is... Displayed prompt answer.
+Together we could... Displayed prompt answer.
+Edit Profile Button Returns user to Edit Profile screen.
+Return to Discover Button Exits preview and returns to the Discover feed.
+11. Profile Completion
+Module requirement — defines the complete functional scope of the Profile Completion module described below.
+Feature / Element Functional Explanation
+Completion Percentage Numeric/visual indicator of overall profile completeness.
+Recommended Next System-suggested next field/section to complete.
+Profile Photos Checklist item for photo upload status.
+Basic Details Checklist group: name, DOB, gender.
+Full name Checklist item.
+DOB Checklist item.
+Gender Checklist item.
+Work & Education Checklist group: occupation, company, education.
+Occupation Checklist item.
+Company Checklist item.
+Education Checklist item.
+Location & Dating Intentions Checklist group: city, dating intention.
+City Checklist item.
+Dating Intention Checklist item.
+Height, Languages & Religion Checklist group: height, languages, religion, hometown, pronouns, sexuality.
+Height Checklist item.
+Languages Checklist item.
+Religion Checklist item.
+Hometown Checklist item.
+Pronouns Checklist item.
+Sexuality Checklist item.
+Bio Checklist item for About Me completion.
+Interests Checklist group for interest categories.
+Page 12 of 22
+
+=== PAGE 13 ===
+AMORA | Software Requirements Specification Kinetic TechArc Private Limited
+Feature / Element Functional Explanation
+Food Checklist item.
+Travel Checklist item.
+Music Checklist item.
+Fitness Checklist item.
+Creativity Checklist item.
+Nature & pets Checklist item.
+Lifestyle Checklist group for habit fields.
+Smoking Checklist item.
+Drinking Checklist item.
+Weed Checklist item.
+Exercise Checklist item.
+Food Preference Checklist item.
+Pets Checklist item.
+Sleep Habits Checklist item.
+Their Qualities Checklist item for connection preference.
+Preferred Hours for Talking Checklist item.
+Love Language Checklist item.
+Ice breaker (non negotiable dating
+Checklist item.
+point)
+Communication style Checklist item.
+Profile Prompt Checklist item for prompt answers.
+Pending Details Summary list of all fields still incomplete.
+Verification Checklist item for identity verification status.
+12. Settings
+Module requirement — defines the complete functional scope of the Settings module described below.
+Feature / Element Functional Explanation
+Account — Personal Information Section to view/edit core account details.
+Saved Profiles List of bookmarked profiles.
+Blocked Profiles List of blocked users.
+Liked Profiles List of profiles the user liked.
+Page 13 of 22
+
+=== PAGE 14 ===
+AMORA | Software Requirements Specification Kinetic TechArc Private Limited
+Feature / Element Functional Explanation
+Super Liked Profiles List of profiles the user super liked.
+Membership Current plan details.
+Manage Subscription Action to upgrade/downgrade/cancel subscription.
+Notification Preferences Settings for which notifications are received.
+Email Support Link to contact support via email.
+Terms & Conditions Link to the legal terms document.
+Privacy Policy Link to the privacy policy document.
+Community Guidelines Link to the community conduct rules.
+Safety Center Link to safety resources.
+Change Password Action to update account password.
+Logout Action to sign out of the account.
+Delete Account Action to permanently remove the account.
+Deactivate Account Action to temporarily disable the account.
+13. Profile Details Screen
+Module requirement — defines the complete functional scope of the Profile Details Screen module described below.
+Feature / Element Functional Explanation
+Profile Details Full view of another user's profile from Discover/Chat.
+Save Profile Bookmarks the viewed profile.
+Safety Actions Group heading for safety-related actions.
+Like Sends a Like from this screen.
+Super Like Sends a Super Like from this screen.
+Message Opens/starts a chat from this screen.
+Send Gift Sends a virtual gift to the profile.
+Profile Prompts Reply Lets the viewer respond directly to a prompt answer.
+Why We Matched Shows the AI-generated reasoning for the match.
+14. Notifications
+Module requirement — defines the complete functional scope of the Notifications module described below.
+Page 14 of 22
+
+=== PAGE 15 ===
+AMORA | Software Requirements Specification Kinetic TechArc Private Limited
+Feature / Element Functional Explanation
+Notification Filter Filters the notification feed by type.
+Notification Feed Chronological list of all notifications.
+Mark All Notifications as Read Action to clear unread status on all notifications.
+Notification Preferences Group heading for settings below.
+What You Hear About Group heading for notification categories.
+New Matches Toggle for match notifications.
+Messages Toggle for message notifications.
+Event Reminders Toggle for event-related reminders.
+Payments & membership Toggle for billing/subscription notifications.
+Offers from Amoraa Toggle for promotional notifications.
+Safety updates Toggle for safety-related notifications.
+Delivery Channels Group heading for channel toggles.
+Push notifications Toggle for in-app push alerts.
+Email Toggle for email notifications.
+SMS Toggle for SMS notifications.
+Quiet Hours Setting to mute notifications during a defined time window.
+15. Permissions
+Module requirement — defines the complete functional scope of the Permissions module described below.
+Feature / Element Functional Explanation
+Camera Permission System permission request for photo capture/verification.
+Notification Permission System permission request for push notifications.
+Upload Media Permission System permission request for photo/media library access.
+Location System permission request for location access.
+Notifications System permission status for notifications (settings-level).
+16. Report a Concern
+Module requirement — defines the complete functional scope of the Report a Concern module described below.
+Feature / Element Functional Explanation
+Profile Name Displays the profile being reported.
+Page 15 of 22
+
+=== PAGE 16 ===
+AMORA | Software Requirements Specification Kinetic TechArc Private Limited
+Feature / Element Functional Explanation
+Reason Dropdown/selection for the reason behind the report.
+Notes Free-text field for additional report details.
+Submit Report Action to send the report to moderation.
+17. Send a Rose
+Module requirement — defines the complete functional scope of the Send a Rose module described below.
+Feature / Element Functional Explanation
+Notes Optional message attached to the virtual rose gift.
+Send Rose in Chat Action to send the rose within a chat conversation.
+18. Event Details
+Module requirement — defines the complete functional scope of the Event Details module described below.
+Feature / Element Functional Explanation
+Name Event title.
+Date and Time Scheduled date/time of the event.
+Location Venue or address of the event.
+Distance Distance from the user's current location.
+Host Organizer of the event.
+About Description of the event.
+What to Expect Outline of the event format/activities.
+Good to Know Practical notes (dress code, entry rules, etc.).
+Why This Event May Suit You AI/personalization-based reasoning for the recommendation.
+Who's Joining List/preview of other attendees.
+Safety & Community Safety guidance specific to the event.
+Join Event Action to RSVP.
+Share Event Action to share the event externally or with matches.
+19. Identity Verification
+Module requirement — defines the complete functional scope of the Identity Verification module described below.
+Page 16 of 22
+
+=== PAGE 17 ===
+AMORA | Software Requirements Specification Kinetic TechArc Private Limited
+Feature / Element Functional Explanation
+Percentage Progress indicator for the verification process.
+Aadhaar Government ID document step for identity verification.
+Selfie Live selfie capture step to match against the ID.
+Processing Status shown while verification is being reviewed.
+Verified Final status confirming successful verification.
+20. Safety Center
+Module requirement — defines the complete functional scope of the Safety Center module described below.
+Feature / Element Functional Explanation
+Your Safety, Clearly Presented Landing/summary section of the Safety Center.
+Identity Status Displays the user's current verification status.
+Blocked Profiles List of blocked users, accessible from Safety Center.
+Privacy & Visibility Group heading for privacy controls.
+Privacy Controls Unavailable State shown when privacy controls are not yet accessible/enabled.
+Block & Report Combined action for blocking and reporting a user.
+Blocked & Reported Profiles List of users blocked and/or reported.
+Emergency & Check-in Group heading for safety tools during dates.
+Emergency Tools Unavailable State shown when emergency features are not yet accessible/enabled.
+Dating Safety Guidance Educational content on safe dating practices.
+Protect Personal Information Guidance on not oversharing personal data.
+Respect Boundaries Guidance on respectful conduct.
+Respond to Safety Concerns Guidance on what to do if something feels unsafe.
+Support Link to contact support from Safety Center.
+Community Guidelines Link to community conduct rules.
+Safety Help Link to additional safety help resources.
+21. Terms & Conditions
+Module requirement — defines the complete functional scope of the Terms & Conditions module described below.
+Page 17 of 22
+
+=== PAGE 18 ===
+AMORA | Software Requirements Specification Kinetic TechArc Private Limited
+Feature / Element Functional Explanation
+Eligibility and Account
+Clause defining who may use the app and account ownership responsibilities.
+Responsibility
+Respectful and Authentic
+Clause on required user conduct and authenticity.
+Participation
+Matches and Recommendations Clause clarifying that matches/recommendations are not guarantees.
+Subscriptions and Purchases Clause covering billing terms for paid features.
+Safety and Enforcement Clause covering platform enforcement rights.
+Service Availability and Changes Clause covering the right to modify or discontinue service.
+Ending Your Account Clause covering account termination terms.
+22. Privacy Policy
+Module requirement — defines the complete functional scope of the Privacy Policy module described below.
+Feature / Element Functional Explanation
+Information You Provide Section describing data users directly submit.
+Information Created Through Use Section describing data generated by app usage.
+How Information Is Used Section describing data usage purposes.
+Sharing and Visibility Section describing when/how data is shared or visible to others.
+Your Choices Section describing user controls over their data.
+Security and Retention Section describing data protection and retention practices.
+Section describing how policy changes are communicated and how to contact the
+Updates and Contact
+company.
+23. Community Guidelines
+Module requirement — defines the complete functional scope of the Community Guidelines module described below.
+Feature / Element Functional Explanation
+Be Authentic Rule requiring genuine profiles and information.
+Treat People with Respect Rule on respectful behavior toward other users.
+Keep Conversations Safe Rule on maintaining safe, appropriate chat conduct.
+Protect the Community Rule on collective responsibility for platform safety.
+Report Concerns Rule/guidance on reporting violations.
+How Enforcement Works Explanation of the moderation/enforcement process.
+Page 18 of 22
+
+=== PAGE 19 ===
+AMORA | Software Requirements Specification Kinetic TechArc Private Limited
+24. Membership
+Module requirement — defines the complete functional scope of the Membership module described below.
+Feature / Element Functional Explanation
+Choose Your Membership Screen presenting available subscription plans.
+Select Plan Action to pick a specific plan.
+Review Membership Summary screen before confirming purchase.
+Plan Name with Price Displays the selected plan's name and cost.
+Included Details Lists features included in the plan.
+Payment Summary Breakdown of charges before payment.
+Payment Method Selection of how the user will pay.
+Pay Action to complete the transaction.
+25. Profile Settings
+Module requirement — defines the complete functional scope of the Profile Settings module described below.
+Feature / Element Functional Explanation
+Personal Information Group heading for the editable fields below.
+Name Editable name field.
+DOB Editable date of birth field.
+Gender Editable gender field.
+Occupation Editable occupation field.
+Company Editable company field.
+Education Editable education field.
+City Editable city field.
+Blocked & Reported Profiles Group heading below.
+Blocked Profile List List of blocked users.
+Unblock Action to remove a user from the block list.
+Likes & Super Likes Group heading below.
+Likes List List of profiles liked by the user.
+Unlike Action to withdraw a Like.
+Super Likes List List of profiles super liked by the user.
+Page 19 of 22
+
+=== PAGE 20 ===
+AMORA | Software Requirements Specification Kinetic TechArc Private Limited
+Feature / Element Functional Explanation
+Remove Super Like Action to withdraw a Super Like.
+Saved Profiles Group heading below.
+Saved Profiles List List of bookmarked profiles.
+Unsave Action to remove a profile from saved list.
+26. Support Center
+Module requirement — defines the complete functional scope of the Support Center module described below.
+Feature / Element Functional Explanation
+Search Bar Search field for help articles.
+Browse by Topic Category-based browsing of help content.
+Help Category Filter Filter to narrow help topics by category.
+All Help Topics Full list of available help articles.
+How does AMORAA Compatibility
+Help article explaining the AI compatibility scoring.
+work?
+How do I get Pink and Purple Tick
+Help article explaining verification badge requirements.
+verified?
+How can I report or block
+Help article explaining the report/block process.
+someone?
+How do I join an AMORAA event? Help article explaining event registration.
+Where can I manage my
+Help article pointing to subscription management.
+subscription?
+How do I delete my account? Help article explaining account deletion.
+How do I update my profile? Help article explaining profile editing.
+What do message status
+Help article explaining read receipts/status icons.
+indicators mean?
+How do I manage an
+Help article on handling difficult chats safely.
+uncomfortable conversation?
+Where are my visibility controls? Help article pointing to privacy/visibility settings.
+How do I refine who I discover? Help article explaining filter usage.
+Still Need Help? Prompt directing users to further support options.
+Email Support Link to contact support via email.
+Safety and Community Group heading for links below.
+Safety Center Link to Safety Center.
+Community Guidelines Link to Community Guidelines.
+Page 20 of 22
+
+=== PAGE 21 ===
+AMORA | Software Requirements Specification Kinetic TechArc Private Limited
+Feature / Element Functional Explanation
+Report a Problem Link to submit a general issue report.
+27. Change Password
+Module requirement — defines the complete functional scope of the Change Password module described below.
+Feature / Element Functional Explanation
+Reset Your Password Screen title/action to begin password reset.
+Registered Email Field showing/confirming the email tied to the account.
+Send Verification Code Action to trigger an OTP/verification code for reset.
+28. Logout
+Module requirement — defines the complete functional scope of the Logout module described below.
+Feature / Element Functional Explanation
+Logout Securely Confirms and executes sign-out from the account.
+Go Back Cancels the logout action and returns to the previous screen.
+29. Deactivate Account
+Module requirement — defines the complete functional scope of the Deactivate Account module described below.
+Feature / Element Functional Explanation
+Deactivate Account Confirms temporary account deactivation.
+Keep My Account Cancels deactivation and retains the active account.
+30. Delete Account
+Module requirement — defines the complete functional scope of the Delete Account module described below.
+Feature / Element Functional Explanation
+Continue to Confirmation Proceeds to the final confirmation step of account deletion.
+Reason Questions Survey questions asked about why the user is deleting their account.
+Cancel Cancels the deletion process.
+Page 21 of 22
+
+=== PAGE 22 ===
+AMORA | Software Requirements Specification Kinetic TechArc Private Limited
+To Be Discussed
+Module requirement — defines the complete functional scope of the To Be Discussed module described below.
+Feature / Element Functional Explanation
+Proposed feature — an AI-driven assistant to guide users through dating
+Ai dating assistant
+decisions/conversations (scope not yet finalized).
+Proposed feature — interactive quizzes, likely for compatibility or personality
+Quizzes
+insights (scope not yet finalized).
+Page 22 of 22

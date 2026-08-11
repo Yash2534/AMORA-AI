@@ -85,10 +85,8 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
       _serverRelationship.blocked ||
       ProfileRelationshipController.instance.isBlocked(_profile.id);
   bool get _liked =>
-      _serverRelationship.liked ||
       ProfileRelationshipController.instance.isLiked(_profile.id);
   bool get _superLiked =>
-      _serverRelationship.superLiked ||
       ProfileRelationshipController.instance.isSuperLiked(_profile.id);
 
   List<ProfilePhotoViewData> get _photos {
@@ -135,6 +133,13 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
     try {
       final result = await widget.api!.profile(userId);
       if (!mounted) return;
+      final relationships = ProfileRelationshipController.instance;
+      if (result.relationship.saved) relationships.saveProfile(result.profile);
+      if (result.relationship.superLiked) {
+        relationships.superLikeProfile(result.profile);
+      } else if (result.relationship.liked) {
+        relationships.likeProfile(result.profile);
+      }
       setState(() {
         _routeProfile = result.profile;
         _serverRelationship = result.relationship;
@@ -251,13 +256,17 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
         context: context,
         action: AmoraaProfileAction.unlike,
         profileName: _profile.name,
-        onConfirm: () => relationships.removeLike(_profile.id),
+        onConfirm: () => relationships.removeLikePersisted(_profile.id),
       );
       if (removed == true && mounted) _snack('Like removed');
       return;
     }
-    relationships.likeProfile(_profile);
-    _snack('Profile liked successfully');
+    try {
+      await relationships.likeProfilePersisted(_profile);
+      if (mounted) _snack('Profile liked successfully');
+    } on AuthException catch (error) {
+      if (mounted) _snack(error.message);
+    }
   }
 
   Future<void> _sendSuperLike() async {
@@ -267,8 +276,8 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
         context: context,
         action: AmoraaProfileAction.removeSuperLike,
         profileName: _profile.name,
-        onConfirm: () =>
-            ProfileRelationshipController.instance.removeSuperLike(_profile.id),
+        onConfirm: () => ProfileRelationshipController.instance
+            .removeSuperLikePersisted(_profile.id),
       );
       return;
     }
@@ -466,11 +475,15 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
         context: context,
         action: AmoraaProfileAction.unsave,
         profileName: _profile.name,
-        onConfirm: () => relationships.removeSaved(_profile.id),
+        onConfirm: () => relationships.removeSavedPersisted(_profile.id),
       );
       return;
     }
-    relationships.saveProfile(_profile);
+    try {
+      await relationships.saveProfilePersisted(_profile);
+    } on AuthException catch (error) {
+      if (mounted) _snack(error.message);
+    }
   }
 
   void _openWhyMatched() {

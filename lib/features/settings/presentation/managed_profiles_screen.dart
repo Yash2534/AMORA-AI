@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:amora_ai/core/data/image_repository.dart';
 import 'package:amora_ai/core/api/phase_two_api_service.dart';
 import 'package:amora_ai/core/auth/auth_service.dart';
@@ -15,7 +17,7 @@ import 'package:amora_ai/features/profile/presentation/controllers/profile_relat
 import 'package:amora_ai/features/profile/presentation/profile_detail_screen.dart';
 import 'package:flutter/material.dart';
 
-class SavedProfilesScreen extends StatelessWidget {
+class SavedProfilesScreen extends StatefulWidget {
   const SavedProfilesScreen({super.key, this.controller});
 
   static const routeName = '/saved-profiles';
@@ -23,31 +25,65 @@ class SavedProfilesScreen extends StatelessWidget {
   final ProfileRelationshipController? controller;
 
   @override
+  State<SavedProfilesScreen> createState() => _SavedProfilesScreenState();
+}
+
+class _SavedProfilesScreenState extends State<SavedProfilesScreen> {
+  ProfileRelationshipController get source =>
+      widget.controller ?? ProfileRelationshipController.instance;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.controller == null) unawaited(source.refreshRemote());
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final source = controller ?? ProfileRelationshipController.instance;
     return AnimatedBuilder(
       animation: source,
-      builder: (context, _) => ManagedProfilesScreen(
-        title: 'Saved Profiles',
-        subtitle: 'People you saved to revisit thoughtfully.',
-        icon: Icons.bookmark_rounded,
-        profiles: source.savedProfiles,
-        emptyTitle: 'No saved profiles yet',
-        emptyMessage: 'Profiles you save will appear here.',
-        emptyActionLabel: 'Discover profiles',
-        onEmptyAction: () =>
-            Navigator.of(context).pushNamed(DiscoverScreen.routeName),
-        actionLabel: 'Unsave Profile',
-        actionSemanticLabel: (profile) => AmoraaProfileAction.unsave
-            .semanticLabel(amoraaProfileActionName(profile.name)),
-        actionIcon: Icons.bookmark_remove_rounded,
-        onAction: (profile) => showAmoraaProfileActionConfirmation(
-          context: context,
-          action: AmoraaProfileAction.unsave,
-          profileName: profile.name,
-          onConfirm: () => source.removeSaved(profile.id),
-        ),
-      ),
+      builder: (context, _) {
+        if (source.loading && source.savedProfiles.isEmpty) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+        if (source.error != null && source.savedProfiles.isEmpty) {
+          return Scaffold(
+            appBar: AmoraAppBar(
+              title: 'Saved Profiles',
+              onBack: () => Navigator.of(context).maybePop(),
+            ),
+            body: Center(
+              child: TextButton(
+                onPressed: source.refreshRemote,
+                child: Text('${source.error}\nTry again'),
+              ),
+            ),
+          );
+        }
+        return ManagedProfilesScreen(
+          title: 'Saved Profiles',
+          subtitle: 'People you saved to revisit thoughtfully.',
+          icon: Icons.bookmark_rounded,
+          profiles: source.savedProfiles,
+          emptyTitle: 'No saved profiles yet',
+          emptyMessage: 'Profiles you save will appear here.',
+          emptyActionLabel: 'Discover profiles',
+          onEmptyAction: () =>
+              Navigator.of(context).pushNamed(DiscoverScreen.routeName),
+          actionLabel: 'Unsave Profile',
+          actionSemanticLabel: (profile) => AmoraaProfileAction.unsave
+              .semanticLabel(amoraaProfileActionName(profile.name)),
+          actionIcon: Icons.bookmark_remove_rounded,
+          onAction: (profile) => showAmoraaProfileActionConfirmation(
+            context: context,
+            action: AmoraaProfileAction.unsave,
+            profileName: profile.name,
+            onConfirm: () => source.removeSavedPersisted(profile.id),
+          ),
+        );
+      },
     );
   }
 }

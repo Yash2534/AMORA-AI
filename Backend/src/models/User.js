@@ -15,5 +15,6 @@ module.exports = (sequelize) => sequelize.define('User', {
   tokenVersion: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
   deletionReason: { type: DataTypes.STRING, allowNull: true },
   deletionDetails: { type: DataTypes.TEXT, allowNull: true },
-  role: { type: DataTypes.ENUM('user', 'host', 'admin'), allowNull: false, defaultValue: 'user' }
+  role: { type: DataTypes.ENUM('user', 'host', 'admin'), allowNull: false, defaultValue: 'user' },
+  lastActiveAt: { type: DataTypes.DATE, allowNull: true },
 }, { tableName: 'Users' });

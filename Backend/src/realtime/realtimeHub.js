@@ -85,6 +85,7 @@ function attachRealtimeServer(httpServer) {
   });
   io.on('connection', async (socket) => {
     const userId = socket.data.userId;
+    await getModels().User.update({ lastActiveAt: new Date() }, { where: { id: userId } });
     socket.join(userRoom(userId));
     const previous = connections.get(userId) || 0;
     connections.set(userId, previous + 1);
@@ -113,6 +114,7 @@ function attachRealtimeServer(httpServer) {
       const remaining = Math.max(0, (connections.get(userId) || 1) - 1);
       if (remaining) connections.set(userId, remaining); else connections.delete(userId);
       if (remaining === 0) await emitPresence(userId, false);
+      await getModels().User.update({ lastActiveAt: new Date() }, { where: { id: userId } });
     });
   });
   return io;

@@ -167,11 +167,18 @@ class _BioBuilderScreenState extends State<BioBuilderScreen> {
     );
   }
 
-  void _save() {
+  Future<void> _save() async {
     final repository = LocalProfileRepository.instance;
-    repository.save(repository.profile.copyWith(bio: _bio.text.trim()));
-    _snack('Bio saved locally');
-    Navigator.of(context).pop(true);
+    try {
+      await repository.savePersisted(
+        repository.profile.copyWith(bio: _bio.text.trim()),
+      );
+      if (!mounted) return;
+      _snack('Bio saved to your profile');
+      Navigator.of(context).pop(true);
+    } catch (_) {
+      if (mounted) _snack('Could not save your bio. Please try again.');
+    }
   }
 
   void _snack(String message) {

@@ -1,0 +1,2282 @@
+{
+  "path": "C:\\Users\\Yash Andrapiya\\Downloads\\Amora_App_Feature_Note.docx",
+  "paragraphs": [
+    {
+      "index": 1,
+      "style": "Normal",
+      "text": "Amora\nApp Feature Documentation"
+    },
+    {
+      "index": 2,
+      "style": "Normal",
+      "text": "1. Authentication"
+    },
+    {
+      "index": 3,
+      "style": "List Bullet",
+      "text": "Login"
+    },
+    {
+      "index": 4,
+      "style": "List Bullet",
+      "text": "Sign Up"
+    },
+    {
+      "index": 5,
+      "style": "List Bullet",
+      "text": "Forgot Password"
+    },
+    {
+      "index": 6,
+      "style": "List Bullet",
+      "text": "Google Login"
+    },
+    {
+      "index": 7,
+      "style": "List Bullet",
+      "text": "Create Account"
+    },
+    {
+      "index": 8,
+      "style": "List Bullet",
+      "text": "Mobile OTP Verification"
+    },
+    {
+      "index": 9,
+      "style": "Normal",
+      "text": "2. Onboarding Screens"
+    },
+    {
+      "index": 10,
+      "style": "List Bullet",
+      "text": "Age"
+    },
+    {
+      "index": 11,
+      "style": "List Bullet",
+      "text": "How Do You Identify?"
+    },
+    {
+      "index": 12,
+      "style": "List Bullet",
+      "text": "Who Would You Like to Meet?"
+    },
+    {
+      "index": 13,
+      "style": "List Bullet",
+      "text": "What Are You Looking For?"
+    },
+    {
+      "index": 14,
+      "style": "List Bullet",
+      "text": "Location with Preferred Distance"
+    },
+    {
+      "index": 15,
+      "style": "List Bullet",
+      "text": "Photos Upload"
+    },
+    {
+      "index": 16,
+      "style": "Normal",
+      "text": "3. Discover"
+    },
+    {
+      "index": 17,
+      "style": "List Bullet",
+      "text": "Swipe Profiles"
+    },
+    {
+      "index": 18,
+      "style": "List Bullet",
+      "text": "Like"
+    },
+    {
+      "index": 19,
+      "style": "List Bullet",
+      "text": "Super Like"
+    },
+    {
+      "index": 20,
+      "style": "List Bullet",
+      "text": "Undo Profile"
+    },
+    {
+      "index": 21,
+      "style": "List Bullet",
+      "text": "Pass Profile"
+    },
+    {
+      "index": 22,
+      "style": "List Bullet",
+      "text": "Profile Details"
+    },
+    {
+      "index": 23,
+      "style": "List Bullet",
+      "text": "Filters"
+    },
+    {
+      "index": 24,
+      "style": "List Bullet",
+      "text": "Notification"
+    },
+    {
+      "index": 25,
+      "style": "Normal",
+      "text": "4. Discover Filters"
+    },
+    {
+      "index": 26,
+      "style": "List Bullet",
+      "text": "Selected Preferences"
+    },
+    {
+      "index": 27,
+      "style": "List Bullet",
+      "text": "Search Bar"
+    },
+    {
+      "index": 28,
+      "style": "List Bullet",
+      "text": "Core Preferences"
+    },
+    {
+      "index": 29,
+      "style": "List Bullet 2",
+      "text": "Age Range"
+    },
+    {
+      "index": 30,
+      "style": "List Bullet 2",
+      "text": "Distance"
+    },
+    {
+      "index": 31,
+      "style": "List Bullet 2",
+      "text": "City"
+    },
+    {
+      "index": 32,
+      "style": "List Bullet 2",
+      "text": "Height"
+    },
+    {
+      "index": 33,
+      "style": "List Bullet 2",
+      "text": "Hometown"
+    },
+    {
+      "index": 34,
+      "style": "List Bullet",
+      "text": "Relationship Intentions"
+    },
+    {
+      "index": 35,
+      "style": "List Bullet 2",
+      "text": "Dating Intention"
+    },
+    {
+      "index": 36,
+      "style": "List Bullet",
+      "text": "Lifestyle & Interests"
+    },
+    {
+      "index": 37,
+      "style": "List Bullet",
+      "text": "Education & Profession"
+    },
+    {
+      "index": 38,
+      "style": "List Bullet 2",
+      "text": "Education Selection"
+    },
+    {
+      "index": 39,
+      "style": "List Bullet 2",
+      "text": "Profession Selection"
+    },
+    {
+      "index": 40,
+      "style": "List Bullet",
+      "text": "Identity & Background"
+    },
+    {
+      "index": 41,
+      "style": "List Bullet 2",
+      "text": "Community Preference"
+    },
+    {
+      "index": 42,
+      "style": "List Bullet 2",
+      "text": "Religion"
+    },
+    {
+      "index": 43,
+      "style": "List Bullet 2",
+      "text": "Languages"
+    },
+    {
+      "index": 44,
+      "style": "List Bullet 2",
+      "text": "Pronouns"
+    },
+    {
+      "index": 45,
+      "style": "List Bullet 2",
+      "text": "Sexuality"
+    },
+    {
+      "index": 46,
+      "style": "List Bullet",
+      "text": "Compatibility"
+    },
+    {
+      "index": 47,
+      "style": "List Bullet 2",
+      "text": "Their Qualities"
+    },
+    {
+      "index": 48,
+      "style": "List Bullet 2",
+      "text": "Preferred hours for talking"
+    },
+    {
+      "index": 49,
+      "style": "List Bullet 2",
+      "text": "Love languages"
+    },
+    {
+      "index": 51,
+      "style": "List Bullet",
+      "text": "Habits"
+    },
+    {
+      "index": 53,
+      "style": "List Bullet 2",
+      "text": "Smoking"
+    },
+    {
+      "index": 54,
+      "style": "List Bullet 2",
+      "text": "Drinking"
+    },
+    {
+      "index": 55,
+      "style": "List Bullet 2",
+      "text": "Weed"
+    },
+    {
+      "index": 57,
+      "style": "List Bullet",
+      "text": "Ice breaker (non negotiable dating point)"
+    },
+    {
+      "index": 58,
+      "style": "List Bullet",
+      "text": "Communication style"
+    },
+    {
+      "index": 60,
+      "style": "List Bullet",
+      "text": "AI Match Quality & Trust"
+    },
+    {
+      "index": 61,
+      "style": "List Bullet 2",
+      "text": "Minimum AI Match Score"
+    },
+    {
+      "index": 62,
+      "style": "List Bullet 2",
+      "text": "Verified Profiles Only"
+    },
+    {
+      "index": 63,
+      "style": "List Bullet 2",
+      "text": "Online Now"
+    },
+    {
+      "index": 64,
+      "style": "List Bullet 2",
+      "text": "Has Profile Prompts"
+    },
+    {
+      "index": 65,
+      "style": "List Bullet 2",
+      "text": "Has Event Interest"
+    },
+    {
+      "index": 66,
+      "style": "List Bullet",
+      "text": "Reset"
+    },
+    {
+      "index": 67,
+      "style": "List Bullet",
+      "text": "Apply Filters"
+    },
+    {
+      "index": 68,
+      "style": "Normal",
+      "text": "5. Chat & Messaging"
+    },
+    {
+      "index": 69,
+      "style": "List Bullet",
+      "text": "Active Now Profiles"
+    },
+    {
+      "index": 70,
+      "style": "List Bullet",
+      "text": "Chat List"
+    },
+    {
+      "index": 71,
+      "style": "List Bullet",
+      "text": "Chat Detail"
+    },
+    {
+      "index": 72,
+      "style": "List Bullet",
+      "text": "Send Message"
+    },
+    {
+      "index": 73,
+      "style": "List Bullet",
+      "text": "Read Receipts"
+    },
+    {
+      "index": 74,
+      "style": "List Bullet",
+      "text": "Report User"
+    },
+    {
+      "index": 75,
+      "style": "List Bullet",
+      "text": "Block User"
+    },
+    {
+      "index": 76,
+      "style": "List Bullet",
+      "text": "Mute Conversation"
+    },
+    {
+      "index": 77,
+      "style": "List Bullet",
+      "text": "New Message"
+    },
+    {
+      "index": 78,
+      "style": "Normal",
+      "text": "6. AI Matches"
+    },
+    {
+      "index": 79,
+      "style": "List Bullet",
+      "text": "Compatibility Score"
+    },
+    {
+      "index": 80,
+      "style": "List Bullet",
+      "text": "Recommended Matches"
+    },
+    {
+      "index": 81,
+      "style": "List Bullet",
+      "text": "Why This Recommendation"
+    },
+    {
+      "index": 82,
+      "style": "List Bullet",
+      "text": "View Profile"
+    },
+    {
+      "index": 83,
+      "style": "List Bullet",
+      "text": "Message"
+    },
+    {
+      "index": 84,
+      "style": "List Bullet",
+      "text": "Bulk Like Send"
+    },
+    {
+      "index": 85,
+      "style": "Normal",
+      "text": "7. Events"
+    },
+    {
+      "index": 86,
+      "style": "List Bullet",
+      "text": "Browse Events"
+    },
+    {
+      "index": 87,
+      "style": "List Bullet",
+      "text": "Event Detail"
+    },
+    {
+      "index": 88,
+      "style": "List Bullet",
+      "text": "Join Event"
+    },
+    {
+      "index": 89,
+      "style": "List Bullet",
+      "text": "Featured Experience"
+    },
+    {
+      "index": 90,
+      "style": "List Bullet",
+      "text": "Recommended Events"
+    },
+    {
+      "index": 91,
+      "style": "List Bullet",
+      "text": "Near You Events"
+    },
+    {
+      "index": 92,
+      "style": "List Bullet",
+      "text": "AMORAA Circles"
+    },
+    {
+      "index": 93,
+      "style": "List Bullet",
+      "text": "My Events"
+    },
+    {
+      "index": 94,
+      "style": "List Bullet",
+      "text": "Upcoming, Past, Waitlist, Cancelled"
+    },
+    {
+      "index": 95,
+      "style": "Normal",
+      "text": "8. Profile"
+    },
+    {
+      "index": 96,
+      "style": "List Bullet",
+      "text": "Profile Image"
+    },
+    {
+      "index": 97,
+      "style": "List Bullet",
+      "text": "Name"
+    },
+    {
+      "index": 98,
+      "style": "List Bullet",
+      "text": "Profile Details"
+    },
+    {
+      "index": 99,
+      "style": "List Bullet",
+      "text": "Profile Completion Percentage"
+    },
+    {
+      "index": 100,
+      "style": "List Bullet",
+      "text": "Edit Profile"
+    },
+    {
+      "index": 101,
+      "style": "List Bullet",
+      "text": "Preview Profile"
+    },
+    {
+      "index": 102,
+      "style": "List Bullet",
+      "text": "About Me"
+    },
+    {
+      "index": 103,
+      "style": "List Bullet",
+      "text": "Photo Gallery"
+    },
+    {
+      "index": 104,
+      "style": "List Bullet",
+      "text": "Profile Information"
+    },
+    {
+      "index": 105,
+      "style": "List Bullet 2",
+      "text": "Occupation"
+    },
+    {
+      "index": 106,
+      "style": "List Bullet 2",
+      "text": "Company"
+    },
+    {
+      "index": 107,
+      "style": "List Bullet 2",
+      "text": "Education"
+    },
+    {
+      "index": 108,
+      "style": "List Bullet 2",
+      "text": "Gender"
+    },
+    {
+      "index": 109,
+      "style": "List Bullet 2",
+      "text": "Zodiac"
+    },
+    {
+      "index": 110,
+      "style": "List Bullet",
+      "text": "Interests"
+    },
+    {
+      "index": 111,
+      "style": "List Bullet",
+      "text": "Lifestyle"
+    },
+    {
+      "index": 112,
+      "style": "List Bullet 2",
+      "text": "Drinking"
+    },
+    {
+      "index": 113,
+      "style": "List Bullet 2",
+      "text": "Smoking"
+    },
+    {
+      "index": 114,
+      "style": "List Bullet 2",
+      "text": "Weed"
+    },
+    {
+      "index": 115,
+      "style": "List Bullet 2",
+      "text": "Exercise"
+    },
+    {
+      "index": 116,
+      "style": "List Bullet 2",
+      "text": "Food Preference"
+    },
+    {
+      "index": 117,
+      "style": "List Bullet 2",
+      "text": "Pets"
+    },
+    {
+      "index": 118,
+      "style": "List Bullet 2",
+      "text": "Sleep Habits"
+    },
+    {
+      "index": 120,
+      "style": "List Bullet",
+      "text": "Ice breaker (non negotiable dating point)"
+    },
+    {
+      "index": 121,
+      "style": "List Bullet",
+      "text": "Communication style"
+    },
+    {
+      "index": 123,
+      "style": "List Bullet",
+      "text": "Profile Prompts"
+    },
+    {
+      "index": 124,
+      "style": "List Bullet 2",
+      "text": "My ideal Sunday is..."
+    },
+    {
+      "index": 125,
+      "style": "List Bullet 2",
+      "text": "A green flag I value is..."
+    },
+    {
+      "index": 126,
+      "style": "List Bullet 2",
+      "text": "Together we could..."
+    },
+    {
+      "index": 127,
+      "style": "List Bullet",
+      "text": "Verification & Trust"
+    },
+    {
+      "index": 128,
+      "style": "List Bullet 2",
+      "text": "Photo Verification"
+    },
+    {
+      "index": 129,
+      "style": "List Bullet 2",
+      "text": "Safety Guidelines"
+    },
+    {
+      "index": 130,
+      "style": "List Bullet 2",
+      "text": "Verify profile Button"
+    },
+    {
+      "index": 131,
+      "style": "List Bullet 2",
+      "text": "safety Button"
+    },
+    {
+      "index": 132,
+      "style": "List Bullet",
+      "text": "Membership"
+    },
+    {
+      "index": 133,
+      "style": "List Bullet",
+      "text": "Quick Actions"
+    },
+    {
+      "index": 134,
+      "style": "List Bullet 2",
+      "text": "Likes & Super Likes"
+    },
+    {
+      "index": 135,
+      "style": "List Bullet 2",
+      "text": "Saved Profiles"
+    },
+    {
+      "index": 136,
+      "style": "List Bullet 2",
+      "text": "Blocked Profiles"
+    },
+    {
+      "index": 137,
+      "style": "List Bullet 2",
+      "text": "Support"
+    },
+    {
+      "index": 138,
+      "style": "Normal",
+      "text": "9. Edit Profile"
+    },
+    {
+      "index": 139,
+      "style": "List Bullet",
+      "text": "Information still pending"
+    },
+    {
+      "index": 140,
+      "style": "List Bullet",
+      "text": "Profile Photos"
+    },
+    {
+      "index": 141,
+      "style": "List Bullet 2",
+      "text": "Add Photo"
+    },
+    {
+      "index": 142,
+      "style": "List Bullet 2",
+      "text": "Manage Photos"
+    },
+    {
+      "index": 143,
+      "style": "List Bullet",
+      "text": "Basic Details"
+    },
+    {
+      "index": 144,
+      "style": "List Bullet 2",
+      "text": "Full Name"
+    },
+    {
+      "index": 145,
+      "style": "List Bullet 2",
+      "text": "DOB"
+    },
+    {
+      "index": 146,
+      "style": "List Bullet 2",
+      "text": "Gender"
+    },
+    {
+      "index": 147,
+      "style": "List Bullet",
+      "text": "Work & Education"
+    },
+    {
+      "index": 148,
+      "style": "List Bullet 2",
+      "text": "Occupation"
+    },
+    {
+      "index": 149,
+      "style": "List Bullet 2",
+      "text": "Company"
+    },
+    {
+      "index": 150,
+      "style": "List Bullet 2",
+      "text": "Education"
+    },
+    {
+      "index": 151,
+      "style": "List Bullet 2",
+      "text": "Specify Education"
+    },
+    {
+      "index": 152,
+      "style": "List Bullet",
+      "text": "Location & Dating Intentions"
+    },
+    {
+      "index": 153,
+      "style": "List Bullet 2",
+      "text": "City"
+    },
+    {
+      "index": 154,
+      "style": "List Bullet 2",
+      "text": "Dating Intention"
+    },
+    {
+      "index": 155,
+      "style": "List Bullet",
+      "text": "Height, Languages & Religion"
+    },
+    {
+      "index": 156,
+      "style": "List Bullet 2",
+      "text": "Height"
+    },
+    {
+      "index": 157,
+      "style": "List Bullet 2",
+      "text": "Languages"
+    },
+    {
+      "index": 158,
+      "style": "List Bullet 2",
+      "text": "Religion"
+    },
+    {
+      "index": 159,
+      "style": "List Bullet",
+      "text": "Personal Details"
+    },
+    {
+      "index": 160,
+      "style": "List Bullet 2",
+      "text": "Hometown"
+    },
+    {
+      "index": 161,
+      "style": "List Bullet 2",
+      "text": "Pronouns"
+    },
+    {
+      "index": 162,
+      "style": "List Bullet 2",
+      "text": "Sexuality"
+    },
+    {
+      "index": 163,
+      "style": "List Bullet",
+      "text": "Bio"
+    },
+    {
+      "index": 164,
+      "style": "List Bullet",
+      "text": "Interests"
+    },
+    {
+      "index": 165,
+      "style": "List Bullet 2",
+      "text": "Lifestyle"
+    },
+    {
+      "index": 166,
+      "style": "List Bullet 2",
+      "text": "Food"
+    },
+    {
+      "index": 167,
+      "style": "List Bullet 2",
+      "text": "Travel"
+    },
+    {
+      "index": 168,
+      "style": "List Bullet 2",
+      "text": "Music"
+    },
+    {
+      "index": 169,
+      "style": "List Bullet 2",
+      "text": "Fitness"
+    },
+    {
+      "index": 170,
+      "style": "List Bullet 2",
+      "text": "Creativity"
+    },
+    {
+      "index": 171,
+      "style": "List Bullet 2",
+      "text": "Nature & pets"
+    },
+    {
+      "index": 172,
+      "style": "List Bullet",
+      "text": "Lifestyle"
+    },
+    {
+      "index": 173,
+      "style": "List Bullet 2",
+      "text": "Drinking"
+    },
+    {
+      "index": 174,
+      "style": "List Bullet 2",
+      "text": "Smoking"
+    },
+    {
+      "index": 175,
+      "style": "List Bullet 2",
+      "text": "Weed"
+    },
+    {
+      "index": 176,
+      "style": "List Bullet 2",
+      "text": "Exercise"
+    },
+    {
+      "index": 177,
+      "style": "List Bullet 2",
+      "text": "Food Preference"
+    },
+    {
+      "index": 178,
+      "style": "List Bullet 2",
+      "text": "Pets"
+    },
+    {
+      "index": 179,
+      "style": "List Bullet 2",
+      "text": "Sleep Habits"
+    },
+    {
+      "index": 181,
+      "style": "List Bullet",
+      "text": "Connection Preferences"
+    },
+    {
+      "index": 182,
+      "style": "List Bullet 2",
+      "text": "Their Qualities"
+    },
+    {
+      "index": 183,
+      "style": "List Bullet 2",
+      "text": "Preferred hours for talking"
+    },
+    {
+      "index": 184,
+      "style": "List Bullet 2",
+      "text": "Love languages"
+    },
+    {
+      "index": 186,
+      "style": "List Bullet",
+      "text": "Ice breaker (non negotiable dating point)"
+    },
+    {
+      "index": 187,
+      "style": "List Bullet",
+      "text": "Communication style"
+    },
+    {
+      "index": 189,
+      "style": "List Bullet",
+      "text": "Profile Prompts"
+    },
+    {
+      "index": 190,
+      "style": "List Bullet 2",
+      "text": "My ideal Sunday is..."
+    },
+    {
+      "index": 191,
+      "style": "List Bullet 2",
+      "text": "A green flag I value is..."
+    },
+    {
+      "index": 192,
+      "style": "List Bullet 2",
+      "text": "Together we could..."
+    },
+    {
+      "index": 193,
+      "style": "List Bullet",
+      "text": "Verification"
+    },
+    {
+      "index": 194,
+      "style": "List Bullet 2",
+      "text": "Review Verification"
+    },
+    {
+      "index": 195,
+      "style": "List Bullet",
+      "text": "Profile Preview"
+    },
+    {
+      "index": 196,
+      "style": "List Bullet",
+      "text": "Save Changes"
+    },
+    {
+      "index": 197,
+      "style": "Normal",
+      "text": "10. Profile Preview"
+    },
+    {
+      "index": 198,
+      "style": "List Bullet",
+      "text": "Profile Photo Gallery"
+    },
+    {
+      "index": 199,
+      "style": "List Bullet",
+      "text": "Name"
+    },
+    {
+      "index": 200,
+      "style": "List Bullet",
+      "text": "Age"
+    },
+    {
+      "index": 201,
+      "style": "List Bullet",
+      "text": "Occupation"
+    },
+    {
+      "index": 202,
+      "style": "List Bullet",
+      "text": "Company"
+    },
+    {
+      "index": 203,
+      "style": "List Bullet",
+      "text": "Education"
+    },
+    {
+      "index": 204,
+      "style": "List Bullet",
+      "text": "Location"
+    },
+    {
+      "index": 205,
+      "style": "List Bullet",
+      "text": "Height"
+    },
+    {
+      "index": 206,
+      "style": "List Bullet",
+      "text": "Languages"
+    },
+    {
+      "index": 207,
+      "style": "List Bullet",
+      "text": "Looking For / Dating Intention"
+    },
+    {
+      "index": 208,
+      "style": "List Bullet",
+      "text": "About Me"
+    },
+    {
+      "index": 209,
+      "style": "List Bullet",
+      "text": "Interests"
+    },
+    {
+      "index": 210,
+      "style": "List Bullet",
+      "text": "Lifestyle & Personality"
+    },
+    {
+      "index": 211,
+      "style": "List Bullet 2",
+      "text": "Activity"
+    },
+    {
+      "index": 212,
+      "style": "List Bullet 2",
+      "text": "Food"
+    },
+    {
+      "index": 213,
+      "style": "List Bullet 2",
+      "text": "Smoking"
+    },
+    {
+      "index": 214,
+      "style": "List Bullet 2",
+      "text": "Drinking"
+    },
+    {
+      "index": 215,
+      "style": "List Bullet 2",
+      "text": "Weed"
+    },
+    {
+      "index": 216,
+      "style": "List Bullet 2",
+      "text": "Pets"
+    },
+    {
+      "index": 217,
+      "style": "List Bullet 2",
+      "text": "Weekend"
+    },
+    {
+      "index": 218,
+      "style": "List Bullet 2",
+      "text": "Beliefs"
+    },
+    {
+      "index": 221,
+      "style": "List Bullet",
+      "text": "Connection Style"
+    },
+    {
+      "index": 222,
+      "style": "List Bullet 2",
+      "text": "Qualities I value"
+    },
+    {
+      "index": 223,
+      "style": "List Bullet 2",
+      "text": "Preferred time to talk"
+    },
+    {
+      "index": 224,
+      "style": "List Bullet 2",
+      "text": "Love languages"
+    },
+    {
+      "index": 226,
+      "style": "List Bullet",
+      "text": "Ice breaker (non negotiable dating point)"
+    },
+    {
+      "index": 227,
+      "style": "List Bullet",
+      "text": "Communication style"
+    },
+    {
+      "index": 229,
+      "style": "List Bullet",
+      "text": "Profile Prompts"
+    },
+    {
+      "index": 230,
+      "style": "List Bullet 2",
+      "text": "My ideal Sunday is..."
+    },
+    {
+      "index": 231,
+      "style": "List Bullet 2",
+      "text": "A green flag I value is..."
+    },
+    {
+      "index": 232,
+      "style": "List Bullet 2",
+      "text": "Together we could..."
+    },
+    {
+      "index": 233,
+      "style": "List Bullet",
+      "text": "Edit Profile Button"
+    },
+    {
+      "index": 234,
+      "style": "List Bullet",
+      "text": "Return to Discover Button"
+    },
+    {
+      "index": 235,
+      "style": "Normal",
+      "text": "11. Profile Completion"
+    },
+    {
+      "index": 236,
+      "style": "List Bullet",
+      "text": "Completion Percentage"
+    },
+    {
+      "index": 237,
+      "style": "List Bullet",
+      "text": "Recommended Next"
+    },
+    {
+      "index": 238,
+      "style": "List Bullet",
+      "text": "Profile Photos"
+    },
+    {
+      "index": 239,
+      "style": "List Bullet",
+      "text": "Basic Details"
+    },
+    {
+      "index": 240,
+      "style": "List Bullet 2",
+      "text": "Full name"
+    },
+    {
+      "index": 241,
+      "style": "List Bullet 2",
+      "text": "DOB"
+    },
+    {
+      "index": 242,
+      "style": "List Bullet 2",
+      "text": "Gender"
+    },
+    {
+      "index": 243,
+      "style": "List Bullet",
+      "text": "Work & Education"
+    },
+    {
+      "index": 244,
+      "style": "List Bullet 2",
+      "text": "Occupation"
+    },
+    {
+      "index": 245,
+      "style": "List Bullet 2",
+      "text": "Company"
+    },
+    {
+      "index": 246,
+      "style": "List Bullet 2",
+      "text": "Education"
+    },
+    {
+      "index": 247,
+      "style": "List Bullet",
+      "text": "Location & Dating Intentions"
+    },
+    {
+      "index": 248,
+      "style": "List Bullet 2",
+      "text": "City"
+    },
+    {
+      "index": 249,
+      "style": "List Bullet 2",
+      "text": "Dating Intention"
+    },
+    {
+      "index": 250,
+      "style": "List Bullet",
+      "text": "Height, Languages & Religion"
+    },
+    {
+      "index": 251,
+      "style": "List Bullet 2",
+      "text": "Height"
+    },
+    {
+      "index": 252,
+      "style": "List Bullet 2",
+      "text": "Languages"
+    },
+    {
+      "index": 253,
+      "style": "List Bullet 2",
+      "text": "Religion"
+    },
+    {
+      "index": 254,
+      "style": "List Bullet 2",
+      "text": "Hometown"
+    },
+    {
+      "index": 255,
+      "style": "List Bullet 2",
+      "text": "Pronouns"
+    },
+    {
+      "index": 256,
+      "style": "List Bullet 2",
+      "text": "Sexuality"
+    },
+    {
+      "index": 258,
+      "style": "List Bullet",
+      "text": "Bio"
+    },
+    {
+      "index": 259,
+      "style": "List Bullet",
+      "text": "Interests"
+    },
+    {
+      "index": 260,
+      "style": "List Bullet 2",
+      "text": "Lifestyle"
+    },
+    {
+      "index": 261,
+      "style": "List Bullet 2",
+      "text": "Food"
+    },
+    {
+      "index": 262,
+      "style": "List Bullet 2",
+      "text": "Travel"
+    },
+    {
+      "index": 263,
+      "style": "List Bullet 2",
+      "text": "Music"
+    },
+    {
+      "index": 264,
+      "style": "List Bullet 2",
+      "text": "Fitness"
+    },
+    {
+      "index": 265,
+      "style": "List Bullet 2",
+      "text": "Creativity"
+    },
+    {
+      "index": 266,
+      "style": "List Bullet 2",
+      "text": "Nature & pets"
+    },
+    {
+      "index": 268,
+      "style": "List Bullet",
+      "text": "Lifestyle"
+    },
+    {
+      "index": 269,
+      "style": "List Bullet 2",
+      "text": "Smoking"
+    },
+    {
+      "index": 270,
+      "style": "List Bullet 2",
+      "text": "Drinking"
+    },
+    {
+      "index": 271,
+      "style": "List Bullet 2",
+      "text": "Weed"
+    },
+    {
+      "index": 272,
+      "style": "List Bullet 2",
+      "text": "Exercise"
+    },
+    {
+      "index": 273,
+      "style": "List Bullet 2",
+      "text": "Food Preference"
+    },
+    {
+      "index": 274,
+      "style": "List Bullet 2",
+      "text": "Pets"
+    },
+    {
+      "index": 275,
+      "style": "List Bullet 2",
+      "text": "Sleep Habits"
+    },
+    {
+      "index": 276,
+      "style": "List Bullet 2",
+      "text": "Their Qualities"
+    },
+    {
+      "index": 277,
+      "style": "List Bullet 2",
+      "text": "Preferred Hours for Talking"
+    },
+    {
+      "index": 278,
+      "style": "List Bullet 2",
+      "text": "Love Language"
+    },
+    {
+      "index": 280,
+      "style": "List Bullet",
+      "text": "Ice breaker (non negotiable dating point)"
+    },
+    {
+      "index": 281,
+      "style": "List Bullet",
+      "text": "Communication style"
+    },
+    {
+      "index": 282,
+      "style": "List Bullet",
+      "text": "Profile Prompt"
+    },
+    {
+      "index": 283,
+      "style": "List Bullet",
+      "text": "Pending Details"
+    },
+    {
+      "index": 284,
+      "style": "List Bullet",
+      "text": "Verification"
+    },
+    {
+      "index": 285,
+      "style": "Normal",
+      "text": "12. Settings"
+    },
+    {
+      "index": 286,
+      "style": "List Bullet",
+      "text": "Account — Personal Information"
+    },
+    {
+      "index": 287,
+      "style": "List Bullet",
+      "text": "Saved Profiles"
+    },
+    {
+      "index": 288,
+      "style": "List Bullet",
+      "text": "Blocked Profiles"
+    },
+    {
+      "index": 289,
+      "style": "List Bullet",
+      "text": "Liked Profiles"
+    },
+    {
+      "index": 290,
+      "style": "List Bullet",
+      "text": "Super Liked Profiles"
+    },
+    {
+      "index": 291,
+      "style": "List Bullet",
+      "text": "Membership"
+    },
+    {
+      "index": 292,
+      "style": "List Bullet",
+      "text": "Manage Subscription"
+    },
+    {
+      "index": 293,
+      "style": "List Bullet",
+      "text": "Notification Preferences"
+    },
+    {
+      "index": 294,
+      "style": "List Bullet",
+      "text": "Email Support"
+    },
+    {
+      "index": 295,
+      "style": "List Bullet",
+      "text": "Terms & Conditions"
+    },
+    {
+      "index": 296,
+      "style": "List Bullet",
+      "text": "Privacy Policy"
+    },
+    {
+      "index": 297,
+      "style": "List Bullet",
+      "text": "Community Guidelines"
+    },
+    {
+      "index": 298,
+      "style": "List Bullet",
+      "text": "Safety Center"
+    },
+    {
+      "index": 299,
+      "style": "List Bullet",
+      "text": "Change Password"
+    },
+    {
+      "index": 300,
+      "style": "List Bullet",
+      "text": "Logout"
+    },
+    {
+      "index": 301,
+      "style": "List Bullet",
+      "text": "Delete Account"
+    },
+    {
+      "index": 302,
+      "style": "List Bullet",
+      "text": "Deactivate Account"
+    },
+    {
+      "index": 303,
+      "style": "Normal",
+      "text": "13. Profile Details Screen"
+    },
+    {
+      "index": 304,
+      "style": "List Bullet",
+      "text": "Profile Details"
+    },
+    {
+      "index": 305,
+      "style": "List Bullet",
+      "text": "Save Profile"
+    },
+    {
+      "index": 306,
+      "style": "List Bullet",
+      "text": "Safety Actions"
+    },
+    {
+      "index": 307,
+      "style": "List Bullet",
+      "text": "Like"
+    },
+    {
+      "index": 308,
+      "style": "List Bullet",
+      "text": "Super Like"
+    },
+    {
+      "index": 309,
+      "style": "List Bullet",
+      "text": "Message"
+    },
+    {
+      "index": 310,
+      "style": "List Bullet",
+      "text": "Send Gift"
+    },
+    {
+      "index": 311,
+      "style": "List Bullet",
+      "text": "Profile Prompts Reply"
+    },
+    {
+      "index": 312,
+      "style": "List Bullet",
+      "text": "Why We Matched"
+    },
+    {
+      "index": 313,
+      "style": "Normal",
+      "text": "14. Notifications"
+    },
+    {
+      "index": 314,
+      "style": "List Bullet",
+      "text": "Notification Filter"
+    },
+    {
+      "index": 315,
+      "style": "List Bullet",
+      "text": "Notification Feed"
+    },
+    {
+      "index": 316,
+      "style": "List Bullet",
+      "text": "Mark All Notifications as Read"
+    },
+    {
+      "index": 317,
+      "style": "List Bullet",
+      "text": "Notification Preferences"
+    },
+    {
+      "index": 318,
+      "style": "List Bullet",
+      "text": "What You Hear About"
+    },
+    {
+      "index": 319,
+      "style": "List Bullet 2",
+      "text": "New Matches"
+    },
+    {
+      "index": 320,
+      "style": "List Bullet 2",
+      "text": "Messages"
+    },
+    {
+      "index": 321,
+      "style": "List Bullet 2",
+      "text": "Event Reminders"
+    },
+    {
+      "index": 322,
+      "style": "List Bullet 2",
+      "text": "Payments & membership"
+    },
+    {
+      "index": 323,
+      "style": "List Bullet 2",
+      "text": "Offers from Amoraa"
+    },
+    {
+      "index": 324,
+      "style": "List Bullet 2",
+      "text": "Safety updates"
+    },
+    {
+      "index": 325,
+      "style": "List Bullet",
+      "text": "Delivery Channels"
+    },
+    {
+      "index": 326,
+      "style": "List Bullet 2",
+      "text": "Push notifications"
+    },
+    {
+      "index": 327,
+      "style": "List Bullet 2",
+      "text": "Email"
+    },
+    {
+      "index": 328,
+      "style": "List Bullet 2",
+      "text": "SMS"
+    },
+    {
+      "index": 329,
+      "style": "List Bullet",
+      "text": "Quiet Hours"
+    },
+    {
+      "index": 330,
+      "style": "Normal",
+      "text": "15. Permissions"
+    },
+    {
+      "index": 331,
+      "style": "List Bullet",
+      "text": "Camera Permission"
+    },
+    {
+      "index": 332,
+      "style": "List Bullet",
+      "text": "Notification Permission"
+    },
+    {
+      "index": 333,
+      "style": "List Bullet",
+      "text": "Upload Media Permission"
+    },
+    {
+      "index": 334,
+      "style": "List Bullet",
+      "text": "Location"
+    },
+    {
+      "index": 335,
+      "style": "List Bullet",
+      "text": "Notifications"
+    },
+    {
+      "index": 336,
+      "style": "Normal",
+      "text": "16. Report a Concern"
+    },
+    {
+      "index": 337,
+      "style": "List Bullet",
+      "text": "Profile Name"
+    },
+    {
+      "index": 338,
+      "style": "List Bullet",
+      "text": "Reason"
+    },
+    {
+      "index": 339,
+      "style": "List Bullet",
+      "text": "Notes"
+    },
+    {
+      "index": 340,
+      "style": "List Bullet",
+      "text": "Submit Report"
+    },
+    {
+      "index": 341,
+      "style": "Normal",
+      "text": "17. Send a Rose"
+    },
+    {
+      "index": 342,
+      "style": "List Bullet",
+      "text": "Notes"
+    },
+    {
+      "index": 343,
+      "style": "List Bullet",
+      "text": "Send Rose in Chat"
+    },
+    {
+      "index": 344,
+      "style": "Normal",
+      "text": "18. Event Details"
+    },
+    {
+      "index": 345,
+      "style": "List Bullet",
+      "text": "Name"
+    },
+    {
+      "index": 346,
+      "style": "List Bullet",
+      "text": "Date and Time"
+    },
+    {
+      "index": 347,
+      "style": "List Bullet",
+      "text": "Location"
+    },
+    {
+      "index": 348,
+      "style": "List Bullet",
+      "text": "Distance"
+    },
+    {
+      "index": 349,
+      "style": "List Bullet",
+      "text": "Host"
+    },
+    {
+      "index": 350,
+      "style": "List Bullet",
+      "text": "About"
+    },
+    {
+      "index": 351,
+      "style": "List Bullet",
+      "text": "What to Expect"
+    },
+    {
+      "index": 352,
+      "style": "List Bullet",
+      "text": "Good to Know"
+    },
+    {
+      "index": 353,
+      "style": "List Bullet",
+      "text": "Why This Event May Suit You"
+    },
+    {
+      "index": 354,
+      "style": "List Bullet",
+      "text": "Who's Joining"
+    },
+    {
+      "index": 355,
+      "style": "List Bullet",
+      "text": "Safety & Community"
+    },
+    {
+      "index": 356,
+      "style": "List Bullet",
+      "text": "Join Event"
+    },
+    {
+      "index": 357,
+      "style": "List Bullet",
+      "text": "Share Event"
+    },
+    {
+      "index": 358,
+      "style": "Normal",
+      "text": "19. Identity Verification"
+    },
+    {
+      "index": 359,
+      "style": "List Bullet",
+      "text": "Percentage"
+    },
+    {
+      "index": 360,
+      "style": "List Bullet",
+      "text": "Aadhaar"
+    },
+    {
+      "index": 361,
+      "style": "List Bullet",
+      "text": "Selfie"
+    },
+    {
+      "index": 362,
+      "style": "List Bullet",
+      "text": "Processing"
+    },
+    {
+      "index": 363,
+      "style": "List Bullet",
+      "text": "Verified"
+    },
+    {
+      "index": 364,
+      "style": "Normal",
+      "text": "20. Safety Center"
+    },
+    {
+      "index": 365,
+      "style": "List Bullet",
+      "text": "Your Safety, Clearly Presented"
+    },
+    {
+      "index": 366,
+      "style": "List Bullet 2",
+      "text": "Identity Status"
+    },
+    {
+      "index": 367,
+      "style": "List Bullet 2",
+      "text": "Blocked Profiles"
+    },
+    {
+      "index": 368,
+      "style": "List Bullet",
+      "text": "Privacy & Visibility"
+    },
+    {
+      "index": 369,
+      "style": "List Bullet 2",
+      "text": "Privacy Controls Unavailable"
+    },
+    {
+      "index": 370,
+      "style": "List Bullet",
+      "text": "Block & Report"
+    },
+    {
+      "index": 371,
+      "style": "List Bullet 2",
+      "text": "Blocked & Reported Profiles"
+    },
+    {
+      "index": 372,
+      "style": "List Bullet",
+      "text": "Emergency & Check-in"
+    },
+    {
+      "index": 373,
+      "style": "List Bullet 2",
+      "text": "Emergency Tools Unavailable"
+    },
+    {
+      "index": 374,
+      "style": "List Bullet",
+      "text": "Dating Safety Guidance"
+    },
+    {
+      "index": 375,
+      "style": "List Bullet 2",
+      "text": "Protect Personal Information"
+    },
+    {
+      "index": 376,
+      "style": "List Bullet 2",
+      "text": "Respect Boundaries"
+    },
+    {
+      "index": 377,
+      "style": "List Bullet 2",
+      "text": "Respond to Safety Concerns"
+    },
+    {
+      "index": 378,
+      "style": "List Bullet",
+      "text": "Support"
+    },
+    {
+      "index": 379,
+      "style": "List Bullet 2",
+      "text": "Community Guidelines"
+    },
+    {
+      "index": 380,
+      "style": "List Bullet 2",
+      "text": "Safety Help"
+    },
+    {
+      "index": 381,
+      "style": "Normal",
+      "text": "21. Terms & Conditions"
+    },
+    {
+      "index": 382,
+      "style": "List Bullet",
+      "text": "Eligibility and Account Responsibility"
+    },
+    {
+      "index": 383,
+      "style": "List Bullet",
+      "text": "Respectful and Authentic Participation"
+    },
+    {
+      "index": 384,
+      "style": "List Bullet",
+      "text": "Matches and Recommendations"
+    },
+    {
+      "index": 385,
+      "style": "List Bullet",
+      "text": "Subscriptions and Purchases"
+    },
+    {
+      "index": 386,
+      "style": "List Bullet",
+      "text": "Safety and Enforcement"
+    },
+    {
+      "index": 387,
+      "style": "List Bullet",
+      "text": "Service Availability and Changes"
+    },
+    {
+      "index": 388,
+      "style": "List Bullet",
+      "text": "Ending Your Account"
+    },
+    {
+      "index": 389,
+      "style": "Normal",
+      "text": "22. Privacy Policy"
+    },
+    {
+      "index": 390,
+      "style": "List Bullet",
+      "text": "Information You Provide"
+    },
+    {
+      "index": 391,
+      "style": "List Bullet",
+      "text": "Information Created Through Use"
+    },
+    {
+      "index": 392,
+      "style": "List Bullet",
+      "text": "How Information Is Used"
+    },
+    {
+      "index": 393,
+      "style": "List Bullet",
+      "text": "Sharing and Visibility"
+    },
+    {
+      "index": 394,
+      "style": "List Bullet",
+      "text": "Your Choices"
+    },
+    {
+      "index": 395,
+      "style": "List Bullet",
+      "text": "Security and Retention"
+    },
+    {
+      "index": 396,
+      "style": "List Bullet",
+      "text": "Updates and Contact"
+    },
+    {
+      "index": 397,
+      "style": "Normal",
+      "text": "23. Community Guidelines"
+    },
+    {
+      "index": 398,
+      "style": "List Bullet",
+      "text": "Be Authentic"
+    },
+    {
+      "index": 399,
+      "style": "List Bullet",
+      "text": "Treat People with Respect"
+    },
+    {
+      "index": 400,
+      "style": "List Bullet",
+      "text": "Keep Conversations Safe"
+    },
+    {
+      "index": 401,
+      "style": "List Bullet",
+      "text": "Protect the Community"
+    },
+    {
+      "index": 402,
+      "style": "List Bullet",
+      "text": "Report Concerns"
+    },
+    {
+      "index": 403,
+      "style": "List Bullet",
+      "text": "How Enforcement Works"
+    },
+    {
+      "index": 404,
+      "style": "Normal",
+      "text": "24. Membership"
+    },
+    {
+      "index": 405,
+      "style": "List Bullet",
+      "text": "Choose Your Membership"
+    },
+    {
+      "index": 406,
+      "style": "List Bullet",
+      "text": "Select Plan"
+    },
+    {
+      "index": 407,
+      "style": "List Bullet",
+      "text": "Review Membership"
+    },
+    {
+      "index": 408,
+      "style": "List Bullet",
+      "text": "Plan Name with Price"
+    },
+    {
+      "index": 409,
+      "style": "List Bullet",
+      "text": "Included Details"
+    },
+    {
+      "index": 410,
+      "style": "List Bullet",
+      "text": "Payment Summary"
+    },
+    {
+      "index": 411,
+      "style": "List Bullet",
+      "text": "Payment Method"
+    },
+    {
+      "index": 412,
+      "style": "List Bullet",
+      "text": "Pay"
+    },
+    {
+      "index": 413,
+      "style": "Normal",
+      "text": "25. Profile Settings"
+    },
+    {
+      "index": 414,
+      "style": "List Bullet",
+      "text": "Personal Information"
+    },
+    {
+      "index": 415,
+      "style": "List Bullet",
+      "text": "Name"
+    },
+    {
+      "index": 416,
+      "style": "List Bullet",
+      "text": "DOB"
+    },
+    {
+      "index": 417,
+      "style": "List Bullet",
+      "text": "Gender"
+    },
+    {
+      "index": 418,
+      "style": "List Bullet",
+      "text": "Occupation"
+    },
+    {
+      "index": 419,
+      "style": "List Bullet",
+      "text": "Company"
+    },
+    {
+      "index": 420,
+      "style": "List Bullet",
+      "text": "Education"
+    },
+    {
+      "index": 421,
+      "style": "List Bullet",
+      "text": "City"
+    },
+    {
+      "index": 422,
+      "style": "List Bullet",
+      "text": "Blocked & Reported Profiles"
+    },
+    {
+      "index": 423,
+      "style": "List Bullet",
+      "text": "Blocked Profile List"
+    },
+    {
+      "index": 424,
+      "style": "List Bullet",
+      "text": "Unblock"
+    },
+    {
+      "index": 425,
+      "style": "List Bullet",
+      "text": "Likes & Super Likes"
+    },
+    {
+      "index": 426,
+      "style": "List Bullet",
+      "text": "Likes List"
+    },
+    {
+      "index": 427,
+      "style": "List Bullet",
+      "text": "Unlike"
+    },
+    {
+      "index": 428,
+      "style": "List Bullet",
+      "text": "Super Likes List"
+    },
+    {
+      "index": 429,
+      "style": "List Bullet",
+      "text": "Remove Super Like"
+    },
+    {
+      "index": 430,
+      "style": "List Bullet",
+      "text": "Saved Profiles"
+    },
+    {
+      "index": 431,
+      "style": "List Bullet",
+      "text": "Saved Profiles List"
+    },
+    {
+      "index": 432,
+      "style": "List Bullet",
+      "text": "Unsave"
+    },
+    {
+      "index": 433,
+      "style": "Normal",
+      "text": "26. Support Center"
+    },
+    {
+      "index": 434,
+      "style": "List Bullet",
+      "text": "Search Bar"
+    },
+    {
+      "index": 435,
+      "style": "List Bullet",
+      "text": "Browse by Topic"
+    },
+    {
+      "index": 436,
+      "style": "List Bullet 2",
+      "text": "Help Category Filter"
+    },
+    {
+      "index": 437,
+      "style": "List Bullet",
+      "text": "All Help Topics"
+    },
+    {
+      "index": 438,
+      "style": "List Bullet 2",
+      "text": "How does AMORAA Compatibility work?"
+    },
+    {
+      "index": 439,
+      "style": "List Bullet 2",
+      "text": "How do I get Pink and Purple Tick verified?"
+    },
+    {
+      "index": 440,
+      "style": "List Bullet 2",
+      "text": "How can I report or block someone?"
+    },
+    {
+      "index": 441,
+      "style": "List Bullet 2",
+      "text": "How do I join an AMORAA event?"
+    },
+    {
+      "index": 442,
+      "style": "List Bullet 2",
+      "text": "Where can I manage my subscription?"
+    },
+    {
+      "index": 443,
+      "style": "List Bullet 2",
+      "text": "How do I delete my account?"
+    },
+    {
+      "index": 444,
+      "style": "List Bullet 2",
+      "text": "How do I update my profile?"
+    },
+    {
+      "index": 445,
+      "style": "List Bullet 2",
+      "text": "What do message status indicators mean?"
+    },
+    {
+      "index": 446,
+      "style": "List Bullet 2",
+      "text": "How do I manage an uncomfortable conversation?"
+    },
+    {
+      "index": 447,
+      "style": "List Bullet 2",
+      "text": "Where are my visibility controls?"
+    },
+    {
+      "index": 448,
+      "style": "List Bullet 2",
+      "text": "How do I refine who I discover?"
+    },
+    {
+      "index": 449,
+      "style": "List Bullet",
+      "text": "Still Need Help?"
+    },
+    {
+      "index": 450,
+      "style": "List Bullet 2",
+      "text": "Email Support"
+    },
+    {
+      "index": 451,
+      "style": "List Bullet",
+      "text": "Safety and Community"
+    },
+    {
+      "index": 452,
+      "style": "List Bullet 2",
+      "text": "Safety Center"
+    },
+    {
+      "index": 453,
+      "style": "List Bullet 2",
+      "text": "Community Guidelines"
+    },
+    {
+      "index": 454,
+      "style": "List Bullet 2",
+      "text": "Report a Problem"
+    },
+    {
+      "index": 455,
+      "style": "Normal",
+      "text": "27. Change Password"
+    },
+    {
+      "index": 456,
+      "style": "List Bullet",
+      "text": "Reset Your Password"
+    },
+    {
+      "index": 457,
+      "style": "List Bullet",
+      "text": "Registered Email"
+    },
+    {
+      "index": 458,
+      "style": "List Bullet",
+      "text": "Send Verification Code"
+    },
+    {
+      "index": 459,
+      "style": "Normal",
+      "text": "28. Logout"
+    },
+    {
+      "index": 460,
+      "style": "List Bullet",
+      "text": "Logout Securely"
+    },
+    {
+      "index": 461,
+      "style": "List Bullet",
+      "text": "Go Back"
+    },
+    {
+      "index": 462,
+      "style": "Normal",
+      "text": "29. Deactivate Account"
+    },
+    {
+      "index": 463,
+      "style": "List Bullet",
+      "text": "Deactivate Account"
+    },
+    {
+      "index": 464,
+      "style": "List Bullet",
+      "text": "Keep My Account"
+    },
+    {
+      "index": 465,
+      "style": "Normal",
+      "text": "30. Delete Account"
+    },
+    {
+      "index": 466,
+      "style": "List Bullet",
+      "text": "Continue to Confirmation"
+    },
+    {
+      "index": 467,
+      "style": "List Bullet",
+      "text": "Reason Questions"
+    },
+    {
+      "index": 468,
+      "style": "List Bullet",
+      "text": "Cancel"
+    },
+    {
+      "index": 470,
+      "style": "List Bullet",
+      "text": "To be discussed"
+    },
+    {
+      "index": 471,
+      "style": "List Bullet",
+      "text": "Ai dating assistant"
+    },
+    {
+      "index": 472,
+      "style": "List Bullet",
+      "text": "Quizzes"
+    }
+  ],
+  "tables": [],
+  "section_count": 1
+}

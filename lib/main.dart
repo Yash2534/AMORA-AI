@@ -48,6 +48,7 @@ import 'package:amora_ai/features/profile/presentation/profile_edit_screen.dart'
 import 'package:amora_ai/features/profile/presentation/profile_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_setup_screen.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
+import 'package:amora_ai/features/profile/presentation/controllers/profile_relationship_controller.dart';
 import 'package:amora_ai/features/referral/presentation/referral_leaderboard_screen.dart';
 import 'package:amora_ai/features/match/presentation/why_we_matched_screen.dart';
 import 'package:amora_ai/features/monetization/presentation/liked_you_paywall_screen.dart';
@@ -73,6 +74,7 @@ Future<void> main() async {
   await AuthService.instance.initialize();
   await AmoraSession.restore();
   await LocalProfileRepository.instance.initialize();
+  await ProfileRelationshipController.instance.refreshRemote();
   await LocalOnboardingRepository.instance.initialize();
   LocalOnboardingRepository.instance.hydrateFromUserProfile();
   await ChatRepository.instance.initialize();

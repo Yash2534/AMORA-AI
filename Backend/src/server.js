@@ -24,6 +24,8 @@ const paymentRoutes = require("./routes/paymentRoutes");
 const walletRoutes = require("./routes/walletRoutes");
 const boostRoutes = require("./routes/boostRoutes");
 const giftRoutes = require("./routes/giftRoutes");
+const { saved: savedProfileRoutes, reactions: reactionRoutes } = require('./routes/relationshipRoutes');
+const notificationPreferenceRoutes = require('./routes/notificationPreferenceRoutes');
 const { attachRealtimeServer } = require("./realtime/realtimeHub");
 const errorHandler = require("./middleware/errorHandler");
 const { port } = require("./config/env");
@@ -71,6 +73,9 @@ app.use("/api/payments", paymentRoutes);
 app.use("/api/wallet", walletRoutes);
 app.use("/api/boosts", boostRoutes);
 app.use("/api/gifts", giftRoutes);
+app.use('/api/saved-profiles', savedProfileRoutes);
+app.use('/api/reactions', reactionRoutes);
+app.use('/api/notification-preferences', notificationPreferenceRoutes);
 app.use((_req, res) =>
   res
     .status(404)

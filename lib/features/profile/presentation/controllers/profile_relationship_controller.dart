@@ -1,25 +1,105 @@
 import 'package:amora_ai/core/data/image_repository.dart';
+import 'package:amora_ai/core/auth/auth_service.dart';
+import 'package:amora_ai/features/profile/data/public_profile_mapper.dart';
 import 'package:flutter/foundation.dart';
 
 enum ProfileReactionType { like, superLike }
 
-/// Session-scoped state for profile actions that do not yet have a backend
-/// persistence contract.
-///
-/// Entries are captured from the real profile the user acted on. The
-/// controller intentionally starts empty and never seeds any relationship list
-/// with repository samples.
+/// Canonical relationship state loaded from the authenticated backend.
+abstract interface class ProfileRelationshipRemoteDataSource {
+  Future<Map<String, dynamic>> request(
+    String method,
+    String path, {
+    Map<String, dynamic>? body,
+  });
+}
+
+class AuthProfileRelationshipRemoteDataSource
+    implements ProfileRelationshipRemoteDataSource {
+  const AuthProfileRelationshipRemoteDataSource();
+
+  @override
+  Future<Map<String, dynamic>> request(
+    String method,
+    String path, {
+    Map<String, dynamic>? body,
+  }) => AuthService.instance.authenticatedRequest(method, path, body: body);
+}
+
 class ProfileRelationshipController extends ChangeNotifier {
-  ProfileRelationshipController();
+  ProfileRelationshipController({
+    ProfileRelationshipRemoteDataSource? remote,
+    bool allowRemoteWithoutSession = true,
+  }) : _remote = remote,
+       _allowRemoteWithoutSession = allowRemoteWithoutSession;
 
   static final ProfileRelationshipController instance =
-      ProfileRelationshipController();
+      ProfileRelationshipController(
+        remote: const AuthProfileRelationshipRemoteDataSource(),
+        allowRemoteWithoutSession: false,
+      );
+
+  final ProfileRelationshipRemoteDataSource? _remote;
+  final bool _allowRemoteWithoutSession;
+  bool get _canUseRemote =>
+      _remote != null &&
+      (_allowRemoteWithoutSession || AuthService.instance.currentUser != null);
 
   final Map<String, DummyProfile> _profilesById = <String, DummyProfile>{};
   final List<String> _savedProfileIds = <String>[];
   final List<String> _blockedProfileIds = <String>[];
   final List<String> _likedProfileIds = <String>[];
   final List<String> _superLikedProfileIds = <String>[];
+  bool loading = false;
+  String? error;
+
+  Map<String, dynamic> _data(Map<String, dynamic> response) =>
+      ((response['data'] as Map?) ?? const <String, dynamic>{})
+          .cast<String, dynamic>();
+
+  Future<void> refreshRemote() async {
+    if (!_canUseRemote || loading) {
+      return;
+    }
+    loading = true;
+    error = null;
+    notifyListeners();
+    try {
+      final results = await Future.wait(<Future<Map<String, dynamic>>>[
+        _remote!.request('GET', '/api/saved-profiles?limit=30'),
+        _remote!.request('GET', '/api/reactions?type=like&limit=30'),
+        _remote!.request('GET', '/api/reactions?type=superLike&limit=30'),
+      ]);
+      _replaceProfiles(_savedProfileIds, _profiles(results[0]));
+      _replaceProfiles(_likedProfileIds, _profiles(results[1]));
+      _replaceProfiles(_superLikedProfileIds, _profiles(results[2]));
+    } on AuthException catch (exception) {
+      error = exception.message;
+    } catch (_) {
+      error = 'Could not load saved profiles and reactions.';
+    } finally {
+      loading = false;
+      notifyListeners();
+    }
+  }
+
+  List<DummyProfile> _profiles(Map<String, dynamic> response) =>
+      ((_data(response)['profiles'] as List?) ?? const <dynamic>[])
+          .whereType<Map>()
+          .map(
+            (value) =>
+                publicProfileFromJson(value.cast<String, dynamic>()).profile,
+          )
+          .toList(growable: false);
+
+  void _replaceProfiles(List<String> ids, List<DummyProfile> profiles) {
+    ids
+      ..clear()
+      ..addAll(profiles.map((profile) => profile.id));
+    for (final profile in profiles) {
+      _profilesById[profile.id] = profile;
+    }
+  }
 
   List<String> get savedProfileIds =>
       List<String>.unmodifiable(_savedProfileIds);
@@ -65,10 +145,27 @@ class ProfileRelationshipController extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> likeProfilePersisted(DummyProfile profile) async {
+    if (_canUseRemote) {
+      await _remote!.request(
+        'POST',
+        '/api/discover/swipe',
+        body: {'targetUserId': int.parse(profile.id), 'action': 'like'},
+      );
+    }
+    likeProfile(profile);
+  }
+
   void removeLike(String profileId) {
     if (!_likedProfileIds.remove(profileId)) return;
     _removeUnreferencedProfile(profileId);
     notifyListeners();
+  }
+
+  Future<void> removeLikePersisted(String profileId) async {
+    if (_canUseRemote)
+      await _remote!.request('DELETE', '/api/reactions/$profileId');
+    removeLike(profileId);
   }
 
   void superLikeProfile(DummyProfile profile) {
@@ -82,6 +179,12 @@ class ProfileRelationshipController extends ChangeNotifier {
     if (!_superLikedProfileIds.remove(profileId)) return;
     _removeUnreferencedProfile(profileId);
     notifyListeners();
+  }
+
+  Future<void> removeSuperLikePersisted(String profileId) async {
+    if (_canUseRemote)
+      await _remote!.request('DELETE', '/api/reactions/$profileId');
+    removeSuperLike(profileId);
   }
 
   void toggleSaved(DummyProfile profile) {
@@ -99,10 +202,22 @@ class ProfileRelationshipController extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> saveProfilePersisted(DummyProfile profile) async {
+    if (_canUseRemote)
+      await _remote!.request('POST', '/api/saved-profiles/${profile.id}');
+    saveProfile(profile);
+  }
+
   void removeSaved(String profileId) {
     if (!_savedProfileIds.remove(profileId)) return;
     _removeUnreferencedProfile(profileId);
     notifyListeners();
+  }
+
+  Future<void> removeSavedPersisted(String profileId) async {
+    if (_canUseRemote)
+      await _remote!.request('DELETE', '/api/saved-profiles/$profileId');
+    removeSaved(profileId);
   }
 
   void blockProfile(DummyProfile profile) {
@@ -119,7 +234,9 @@ class ProfileRelationshipController extends ChangeNotifier {
   }
 
   @visibleForTesting
-  void clear() {
+  void clear() => clearSessionState();
+
+  void clearSessionState() {
     if (_profilesById.isEmpty &&
         _savedProfileIds.isEmpty &&
         _blockedProfileIds.isEmpty &&

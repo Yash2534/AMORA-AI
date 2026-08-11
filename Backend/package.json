@@ -7,7 +7,7 @@
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "test": "node --test --test-concurrency=1",
-    "test:integration": "node --test --test-concurrency=1 test/discover.integration.test.js test/phase2.integration.test.js test/phase3.integration.test.js test/phase4.integration.test.js test/phase5.integration.test.js",
+    "test:integration": "node --test --test-concurrency=1 test/discover.integration.test.js test/phase2.integration.test.js test/phase3.integration.test.js test/phase4.integration.test.js test/phase5.integration.test.js test/partial-integrations.integration.test.js",
     "test:phase3": "node --test --test-concurrency=1 test/phase3.integration.test.js",
     "test:phase4": "node --test --test-concurrency=1 test/phase4.integration.test.js",
     "db:migrate": "node src/migrations/run.js up",

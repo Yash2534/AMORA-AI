@@ -23,6 +23,10 @@ function authenticationMiddleware({ allowDeactivated = false } = {}) {
       }
       req.user = payload;
       req.authUser = user;
+      const now = new Date();
+      if (!user.lastActiveAt || now.getTime() - new Date(user.lastActiveAt).getTime() >= 30000) {
+        await user.update({ lastActiveAt: now });
+      }
       return next();
     } catch (error) {
       return next(error);

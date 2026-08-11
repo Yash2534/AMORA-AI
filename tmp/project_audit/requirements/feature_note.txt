@@ -1,0 +1,456 @@
+[Normal] Amora
+App Feature Documentation
+[Normal] 1. Authentication
+[List Bullet] Login
+[List Bullet] Sign Up
+[List Bullet] Forgot Password
+[List Bullet] Google Login
+[List Bullet] Create Account
+[List Bullet] Mobile OTP Verification
+[Normal] 2. Onboarding Screens
+[List Bullet] Age
+[List Bullet] How Do You Identify?
+[List Bullet] Who Would You Like to Meet?
+[List Bullet] What Are You Looking For?
+[List Bullet] Location with Preferred Distance
+[List Bullet] Photos Upload
+[Normal] 3. Discover
+[List Bullet] Swipe Profiles
+[List Bullet] Like
+[List Bullet] Super Like
+[List Bullet] Undo Profile
+[List Bullet] Pass Profile
+[List Bullet] Profile Details
+[List Bullet] Filters
+[List Bullet] Notification
+[Normal] 4. Discover Filters
+[List Bullet] Selected Preferences
+[List Bullet] Search Bar
+[List Bullet] Core Preferences
+[List Bullet 2] Age Range
+[List Bullet 2] Distance
+[List Bullet 2] City
+[List Bullet 2] Height
+[List Bullet 2] Hometown
+[List Bullet] Relationship Intentions
+[List Bullet 2] Dating Intention
+[List Bullet] Lifestyle & Interests
+[List Bullet] Education & Profession
+[List Bullet 2] Education Selection
+[List Bullet 2] Profession Selection
+[List Bullet] Identity & Background
+[List Bullet 2] Community Preference
+[List Bullet 2] Religion
+[List Bullet 2] Languages
+[List Bullet 2] Pronouns
+[List Bullet 2] Sexuality
+[List Bullet] Compatibility
+[List Bullet 2] Their Qualities
+[List Bullet 2] Preferred hours for talking
+[List Bullet 2] Love languages
+[List Bullet] Habits
+[List Bullet 2] Smoking
+[List Bullet 2] Drinking
+[List Bullet 2] Weed
+[List Bullet] Ice breaker (non negotiable dating point)
+[List Bullet] Communication style
+[List Bullet] AI Match Quality & Trust
+[List Bullet 2] Minimum AI Match Score
+[List Bullet 2] Verified Profiles Only
+[List Bullet 2] Online Now
+[List Bullet 2] Has Profile Prompts
+[List Bullet 2] Has Event Interest
+[List Bullet] Reset
+[List Bullet] Apply Filters
+[Normal] 5. Chat & Messaging
+[List Bullet] Active Now Profiles
+[List Bullet] Chat List
+[List Bullet] Chat Detail
+[List Bullet] Send Message
+[List Bullet] Read Receipts
+[List Bullet] Report User
+[List Bullet] Block User
+[List Bullet] Mute Conversation
+[List Bullet] New Message
+[Normal] 6. AI Matches
+[List Bullet] Compatibility Score
+[List Bullet] Recommended Matches
+[List Bullet] Why This Recommendation
+[List Bullet] View Profile
+[List Bullet] Message
+[List Bullet] Bulk Like Send
+[Normal] 7. Events
+[List Bullet] Browse Events
+[List Bullet] Event Detail
+[List Bullet] Join Event
+[List Bullet] Featured Experience
+[List Bullet] Recommended Events
+[List Bullet] Near You Events
+[List Bullet] AMORAA Circles
+[List Bullet] My Events
+[List Bullet] Upcoming, Past, Waitlist, Cancelled
+[Normal] 8. Profile
+[List Bullet] Profile Image
+[List Bullet] Name
+[List Bullet] Profile Details
+[List Bullet] Profile Completion Percentage
+[List Bullet] Edit Profile
+[List Bullet] Preview Profile
+[List Bullet] About Me
+[List Bullet] Photo Gallery
+[List Bullet] Profile Information
+[List Bullet 2] Occupation
+[List Bullet 2] Company
+[List Bullet 2] Education
+[List Bullet 2] Gender
+[List Bullet 2] Zodiac
+[List Bullet] Interests
+[List Bullet] Lifestyle
+[List Bullet 2] Drinking
+[List Bullet 2] Smoking
+[List Bullet 2] Weed
+[List Bullet 2] Exercise
+[List Bullet 2] Food Preference
+[List Bullet 2] Pets
+[List Bullet 2] Sleep Habits
+[List Bullet] Ice breaker (non negotiable dating point)
+[List Bullet] Communication style
+[List Bullet] Profile Prompts
+[List Bullet 2] My ideal Sunday is...
+[List Bullet 2] A green flag I value is...
+[List Bullet 2] Together we could...
+[List Bullet] Verification & Trust
+[List Bullet 2] Photo Verification
+[List Bullet 2] Safety Guidelines
+[List Bullet 2] Verify profile Button
+[List Bullet 2] safety Button
+[List Bullet] Membership
+[List Bullet] Quick Actions
+[List Bullet 2] Likes & Super Likes
+[List Bullet 2] Saved Profiles
+[List Bullet 2] Blocked Profiles
+[List Bullet 2] Support
+[Normal] 9. Edit Profile
+[List Bullet] Information still pending
+[List Bullet] Profile Photos
+[List Bullet 2] Add Photo
+[List Bullet 2] Manage Photos
+[List Bullet] Basic Details
+[List Bullet 2] Full Name
+[List Bullet 2] DOB
+[List Bullet 2] Gender
+[List Bullet] Work & Education
+[List Bullet 2] Occupation
+[List Bullet 2] Company
+[List Bullet 2] Education
+[List Bullet 2] Specify Education
+[List Bullet] Location & Dating Intentions
+[List Bullet 2] City
+[List Bullet 2] Dating Intention
+[List Bullet] Height, Languages & Religion
+[List Bullet 2] Height
+[List Bullet 2] Languages
+[List Bullet 2] Religion
+[List Bullet] Personal Details
+[List Bullet 2] Hometown
+[List Bullet 2] Pronouns
+[List Bullet 2] Sexuality
+[List Bullet] Bio
+[List Bullet] Interests
+[List Bullet 2] Lifestyle
+[List Bullet 2] Food
+[List Bullet 2] Travel
+[List Bullet 2] Music
+[List Bullet 2] Fitness
+[List Bullet 2] Creativity
+[List Bullet 2] Nature & pets
+[List Bullet] Lifestyle
+[List Bullet 2] Drinking
+[List Bullet 2] Smoking
+[List Bullet 2] Weed
+[List Bullet 2] Exercise
+[List Bullet 2] Food Preference
+[List Bullet 2] Pets
+[List Bullet 2] Sleep Habits
+[List Bullet] Connection Preferences
+[List Bullet 2] Their Qualities
+[List Bullet 2] Preferred hours for talking
+[List Bullet 2] Love languages
+[List Bullet] Ice breaker (non negotiable dating point)
+[List Bullet] Communication style
+[List Bullet] Profile Prompts
+[List Bullet 2] My ideal Sunday is...
+[List Bullet 2] A green flag I value is...
+[List Bullet 2] Together we could...
+[List Bullet] Verification
+[List Bullet 2] Review Verification
+[List Bullet] Profile Preview
+[List Bullet] Save Changes
+[Normal] 10. Profile Preview
+[List Bullet] Profile Photo Gallery
+[List Bullet] Name
+[List Bullet] Age
+[List Bullet] Occupation
+[List Bullet] Company
+[List Bullet] Education
+[List Bullet] Location
+[List Bullet] Height
+[List Bullet] Languages
+[List Bullet] Looking For / Dating Intention
+[List Bullet] About Me
+[List Bullet] Interests
+[List Bullet] Lifestyle & Personality
+[List Bullet 2] Activity
+[List Bullet 2] Food
+[List Bullet 2] Smoking
+[List Bullet 2] Drinking
+[List Bullet 2] Weed
+[List Bullet 2] Pets
+[List Bullet 2] Weekend
+[List Bullet 2] Beliefs
+[List Bullet] Connection Style
+[List Bullet 2] Qualities I value
+[List Bullet 2] Preferred time to talk
+[List Bullet 2] Love languages
+[List Bullet] Ice breaker (non negotiable dating point)
+[List Bullet] Communication style
+[List Bullet] Profile Prompts
+[List Bullet 2] My ideal Sunday is...
+[List Bullet 2] A green flag I value is...
+[List Bullet 2] Together we could...
+[List Bullet] Edit Profile Button
+[List Bullet] Return to Discover Button
+[Normal] 11. Profile Completion
+[List Bullet] Completion Percentage
+[List Bullet] Recommended Next
+[List Bullet] Profile Photos
+[List Bullet] Basic Details
+[List Bullet 2] Full name
+[List Bullet 2] DOB
+[List Bullet 2] Gender
+[List Bullet] Work & Education
+[List Bullet 2] Occupation
+[List Bullet 2] Company
+[List Bullet 2] Education
+[List Bullet] Location & Dating Intentions
+[List Bullet 2] City
+[List Bullet 2] Dating Intention
+[List Bullet] Height, Languages & Religion
+[List Bullet 2] Height
+[List Bullet 2] Languages
+[List Bullet 2] Religion
+[List Bullet 2] Hometown
+[List Bullet 2] Pronouns
+[List Bullet 2] Sexuality
+[List Bullet] Bio
+[List Bullet] Interests
+[List Bullet 2] Lifestyle
+[List Bullet 2] Food
+[List Bullet 2] Travel
+[List Bullet 2] Music
+[List Bullet 2] Fitness
+[List Bullet 2] Creativity
+[List Bullet 2] Nature & pets
+[List Bullet] Lifestyle
+[List Bullet 2] Smoking
+[List Bullet 2] Drinking
+[List Bullet 2] Weed
+[List Bullet 2] Exercise
+[List Bullet 2] Food Preference
+[List Bullet 2] Pets
+[List Bullet 2] Sleep Habits
+[List Bullet 2] Their Qualities
+[List Bullet 2] Preferred Hours for Talking
+[List Bullet 2] Love Language
+[List Bullet] Ice breaker (non negotiable dating point)
+[List Bullet] Communication style
+[List Bullet] Profile Prompt
+[List Bullet] Pending Details
+[List Bullet] Verification
+[Normal] 12. Settings
+[List Bullet] Account — Personal Information
+[List Bullet] Saved Profiles
+[List Bullet] Blocked Profiles
+[List Bullet] Liked Profiles
+[List Bullet] Super Liked Profiles
+[List Bullet] Membership
+[List Bullet] Manage Subscription
+[List Bullet] Notification Preferences
+[List Bullet] Email Support
+[List Bullet] Terms & Conditions
+[List Bullet] Privacy Policy
+[List Bullet] Community Guidelines
+[List Bullet] Safety Center
+[List Bullet] Change Password
+[List Bullet] Logout
+[List Bullet] Delete Account
+[List Bullet] Deactivate Account
+[Normal] 13. Profile Details Screen
+[List Bullet] Profile Details
+[List Bullet] Save Profile
+[List Bullet] Safety Actions
+[List Bullet] Like
+[List Bullet] Super Like
+[List Bullet] Message
+[List Bullet] Send Gift
+[List Bullet] Profile Prompts Reply
+[List Bullet] Why We Matched
+[Normal] 14. Notifications
+[List Bullet] Notification Filter
+[List Bullet] Notification Feed
+[List Bullet] Mark All Notifications as Read
+[List Bullet] Notification Preferences
+[List Bullet] What You Hear About
+[List Bullet 2] New Matches
+[List Bullet 2] Messages
+[List Bullet 2] Event Reminders
+[List Bullet 2] Payments & membership
+[List Bullet 2] Offers from Amoraa
+[List Bullet 2] Safety updates
+[List Bullet] Delivery Channels
+[List Bullet 2] Push notifications
+[List Bullet 2] Email
+[List Bullet 2] SMS
+[List Bullet] Quiet Hours
+[Normal] 15. Permissions
+[List Bullet] Camera Permission
+[List Bullet] Notification Permission
+[List Bullet] Upload Media Permission
+[List Bullet] Location
+[List Bullet] Notifications
+[Normal] 16. Report a Concern
+[List Bullet] Profile Name
+[List Bullet] Reason
+[List Bullet] Notes
+[List Bullet] Submit Report
+[Normal] 17. Send a Rose
+[List Bullet] Notes
+[List Bullet] Send Rose in Chat
+[Normal] 18. Event Details
+[List Bullet] Name
+[List Bullet] Date and Time
+[List Bullet] Location
+[List Bullet] Distance
+[List Bullet] Host
+[List Bullet] About
+[List Bullet] What to Expect
+[List Bullet] Good to Know
+[List Bullet] Why This Event May Suit You
+[List Bullet] Who's Joining
+[List Bullet] Safety & Community
+[List Bullet] Join Event
+[List Bullet] Share Event
+[Normal] 19. Identity Verification
+[List Bullet] Percentage
+[List Bullet] Aadhaar
+[List Bullet] Selfie
+[List Bullet] Processing
+[List Bullet] Verified
+[Normal] 20. Safety Center
+[List Bullet] Your Safety, Clearly Presented
+[List Bullet 2] Identity Status
+[List Bullet 2] Blocked Profiles
+[List Bullet] Privacy & Visibility
+[List Bullet 2] Privacy Controls Unavailable
+[List Bullet] Block & Report
+[List Bullet 2] Blocked & Reported Profiles
+[List Bullet] Emergency & Check-in
+[List Bullet 2] Emergency Tools Unavailable
+[List Bullet] Dating Safety Guidance
+[List Bullet 2] Protect Personal Information
+[List Bullet 2] Respect Boundaries
+[List Bullet 2] Respond to Safety Concerns
+[List Bullet] Support
+[List Bullet 2] Community Guidelines
+[List Bullet 2] Safety Help
+[Normal] 21. Terms & Conditions
+[List Bullet] Eligibility and Account Responsibility
+[List Bullet] Respectful and Authentic Participation
+[List Bullet] Matches and Recommendations
+[List Bullet] Subscriptions and Purchases
+[List Bullet] Safety and Enforcement
+[List Bullet] Service Availability and Changes
+[List Bullet] Ending Your Account
+[Normal] 22. Privacy Policy
+[List Bullet] Information You Provide
+[List Bullet] Information Created Through Use
+[List Bullet] How Information Is Used
+[List Bullet] Sharing and Visibility
+[List Bullet] Your Choices
+[List Bullet] Security and Retention
+[List Bullet] Updates and Contact
+[Normal] 23. Community Guidelines
+[List Bullet] Be Authentic
+[List Bullet] Treat People with Respect
+[List Bullet] Keep Conversations Safe
+[List Bullet] Protect the Community
+[List Bullet] Report Concerns
+[List Bullet] How Enforcement Works
+[Normal] 24. Membership
+[List Bullet] Choose Your Membership
+[List Bullet] Select Plan
+[List Bullet] Review Membership
+[List Bullet] Plan Name with Price
+[List Bullet] Included Details
+[List Bullet] Payment Summary
+[List Bullet] Payment Method
+[List Bullet] Pay
+[Normal] 25. Profile Settings
+[List Bullet] Personal Information
+[List Bullet] Name
+[List Bullet] DOB
+[List Bullet] Gender
+[List Bullet] Occupation
+[List Bullet] Company
+[List Bullet] Education
+[List Bullet] City
+[List Bullet] Blocked & Reported Profiles
+[List Bullet] Blocked Profile List
+[List Bullet] Unblock
+[List Bullet] Likes & Super Likes
+[List Bullet] Likes List
+[List Bullet] Unlike
+[List Bullet] Super Likes List
+[List Bullet] Remove Super Like
+[List Bullet] Saved Profiles
+[List Bullet] Saved Profiles List
+[List Bullet] Unsave
+[Normal] 26. Support Center
+[List Bullet] Search Bar
+[List Bullet] Browse by Topic
+[List Bullet 2] Help Category Filter
+[List Bullet] All Help Topics
+[List Bullet 2] How does AMORAA Compatibility work?
+[List Bullet 2] How do I get Pink and Purple Tick verified?
+[List Bullet 2] How can I report or block someone?
+[List Bullet 2] How do I join an AMORAA event?
+[List Bullet 2] Where can I manage my subscription?
+[List Bullet 2] How do I delete my account?
+[List Bullet 2] How do I update my profile?
+[List Bullet 2] What do message status indicators mean?
+[List Bullet 2] How do I manage an uncomfortable conversation?
+[List Bullet 2] Where are my visibility controls?
+[List Bullet 2] How do I refine who I discover?
+[List Bullet] Still Need Help?
+[List Bullet 2] Email Support
+[List Bullet] Safety and Community
+[List Bullet 2] Safety Center
+[List Bullet 2] Community Guidelines
+[List Bullet 2] Report a Problem
+[Normal] 27. Change Password
+[List Bullet] Reset Your Password
+[List Bullet] Registered Email
+[List Bullet] Send Verification Code
+[Normal] 28. Logout
+[List Bullet] Logout Securely
+[List Bullet] Go Back
+[Normal] 29. Deactivate Account
+[List Bullet] Deactivate Account
+[List Bullet] Keep My Account
+[Normal] 30. Delete Account
+[List Bullet] Continue to Confirmation
+[List Bullet] Reason Questions
+[List Bullet] Cancel
+[List Bullet] To be discussed
+[List Bullet] Ai dating assistant
+[List Bullet] Quizzes

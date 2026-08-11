@@ -45,6 +45,8 @@ class DiscoverActionController extends ChangeNotifier {
   String? _lastError;
   String? _matchId;
   Map<String, dynamic>? _matchedProfile;
+  String? _boostIdempotencyKey;
+  Map<String, dynamic>? _boostState;
 
   bool get isTransitioning => _isTransitioning;
   bool get isEmpty => _deck.isEmpty;
@@ -56,6 +58,8 @@ class DiscoverActionController extends ChangeNotifier {
   String? get matchId => _matchId;
   Map<String, dynamic>? get matchedProfile => _matchedProfile;
   String? get lastError => _lastError;
+  String? get boostIdempotencyKey => _boostIdempotencyKey;
+  Map<String, dynamic>? get boostState => _boostState;
   List<String> get remainingProfileIds => List.unmodifiable(_deck);
   List<DiscoverHistoryEntry> get history => List.unmodifiable(_history);
 
@@ -89,6 +93,14 @@ class DiscoverActionController extends ChangeNotifier {
     _activeAction = DiscoverAction.rewind;
     notifyListeners();
     await Future<void>.delayed(transitionDuration);
+    final result = await _apiService.rewind();
+    if (!result.success) {
+      _activeAction = null;
+      _isTransitioning = false;
+      _lastError = result.message;
+      notifyListeners();
+      return false;
+    }
     final entry = _history.removeLast();
     _deck.insert(0, entry.profileId);
     _imageIndices[entry.profileId] = entry.imageIndex;
@@ -98,24 +110,23 @@ class DiscoverActionController extends ChangeNotifier {
     _activeAction = null;
     _isTransitioning = false;
     notifyListeners();
-    final result = await _apiService.rewind();
-    if (result.success) return true;
-    _lastError = result.message;
-    notifyListeners();
-    return false;
+    return true;
   }
 
   Future<bool> boostProfile() async {
     if (_isTransitioning) return false;
     _activeAction = DiscoverAction.boost;
     notifyListeners();
-    final result = await _apiService.boost();
+    _boostIdempotencyKey ??= _apiService.newIdempotencyKey('boost-activation');
+    final result = await _apiService.boost(_boostIdempotencyKey!);
     if (!result.success) {
       _activeAction = null;
       _lastError = result.message;
       notifyListeners();
       return false;
     }
+    _boostState = result.data;
+    _boostIdempotencyKey = null;
     _boostRequested = true;
     notifyListeners();
     return true;
@@ -144,6 +155,23 @@ class DiscoverActionController extends ChangeNotifier {
     notifyListeners();
     await Future<void>.delayed(transitionDuration);
 
+    final result = await _apiService.swipe(
+      targetUserId: profileId,
+      action: switch (action) {
+        DiscoverAction.pass => 'pass',
+        DiscoverAction.like => 'like',
+        DiscoverAction.superLike => 'superLike',
+        _ => 'pass',
+      },
+    );
+    if (!result.success) {
+      _activeAction = null;
+      _isTransitioning = false;
+      _lastError = result.message;
+      notifyListeners();
+      return false;
+    }
+
     _history.add(
       DiscoverHistoryEntry(
         profileId: profileId,
@@ -169,20 +197,6 @@ class DiscoverActionController extends ChangeNotifier {
     _activeAction = null;
     _isTransitioning = false;
     notifyListeners();
-    final result = await _apiService.swipe(
-      targetUserId: profileId,
-      action: switch (action) {
-        DiscoverAction.pass => 'pass',
-        DiscoverAction.like => 'like',
-        DiscoverAction.superLike => 'superLike',
-        _ => 'pass',
-      },
-    );
-    if (!result.success) {
-      _lastError = result.message;
-      notifyListeners();
-      return false;
-    }
     if (result.data!.matched) {
       _matchedProfileId = profileId;
       _matchId = result.data!.matchId;

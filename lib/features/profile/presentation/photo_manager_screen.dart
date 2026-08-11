@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:amora_ai/core/access/amora_access.dart';
+import 'package:amora_ai/core/auth/auth_service.dart';
 import 'package:amora_ai/core/media/amora_media_picker.dart';
 import 'package:amora_ai/core/theme/amora_icon_sizes.dart';
 import 'package:amora_ai/core/theme/amora_icons.dart';
@@ -287,7 +288,12 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
       _snack('The prepared photo is invalid. Please choose another image.');
       return;
     }
-    final uploadState = widget.photoUploader == null
+    final uploader =
+        widget.photoUploader ??
+        (AuthService.instance.currentUser == null
+            ? null
+            : _repository.uploadPhoto);
+    final uploadState = uploader == null
         ? ProfilePhotoUploadState.localOnly
         : ProfilePhotoUploadState.uploading;
     _repository.addPhotoInSession(
@@ -297,18 +303,26 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
       mimeType: croppedMimeType,
     );
     _snack('Photo added to your profile.');
-    if (widget.photoUploader != null) {
+    if (uploader != null) {
       unawaited(_uploadPhoto(croppedPhoto));
     }
   }
 
-  void _delete(int index) {
-    _repository.removePhotoInSession(index);
-    _snack('Photo removed');
+  Future<void> _delete(int index) async {
+    try {
+      await _repository.deletePhotoPersisted(index);
+      if (mounted) _snack('Photo removed');
+    } on AuthException catch (error) {
+      if (mounted) _snack(error.message);
+    }
   }
 
   Future<void> _uploadPhoto(String localSource) async {
-    final uploader = widget.photoUploader;
+    final uploader =
+        widget.photoUploader ??
+        (AuthService.instance.currentUser == null
+            ? null
+            : _repository.uploadPhoto);
     if (uploader == null) return;
     _repository.setPhotoUploadState(
       localSource,
@@ -338,7 +352,9 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
   }
 
   void _retryUpload(String source) {
-    if (widget.photoUploader == null) return;
+    if (widget.photoUploader == null &&
+        AuthService.instance.currentUser == null)
+      return;
     unawaited(_uploadPhoto(source));
   }
 
@@ -359,6 +375,12 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
       _snack('Add at least two profile photos before saving');
       return;
     }
+    if (_repository.currentPhotos.any((photo) => photo.isLocal)) {
+      setState(() {
+        _saveError = 'Upload every local photo before saving your profile.';
+      });
+      return;
+    }
     setState(() {
       _saving = true;
       _saveError = null;
@@ -370,14 +392,7 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
       );
       if (!mounted) return;
       AmoraSession.completeProfileStep(40);
-      final hasSessionOnlyPhoto = _repository.currentPhotos.any(
-        (photo) => photo.isLocal,
-      );
-      _snack(
-        hasSessionOnlyPhoto
-            ? 'Photo changes are available for this session. Upload is unavailable.'
-            : 'Photo changes saved on this device',
-      );
+      _snack('Photo changes saved to your profile');
       Navigator.of(context).pop(true);
     } catch (_) {
       if (!mounted) return;

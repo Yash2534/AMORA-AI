@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:amora_ai/core/data/image_repository.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
@@ -33,6 +35,7 @@ class _LikesSuperLikesScreenState extends State<LikesSuperLikesScreen> {
   void initState() {
     super.initState();
     _source.addListener(_refresh);
+    if (widget.controller == null) unawaited(_source.refreshRemote());
   }
 
   @override
@@ -62,6 +65,23 @@ class _LikesSuperLikesScreenState extends State<LikesSuperLikesScreen> {
         : _source.superLikedProfiles;
     final likes = _source.likedProfiles.length;
     final superLikes = _source.superLikedProfiles.length;
+    if (_source.loading && profiles.isEmpty) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    if (_source.error != null && profiles.isEmpty) {
+      return Scaffold(
+        appBar: AmoraAppBar(
+          title: 'Likes & Super Likes',
+          onBack: () => Navigator.of(context).maybePop(),
+        ),
+        body: Center(
+          child: TextButton(
+            onPressed: _source.refreshRemote,
+            child: Text('${_source.error}\nTry again'),
+          ),
+        ),
+      );
+    }
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AmoraAppBar(
@@ -185,9 +205,9 @@ class _LikesSuperLikesScreenState extends State<LikesSuperLikesScreen> {
       profileName: profile.name,
       onConfirm: () {
         if (isLike) {
-          _source.removeLike(profile.id);
+          return _source.removeLikePersisted(profile.id);
         } else {
-          _source.removeSuperLike(profile.id);
+          return _source.removeSuperLikePersisted(profile.id);
         }
       },
     );

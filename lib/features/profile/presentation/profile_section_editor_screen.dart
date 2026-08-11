@@ -343,21 +343,31 @@ class _ProfileSectionEditorScreenState
     _ => Icons.bedtime_outlined,
   };
 
-  void _save() {
+  Future<void> _save() async {
     final repository = LocalProfileRepository.instance;
     final profile = repository.profile;
-    repository.save(
-      profile.copyWith(
-        interests: <String>[..._interests, ..._retiredInterests],
-        prompts: {
-          for (final entry in _promptControllers.entries)
-            if (entry.value.text.trim().isNotEmpty)
-              entry.key: entry.value.text.trim(),
-        },
-        lifestyle: _lifestyle,
-      ),
-    );
-    Navigator.of(context).pop();
+    try {
+      await repository.savePersisted(
+        profile.copyWith(
+          interests: <String>[..._interests, ..._retiredInterests],
+          prompts: {
+            for (final entry in _promptControllers.entries)
+              if (entry.value.text.trim().isNotEmpty)
+                entry.key: entry.value.text.trim(),
+          },
+          lifestyle: _lifestyle,
+        ),
+      );
+      if (mounted) Navigator.of(context).pop();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not save profile changes. Please try again.'),
+          ),
+        );
+      }
+    }
   }
 
   void _changePromptTitle(String previous, String next) {

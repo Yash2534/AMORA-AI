@@ -9,6 +9,8 @@ import 'package:amora_ai/features/auth/presentation/account_verification_screen.
 import 'package:amora_ai/features/onboarding/data/local_onboarding_repository.dart';
 import 'package:amora_ai/features/onboarding/presentation/profile_onboarding_flow.dart';
 import 'package:amora_ai/features/monetization/data/monetization_repository.dart';
+import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
+import 'package:amora_ai/features/profile/presentation/controllers/profile_relationship_controller.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
 
@@ -49,6 +51,8 @@ class AmoraSession {
     profileStrength.value = 20;
     _pendingAction = null;
     MonetizationRepository.instance.clearSessionState();
+    LocalProfileRepository.instance.clearSessionProfile();
+    ProfileRelationshipController.instance.clearSessionState();
     unawaited(AuthService.instance.logout());
   }
 
@@ -86,6 +90,16 @@ class AmoraSession {
 
   static Future<void> completeAuthentication(BuildContext context) async {
     logIn();
+    LocalProfileRepository.instance.prepareForAuthenticatedUser();
+    ProfileRelationshipController.instance.clearSessionState();
+    try {
+      await Future.wait<void>([
+        LocalProfileRepository.instance.refreshFromServer(),
+        ProfileRelationshipController.instance.refreshRemote(),
+      ]);
+    } catch (_) {
+      // The destination screens expose retry/error state for remote data.
+    }
     final action = _pendingAction;
     _pendingAction = null;
 

@@ -1,14 +1,52 @@
 import 'package:amora_ai/features/discover/presentation/discover_action_controller.dart';
+import 'package:amora_ai/features/discover/data/discover_api_service.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+class _FakeDiscoverApi extends DiscoverApiService {
+  bool failNextBoost = false;
+  final List<String> boostKeys = <String>[];
+
+  @override
+  String newIdempotencyKey(String operation) => 'flutter:$operation:test-key';
+
+  @override
+  Future<DiscoverApiResult<DiscoverSwipeResult>> swipe({
+    required String targetUserId,
+    required String action,
+  }) async => DiscoverApiResult.success(
+    DiscoverSwipeResult(matched: targetUserId == 'profile-2'),
+    statusCode: 200,
+  );
+
+  @override
+  Future<DiscoverApiResult<Map<String, dynamic>>> rewind() async =>
+      const DiscoverApiResult.success(<String, dynamic>{}, statusCode: 200);
+
+  @override
+  Future<DiscoverApiResult<Map<String, dynamic>>> boost(String key) async {
+    boostKeys.add(key);
+    if (failNextBoost) {
+      failNextBoost = false;
+      return const DiscoverApiResult.failure('temporary', statusCode: 503);
+    }
+    return const DiscoverApiResult.success(<String, dynamic>{
+      'active': true,
+      'remainingSeconds': 1800,
+    }, statusCode: 200);
+  }
+}
 
 void main() {
   late DiscoverActionController controller;
+  late _FakeDiscoverApi api;
 
   setUp(() {
+    api = _FakeDiscoverApi();
     controller = DiscoverActionController(
       profileIds: const ['profile-1', 'profile-2', 'profile-3'],
       mutualLikeProfileIds: const ['profile-2'],
       transitionDuration: Duration.zero,
+      apiService: api,
     );
   });
 
@@ -43,6 +81,7 @@ void main() {
     final guarded = DiscoverActionController(
       profileIds: const ['profile-1', 'profile-2'],
       transitionDuration: const Duration(milliseconds: 20),
+      apiService: _FakeDiscoverApi(),
     );
     addTearDown(guarded.dispose);
 
@@ -63,6 +102,21 @@ void main() {
     controller.consumeBoostRequest();
     expect(controller.boostRequested, isFalse);
   });
+
+  test(
+    'boost retries reuse one idempotency key and wait for backend success',
+    () async {
+      api.failNextBoost = true;
+      expect(await controller.boostProfile(), isFalse);
+      expect(controller.boostRequested, isFalse);
+      expect(await controller.boostProfile(), isTrue);
+      expect(api.boostKeys, <String>[
+        'flutter:boost-activation:test-key',
+        'flutter:boost-activation:test-key',
+      ]);
+      expect(controller.boostState?['active'], isTrue);
+    },
+  );
 
   test('deck exposes a polished empty state condition', () async {
     await controller.passProfile();

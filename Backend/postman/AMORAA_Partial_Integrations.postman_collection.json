@@ -1,0 +1,52 @@
+{
+  "info": {
+    "name": "AMORAA Partial Integrations",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000" },
+    { "key": "accessToken", "value": "" },
+    { "key": "targetUserId", "value": "2" },
+    { "key": "boostIdempotencyKey", "value": "postman-boost-retry-001" }
+  ],
+  "item": [
+    {
+      "name": "Discover",
+      "item": [
+        { "name": "Online Now", "request": { "method": "GET", "url": "{{baseUrl}}/api/discover/feed?onlineNow=true&page=1&limit=10" } },
+        { "name": "Has Event Interest", "request": { "method": "GET", "url": "{{baseUrl}}/api/discover/feed?hasEventInterest=true&page=1&limit=10" } },
+        { "name": "Activate Boost (reuse key to retry)", "request": { "method": "POST", "header": [{ "key": "Idempotency-Key", "value": "{{boostIdempotencyKey}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"idempotencyKey\": \"{{boostIdempotencyKey}}\"\n}" }, "url": "{{baseUrl}}/api/discover/boost" } },
+        { "name": "Save Discover Preferences", "request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"minAge\": 24,\n  \"maxAge\": 34,\n  \"maxDistanceKm\": 25,\n  \"onlineNow\": true,\n  \"hasEventInterest\": true\n}" }, "url": "{{baseUrl}}/api/discover/filters" } }
+      ]
+    },
+    {
+      "name": "Own Profile",
+      "item": [
+        { "name": "Get My Profile", "request": { "method": "GET", "url": "{{baseUrl}}/api/profiles/me" } },
+        { "name": "Update My Profile", "request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"AMORAA Member\",\n  \"bio\": \"A canonical server-backed profile.\",\n  \"communicationStyle\": \"calls\"\n}" }, "url": "{{baseUrl}}/api/profiles/me" } }
+      ]
+    },
+    {
+      "name": "Saved Profiles and Reactions",
+      "item": [
+        { "name": "List Saved Profiles", "request": { "method": "GET", "url": "{{baseUrl}}/api/saved-profiles?page=1&limit=20" } },
+        { "name": "Save Profile", "request": { "method": "POST", "url": "{{baseUrl}}/api/saved-profiles/{{targetUserId}}" } },
+        { "name": "Unsave Profile", "request": { "method": "DELETE", "url": "{{baseUrl}}/api/saved-profiles/{{targetUserId}}" } },
+        { "name": "List Sent Likes", "request": { "method": "GET", "url": "{{baseUrl}}/api/reactions?type=like&page=1&limit=20" } },
+        { "name": "List Sent Super Likes", "request": { "method": "GET", "url": "{{baseUrl}}/api/reactions?type=superLike&page=1&limit=20" } },
+        { "name": "Remove Reaction", "request": { "method": "DELETE", "url": "{{baseUrl}}/api/reactions/{{targetUserId}}" } }
+      ]
+    },
+    {
+      "name": "Notification Preferences",
+      "item": [
+        { "name": "Get Notification Preferences", "request": { "method": "GET", "url": "{{baseUrl}}/api/notification-preferences" } },
+        { "name": "Update Notification Preferences", "request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"newMatches\": true,\n  \"messages\": true,\n  \"pushEnabled\": true,\n  \"quietHoursEnabled\": true,\n  \"quietStart\": \"22:00\",\n  \"quietEnd\": \"07:00\"\n}" }, "url": "{{baseUrl}}/api/notification-preferences" } }
+      ]
+    }
+  ]
+}

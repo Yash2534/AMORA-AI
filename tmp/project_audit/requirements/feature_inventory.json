@@ -1,0 +1,1881 @@
+{
+  "module_count": 30,
+  "core_feature_element_count": 421,
+  "roadmap_item_count": 2,
+  "modules": [
+    {
+      "module": "1. Authentication",
+      "count": 6,
+      "items": [
+        {
+          "name": "Login",
+          "level": 1
+        },
+        {
+          "name": "Sign Up",
+          "level": 1
+        },
+        {
+          "name": "Forgot Password",
+          "level": 1
+        },
+        {
+          "name": "Google Login",
+          "level": 1
+        },
+        {
+          "name": "Create Account",
+          "level": 1
+        },
+        {
+          "name": "Mobile OTP Verification",
+          "level": 1
+        }
+      ]
+    },
+    {
+      "module": "2. Onboarding Screens",
+      "count": 6,
+      "items": [
+        {
+          "name": "Age",
+          "level": 1
+        },
+        {
+          "name": "How Do You Identify?",
+          "level": 1
+        },
+        {
+          "name": "Who Would You Like to Meet?",
+          "level": 1
+        },
+        {
+          "name": "What Are You Looking For?",
+          "level": 1
+        },
+        {
+          "name": "Location with Preferred Distance",
+          "level": 1
+        },
+        {
+          "name": "Photos Upload",
+          "level": 1
+        }
+      ]
+    },
+    {
+      "module": "3. Discover",
+      "count": 8,
+      "items": [
+        {
+          "name": "Swipe Profiles",
+          "level": 1
+        },
+        {
+          "name": "Like",
+          "level": 1
+        },
+        {
+          "name": "Super Like",
+          "level": 1
+        },
+        {
+          "name": "Undo Profile",
+          "level": 1
+        },
+        {
+          "name": "Pass Profile",
+          "level": 1
+        },
+        {
+          "name": "Profile Details",
+          "level": 1
+        },
+        {
+          "name": "Filters",
+          "level": 1
+        },
+        {
+          "name": "Notification",
+          "level": 1
+        }
+      ]
+    },
+    {
+      "module": "4. Discover Filters",
+      "count": 38,
+      "items": [
+        {
+          "name": "Selected Preferences",
+          "level": 1
+        },
+        {
+          "name": "Search Bar",
+          "level": 1
+        },
+        {
+          "name": "Core Preferences",
+          "level": 1
+        },
+        {
+          "name": "Age Range",
+          "level": 2
+        },
+        {
+          "name": "Distance",
+          "level": 2
+        },
+        {
+          "name": "City",
+          "level": 2
+        },
+        {
+          "name": "Height",
+          "level": 2
+        },
+        {
+          "name": "Hometown",
+          "level": 2
+        },
+        {
+          "name": "Relationship Intentions",
+          "level": 1
+        },
+        {
+          "name": "Dating Intention",
+          "level": 2
+        },
+        {
+          "name": "Lifestyle & Interests",
+          "level": 1
+        },
+        {
+          "name": "Education & Profession",
+          "level": 1
+        },
+        {
+          "name": "Education Selection",
+          "level": 2
+        },
+        {
+          "name": "Profession Selection",
+          "level": 2
+        },
+        {
+          "name": "Identity & Background",
+          "level": 1
+        },
+        {
+          "name": "Community Preference",
+          "level": 2
+        },
+        {
+          "name": "Religion",
+          "level": 2
+        },
+        {
+          "name": "Languages",
+          "level": 2
+        },
+        {
+          "name": "Pronouns",
+          "level": 2
+        },
+        {
+          "name": "Sexuality",
+          "level": 2
+        },
+        {
+          "name": "Compatibility",
+          "level": 1
+        },
+        {
+          "name": "Their Qualities",
+          "level": 2
+        },
+        {
+          "name": "Preferred hours for talking",
+          "level": 2
+        },
+        {
+          "name": "Love languages",
+          "level": 2
+        },
+        {
+          "name": "Habits",
+          "level": 1
+        },
+        {
+          "name": "Smoking",
+          "level": 2
+        },
+        {
+          "name": "Drinking",
+          "level": 2
+        },
+        {
+          "name": "Weed",
+          "level": 2
+        },
+        {
+          "name": "Ice breaker (non negotiable dating point)",
+          "level": 1
+        },
+        {
+          "name": "Communication style",
+          "level": 1
+        },
+        {
+          "name": "AI Match Quality & Trust",
+          "level": 1
+        },
+        {
+          "name": "Minimum AI Match Score",
+          "level": 2
+        },
+        {
+          "name": "Verified Profiles Only",
+          "level": 2
+        },
+        {
+          "name": "Online Now",
+          "level": 2
+        },
+        {
+          "name": "Has Profile Prompts",
+          "level": 2
+        },
+        {
+          "name": "Has Event Interest",
+          "level": 2
+        },
+        {
+          "name": "Reset",
+          "level": 1
+        },
+        {
+          "name": "Apply Filters",
+          "level": 1
+        }
+      ]
+    },
+    {
+      "module": "5. Chat & Messaging",
+      "count": 9,
+      "items": [
+        {
+          "name": "Active Now Profiles",
+          "level": 1
+        },
+        {
+          "name": "Chat List",
+          "level": 1
+        },
+        {
+          "name": "Chat Detail",
+          "level": 1
+        },
+        {
+          "name": "Send Message",
+          "level": 1
+        },
+        {
+          "name": "Read Receipts",
+          "level": 1
+        },
+        {
+          "name": "Report User",
+          "level": 1
+        },
+        {
+          "name": "Block User",
+          "level": 1
+        },
+        {
+          "name": "Mute Conversation",
+          "level": 1
+        },
+        {
+          "name": "New Message",
+          "level": 1
+        }
+      ]
+    },
+    {
+      "module": "6. AI Matches",
+      "count": 6,
+      "items": [
+        {
+          "name": "Compatibility Score",
+          "level": 1
+        },
+        {
+          "name": "Recommended Matches",
+          "level": 1
+        },
+        {
+          "name": "Why This Recommendation",
+          "level": 1
+        },
+        {
+          "name": "View Profile",
+          "level": 1
+        },
+        {
+          "name": "Message",
+          "level": 1
+        },
+        {
+          "name": "Bulk Like Send",
+          "level": 1
+        }
+      ]
+    },
+    {
+      "module": "7. Events",
+      "count": 9,
+      "items": [
+        {
+          "name": "Browse Events",
+          "level": 1
+        },
+        {
+          "name": "Event Detail",
+          "level": 1
+        },
+        {
+          "name": "Join Event",
+          "level": 1
+        },
+        {
+          "name": "Featured Experience",
+          "level": 1
+        },
+        {
+          "name": "Recommended Events",
+          "level": 1
+        },
+        {
+          "name": "Near You Events",
+          "level": 1
+        },
+        {
+          "name": "AMORAA Circles",
+          "level": 1
+        },
+        {
+          "name": "My Events",
+          "level": 1
+        },
+        {
+          "name": "Upcoming, Past, Waitlist, Cancelled",
+          "level": 1
+        }
+      ]
+    },
+    {
+      "module": "8. Profile",
+      "count": 40,
+      "items": [
+        {
+          "name": "Profile Image",
+          "level": 1
+        },
+        {
+          "name": "Name",
+          "level": 1
+        },
+        {
+          "name": "Profile Details",
+          "level": 1
+        },
+        {
+          "name": "Profile Completion Percentage",
+          "level": 1
+        },
+        {
+          "name": "Edit Profile",
+          "level": 1
+        },
+        {
+          "name": "Preview Profile",
+          "level": 1
+        },
+        {
+          "name": "About Me",
+          "level": 1
+        },
+        {
+          "name": "Photo Gallery",
+          "level": 1
+        },
+        {
+          "name": "Profile Information",
+          "level": 1
+        },
+        {
+          "name": "Occupation",
+          "level": 2
+        },
+        {
+          "name": "Company",
+          "level": 2
+        },
+        {
+          "name": "Education",
+          "level": 2
+        },
+        {
+          "name": "Gender",
+          "level": 2
+        },
+        {
+          "name": "Zodiac",
+          "level": 2
+        },
+        {
+          "name": "Interests",
+          "level": 1
+        },
+        {
+          "name": "Lifestyle",
+          "level": 1
+        },
+        {
+          "name": "Drinking",
+          "level": 2
+        },
+        {
+          "name": "Smoking",
+          "level": 2
+        },
+        {
+          "name": "Weed",
+          "level": 2
+        },
+        {
+          "name": "Exercise",
+          "level": 2
+        },
+        {
+          "name": "Food Preference",
+          "level": 2
+        },
+        {
+          "name": "Pets",
+          "level": 2
+        },
+        {
+          "name": "Sleep Habits",
+          "level": 2
+        },
+        {
+          "name": "Ice breaker (non negotiable dating point)",
+          "level": 1
+        },
+        {
+          "name": "Communication style",
+          "level": 1
+        },
+        {
+          "name": "Profile Prompts",
+          "level": 1
+        },
+        {
+          "name": "My ideal Sunday is...",
+          "level": 2
+        },
+        {
+          "name": "A green flag I value is...",
+          "level": 2
+        },
+        {
+          "name": "Together we could...",
+          "level": 2
+        },
+        {
+          "name": "Verification & Trust",
+          "level": 1
+        },
+        {
+          "name": "Photo Verification",
+          "level": 2
+        },
+        {
+          "name": "Safety Guidelines",
+          "level": 2
+        },
+        {
+          "name": "Verify profile Button",
+          "level": 2
+        },
+        {
+          "name": "safety Button",
+          "level": 2
+        },
+        {
+          "name": "Membership",
+          "level": 1
+        },
+        {
+          "name": "Quick Actions",
+          "level": 1
+        },
+        {
+          "name": "Likes & Super Likes",
+          "level": 2
+        },
+        {
+          "name": "Saved Profiles",
+          "level": 2
+        },
+        {
+          "name": "Blocked Profiles",
+          "level": 2
+        },
+        {
+          "name": "Support",
+          "level": 2
+        }
+      ]
+    },
+    {
+      "module": "9. Edit Profile",
+      "count": 55,
+      "items": [
+        {
+          "name": "Information still pending",
+          "level": 1
+        },
+        {
+          "name": "Profile Photos",
+          "level": 1
+        },
+        {
+          "name": "Add Photo",
+          "level": 2
+        },
+        {
+          "name": "Manage Photos",
+          "level": 2
+        },
+        {
+          "name": "Basic Details",
+          "level": 1
+        },
+        {
+          "name": "Full Name",
+          "level": 2
+        },
+        {
+          "name": "DOB",
+          "level": 2
+        },
+        {
+          "name": "Gender",
+          "level": 2
+        },
+        {
+          "name": "Work & Education",
+          "level": 1
+        },
+        {
+          "name": "Occupation",
+          "level": 2
+        },
+        {
+          "name": "Company",
+          "level": 2
+        },
+        {
+          "name": "Education",
+          "level": 2
+        },
+        {
+          "name": "Specify Education",
+          "level": 2
+        },
+        {
+          "name": "Location & Dating Intentions",
+          "level": 1
+        },
+        {
+          "name": "City",
+          "level": 2
+        },
+        {
+          "name": "Dating Intention",
+          "level": 2
+        },
+        {
+          "name": "Height, Languages & Religion",
+          "level": 1
+        },
+        {
+          "name": "Height",
+          "level": 2
+        },
+        {
+          "name": "Languages",
+          "level": 2
+        },
+        {
+          "name": "Religion",
+          "level": 2
+        },
+        {
+          "name": "Personal Details",
+          "level": 1
+        },
+        {
+          "name": "Hometown",
+          "level": 2
+        },
+        {
+          "name": "Pronouns",
+          "level": 2
+        },
+        {
+          "name": "Sexuality",
+          "level": 2
+        },
+        {
+          "name": "Bio",
+          "level": 1
+        },
+        {
+          "name": "Interests",
+          "level": 1
+        },
+        {
+          "name": "Lifestyle",
+          "level": 2
+        },
+        {
+          "name": "Food",
+          "level": 2
+        },
+        {
+          "name": "Travel",
+          "level": 2
+        },
+        {
+          "name": "Music",
+          "level": 2
+        },
+        {
+          "name": "Fitness",
+          "level": 2
+        },
+        {
+          "name": "Creativity",
+          "level": 2
+        },
+        {
+          "name": "Nature & pets",
+          "level": 2
+        },
+        {
+          "name": "Lifestyle",
+          "level": 1
+        },
+        {
+          "name": "Drinking",
+          "level": 2
+        },
+        {
+          "name": "Smoking",
+          "level": 2
+        },
+        {
+          "name": "Weed",
+          "level": 2
+        },
+        {
+          "name": "Exercise",
+          "level": 2
+        },
+        {
+          "name": "Food Preference",
+          "level": 2
+        },
+        {
+          "name": "Pets",
+          "level": 2
+        },
+        {
+          "name": "Sleep Habits",
+          "level": 2
+        },
+        {
+          "name": "Connection Preferences",
+          "level": 1
+        },
+        {
+          "name": "Their Qualities",
+          "level": 2
+        },
+        {
+          "name": "Preferred hours for talking",
+          "level": 2
+        },
+        {
+          "name": "Love languages",
+          "level": 2
+        },
+        {
+          "name": "Ice breaker (non negotiable dating point)",
+          "level": 1
+        },
+        {
+          "name": "Communication style",
+          "level": 1
+        },
+        {
+          "name": "Profile Prompts",
+          "level": 1
+        },
+        {
+          "name": "My ideal Sunday is...",
+          "level": 2
+        },
+        {
+          "name": "A green flag I value is...",
+          "level": 2
+        },
+        {
+          "name": "Together we could...",
+          "level": 2
+        },
+        {
+          "name": "Verification",
+          "level": 1
+        },
+        {
+          "name": "Review Verification",
+          "level": 2
+        },
+        {
+          "name": "Profile Preview",
+          "level": 1
+        },
+        {
+          "name": "Save Changes",
+          "level": 1
+        }
+      ]
+    },
+    {
+      "module": "10. Profile Preview",
+      "count": 33,
+      "items": [
+        {
+          "name": "Profile Photo Gallery",
+          "level": 1
+        },
+        {
+          "name": "Name",
+          "level": 1
+        },
+        {
+          "name": "Age",
+          "level": 1
+        },
+        {
+          "name": "Occupation",
+          "level": 1
+        },
+        {
+          "name": "Company",
+          "level": 1
+        },
+        {
+          "name": "Education",
+          "level": 1
+        },
+        {
+          "name": "Location",
+          "level": 1
+        },
+        {
+          "name": "Height",
+          "level": 1
+        },
+        {
+          "name": "Languages",
+          "level": 1
+        },
+        {
+          "name": "Looking For / Dating Intention",
+          "level": 1
+        },
+        {
+          "name": "About Me",
+          "level": 1
+        },
+        {
+          "name": "Interests",
+          "level": 1
+        },
+        {
+          "name": "Lifestyle & Personality",
+          "level": 1
+        },
+        {
+          "name": "Activity",
+          "level": 2
+        },
+        {
+          "name": "Food",
+          "level": 2
+        },
+        {
+          "name": "Smoking",
+          "level": 2
+        },
+        {
+          "name": "Drinking",
+          "level": 2
+        },
+        {
+          "name": "Weed",
+          "level": 2
+        },
+        {
+          "name": "Pets",
+          "level": 2
+        },
+        {
+          "name": "Weekend",
+          "level": 2
+        },
+        {
+          "name": "Beliefs",
+          "level": 2
+        },
+        {
+          "name": "Connection Style",
+          "level": 1
+        },
+        {
+          "name": "Qualities I value",
+          "level": 2
+        },
+        {
+          "name": "Preferred time to talk",
+          "level": 2
+        },
+        {
+          "name": "Love languages",
+          "level": 2
+        },
+        {
+          "name": "Ice breaker (non negotiable dating point)",
+          "level": 1
+        },
+        {
+          "name": "Communication style",
+          "level": 1
+        },
+        {
+          "name": "Profile Prompts",
+          "level": 1
+        },
+        {
+          "name": "My ideal Sunday is...",
+          "level": 2
+        },
+        {
+          "name": "A green flag I value is...",
+          "level": 2
+        },
+        {
+          "name": "Together we could...",
+          "level": 2
+        },
+        {
+          "name": "Edit Profile Button",
+          "level": 1
+        },
+        {
+          "name": "Return to Discover Button",
+          "level": 1
+        }
+      ]
+    },
+    {
+      "module": "11. Profile Completion",
+      "count": 46,
+      "items": [
+        {
+          "name": "Completion Percentage",
+          "level": 1
+        },
+        {
+          "name": "Recommended Next",
+          "level": 1
+        },
+        {
+          "name": "Profile Photos",
+          "level": 1
+        },
+        {
+          "name": "Basic Details",
+          "level": 1
+        },
+        {
+          "name": "Full name",
+          "level": 2
+        },
+        {
+          "name": "DOB",
+          "level": 2
+        },
+        {
+          "name": "Gender",
+          "level": 2
+        },
+        {
+          "name": "Work & Education",
+          "level": 1
+        },
+        {
+          "name": "Occupation",
+          "level": 2
+        },
+        {
+          "name": "Company",
+          "level": 2
+        },
+        {
+          "name": "Education",
+          "level": 2
+        },
+        {
+          "name": "Location & Dating Intentions",
+          "level": 1
+        },
+        {
+          "name": "City",
+          "level": 2
+        },
+        {
+          "name": "Dating Intention",
+          "level": 2
+        },
+        {
+          "name": "Height, Languages & Religion",
+          "level": 1
+        },
+        {
+          "name": "Height",
+          "level": 2
+        },
+        {
+          "name": "Languages",
+          "level": 2
+        },
+        {
+          "name": "Religion",
+          "level": 2
+        },
+        {
+          "name": "Hometown",
+          "level": 2
+        },
+        {
+          "name": "Pronouns",
+          "level": 2
+        },
+        {
+          "name": "Sexuality",
+          "level": 2
+        },
+        {
+          "name": "Bio",
+          "level": 1
+        },
+        {
+          "name": "Interests",
+          "level": 1
+        },
+        {
+          "name": "Lifestyle",
+          "level": 2
+        },
+        {
+          "name": "Food",
+          "level": 2
+        },
+        {
+          "name": "Travel",
+          "level": 2
+        },
+        {
+          "name": "Music",
+          "level": 2
+        },
+        {
+          "name": "Fitness",
+          "level": 2
+        },
+        {
+          "name": "Creativity",
+          "level": 2
+        },
+        {
+          "name": "Nature & pets",
+          "level": 2
+        },
+        {
+          "name": "Lifestyle",
+          "level": 1
+        },
+        {
+          "name": "Smoking",
+          "level": 2
+        },
+        {
+          "name": "Drinking",
+          "level": 2
+        },
+        {
+          "name": "Weed",
+          "level": 2
+        },
+        {
+          "name": "Exercise",
+          "level": 2
+        },
+        {
+          "name": "Food Preference",
+          "level": 2
+        },
+        {
+          "name": "Pets",
+          "level": 2
+        },
+        {
+          "name": "Sleep Habits",
+          "level": 2
+        },
+        {
+          "name": "Their Qualities",
+          "level": 2
+        },
+        {
+          "name": "Preferred Hours for Talking",
+          "level": 2
+        },
+        {
+          "name": "Love Language",
+          "level": 2
+        },
+        {
+          "name": "Ice breaker (non negotiable dating point)",
+          "level": 1
+        },
+        {
+          "name": "Communication style",
+          "level": 1
+        },
+        {
+          "name": "Profile Prompt",
+          "level": 1
+        },
+        {
+          "name": "Pending Details",
+          "level": 1
+        },
+        {
+          "name": "Verification",
+          "level": 1
+        }
+      ]
+    },
+    {
+      "module": "12. Settings",
+      "count": 17,
+      "items": [
+        {
+          "name": "Account — Personal Information",
+          "level": 1
+        },
+        {
+          "name": "Saved Profiles",
+          "level": 1
+        },
+        {
+          "name": "Blocked Profiles",
+          "level": 1
+        },
+        {
+          "name": "Liked Profiles",
+          "level": 1
+        },
+        {
+          "name": "Super Liked Profiles",
+          "level": 1
+        },
+        {
+          "name": "Membership",
+          "level": 1
+        },
+        {
+          "name": "Manage Subscription",
+          "level": 1
+        },
+        {
+          "name": "Notification Preferences",
+          "level": 1
+        },
+        {
+          "name": "Email Support",
+          "level": 1
+        },
+        {
+          "name": "Terms & Conditions",
+          "level": 1
+        },
+        {
+          "name": "Privacy Policy",
+          "level": 1
+        },
+        {
+          "name": "Community Guidelines",
+          "level": 1
+        },
+        {
+          "name": "Safety Center",
+          "level": 1
+        },
+        {
+          "name": "Change Password",
+          "level": 1
+        },
+        {
+          "name": "Logout",
+          "level": 1
+        },
+        {
+          "name": "Delete Account",
+          "level": 1
+        },
+        {
+          "name": "Deactivate Account",
+          "level": 1
+        }
+      ]
+    },
+    {
+      "module": "13. Profile Details Screen",
+      "count": 9,
+      "items": [
+        {
+          "name": "Profile Details",
+          "level": 1
+        },
+        {
+          "name": "Save Profile",
+          "level": 1
+        },
+        {
+          "name": "Safety Actions",
+          "level": 1
+        },
+        {
+          "name": "Like",
+          "level": 1
+        },
+        {
+          "name": "Super Like",
+          "level": 1
+        },
+        {
+          "name": "Message",
+          "level": 1
+        },
+        {
+          "name": "Send Gift",
+          "level": 1
+        },
+        {
+          "name": "Profile Prompts Reply",
+          "level": 1
+        },
+        {
+          "name": "Why We Matched",
+          "level": 1
+        }
+      ]
+    },
+    {
+      "module": "14. Notifications",
+      "count": 16,
+      "items": [
+        {
+          "name": "Notification Filter",
+          "level": 1
+        },
+        {
+          "name": "Notification Feed",
+          "level": 1
+        },
+        {
+          "name": "Mark All Notifications as Read",
+          "level": 1
+        },
+        {
+          "name": "Notification Preferences",
+          "level": 1
+        },
+        {
+          "name": "What You Hear About",
+          "level": 1
+        },
+        {
+          "name": "New Matches",
+          "level": 2
+        },
+        {
+          "name": "Messages",
+          "level": 2
+        },
+        {
+          "name": "Event Reminders",
+          "level": 2
+        },
+        {
+          "name": "Payments & membership",
+          "level": 2
+        },
+        {
+          "name": "Offers from Amoraa",
+          "level": 2
+        },
+        {
+          "name": "Safety updates",
+          "level": 2
+        },
+        {
+          "name": "Delivery Channels",
+          "level": 1
+        },
+        {
+          "name": "Push notifications",
+          "level": 2
+        },
+        {
+          "name": "Email",
+          "level": 2
+        },
+        {
+          "name": "SMS",
+          "level": 2
+        },
+        {
+          "name": "Quiet Hours",
+          "level": 1
+        }
+      ]
+    },
+    {
+      "module": "15. Permissions",
+      "count": 5,
+      "items": [
+        {
+          "name": "Camera Permission",
+          "level": 1
+        },
+        {
+          "name": "Notification Permission",
+          "level": 1
+        },
+        {
+          "name": "Upload Media Permission",
+          "level": 1
+        },
+        {
+          "name": "Location",
+          "level": 1
+        },
+        {
+          "name": "Notifications",
+          "level": 1
+        }
+      ]
+    },
+    {
+      "module": "16. Report a Concern",
+      "count": 4,
+      "items": [
+        {
+          "name": "Profile Name",
+          "level": 1
+        },
+        {
+          "name": "Reason",
+          "level": 1
+        },
+        {
+          "name": "Notes",
+          "level": 1
+        },
+        {
+          "name": "Submit Report",
+          "level": 1
+        }
+      ]
+    },
+    {
+      "module": "17. Send a Rose",
+      "count": 2,
+      "items": [
+        {
+          "name": "Notes",
+          "level": 1
+        },
+        {
+          "name": "Send Rose in Chat",
+          "level": 1
+        }
+      ]
+    },
+    {
+      "module": "18. Event Details",
+      "count": 13,
+      "items": [
+        {
+          "name": "Name",
+          "level": 1
+        },
+        {
+          "name": "Date and Time",
+          "level": 1
+        },
+        {
+          "name": "Location",
+          "level": 1
+        },
+        {
+          "name": "Distance",
+          "level": 1
+        },
+        {
+          "name": "Host",
+          "level": 1
+        },
+        {
+          "name": "About",
+          "level": 1
+        },
+        {
+          "name": "What to Expect",
+          "level": 1
+        },
+        {
+          "name": "Good to Know",
+          "level": 1
+        },
+        {
+          "name": "Why This Event May Suit You",
+          "level": 1
+        },
+        {
+          "name": "Who's Joining",
+          "level": 1
+        },
+        {
+          "name": "Safety & Community",
+          "level": 1
+        },
+        {
+          "name": "Join Event",
+          "level": 1
+        },
+        {
+          "name": "Share Event",
+          "level": 1
+        }
+      ]
+    },
+    {
+      "module": "19. Identity Verification",
+      "count": 5,
+      "items": [
+        {
+          "name": "Percentage",
+          "level": 1
+        },
+        {
+          "name": "Aadhaar",
+          "level": 1
+        },
+        {
+          "name": "Selfie",
+          "level": 1
+        },
+        {
+          "name": "Processing",
+          "level": 1
+        },
+        {
+          "name": "Verified",
+          "level": 1
+        }
+      ]
+    },
+    {
+      "module": "20. Safety Center",
+      "count": 16,
+      "items": [
+        {
+          "name": "Your Safety, Clearly Presented",
+          "level": 1
+        },
+        {
+          "name": "Identity Status",
+          "level": 2
+        },
+        {
+          "name": "Blocked Profiles",
+          "level": 2
+        },
+        {
+          "name": "Privacy & Visibility",
+          "level": 1
+        },
+        {
+          "name": "Privacy Controls Unavailable",
+          "level": 2
+        },
+        {
+          "name": "Block & Report",
+          "level": 1
+        },
+        {
+          "name": "Blocked & Reported Profiles",
+          "level": 2
+        },
+        {
+          "name": "Emergency & Check-in",
+          "level": 1
+        },
+        {
+          "name": "Emergency Tools Unavailable",
+          "level": 2
+        },
+        {
+          "name": "Dating Safety Guidance",
+          "level": 1
+        },
+        {
+          "name": "Protect Personal Information",
+          "level": 2
+        },
+        {
+          "name": "Respect Boundaries",
+          "level": 2
+        },
+        {
+          "name": "Respond to Safety Concerns",
+          "level": 2
+        },
+        {
+          "name": "Support",
+          "level": 1
+        },
+        {
+          "name": "Community Guidelines",
+          "level": 2
+        },
+        {
+          "name": "Safety Help",
+          "level": 2
+        }
+      ]
+    },
+    {
+      "module": "21. Terms & Conditions",
+      "count": 7,
+      "items": [
+        {
+          "name": "Eligibility and Account Responsibility",
+          "level": 1
+        },
+        {
+          "name": "Respectful and Authentic Participation",
+          "level": 1
+        },
+        {
+          "name": "Matches and Recommendations",
+          "level": 1
+        },
+        {
+          "name": "Subscriptions and Purchases",
+          "level": 1
+        },
+        {
+          "name": "Safety and Enforcement",
+          "level": 1
+        },
+        {
+          "name": "Service Availability and Changes",
+          "level": 1
+        },
+        {
+          "name": "Ending Your Account",
+          "level": 1
+        }
+      ]
+    },
+    {
+      "module": "22. Privacy Policy",
+      "count": 7,
+      "items": [
+        {
+          "name": "Information You Provide",
+          "level": 1
+        },
+        {
+          "name": "Information Created Through Use",
+          "level": 1
+        },
+        {
+          "name": "How Information Is Used",
+          "level": 1
+        },
+        {
+          "name": "Sharing and Visibility",
+          "level": 1
+        },
+        {
+          "name": "Your Choices",
+          "level": 1
+        },
+        {
+          "name": "Security and Retention",
+          "level": 1
+        },
+        {
+          "name": "Updates and Contact",
+          "level": 1
+        }
+      ]
+    },
+    {
+      "module": "23. Community Guidelines",
+      "count": 6,
+      "items": [
+        {
+          "name": "Be Authentic",
+          "level": 1
+        },
+        {
+          "name": "Treat People with Respect",
+          "level": 1
+        },
+        {
+          "name": "Keep Conversations Safe",
+          "level": 1
+        },
+        {
+          "name": "Protect the Community",
+          "level": 1
+        },
+        {
+          "name": "Report Concerns",
+          "level": 1
+        },
+        {
+          "name": "How Enforcement Works",
+          "level": 1
+        }
+      ]
+    },
+    {
+      "module": "24. Membership",
+      "count": 8,
+      "items": [
+        {
+          "name": "Choose Your Membership",
+          "level": 1
+        },
+        {
+          "name": "Select Plan",
+          "level": 1
+        },
+        {
+          "name": "Review Membership",
+          "level": 1
+        },
+        {
+          "name": "Plan Name with Price",
+          "level": 1
+        },
+        {
+          "name": "Included Details",
+          "level": 1
+        },
+        {
+          "name": "Payment Summary",
+          "level": 1
+        },
+        {
+          "name": "Payment Method",
+          "level": 1
+        },
+        {
+          "name": "Pay",
+          "level": 1
+        }
+      ]
+    },
+    {
+      "module": "25. Profile Settings",
+      "count": 19,
+      "items": [
+        {
+          "name": "Personal Information",
+          "level": 1
+        },
+        {
+          "name": "Name",
+          "level": 1
+        },
+        {
+          "name": "DOB",
+          "level": 1
+        },
+        {
+          "name": "Gender",
+          "level": 1
+        },
+        {
+          "name": "Occupation",
+          "level": 1
+        },
+        {
+          "name": "Company",
+          "level": 1
+        },
+        {
+          "name": "Education",
+          "level": 1
+        },
+        {
+          "name": "City",
+          "level": 1
+        },
+        {
+          "name": "Blocked & Reported Profiles",
+          "level": 1
+        },
+        {
+          "name": "Blocked Profile List",
+          "level": 1
+        },
+        {
+          "name": "Unblock",
+          "level": 1
+        },
+        {
+          "name": "Likes & Super Likes",
+          "level": 1
+        },
+        {
+          "name": "Likes List",
+          "level": 1
+        },
+        {
+          "name": "Unlike",
+          "level": 1
+        },
+        {
+          "name": "Super Likes List",
+          "level": 1
+        },
+        {
+          "name": "Remove Super Like",
+          "level": 1
+        },
+        {
+          "name": "Saved Profiles",
+          "level": 1
+        },
+        {
+          "name": "Saved Profiles List",
+          "level": 1
+        },
+        {
+          "name": "Unsave",
+          "level": 1
+        }
+      ]
+    },
+    {
+      "module": "26. Support Center",
+      "count": 21,
+      "items": [
+        {
+          "name": "Search Bar",
+          "level": 1
+        },
+        {
+          "name": "Browse by Topic",
+          "level": 1
+        },
+        {
+          "name": "Help Category Filter",
+          "level": 2
+        },
+        {
+          "name": "All Help Topics",
+          "level": 1
+        },
+        {
+          "name": "How does AMORAA Compatibility work?",
+          "level": 2
+        },
+        {
+          "name": "How do I get Pink and Purple Tick verified?",
+          "level": 2
+        },
+        {
+          "name": "How can I report or block someone?",
+          "level": 2
+        },
+        {
+          "name": "How do I join an AMORAA event?",
+          "level": 2
+        },
+        {
+          "name": "Where can I manage my subscription?",
+          "level": 2
+        },
+        {
+          "name": "How do I delete my account?",
+          "level": 2
+        },
+        {
+          "name": "How do I update my profile?",
+          "level": 2
+        },
+        {
+          "name": "What do message status indicators mean?",
+          "level": 2
+        },
+        {
+          "name": "How do I manage an uncomfortable conversation?",
+          "level": 2
+        },
+        {
+          "name": "Where are my visibility controls?",
+          "level": 2
+        },
+        {
+          "name": "How do I refine who I discover?",
+          "level": 2
+        },
+        {
+          "name": "Still Need Help?",
+          "level": 1
+        },
+        {
+          "name": "Email Support",
+          "level": 2
+        },
+        {
+          "name": "Safety and Community",
+          "level": 1
+        },
+        {
+          "name": "Safety Center",
+          "level": 2
+        },
+        {
+          "name": "Community Guidelines",
+          "level": 2
+        },
+        {
+          "name": "Report a Problem",
+          "level": 2
+        }
+      ]
+    },
+    {
+      "module": "27. Change Password",
+      "count": 3,
+      "items": [
+        {
+          "name": "Reset Your Password",
+          "level": 1
+        },
+        {
+          "name": "Registered Email",
+          "level": 1
+        },
+        {
+          "name": "Send Verification Code",
+          "level": 1
+        }
+      ]
+    },
+    {
+      "module": "28. Logout",
+      "count": 2,
+      "items": [
+        {
+          "name": "Logout Securely",
+          "level": 1
+        },
+        {
+          "name": "Go Back",
+          "level": 1
+        }
+      ]
+    },
+    {
+      "module": "29. Deactivate Account",
+      "count": 2,
+      "items": [
+        {
+          "name": "Deactivate Account",
+          "level": 1
+        },
+        {
+          "name": "Keep My Account",
+          "level": 1
+        }
+      ]
+    },
+    {
+      "module": "30. Delete Account",
+      "count": 3,
+      "items": [
+        {
+          "name": "Continue to Confirmation",
+          "level": 1
+        },
+        {
+          "name": "Reason Questions",
+          "level": 1
+        },
+        {
+          "name": "Cancel",
+          "level": 1
+        }
+      ]
+    }
+  ],
+  "roadmap": [
+    {
+      "name": "Ai dating assistant",
+      "level": 1
+    },
+    {
+      "name": "Quizzes",
+      "level": 1
+    }
+  ]
+}

@@ -44,6 +44,7 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final _repository = LocalProfileRepository.instance;
+  bool _refreshing = false;
 
   @override
   void initState() {
@@ -95,6 +96,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 sliver: SliverList.list(
                   children: [
+                    if (_repository.lastSyncError != null) ...[
+                      PremiumCard(
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.cloud_off_rounded,
+                              color: AppColors.errorRed,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(child: Text(_repository.lastSyncError!)),
+                            TextButton(
+                              onPressed: _refreshing ? null : _retryProfile,
+                              child: Text(_refreshing ? 'Loading...' : 'Retry'),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
                     FadeUp(
                       child: ProfileHero(
                         profile: profile,
@@ -149,6 +169,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _retryProfile() async {
+    setState(() => _refreshing = true);
+    try {
+      await _repository.refreshFromServer();
+    } finally {
+      if (mounted) setState(() => _refreshing = false);
+    }
   }
 
   Future<void> _open(String route) async {

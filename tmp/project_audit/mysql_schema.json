@@ -1,0 +1,5781 @@
+{
+  "database": "amora_ai",
+  "host": "localhost",
+  "port": 3306,
+  "tableCount": 33,
+  "tables": [
+    {
+      "tableName": "blocks",
+      "estimatedRows": 0,
+      "exactRows": 0,
+      "columns": [
+        {
+          "tableName": "blocks",
+          "columnName": "id",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "PRI",
+          "extra": "auto_increment"
+        },
+        {
+          "tableName": "blocks",
+          "columnName": "blockerUserId",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "MUL",
+          "extra": ""
+        },
+        {
+          "tableName": "blocks",
+          "columnName": "blockedUserId",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "MUL",
+          "extra": ""
+        },
+        {
+          "tableName": "blocks",
+          "columnName": "createdAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "blocks",
+          "columnName": "updatedAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        }
+      ],
+      "indexes": [
+        {
+          "tableName": "blocks",
+          "indexName": "blocks_blocked_blocker_lookup",
+          "nonUnique": 1,
+          "sequence": 1,
+          "columnName": "blockedUserId"
+        },
+        {
+          "tableName": "blocks",
+          "indexName": "blocks_blocked_blocker_lookup",
+          "nonUnique": 1,
+          "sequence": 2,
+          "columnName": "blockerUserId"
+        },
+        {
+          "tableName": "blocks",
+          "indexName": "blocks_blocker_blocked_unique",
+          "nonUnique": 0,
+          "sequence": 1,
+          "columnName": "blockerUserId"
+        },
+        {
+          "tableName": "blocks",
+          "indexName": "blocks_blocker_blocked_unique",
+          "nonUnique": 0,
+          "sequence": 2,
+          "columnName": "blockedUserId"
+        },
+        {
+          "tableName": "blocks",
+          "indexName": "PRIMARY",
+          "nonUnique": 0,
+          "sequence": 1,
+          "columnName": "id"
+        }
+      ],
+      "foreignKeys": [
+        {
+          "tableName": "blocks",
+          "constraintName": "blocks_ibfk_1",
+          "columnName": "blockerUserId",
+          "referencedTable": "users",
+          "referencedColumn": "id"
+        },
+        {
+          "tableName": "blocks",
+          "constraintName": "blocks_ibfk_2",
+          "columnName": "blockedUserId",
+          "referencedTable": "users",
+          "referencedColumn": "id"
+        }
+      ]
+    },
+    {
+      "tableName": "boostentitlements",
+      "estimatedRows": 0,
+      "exactRows": 0,
+      "columns": [
+        {
+          "tableName": "boostentitlements",
+          "columnName": "id",
+          "columnType": "bigint(20) unsigned",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "PRI",
+          "extra": "auto_increment"
+        },
+        {
+          "tableName": "boostentitlements",
+          "columnName": "userId",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "MUL",
+          "extra": ""
+        },
+        {
+          "tableName": "boostentitlements",
+          "columnName": "productId",
+          "columnType": "varchar(64)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "MUL",
+          "extra": ""
+        },
+        {
+          "tableName": "boostentitlements",
+          "columnName": "paymentId",
+          "columnType": "bigint(20) unsigned",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "MUL",
+          "extra": ""
+        },
+        {
+          "tableName": "boostentitlements",
+          "columnName": "walletTransactionId",
+          "columnType": "bigint(20) unsigned",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "MUL",
+          "extra": ""
+        },
+        {
+          "tableName": "boostentitlements",
+          "columnName": "source",
+          "columnType": "enum('subscription','payment','wallet','redemption','admin')",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "boostentitlements",
+          "columnName": "quantity",
+          "columnType": "int(10) unsigned",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "boostentitlements",
+          "columnName": "remainingQuantity",
+          "columnType": "int(10) unsigned",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "boostentitlements",
+          "columnName": "durationMinutes",
+          "columnType": "int(10) unsigned",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "boostentitlements",
+          "columnName": "status",
+          "columnType": "enum('active','consumed','expired','revoked')",
+          "isNullable": "NO",
+          "columnDefault": "'active'",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "boostentitlements",
+          "columnName": "expiresAt",
+          "columnType": "datetime",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "boostentitlements",
+          "columnName": "idempotencyKey",
+          "columnType": "varchar(100)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "boostentitlements",
+          "columnName": "createdAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "boostentitlements",
+          "columnName": "updatedAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        }
+      ],
+      "indexes": [
+        {
+          "tableName": "boostentitlements",
+          "indexName": "boost_entitlements_inventory",
+          "nonUnique": 1,
+          "sequence": 1,
+          "columnName": "userId"
+        },
+        {
+          "tableName": "boostentitlements",
+          "indexName": "boost_entitlements_inventory",
+          "nonUnique": 1,
+          "sequence": 2,
+          "columnName": "status"
+        },
+        {
+          "tableName": "boostentitlements",
+          "indexName": "boost_entitlements_inventory",
+          "nonUnique": 1,
+          "sequence": 3,
+          "columnName": "expiresAt"
+        },
+        {
+          "tableName": "boostentitlements",
+          "indexName": "boost_entitlements_inventory",
+          "nonUnique": 1,
+          "sequence": 4,
+          "columnName": "id"
+        },
+        {
+          "tableName": "boostentitlements",
+          "indexName": "boost_entitlements_user_idempotency_unique",
+          "nonUnique": 0,
+          "sequence": 1,
+          "columnName": "userId"
+        },
+        {
+          "tableName": "boostentitlements",
+          "indexName": "boost_entitlements_user_idempotency_unique",
+          "nonUnique": 0,
+          "sequence": 2,
+          "columnName": "idempotencyKey"
+        },
+        {
+          "tableName": "boostentitlements",
+          "indexName": "paymentId",
+          "nonUnique": 1,
+          "sequence": 1,
+          "columnName": "paymentId"
+        },
+        {
+          "tableName": "boostentitlements",
+          "indexName": "PRIMARY",
+          "nonUnique": 0,
+          "sequence": 1,
+          "columnName": "id"
+        },
+        {
+          "tableName": "boostentitlements",
+          "indexName": "productId",
+          "nonUnique": 1,
+          "sequence": 1,
+          "columnName": "productId"
+        },
+        {
+          "tableName": "boostentitlements",
+          "indexName": "walletTransactionId",
+          "nonUnique": 1,
+          "sequence": 1,
+          "columnName": "walletTransactionId"
+        }
+      ],
+      "foreignKeys": [
+        {
+          "tableName": "boostentitlements",
+          "constraintName": "boostentitlements_ibfk_1",
+          "columnName": "userId",
+          "referencedTable": "users",
+          "referencedColumn": "id"
+        },
+        {
+          "tableName": "boostentitlements",
+          "constraintName": "boostentitlements_ibfk_2",
+          "columnName": "productId",
+          "referencedTable": "boostproducts",
+          "referencedColumn": "id"
+        },
+        {
+          "tableName": "boostentitlements",
+          "constraintName": "boostentitlements_ibfk_3",
+          "columnName": "paymentId",
+          "referencedTable": "payments",
+          "referencedColumn": "id"
+        },
+        {
+          "tableName": "boostentitlements",
+          "constraintName": "boostentitlements_ibfk_4",
+          "columnName": "walletTransactionId",
+          "referencedTable": "wallettransactions",
+          "referencedColumn": "id"
+        }
+      ]
+    },
+    {
+      "tableName": "boostproducts",
+      "estimatedRows": 3,
+      "exactRows": 3,
+      "columns": [
+        {
+          "tableName": "boostproducts",
+          "columnName": "id",
+          "columnType": "varchar(64)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "PRI",
+          "extra": ""
+        },
+        {
+          "tableName": "boostproducts",
+          "columnName": "name",
+          "columnType": "varchar(120)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "boostproducts",
+          "columnName": "description",
+          "columnType": "varchar(255)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "boostproducts",
+          "columnName": "quantity",
+          "columnType": "int(10) unsigned",
+          "isNullable": "NO",
+          "columnDefault": "1",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "boostproducts",
+          "columnName": "durationMinutes",
+          "columnType": "int(10) unsigned",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "boostproducts",
+          "columnName": "priceMinor",
+          "columnType": "int(10) unsigned",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "boostproducts",
+          "columnName": "walletCost",
+          "columnType": "int(10) unsigned",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "boostproducts",
+          "columnName": "currency",
+          "columnType": "varchar(3)",
+          "isNullable": "NO",
+          "columnDefault": "'INR'",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "boostproducts",
+          "columnName": "active",
+          "columnType": "tinyint(1)",
+          "isNullable": "NO",
+          "columnDefault": "1",
+          "columnKey": "MUL",
+          "extra": ""
+        },
+        {
+          "tableName": "boostproducts",
+          "columnName": "sortOrder",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": "0",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "boostproducts",
+          "columnName": "createdAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "boostproducts",
+          "columnName": "updatedAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        }
+      ],
+      "indexes": [
+        {
+          "tableName": "boostproducts",
+          "indexName": "boost_products_catalog",
+          "nonUnique": 1,
+          "sequence": 1,
+          "columnName": "active"
+        },
+        {
+          "tableName": "boostproducts",
+          "indexName": "boost_products_catalog",
+          "nonUnique": 1,
+          "sequence": 2,
+          "columnName": "sortOrder"
+        },
+        {
+          "tableName": "boostproducts",
+          "indexName": "boost_products_catalog",
+          "nonUnique": 1,
+          "sequence": 3,
+          "columnName": "id"
+        },
+        {
+          "tableName": "boostproducts",
+          "indexName": "PRIMARY",
+          "nonUnique": 0,
+          "sequence": 1,
+          "columnName": "id"
+        }
+      ],
+      "foreignKeys": []
+    },
+    {
+      "tableName": "boosts",
+      "estimatedRows": 0,
+      "exactRows": 0,
+      "columns": [
+        {
+          "tableName": "boosts",
+          "columnName": "id",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "PRI",
+          "extra": "auto_increment"
+        },
+        {
+          "tableName": "boosts",
+          "columnName": "userId",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "MUL",
+          "extra": ""
+        },
+        {
+          "tableName": "boosts",
+          "columnName": "startedAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "boosts",
+          "columnName": "expiresAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "boosts",
+          "columnName": "active",
+          "columnType": "tinyint(1)",
+          "isNullable": "NO",
+          "columnDefault": "1",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "boosts",
+          "columnName": "createdAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "boosts",
+          "columnName": "updatedAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "boosts",
+          "columnName": "boostEntitlementId",
+          "columnType": "bigint(20) unsigned",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "MUL",
+          "extra": ""
+        },
+        {
+          "tableName": "boosts",
+          "columnName": "idempotencyKey",
+          "columnType": "varchar(100)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        }
+      ],
+      "indexes": [
+        {
+          "tableName": "boosts",
+          "indexName": "boosts_active_user_expiry",
+          "nonUnique": 1,
+          "sequence": 1,
+          "columnName": "userId"
+        },
+        {
+          "tableName": "boosts",
+          "indexName": "boosts_active_user_expiry",
+          "nonUnique": 1,
+          "sequence": 2,
+          "columnName": "active"
+        },
+        {
+          "tableName": "boosts",
+          "indexName": "boosts_active_user_expiry",
+          "nonUnique": 1,
+          "sequence": 3,
+          "columnName": "expiresAt"
+        },
+        {
+          "tableName": "boosts",
+          "indexName": "Boosts_boostEntitlementId_foreign_idx",
+          "nonUnique": 1,
+          "sequence": 1,
+          "columnName": "boostEntitlementId"
+        },
+        {
+          "tableName": "boosts",
+          "indexName": "boosts_user_idempotency_unique",
+          "nonUnique": 0,
+          "sequence": 1,
+          "columnName": "userId"
+        },
+        {
+          "tableName": "boosts",
+          "indexName": "boosts_user_idempotency_unique",
+          "nonUnique": 0,
+          "sequence": 2,
+          "columnName": "idempotencyKey"
+        },
+        {
+          "tableName": "boosts",
+          "indexName": "boosts_user_id_fk",
+          "nonUnique": 1,
+          "sequence": 1,
+          "columnName": "userId"
+        },
+        {
+          "tableName": "boosts",
+          "indexName": "PRIMARY",
+          "nonUnique": 0,
+          "sequence": 1,
+          "columnName": "id"
+        }
+      ],
+      "foreignKeys": [
+        {
+          "tableName": "boosts",
+          "constraintName": "Boosts_boostEntitlementId_foreign_idx",
+          "columnName": "boostEntitlementId",
+          "referencedTable": "boostentitlements",
+          "referencedColumn": "id"
+        },
+        {
+          "tableName": "boosts",
+          "constraintName": "boosts_ibfk_1",
+          "columnName": "userId",
+          "referencedTable": "users",
+          "referencedColumn": "id"
+        }
+      ]
+    },
+    {
+      "tableName": "conversationparticipants",
+      "estimatedRows": 0,
+      "exactRows": 0,
+      "columns": [
+        {
+          "tableName": "conversationparticipants",
+          "columnName": "id",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "PRI",
+          "extra": "auto_increment"
+        },
+        {
+          "tableName": "conversationparticipants",
+          "columnName": "conversationId",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "MUL",
+          "extra": ""
+        },
+        {
+          "tableName": "conversationparticipants",
+          "columnName": "userId",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "MUL",
+          "extra": ""
+        },
+        {
+          "tableName": "conversationparticipants",
+          "columnName": "lastReadMessageId",
+          "columnType": "int(11)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "MUL",
+          "extra": ""
+        },
+        {
+          "tableName": "conversationparticipants",
+          "columnName": "lastReadAt",
+          "columnType": "datetime",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "conversationparticipants",
+          "columnName": "draftText",
+          "columnType": "text",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "conversationparticipants",
+          "columnName": "joinedAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "conversationparticipants",
+          "columnName": "createdAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "conversationparticipants",
+          "columnName": "updatedAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        }
+      ],
+      "indexes": [
+        {
+          "tableName": "conversationparticipants",
+          "indexName": "conversation_participants_conversation_user_unique",
+          "nonUnique": 0,
+          "sequence": 1,
+          "columnName": "conversationId"
+        },
+        {
+          "tableName": "conversationparticipants",
+          "indexName": "conversation_participants_conversation_user_unique",
+          "nonUnique": 0,
+          "sequence": 2,
+          "columnName": "userId"
+        },
+        {
+          "tableName": "conversationparticipants",
+          "indexName": "conversation_participants_last_read_message_fk",
+          "nonUnique": 1,
+          "sequence": 1,
+          "columnName": "lastReadMessageId"
+        },
+        {
+          "tableName": "conversationparticipants",
+          "indexName": "conversation_participants_user_conversation",
+          "nonUnique": 1,
+          "sequence": 1,
+          "columnName": "userId"
+        },
+        {
+          "tableName": "conversationparticipants",
+          "indexName": "conversation_participants_user_conversation",
+          "nonUnique": 1,
+          "sequence": 2,
+          "columnName": "conversationId"
+        },
+        {
+          "tableName": "conversationparticipants",
+          "indexName": "PRIMARY",
+          "nonUnique": 0,
+          "sequence": 1,
+          "columnName": "id"
+        }
+      ],
+      "foreignKeys": [
+        {
+          "tableName": "conversationparticipants",
+          "constraintName": "conversation_participants_conversation_fk",
+          "columnName": "conversationId",
+          "referencedTable": "conversations",
+          "referencedColumn": "id"
+        },
+        {
+          "tableName": "conversationparticipants",
+          "constraintName": "conversation_participants_last_read_message_fk",
+          "columnName": "lastReadMessageId",
+          "referencedTable": "messages",
+          "referencedColumn": "id"
+        },
+        {
+          "tableName": "conversationparticipants",
+          "constraintName": "conversation_participants_user_fk",
+          "columnName": "userId",
+          "referencedTable": "users",
+          "referencedColumn": "id"
+        }
+      ]
+    },
+    {
+      "tableName": "conversations",
+      "estimatedRows": 0,
+      "exactRows": 0,
+      "columns": [
+        {
+          "tableName": "conversations",
+          "columnName": "id",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "PRI",
+          "extra": "auto_increment"
+        },
+        {
+          "tableName": "conversations",
+          "columnName": "pairKey",
+          "columnType": "varchar(64)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "UNI",
+          "extra": ""
+        },
+        {
+          "tableName": "conversations",
+          "columnName": "type",
+          "columnType": "enum('direct')",
+          "isNullable": "NO",
+          "columnDefault": "'direct'",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "conversations",
+          "columnName": "lastMessageId",
+          "columnType": "int(11)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "MUL",
+          "extra": ""
+        },
+        {
+          "tableName": "conversations",
+          "columnName": "lastMessageAt",
+          "columnType": "datetime",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "MUL",
+          "extra": ""
+        },
+        {
+          "tableName": "conversations",
+          "columnName": "createdAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "conversations",
+          "columnName": "updatedAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        }
+      ],
+      "indexes": [
+        {
+          "tableName": "conversations",
+          "indexName": "conversations_activity",
+          "nonUnique": 1,
+          "sequence": 1,
+          "columnName": "lastMessageAt"
+        },
+        {
+          "tableName": "conversations",
+          "indexName": "conversations_activity",
+          "nonUnique": 1,
+          "sequence": 2,
+          "columnName": "id"
+        },
+        {
+          "tableName": "conversations",
+          "indexName": "conversations_last_message_fk",
+          "nonUnique": 1,
+          "sequence": 1,
+          "columnName": "lastMessageId"
+        },
+        {
+          "tableName": "conversations",
+          "indexName": "conversations_pair_key_unique",
+          "nonUnique": 0,
+          "sequence": 1,
+          "columnName": "pairKey"
+        },
+        {
+          "tableName": "conversations",
+          "indexName": "PRIMARY",
+          "nonUnique": 0,
+          "sequence": 1,
+          "columnName": "id"
+        }
+      ],
+      "foreignKeys": [
+        {
+          "tableName": "conversations",
+          "constraintName": "conversations_last_message_fk",
+          "columnName": "lastMessageId",
+          "referencedTable": "messages",
+          "referencedColumn": "id"
+        }
+      ]
+    },
+    {
+      "tableName": "discoveractions",
+      "estimatedRows": 0,
+      "exactRows": 0,
+      "columns": [
+        {
+          "tableName": "discoveractions",
+          "columnName": "id",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "PRI",
+          "extra": "auto_increment"
+        },
+        {
+          "tableName": "discoveractions",
+          "columnName": "actorUserId",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "MUL",
+          "extra": ""
+        },
+        {
+          "tableName": "discoveractions",
+          "columnName": "targetUserId",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "MUL",
+          "extra": ""
+        },
+        {
+          "tableName": "discoveractions",
+          "columnName": "action",
+          "columnType": "enum('pass','like','superLike')",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "discoveractions",
+          "columnName": "createdAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "discoveractions",
+          "columnName": "updatedAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        }
+      ],
+      "indexes": [
+        {
+          "tableName": "discoveractions",
+          "indexName": "discover_actions_actor_user_id_target_user_id",
+          "nonUnique": 0,
+          "sequence": 1,
+          "columnName": "actorUserId"
+        },
+        {
+          "tableName": "discoveractions",
+          "indexName": "discover_actions_actor_user_id_target_user_id",
+          "nonUnique": 0,
+          "sequence": 2,
+          "columnName": "targetUserId"
+        },
+        {
+          "tableName": "discoveractions",
+          "indexName": "PRIMARY",
+          "nonUnique": 0,
+          "sequence": 1,
+          "columnName": "id"
+        },
+        {
+          "tableName": "discoveractions",
+          "indexName": "targetUserId",
+          "nonUnique": 1,
+          "sequence": 1,
+          "columnName": "targetUserId"
+        }
+      ],
+      "foreignKeys": [
+        {
+          "tableName": "discoveractions",
+          "constraintName": "discoveractions_ibfk_1",
+          "columnName": "actorUserId",
+          "referencedTable": "users",
+          "referencedColumn": "id"
+        },
+        {
+          "tableName": "discoveractions",
+          "constraintName": "discoveractions_ibfk_2",
+          "columnName": "targetUserId",
+          "referencedTable": "users",
+          "referencedColumn": "id"
+        }
+      ]
+    },
+    {
+      "tableName": "discoverfilterpreferences",
+      "estimatedRows": 1,
+      "exactRows": 1,
+      "columns": [
+        {
+          "tableName": "discoverfilterpreferences",
+          "columnName": "id",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "PRI",
+          "extra": "auto_increment"
+        },
+        {
+          "tableName": "discoverfilterpreferences",
+          "columnName": "userId",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "UNI",
+          "extra": ""
+        },
+        {
+          "tableName": "discoverfilterpreferences",
+          "columnName": "minAge",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": "18",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "discoverfilterpreferences",
+          "columnName": "maxAge",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": "45",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "discoverfilterpreferences",
+          "columnName": "maxDistanceKm",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": "80",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "discoverfilterpreferences",
+          "columnName": "minScore",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": "0",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "discoverfilterpreferences",
+          "columnName": "city",
+          "columnType": "varchar(255)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "discoverfilterpreferences",
+          "columnName": "minHeight",
+          "columnType": "int(11)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "discoverfilterpreferences",
+          "columnName": "hometown",
+          "columnType": "longtext",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "discoverfilterpreferences",
+          "columnName": "datingIntentions",
+          "columnType": "longtext",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "discoverfilterpreferences",
+          "columnName": "lifestyleTags",
+          "columnType": "longtext",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "discoverfilterpreferences",
+          "columnName": "education",
+          "columnType": "varchar(255)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "discoverfilterpreferences",
+          "columnName": "profession",
+          "columnType": "varchar(255)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "discoverfilterpreferences",
+          "columnName": "community",
+          "columnType": "varchar(255)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "discoverfilterpreferences",
+          "columnName": "religion",
+          "columnType": "varchar(255)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "discoverfilterpreferences",
+          "columnName": "languages",
+          "columnType": "longtext",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "discoverfilterpreferences",
+          "columnName": "pronouns",
+          "columnType": "longtext",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "discoverfilterpreferences",
+          "columnName": "sexuality",
+          "columnType": "varchar(255)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "discoverfilterpreferences",
+          "columnName": "qualities",
+          "columnType": "longtext",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "discoverfilterpreferences",
+          "columnName": "preferredTalkingHours",
+          "columnType": "longtext",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "discoverfilterpreferences",
+          "columnName": "loveLanguages",
+          "columnType": "longtext",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "discoverfilterpreferences",
+          "columnName": "smoking",
+          "columnType": "varchar(255)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "discoverfilterpreferences",
+          "columnName": "drinking",
+          "columnType": "varchar(255)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "discoverfilterpreferences",
+          "columnName": "weed",
+          "columnType": "varchar(255)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "discoverfilterpreferences",
+          "columnName": "verifiedOnly",
+          "columnType": "tinyint(1)",
+          "isNullable": "NO",
+          "columnDefault": "1",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "discoverfilterpreferences",
+          "columnName": "onlineNow",
+          "columnType": "tinyint(1)",
+          "isNullable": "NO",
+          "columnDefault": "0",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "discoverfilterpreferences",
+          "columnName": "hasPrompts",
+          "columnType": "tinyint(1)",
+          "isNullable": "NO",
+          "columnDefault": "0",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "discoverfilterpreferences",
+          "columnName": "hasEventInterest",
+          "columnType": "tinyint(1)",
+          "isNullable": "NO",
+          "columnDefault": "0",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "discoverfilterpreferences",
+          "columnName": "createdAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "discoverfilterpreferences",
+          "columnName": "updatedAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "discoverfilterpreferences",
+          "columnName": "communicationStyles",
+          "columnType": "longtext",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        }
+      ],
+      "indexes": [
+        {
+          "tableName": "discoverfilterpreferences",
+          "indexName": "PRIMARY",
+          "nonUnique": 0,
+          "sequence": 1,
+          "columnName": "id"
+        },
+        {
+          "tableName": "discoverfilterpreferences",
+          "indexName": "userId",
+          "nonUnique": 0,
+          "sequence": 1,
+          "columnName": "userId"
+        }
+      ],
+      "foreignKeys": [
+        {
+          "tableName": "discoverfilterpreferences",
+          "constraintName": "discoverfilterpreferences_ibfk_1",
+          "columnName": "userId",
+          "referencedTable": "users",
+          "referencedColumn": "id"
+        }
+      ]
+    },
+    {
+      "tableName": "eventcheckins",
+      "estimatedRows": 0,
+      "exactRows": 0,
+      "columns": [
+        {
+          "tableName": "eventcheckins",
+          "columnName": "id",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "PRI",
+          "extra": "auto_increment"
+        },
+        {
+          "tableName": "eventcheckins",
+          "columnName": "eventId",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "MUL",
+          "extra": ""
+        },
+        {
+          "tableName": "eventcheckins",
+          "columnName": "userId",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "MUL",
+          "extra": ""
+        },
+        {
+          "tableName": "eventcheckins",
+          "columnName": "checkedInAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "eventcheckins",
+          "columnName": "createdAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        }
+      ],
+      "indexes": [
+        {
+          "tableName": "eventcheckins",
+          "indexName": "event_checkins_event_user_unique",
+          "nonUnique": 0,
+          "sequence": 1,
+          "columnName": "eventId"
+        },
+        {
+          "tableName": "eventcheckins",
+          "indexName": "event_checkins_event_user_unique",
+          "nonUnique": 0,
+          "sequence": 2,
+          "columnName": "userId"
+        },
+        {
+          "tableName": "eventcheckins",
+          "indexName": "PRIMARY",
+          "nonUnique": 0,
+          "sequence": 1,
+          "columnName": "id"
+        },
+        {
+          "tableName": "eventcheckins",
+          "indexName": "userId",
+          "nonUnique": 1,
+          "sequence": 1,
+          "columnName": "userId"
+        }
+      ],
+      "foreignKeys": [
+        {
+          "tableName": "eventcheckins",
+          "constraintName": "eventcheckins_ibfk_1",
+          "columnName": "eventId",
+          "referencedTable": "events",
+          "referencedColumn": "id"
+        },
+        {
+          "tableName": "eventcheckins",
+          "constraintName": "eventcheckins_ibfk_2",
+          "columnName": "userId",
+          "referencedTable": "users",
+          "referencedColumn": "id"
+        }
+      ]
+    },
+    {
+      "tableName": "eventfeedback",
+      "estimatedRows": 0,
+      "exactRows": 0,
+      "columns": [
+        {
+          "tableName": "eventfeedback",
+          "columnName": "id",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "PRI",
+          "extra": "auto_increment"
+        },
+        {
+          "tableName": "eventfeedback",
+          "columnName": "eventId",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "MUL",
+          "extra": ""
+        },
+        {
+          "tableName": "eventfeedback",
+          "columnName": "userId",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "MUL",
+          "extra": ""
+        },
+        {
+          "tableName": "eventfeedback",
+          "columnName": "rating",
+          "columnType": "tinyint(3) unsigned",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "eventfeedback",
+          "columnName": "venueRating",
+          "columnType": "tinyint(3) unsigned",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "eventfeedback",
+          "columnName": "hostRating",
+          "columnType": "tinyint(3) unsigned",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "eventfeedback",
+          "columnName": "safetyRating",
+          "columnType": "tinyint(3) unsigned",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "eventfeedback",
+          "columnName": "experienceRating",
+          "columnType": "tinyint(3) unsigned",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "eventfeedback",
+          "columnName": "feedbackText",
+          "columnType": "text",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "eventfeedback",
+          "columnName": "recommend",
+          "columnType": "tinyint(1)",
+          "isNullable": "NO",
+          "columnDefault": "1",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "eventfeedback",
+          "columnName": "createdAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "eventfeedback",
+          "columnName": "updatedAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "eventfeedback",
+          "columnName": "mediaOriginalName",
+          "columnType": "varchar(255)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "eventfeedback",
+          "columnName": "mediaStoragePath",
+          "columnType": "varchar(255)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "eventfeedback",
+          "columnName": "mediaMimeType",
+          "columnType": "varchar(255)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "eventfeedback",
+          "columnName": "mediaSizeBytes",
+          "columnType": "int(10) unsigned",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        }
+      ],
+      "indexes": [
+        {
+          "tableName": "eventfeedback",
+          "indexName": "event_feedback_event_user_unique",
+          "nonUnique": 0,
+          "sequence": 1,
+          "columnName": "eventId"
+        },
+        {
+          "tableName": "eventfeedback",
+          "indexName": "event_feedback_event_user_unique",
+          "nonUnique": 0,
+          "sequence": 2,
+          "columnName": "userId"
+        },
+        {
+          "tableName": "eventfeedback",
+          "indexName": "PRIMARY",
+          "nonUnique": 0,
+          "sequence": 1,
+          "columnName": "id"
+        },
+        {
+          "tableName": "eventfeedback",
+          "indexName": "userId",
+          "nonUnique": 1,
+          "sequence": 1,
+          "columnName": "userId"
+        }
+      ],
+      "foreignKeys": [
+        {
+          "tableName": "eventfeedback",
+          "constraintName": "eventfeedback_ibfk_1",
+          "columnName": "eventId",
+          "referencedTable": "events",
+          "referencedColumn": "id"
+        },
+        {
+          "tableName": "eventfeedback",
+          "constraintName": "eventfeedback_ibfk_2",
+          "columnName": "userId",
+          "referencedTable": "users",
+          "referencedColumn": "id"
+        }
+      ]
+    },
+    {
+      "tableName": "eventgroupmessages",
+      "estimatedRows": 0,
+      "exactRows": 0,
+      "columns": [
+        {
+          "tableName": "eventgroupmessages",
+          "columnName": "id",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "PRI",
+          "extra": "auto_increment"
+        },
+        {
+          "tableName": "eventgroupmessages",
+          "columnName": "eventId",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "MUL",
+          "extra": ""
+        },
+        {
+          "tableName": "eventgroupmessages",
+          "columnName": "senderId",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "MUL",
+          "extra": ""
+        },
+        {
+          "tableName": "eventgroupmessages",
+          "columnName": "type",
+          "columnType": "enum('text')",
+          "isNullable": "NO",
+          "columnDefault": "'text'",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "eventgroupmessages",
+          "columnName": "text",
+          "columnType": "text",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "eventgroupmessages",
+          "columnName": "createdAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "eventgroupmessages",
+          "columnName": "updatedAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        }
+      ],
+      "indexes": [
+        {
+          "tableName": "eventgroupmessages",
+          "indexName": "event_group_messages_history",
+          "nonUnique": 1,
+          "sequence": 1,
+          "columnName": "eventId"
+        },
+        {
+          "tableName": "eventgroupmessages",
+          "indexName": "event_group_messages_history",
+          "nonUnique": 1,
+          "sequence": 2,
+          "columnName": "id"
+        },
+        {
+          "tableName": "eventgroupmessages",
+          "indexName": "event_group_messages_sender",
+          "nonUnique": 1,
+          "sequence": 1,
+          "columnName": "senderId"
+        },
+        {
+          "tableName": "eventgroupmessages",
+          "indexName": "event_group_messages_sender",
+          "nonUnique": 1,
+          "sequence": 2,
+          "columnName": "createdAt"
+        },
+        {
+          "tableName": "eventgroupmessages",
+          "indexName": "PRIMARY",
+          "nonUnique": 0,
+          "sequence": 1,
+          "columnName": "id"
+        }
+      ],
+      "foreignKeys": [
+        {
+          "tableName": "eventgroupmessages",
+          "constraintName": "eventgroupmessages_ibfk_1",
+          "columnName": "eventId",
+          "referencedTable": "events",
+          "referencedColumn": "id"
+        },
+        {
+          "tableName": "eventgroupmessages",
+          "constraintName": "eventgroupmessages_ibfk_2",
+          "columnName": "senderId",
+          "referencedTable": "users",
+          "referencedColumn": "id"
+        }
+      ]
+    },
+    {
+      "tableName": "eventregistrations",
+      "estimatedRows": 0,
+      "exactRows": 0,
+      "columns": [
+        {
+          "tableName": "eventregistrations",
+          "columnName": "id",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "PRI",
+          "extra": "auto_increment"
+        },
+        {
+          "tableName": "eventregistrations",
+          "columnName": "eventId",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "MUL",
+          "extra": ""
+        },
+        {
+          "tableName": "eventregistrations",
+          "columnName": "userId",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "MUL",
+          "extra": ""
+        },
+        {
+          "tableName": "eventregistrations",
+          "columnName": "status",
+          "columnType": "enum('registered','promoted','cancelled')",
+          "isNullable": "NO",
+          "columnDefault": "'registered'",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "eventregistrations",
+          "columnName": "registeredAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "eventregistrations",
+          "columnName": "cancelledAt",
+          "columnType": "datetime",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "eventregistrations",
+          "columnName": "createdAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "eventregistrations",
+          "columnName": "updatedAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        }
+      ],
+      "indexes": [
+        {
+          "tableName": "eventregistrations",
+          "indexName": "event_registrations_capacity_lookup",
+          "nonUnique": 1,
+          "sequence": 1,
+          "columnName": "eventId"
+        },
+        {
+          "tableName": "eventregistrations",
+          "indexName": "event_registrations_capacity_lookup",
+          "nonUnique": 1,
+          "sequence": 2,
+          "columnName": "status"
+        },
+        {
+          "tableName": "eventregistrations",
+          "indexName": "event_registrations_event_user_unique",
+          "nonUnique": 0,
+          "sequence": 1,
+          "columnName": "eventId"
+        },
+        {
+          "tableName": "eventregistrations",
+          "indexName": "event_registrations_event_user_unique",
+          "nonUnique": 0,
+          "sequence": 2,
+          "columnName": "userId"
+        },
+        {
+          "tableName": "eventregistrations",
+          "indexName": "event_registrations_user_lookup",
+          "nonUnique": 1,
+          "sequence": 1,
+          "columnName": "userId"
+        },
+        {
+          "tableName": "eventregistrations",
+          "indexName": "event_registrations_user_lookup",
+          "nonUnique": 1,
+          "sequence": 2,
+          "columnName": "status"
+        },
+        {
+          "tableName": "eventregistrations",
+          "indexName": "event_registrations_user_lookup",
+          "nonUnique": 1,
+          "sequence": 3,
+          "columnName": "eventId"
+        },
+        {
+          "tableName": "eventregistrations",
+          "indexName": "PRIMARY",
+          "nonUnique": 0,
+          "sequence": 1,
+          "columnName": "id"
+        }
+      ],
+      "foreignKeys": [
+        {
+          "tableName": "eventregistrations",
+          "constraintName": "eventregistrations_ibfk_1",
+          "columnName": "eventId",
+          "referencedTable": "events",
+          "referencedColumn": "id"
+        },
+        {
+          "tableName": "eventregistrations",
+          "constraintName": "eventregistrations_ibfk_2",
+          "columnName": "userId",
+          "referencedTable": "users",
+          "referencedColumn": "id"
+        }
+      ]
+    },
+    {
+      "tableName": "events",
+      "estimatedRows": 0,
+      "exactRows": 0,
+      "columns": [
+        {
+          "tableName": "events",
+          "columnName": "id",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "PRI",
+          "extra": "auto_increment"
+        },
+        {
+          "tableName": "events",
+          "columnName": "title",
+          "columnType": "varchar(160)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "events",
+          "columnName": "description",
+          "columnType": "text",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "events",
+          "columnName": "category",
+          "columnType": "varchar(80)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "MUL",
+          "extra": ""
+        },
+        {
+          "tableName": "events",
+          "columnName": "city",
+          "columnType": "varchar(100)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "events",
+          "columnName": "venueName",
+          "columnType": "varchar(160)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "events",
+          "columnName": "address",
+          "columnType": "varchar(255)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "events",
+          "columnName": "latitude",
+          "columnType": "decimal(10,7)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "events",
+          "columnName": "longitude",
+          "columnType": "decimal(10,7)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "events",
+          "columnName": "startDateTime",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "events",
+          "columnName": "endDateTime",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "events",
+          "columnName": "capacity",
+          "columnType": "int(10) unsigned",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "events",
+          "columnName": "waitlistCapacity",
+          "columnType": "int(10) unsigned",
+          "isNullable": "NO",
+          "columnDefault": "0",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "events",
+          "columnName": "status",
+          "columnType": "enum('draft','published','cancelled','completed')",
+          "isNullable": "NO",
+          "columnDefault": "'draft'",
+          "columnKey": "MUL",
+          "extra": ""
+        },
+        {
+          "tableName": "events",
+          "columnName": "visibility",
+          "columnType": "enum('public','private')",
+          "isNullable": "NO",
+          "columnDefault": "'public'",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "events",
+          "columnName": "registrationOpen",
+          "columnType": "tinyint(1)",
+          "isNullable": "NO",
+          "columnDefault": "1",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "events",
+          "columnName": "waitlistEnabled",
+          "columnType": "tinyint(1)",
+          "isNullable": "NO",
+          "columnDefault": "1",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "events",
+          "columnName": "heroImageUrl",
+          "columnType": "varchar(500)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "events",
+          "columnName": "hostId",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "MUL",
+          "extra": ""
+        },
+        {
+          "tableName": "events",
+          "columnName": "price",
+          "columnType": "decimal(10,2)",
+          "isNullable": "NO",
+          "columnDefault": "0.00",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "events",
+          "columnName": "dressCode",
+          "columnType": "varchar(120)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "events",
+          "columnName": "minAge",
+          "columnType": "int(10) unsigned",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "events",
+          "columnName": "maxAge",
+          "columnType": "int(10) unsigned",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "events",
+          "columnName": "language",
+          "columnType": "varchar(160)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "events",
+          "columnName": "agenda",
+          "columnType": "longtext",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "events",
+          "columnName": "facilities",
+          "columnType": "longtext",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "events",
+          "columnName": "interests",
+          "columnType": "longtext",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "events",
+          "columnName": "checkInOpensAt",
+          "columnType": "datetime",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "events",
+          "columnName": "checkInClosesAt",
+          "columnType": "datetime",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "events",
+          "columnName": "createdAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "events",
+          "columnName": "updatedAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        }
+      ],
+      "indexes": [
+        {
+          "tableName": "events",
+          "indexName": "events_browse_order",
+          "nonUnique": 1,
+          "sequence": 1,
+          "columnName": "status"
+        },
+        {
+          "tableName": "events",
+          "indexName": "events_browse_order",
+          "nonUnique": 1,
+          "sequence": 2,
+          "columnName": "visibility"
+        },
+        {
+          "tableName": "events",
+          "indexName": "events_browse_order",
+          "nonUnique": 1,
+          "sequence": 3,
+          "columnName": "startDateTime"
+        },
+        {
+          "tableName": "events",
+          "indexName": "events_browse_order",
+          "nonUnique": 1,
+          "sequence": 4,
+          "columnName": "id"
+        },
+        {
+          "tableName": "events",
+          "indexName": "events_filter_lookup",
+          "nonUnique": 1,
+          "sequence": 1,
+          "columnName": "category"
+        },
+        {
+          "tableName": "events",
+          "indexName": "events_filter_lookup",
+          "nonUnique": 1,
+          "sequence": 2,
+          "columnName": "city"
+        },
+        {
+          "tableName": "events",
+          "indexName": "events_filter_lookup",
+          "nonUnique": 1,
+          "sequence": 3,
+          "columnName": "startDateTime"
+        },
+        {
+          "tableName": "events",
+          "indexName": "events_host_order",
+          "nonUnique": 1,
+          "sequence": 1,
+          "columnName": "hostId"
+        },
+        {
+          "tableName": "events",
+          "indexName": "events_host_order",
+          "nonUnique": 1,
+          "sequence": 2,
+          "columnName": "startDateTime"
+        },
+        {
+          "tableName": "events",
+          "indexName": "PRIMARY",
+          "nonUnique": 0,
+          "sequence": 1,
+          "columnName": "id"
+        }
+      ],
+      "foreignKeys": [
+        {
+          "tableName": "events",
+          "constraintName": "events_ibfk_1",
+          "columnName": "hostId",
+          "referencedTable": "users",
+          "referencedColumn": "id"
+        }
+      ]
+    },
+    {
+      "tableName": "eventwaitlist",
+      "estimatedRows": 0,
+      "exactRows": 0,
+      "columns": [
+        {
+          "tableName": "eventwaitlist",
+          "columnName": "id",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "PRI",
+          "extra": "auto_increment"
+        },
+        {
+          "tableName": "eventwaitlist",
+          "columnName": "eventId",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "MUL",
+          "extra": ""
+        },
+        {
+          "tableName": "eventwaitlist",
+          "columnName": "userId",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "MUL",
+          "extra": ""
+        },
+        {
+          "tableName": "eventwaitlist",
+          "columnName": "status",
+          "columnType": "enum('waiting','promoted','left')",
+          "isNullable": "NO",
+          "columnDefault": "'waiting'",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "eventwaitlist",
+          "columnName": "joinedAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "eventwaitlist",
+          "columnName": "endedAt",
+          "columnType": "datetime",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "eventwaitlist",
+          "columnName": "createdAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "eventwaitlist",
+          "columnName": "updatedAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        }
+      ],
+      "indexes": [
+        {
+          "tableName": "eventwaitlist",
+          "indexName": "event_waitlist_event_user_unique",
+          "nonUnique": 0,
+          "sequence": 1,
+          "columnName": "eventId"
+        },
+        {
+          "tableName": "eventwaitlist",
+          "indexName": "event_waitlist_event_user_unique",
+          "nonUnique": 0,
+          "sequence": 2,
+          "columnName": "userId"
+        },
+        {
+          "tableName": "eventwaitlist",
+          "indexName": "event_waitlist_promotion_order",
+          "nonUnique": 1,
+          "sequence": 1,
+          "columnName": "eventId"
+        },
+        {
+          "tableName": "eventwaitlist",
+          "indexName": "event_waitlist_promotion_order",
+          "nonUnique": 1,
+          "sequence": 2,
+          "columnName": "status"
+        },
+        {
+          "tableName": "eventwaitlist",
+          "indexName": "event_waitlist_promotion_order",
+          "nonUnique": 1,
+          "sequence": 3,
+          "columnName": "joinedAt"
+        },
+        {
+          "tableName": "eventwaitlist",
+          "indexName": "event_waitlist_promotion_order",
+          "nonUnique": 1,
+          "sequence": 4,
+          "columnName": "id"
+        },
+        {
+          "tableName": "eventwaitlist",
+          "indexName": "event_waitlist_user_lookup",
+          "nonUnique": 1,
+          "sequence": 1,
+          "columnName": "userId"
+        },
+        {
+          "tableName": "eventwaitlist",
+          "indexName": "event_waitlist_user_lookup",
+          "nonUnique": 1,
+          "sequence": 2,
+          "columnName": "status"
+        },
+        {
+          "tableName": "eventwaitlist",
+          "indexName": "event_waitlist_user_lookup",
+          "nonUnique": 1,
+          "sequence": 3,
+          "columnName": "eventId"
+        },
+        {
+          "tableName": "eventwaitlist",
+          "indexName": "PRIMARY",
+          "nonUnique": 0,
+          "sequence": 1,
+          "columnName": "id"
+        }
+      ],
+      "foreignKeys": [
+        {
+          "tableName": "eventwaitlist",
+          "constraintName": "eventwaitlist_ibfk_1",
+          "columnName": "eventId",
+          "referencedTable": "events",
+          "referencedColumn": "id"
+        },
+        {
+          "tableName": "eventwaitlist",
+          "constraintName": "eventwaitlist_ibfk_2",
+          "columnName": "userId",
+          "referencedTable": "users",
+          "referencedColumn": "id"
+        }
+      ]
+    },
+    {
+      "tableName": "gifts",
+      "estimatedRows": 8,
+      "exactRows": 8,
+      "columns": [
+        {
+          "tableName": "gifts",
+          "columnName": "id",
+          "columnType": "varchar(64)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "PRI",
+          "extra": ""
+        },
+        {
+          "tableName": "gifts",
+          "columnName": "name",
+          "columnType": "varchar(120)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "gifts",
+          "columnName": "type",
+          "columnType": "enum('rose','gift')",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "gifts",
+          "columnName": "description",
+          "columnType": "varchar(255)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "gifts",
+          "columnName": "priceCredits",
+          "columnType": "int(10) unsigned",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "gifts",
+          "columnName": "creditUnit",
+          "columnType": "varchar(32)",
+          "isNullable": "NO",
+          "columnDefault": "'AMORAA_CREDITS'",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "gifts",
+          "columnName": "assetUrl",
+          "columnType": "varchar(500)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "gifts",
+          "columnName": "active",
+          "columnType": "tinyint(1)",
+          "isNullable": "NO",
+          "columnDefault": "1",
+          "columnKey": "MUL",
+          "extra": ""
+        },
+        {
+          "tableName": "gifts",
+          "columnName": "sortOrder",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": "0",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "gifts",
+          "columnName": "createdAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "gifts",
+          "columnName": "updatedAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        }
+      ],
+      "indexes": [
+        {
+          "tableName": "gifts",
+          "indexName": "gifts_catalog",
+          "nonUnique": 1,
+          "sequence": 1,
+          "columnName": "active"
+        },
+        {
+          "tableName": "gifts",
+          "indexName": "gifts_catalog",
+          "nonUnique": 1,
+          "sequence": 2,
+          "columnName": "sortOrder"
+        },
+        {
+          "tableName": "gifts",
+          "indexName": "gifts_catalog",
+          "nonUnique": 1,
+          "sequence": 3,
+          "columnName": "id"
+        },
+        {
+          "tableName": "gifts",
+          "indexName": "PRIMARY",
+          "nonUnique": 0,
+          "sequence": 1,
+          "columnName": "id"
+        }
+      ],
+      "foreignKeys": []
+    },
+    {
+      "tableName": "gifttransactions",
+      "estimatedRows": 0,
+      "exactRows": 0,
+      "columns": [
+        {
+          "tableName": "gifttransactions",
+          "columnName": "id",
+          "columnType": "bigint(20) unsigned",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "PRI",
+          "extra": "auto_increment"
+        },
+        {
+          "tableName": "gifttransactions",
+          "columnName": "senderId",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "MUL",
+          "extra": ""
+        },
+        {
+          "tableName": "gifttransactions",
+          "columnName": "recipientId",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "MUL",
+          "extra": ""
+        },
+        {
+          "tableName": "gifttransactions",
+          "columnName": "giftId",
+          "columnType": "varchar(64)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "MUL",
+          "extra": ""
+        },
+        {
+          "tableName": "gifttransactions",
+          "columnName": "walletTransactionId",
+          "columnType": "bigint(20) unsigned",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "MUL",
+          "extra": ""
+        },
+        {
+          "tableName": "gifttransactions",
+          "columnName": "conversationId",
+          "columnType": "int(11)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "MUL",
+          "extra": ""
+        },
+        {
+          "tableName": "gifttransactions",
+          "columnName": "priceAtPurchase",
+          "columnType": "int(10) unsigned",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "gifttransactions",
+          "columnName": "creditUnit",
+          "columnType": "varchar(32)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "gifttransactions",
+          "columnName": "idempotencyKey",
+          "columnType": "varchar(100)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "gifttransactions",
+          "columnName": "status",
+          "columnType": "enum('sent','refunded','reversed')",
+          "isNullable": "NO",
+          "columnDefault": "'sent'",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "gifttransactions",
+          "columnName": "note",
+          "columnType": "varchar(280)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "gifttransactions",
+          "columnName": "createdAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "gifttransactions",
+          "columnName": "updatedAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        }
+      ],
+      "indexes": [
+        {
+          "tableName": "gifttransactions",
+          "indexName": "conversationId",
+          "nonUnique": 1,
+          "sequence": 1,
+          "columnName": "conversationId"
+        },
+        {
+          "tableName": "gifttransactions",
+          "indexName": "giftId",
+          "nonUnique": 1,
+          "sequence": 1,
+          "columnName": "giftId"
+        },
+        {
+          "tableName": "gifttransactions",
+          "indexName": "gift_transactions_recipient_history",
+          "nonUnique": 1,
+          "sequence": 1,
+          "columnName": "recipientId"
+        },
+        {
+          "tableName": "gifttransactions",
+          "indexName": "gift_transactions_recipient_history",
+          "nonUnique": 1,
+          "sequence": 2,
+          "columnName": "createdAt"
+        },
+        {
+          "tableName": "gifttransactions",
+          "indexName": "gift_transactions_recipient_history",
+          "nonUnique": 1,
+          "sequence": 3,
+          "columnName": "id"
+        },
+        {
+          "tableName": "gifttransactions",
+          "indexName": "gift_transactions_sender_idempotency_unique",
+          "nonUnique": 0,
+          "sequence": 1,
+          "columnName": "senderId"
+        },
+        {
+          "tableName": "gifttransactions",
+          "indexName": "gift_transactions_sender_idempotency_unique",
+          "nonUnique": 0,
+          "sequence": 2,
+          "columnName": "idempotencyKey"
+        },
+        {
+          "tableName": "gifttransactions",
+          "indexName": "PRIMARY",
+          "nonUnique": 0,
+          "sequence": 1,
+          "columnName": "id"
+        },
+        {
+          "tableName": "gifttransactions",
+          "indexName": "walletTransactionId",
+          "nonUnique": 1,
+          "sequence": 1,
+          "columnName": "walletTransactionId"
+        }
+      ],
+      "foreignKeys": [
+        {
+          "tableName": "gifttransactions",
+          "constraintName": "gifttransactions_ibfk_1",
+          "columnName": "senderId",
+          "referencedTable": "users",
+          "referencedColumn": "id"
+        },
+        {
+          "tableName": "gifttransactions",
+          "constraintName": "gifttransactions_ibfk_2",
+          "columnName": "recipientId",
+          "referencedTable": "users",
+          "referencedColumn": "id"
+        },
+        {
+          "tableName": "gifttransactions",
+          "constraintName": "gifttransactions_ibfk_3",
+          "columnName": "giftId",
+          "referencedTable": "gifts",
+          "referencedColumn": "id"
+        },
+        {
+          "tableName": "gifttransactions",
+          "constraintName": "gifttransactions_ibfk_4",
+          "columnName": "walletTransactionId",
+          "referencedTable": "wallettransactions",
+          "referencedColumn": "id"
+        },
+        {
+          "tableName": "gifttransactions",
+          "constraintName": "gifttransactions_ibfk_5",
+          "columnName": "conversationId",
+          "referencedTable": "conversations",
+          "referencedColumn": "id"
+        }
+      ]
+    },
+    {
+      "tableName": "matches",
+      "estimatedRows": 0,
+      "exactRows": 0,
+      "columns": [
+        {
+          "tableName": "matches",
+          "columnName": "id",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "PRI",
+          "extra": "auto_increment"
+        },
+        {
+          "tableName": "matches",
+          "columnName": "userOneId",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "MUL",
+          "extra": ""
+        },
+        {
+          "tableName": "matches",
+          "columnName": "userTwoId",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "MUL",
+          "extra": ""
+        },
+        {
+          "tableName": "matches",
+          "columnName": "matchedAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "matches",
+          "columnName": "createdAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        }
+      ],
+      "indexes": [
+        {
+          "tableName": "matches",
+          "indexName": "matches_user_one_id_user_two_id",
+          "nonUnique": 0,
+          "sequence": 1,
+          "columnName": "userOneId"
+        },
+        {
+          "tableName": "matches",
+          "indexName": "matches_user_one_id_user_two_id",
+          "nonUnique": 0,
+          "sequence": 2,
+          "columnName": "userTwoId"
+        },
+        {
+          "tableName": "matches",
+          "indexName": "PRIMARY",
+          "nonUnique": 0,
+          "sequence": 1,
+          "columnName": "id"
+        },
+        {
+          "tableName": "matches",
+          "indexName": "userTwoId",
+          "nonUnique": 1,
+          "sequence": 1,
+          "columnName": "userTwoId"
+        }
+      ],
+      "foreignKeys": [
+        {
+          "tableName": "matches",
+          "constraintName": "matches_ibfk_1",
+          "columnName": "userOneId",
+          "referencedTable": "users",
+          "referencedColumn": "id"
+        },
+        {
+          "tableName": "matches",
+          "constraintName": "matches_ibfk_2",
+          "columnName": "userTwoId",
+          "referencedTable": "users",
+          "referencedColumn": "id"
+        }
+      ]
+    },
+    {
+      "tableName": "messagemedia",
+      "estimatedRows": 0,
+      "exactRows": 0,
+      "columns": [
+        {
+          "tableName": "messagemedia",
+          "columnName": "id",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "PRI",
+          "extra": "auto_increment"
+        },
+        {
+          "tableName": "messagemedia",
+          "columnName": "messageId",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "MUL",
+          "extra": ""
+        },
+        {
+          "tableName": "messagemedia",
+          "columnName": "mediaType",
+          "columnType": "enum('image')",
+          "isNullable": "NO",
+          "columnDefault": "'image'",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "messagemedia",
+          "columnName": "originalName",
+          "columnType": "varchar(255)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "messagemedia",
+          "columnName": "storagePath",
+          "columnType": "varchar(255)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "messagemedia",
+          "columnName": "mimeType",
+          "columnType": "varchar(100)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "messagemedia",
+          "columnName": "sizeBytes",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "messagemedia",
+          "columnName": "createdAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        }
+      ],
+      "indexes": [
+        {
+          "tableName": "messagemedia",
+          "indexName": "message_media_message_id",
+          "nonUnique": 1,
+          "sequence": 1,
+          "columnName": "messageId"
+        },
+        {
+          "tableName": "messagemedia",
+          "indexName": "message_media_message_id",
+          "nonUnique": 1,
+          "sequence": 2,
+          "columnName": "id"
+        },
+        {
+          "tableName": "messagemedia",
+          "indexName": "PRIMARY",
+          "nonUnique": 0,
+          "sequence": 1,
+          "columnName": "id"
+        }
+      ],
+      "foreignKeys": [
+        {
+          "tableName": "messagemedia",
+          "constraintName": "message_media_message_fk",
+          "columnName": "messageId",
+          "referencedTable": "messages",
+          "referencedColumn": "id"
+        }
+      ]
+    },
+    {
+      "tableName": "messages",
+      "estimatedRows": 0,
+      "exactRows": 0,
+      "columns": [
+        {
+          "tableName": "messages",
+          "columnName": "id",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "PRI",
+          "extra": "auto_increment"
+        },
+        {
+          "tableName": "messages",
+          "columnName": "conversationId",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "MUL",
+          "extra": ""
+        },
+        {
+          "tableName": "messages",
+          "columnName": "senderId",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "MUL",
+          "extra": ""
+        },
+        {
+          "tableName": "messages",
+          "columnName": "type",
+          "columnType": "enum('text','image')",
+          "isNullable": "NO",
+          "columnDefault": "'text'",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "messages",
+          "columnName": "text",
+          "columnType": "text",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "messages",
+          "columnName": "context",
+          "columnType": "longtext",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "messages",
+          "columnName": "deletedAt",
+          "columnType": "datetime",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "messages",
+          "columnName": "createdAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "messages",
+          "columnName": "updatedAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        }
+      ],
+      "indexes": [
+        {
+          "tableName": "messages",
+          "indexName": "messages_conversation_id",
+          "nonUnique": 1,
+          "sequence": 1,
+          "columnName": "conversationId"
+        },
+        {
+          "tableName": "messages",
+          "indexName": "messages_conversation_id",
+          "nonUnique": 1,
+          "sequence": 2,
+          "columnName": "id"
+        },
+        {
+          "tableName": "messages",
+          "indexName": "messages_conversation_sender_id",
+          "nonUnique": 1,
+          "sequence": 1,
+          "columnName": "conversationId"
+        },
+        {
+          "tableName": "messages",
+          "indexName": "messages_conversation_sender_id",
+          "nonUnique": 1,
+          "sequence": 2,
+          "columnName": "senderId"
+        },
+        {
+          "tableName": "messages",
+          "indexName": "messages_conversation_sender_id",
+          "nonUnique": 1,
+          "sequence": 3,
+          "columnName": "id"
+        },
+        {
+          "tableName": "messages",
+          "indexName": "messages_sender_fk",
+          "nonUnique": 1,
+          "sequence": 1,
+          "columnName": "senderId"
+        },
+        {
+          "tableName": "messages",
+          "indexName": "PRIMARY",
+          "nonUnique": 0,
+          "sequence": 1,
+          "columnName": "id"
+        }
+      ],
+      "foreignKeys": [
+        {
+          "tableName": "messages",
+          "constraintName": "messages_conversation_fk",
+          "columnName": "conversationId",
+          "referencedTable": "conversations",
+          "referencedColumn": "id"
+        },
+        {
+          "tableName": "messages",
+          "constraintName": "messages_sender_fk",
+          "columnName": "senderId",
+          "referencedTable": "users",
+          "referencedColumn": "id"
+        }
+      ]
+    },
+    {
+      "tableName": "onboardingprofiles",
+      "estimatedRows": 1,
+      "exactRows": 1,
+      "columns": [
+        {
+          "tableName": "onboardingprofiles",
+          "columnName": "id",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "PRI",
+          "extra": "auto_increment"
+        },
+        {
+          "tableName": "onboardingprofiles",
+          "columnName": "userId",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "UNI",
+          "extra": ""
+        },
+        {
+          "tableName": "onboardingprofiles",
+          "columnName": "birthDate",
+          "columnType": "date",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "onboardingprofiles",
+          "columnName": "gender",
+          "columnType": "varchar(255)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "onboardingprofiles",
+          "columnName": "customGender",
+          "columnType": "varchar(255)",
+          "isNullable": "NO",
+          "columnDefault": "''",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "onboardingprofiles",
+          "columnName": "interestedIn",
+          "columnType": "longtext",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "onboardingprofiles",
+          "columnName": "relationshipGoals",
+          "columnType": "longtext",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "onboardingprofiles",
+          "columnName": "city",
+          "columnType": "varchar(255)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "onboardingprofiles",
+          "columnName": "preferredDistance",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": "50",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "onboardingprofiles",
+          "columnName": "profession",
+          "columnType": "varchar(255)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "onboardingprofiles",
+          "columnName": "company",
+          "columnType": "varchar(255)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "onboardingprofiles",
+          "columnName": "education",
+          "columnType": "varchar(255)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "onboardingprofiles",
+          "columnName": "bio",
+          "columnType": "text",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "onboardingprofiles",
+          "columnName": "hometown",
+          "columnType": "varchar(255)",
+          "isNullable": "NO",
+          "columnDefault": "''",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "onboardingprofiles",
+          "columnName": "interests",
+          "columnType": "longtext",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "onboardingprofiles",
+          "columnName": "lifestyle",
+          "columnType": "longtext",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "onboardingprofiles",
+          "columnName": "prompts",
+          "columnType": "longtext",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "onboardingprofiles",
+          "columnName": "pronouns",
+          "columnType": "longtext",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "onboardingprofiles",
+          "columnName": "sexuality",
+          "columnType": "varchar(255)",
+          "isNullable": "NO",
+          "columnDefault": "''",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "onboardingprofiles",
+          "columnName": "valuedQualities",
+          "columnType": "longtext",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "onboardingprofiles",
+          "columnName": "loveLanguages",
+          "columnType": "longtext",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "onboardingprofiles",
+          "columnName": "preferredTalkingHours",
+          "columnType": "longtext",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "onboardingprofiles",
+          "columnName": "photos",
+          "columnType": "longtext",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "onboardingprofiles",
+          "columnName": "primaryPhotoIndex",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": "0",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "onboardingprofiles",
+          "columnName": "voicePromptUrl",
+          "columnType": "varchar(255)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "onboardingprofiles",
+          "columnName": "videoPromptUrl",
+          "columnType": "varchar(255)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "onboardingprofiles",
+          "columnName": "personality",
+          "columnType": "varchar(255)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "onboardingprofiles",
+          "columnName": "travelPreference",
+          "columnType": "varchar(255)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "onboardingprofiles",
+          "columnName": "musicTaste",
+          "columnType": "varchar(255)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "onboardingprofiles",
+          "columnName": "foodPreference",
+          "columnType": "varchar(255)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "onboardingprofiles",
+          "columnName": "weekendPlan",
+          "columnType": "varchar(255)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "onboardingprofiles",
+          "columnName": "petPreference",
+          "columnType": "varchar(255)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "onboardingprofiles",
+          "columnName": "coffeePreference",
+          "columnType": "varchar(255)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "onboardingprofiles",
+          "columnName": "height",
+          "columnType": "varchar(255)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "onboardingprofiles",
+          "columnName": "fitnessLevel",
+          "columnType": "varchar(255)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "onboardingprofiles",
+          "columnName": "children",
+          "columnType": "varchar(255)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "onboardingprofiles",
+          "columnName": "smoking",
+          "columnType": "varchar(255)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "onboardingprofiles",
+          "columnName": "drinking",
+          "columnType": "varchar(255)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "onboardingprofiles",
+          "columnName": "weed",
+          "columnType": "varchar(255)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "onboardingprofiles",
+          "columnName": "community",
+          "columnType": "varchar(255)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "onboardingprofiles",
+          "columnName": "religion",
+          "columnType": "varchar(255)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "onboardingprofiles",
+          "columnName": "familyValues",
+          "columnType": "varchar(255)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "onboardingprofiles",
+          "columnName": "loveLanguage",
+          "columnType": "varchar(255)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "onboardingprofiles",
+          "columnName": "languages",
+          "columnType": "longtext",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "onboardingprofiles",
+          "columnName": "greenFlags",
+          "columnType": "longtext",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "onboardingprofiles",
+          "columnName": "redFlags",
+          "columnType": "longtext",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "onboardingprofiles",
+          "columnName": "dateIdeas",
+          "columnType": "longtext",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "onboardingprofiles",
+          "columnName": "stage",
+          "columnType": "enum('age','gender','interestedIn','relationshipGoal','location','starterProfile','profileCompletion','photos','complete')",
+          "isNullable": "NO",
+          "columnDefault": "'age'",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "onboardingprofiles",
+          "columnName": "onboardingCompleted",
+          "columnType": "tinyint(1)",
+          "isNullable": "NO",
+          "columnDefault": "0",
+          "columnKey": "MUL",
+          "extra": ""
+        },
+        {
+          "tableName": "onboardingprofiles",
+          "columnName": "createdAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "onboardingprofiles",
+          "columnName": "updatedAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "onboardingprofiles",
+          "columnName": "communicationStyle",
+          "columnType": "enum('frequent_texting','occasional_texting','calls','voice_notes','deep_conversations','light_fun_conversations')",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        }
+      ],
+      "indexes": [
+        {
+          "tableName": "onboardingprofiles",
+          "indexName": "onboarding_profiles_discover_eligibility",
+          "nonUnique": 1,
+          "sequence": 1,
+          "columnName": "onboardingCompleted"
+        },
+        {
+          "tableName": "onboardingprofiles",
+          "indexName": "onboarding_profiles_discover_eligibility",
+          "nonUnique": 1,
+          "sequence": 2,
+          "columnName": "birthDate"
+        },
+        {
+          "tableName": "onboardingprofiles",
+          "indexName": "onboarding_profiles_discover_eligibility",
+          "nonUnique": 1,
+          "sequence": 3,
+          "columnName": "communicationStyle"
+        },
+        {
+          "tableName": "onboardingprofiles",
+          "indexName": "onboarding_profiles_discover_eligibility",
+          "nonUnique": 1,
+          "sequence": 4,
+          "columnName": "userId"
+        },
+        {
+          "tableName": "onboardingprofiles",
+          "indexName": "PRIMARY",
+          "nonUnique": 0,
+          "sequence": 1,
+          "columnName": "id"
+        },
+        {
+          "tableName": "onboardingprofiles",
+          "indexName": "userId",
+          "nonUnique": 0,
+          "sequence": 1,
+          "columnName": "userId"
+        }
+      ],
+      "foreignKeys": [
+        {
+          "tableName": "onboardingprofiles",
+          "constraintName": "onboardingprofiles_ibfk_1",
+          "columnName": "userId",
+          "referencedTable": "users",
+          "referencedColumn": "id"
+        }
+      ]
+    },
+    {
+      "tableName": "otptokens",
+      "estimatedRows": 11,
+      "exactRows": 11,
+      "columns": [
+        {
+          "tableName": "otptokens",
+          "columnName": "id",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "PRI",
+          "extra": "auto_increment"
+        },
+        {
+          "tableName": "otptokens",
+          "columnName": "phoneNumber",
+          "columnType": "varchar(255)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "MUL",
+          "extra": ""
+        },
+        {
+          "tableName": "otptokens",
+          "columnName": "codeHash",
+          "columnType": "varchar(255)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "otptokens",
+          "columnName": "purpose",
+          "columnType": "enum('account_verification','password_reset')",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "otptokens",
+          "columnName": "expiresAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "otptokens",
+          "columnName": "attempts",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": "0",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "otptokens",
+          "columnName": "consumed",
+          "columnType": "tinyint(1)",
+          "isNullable": "NO",
+          "columnDefault": "0",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "otptokens",
+          "columnName": "createdAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "otptokens",
+          "columnName": "updatedAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        }
+      ],
+      "indexes": [
+        {
+          "tableName": "otptokens",
+          "indexName": "otp_tokens_email",
+          "nonUnique": 1,
+          "sequence": 1,
+          "columnName": "phoneNumber"
+        },
+        {
+          "tableName": "otptokens",
+          "indexName": "otp_tokens_phone_number",
+          "nonUnique": 1,
+          "sequence": 1,
+          "columnName": "phoneNumber"
+        },
+        {
+          "tableName": "otptokens",
+          "indexName": "otp_tokens_resend_policy",
+          "nonUnique": 1,
+          "sequence": 1,
+          "columnName": "phoneNumber"
+        },
+        {
+          "tableName": "otptokens",
+          "indexName": "otp_tokens_resend_policy",
+          "nonUnique": 1,
+          "sequence": 2,
+          "columnName": "purpose"
+        },
+        {
+          "tableName": "otptokens",
+          "indexName": "otp_tokens_resend_policy",
+          "nonUnique": 1,
+          "sequence": 3,
+          "columnName": "consumed"
+        },
+        {
+          "tableName": "otptokens",
+          "indexName": "otp_tokens_resend_policy",
+          "nonUnique": 1,
+          "sequence": 4,
+          "columnName": "createdAt"
+        },
+        {
+          "tableName": "otptokens",
+          "indexName": "PRIMARY",
+          "nonUnique": 0,
+          "sequence": 1,
+          "columnName": "id"
+        }
+      ],
+      "foreignKeys": []
+    },
+    {
+      "tableName": "paymentevents",
+      "estimatedRows": 0,
+      "exactRows": 0,
+      "columns": [
+        {
+          "tableName": "paymentevents",
+          "columnName": "id",
+          "columnType": "bigint(20) unsigned",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "PRI",
+          "extra": "auto_increment"
+        },
+        {
+          "tableName": "paymentevents",
+          "columnName": "paymentId",
+          "columnType": "bigint(20) unsigned",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "MUL",
+          "extra": ""
+        },
+        {
+          "tableName": "paymentevents",
+          "columnName": "provider",
+          "columnType": "varchar(32)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "MUL",
+          "extra": ""
+        },
+        {
+          "tableName": "paymentevents",
+          "columnName": "providerEventId",
+          "columnType": "varchar(160)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "paymentevents",
+          "columnName": "eventType",
+          "columnType": "varchar(120)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "paymentevents",
+          "columnName": "payloadHash",
+          "columnType": "varchar(64)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "paymentevents",
+          "columnName": "payload",
+          "columnType": "longtext",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "paymentevents",
+          "columnName": "status",
+          "columnType": "enum('received','processed','ignored','failed')",
+          "isNullable": "NO",
+          "columnDefault": "'received'",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "paymentevents",
+          "columnName": "processedAt",
+          "columnType": "datetime",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "paymentevents",
+          "columnName": "errorMessage",
+          "columnType": "varchar(500)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "paymentevents",
+          "columnName": "createdAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "paymentevents",
+          "columnName": "updatedAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        }
+      ],
+      "indexes": [
+        {
+          "tableName": "paymentevents",
+          "indexName": "payment_events_payment_history",
+          "nonUnique": 1,
+          "sequence": 1,
+          "columnName": "paymentId"
+        },
+        {
+          "tableName": "paymentevents",
+          "indexName": "payment_events_payment_history",
+          "nonUnique": 1,
+          "sequence": 2,
+          "columnName": "createdAt"
+        },
+        {
+          "tableName": "paymentevents",
+          "indexName": "payment_events_provider_event_unique",
+          "nonUnique": 0,
+          "sequence": 1,
+          "columnName": "provider"
+        },
+        {
+          "tableName": "paymentevents",
+          "indexName": "payment_events_provider_event_unique",
+          "nonUnique": 0,
+          "sequence": 2,
+          "columnName": "providerEventId"
+        },
+        {
+          "tableName": "paymentevents",
+          "indexName": "PRIMARY",
+          "nonUnique": 0,
+          "sequence": 1,
+          "columnName": "id"
+        }
+      ],
+      "foreignKeys": [
+        {
+          "tableName": "paymentevents",
+          "constraintName": "paymentevents_ibfk_1",
+          "columnName": "paymentId",
+          "referencedTable": "payments",
+          "referencedColumn": "id"
+        }
+      ]
+    },
+    {
+      "tableName": "payments",
+      "estimatedRows": 0,
+      "exactRows": 0,
+      "columns": [
+        {
+          "tableName": "payments",
+          "columnName": "id",
+          "columnType": "bigint(20) unsigned",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "PRI",
+          "extra": "auto_increment"
+        },
+        {
+          "tableName": "payments",
+          "columnName": "userId",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "MUL",
+          "extra": ""
+        },
+        {
+          "tableName": "payments",
+          "columnName": "planId",
+          "columnType": "varchar(64)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "MUL",
+          "extra": ""
+        },
+        {
+          "tableName": "payments",
+          "columnName": "productType",
+          "columnType": "enum('subscription','wallet_top_up','boost')",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "payments",
+          "columnName": "productReferenceId",
+          "columnType": "varchar(64)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "payments",
+          "columnName": "provider",
+          "columnType": "varchar(32)",
+          "isNullable": "NO",
+          "columnDefault": "'razorpay'",
+          "columnKey": "MUL",
+          "extra": ""
+        },
+        {
+          "tableName": "payments",
+          "columnName": "providerOrderId",
+          "columnType": "varchar(120)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "payments",
+          "columnName": "providerPaymentId",
+          "columnType": "varchar(120)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "payments",
+          "columnName": "amountMinor",
+          "columnType": "int(10) unsigned",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "payments",
+          "columnName": "currency",
+          "columnType": "varchar(3)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "payments",
+          "columnName": "status",
+          "columnType": "enum('created','authorized','paid','failed','cancelled','refunded','chargeback')",
+          "isNullable": "NO",
+          "columnDefault": "'created'",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "payments",
+          "columnName": "idempotencyKey",
+          "columnType": "varchar(100)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "payments",
+          "columnName": "failureCode",
+          "columnType": "varchar(100)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "payments",
+          "columnName": "failureMessage",
+          "columnType": "varchar(500)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "payments",
+          "columnName": "verifiedAt",
+          "columnType": "datetime",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "payments",
+          "columnName": "metadata",
+          "columnType": "longtext",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "payments",
+          "columnName": "createdAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "payments",
+          "columnName": "updatedAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        }
+      ],
+      "indexes": [
+        {
+          "tableName": "payments",
+          "indexName": "payments_provider_order_unique",
+          "nonUnique": 0,
+          "sequence": 1,
+          "columnName": "provider"
+        },
+        {
+          "tableName": "payments",
+          "indexName": "payments_provider_order_unique",
+          "nonUnique": 0,
+          "sequence": 2,
+          "columnName": "providerOrderId"
+        },
+        {
+          "tableName": "payments",
+          "indexName": "payments_provider_payment_unique",
+          "nonUnique": 0,
+          "sequence": 1,
+          "columnName": "provider"
+        },
+        {
+          "tableName": "payments",
+          "indexName": "payments_provider_payment_unique",
+          "nonUnique": 0,
+          "sequence": 2,
+          "columnName": "providerPaymentId"
+        },
+        {
+          "tableName": "payments",
+          "indexName": "payments_user_history",
+          "nonUnique": 1,
+          "sequence": 1,
+          "columnName": "userId"
+        },
+        {
+          "tableName": "payments",
+          "indexName": "payments_user_history",
+          "nonUnique": 1,
+          "sequence": 2,
+          "columnName": "createdAt"
+        },
+        {
+          "tableName": "payments",
+          "indexName": "payments_user_history",
+          "nonUnique": 1,
+          "sequence": 3,
+          "columnName": "id"
+        },
+        {
+          "tableName": "payments",
+          "indexName": "payments_user_idempotency_unique",
+          "nonUnique": 0,
+          "sequence": 1,
+          "columnName": "userId"
+        },
+        {
+          "tableName": "payments",
+          "indexName": "payments_user_idempotency_unique",
+          "nonUnique": 0,
+          "sequence": 2,
+          "columnName": "idempotencyKey"
+        },
+        {
+          "tableName": "payments",
+          "indexName": "planId",
+          "nonUnique": 1,
+          "sequence": 1,
+          "columnName": "planId"
+        },
+        {
+          "tableName": "payments",
+          "indexName": "PRIMARY",
+          "nonUnique": 0,
+          "sequence": 1,
+          "columnName": "id"
+        }
+      ],
+      "foreignKeys": [
+        {
+          "tableName": "payments",
+          "constraintName": "payments_ibfk_1",
+          "columnName": "userId",
+          "referencedTable": "users",
+          "referencedColumn": "id"
+        },
+        {
+          "tableName": "payments",
+          "constraintName": "payments_ibfk_2",
+          "columnName": "planId",
+          "referencedTable": "subscriptionplans",
+          "referencedColumn": "id"
+        }
+      ]
+    },
+    {
+      "tableName": "refreshtokens",
+      "estimatedRows": 4,
+      "exactRows": 4,
+      "columns": [
+        {
+          "tableName": "refreshtokens",
+          "columnName": "id",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "PRI",
+          "extra": "auto_increment"
+        },
+        {
+          "tableName": "refreshtokens",
+          "columnName": "userId",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "MUL",
+          "extra": ""
+        },
+        {
+          "tableName": "refreshtokens",
+          "columnName": "tokenHash",
+          "columnType": "varchar(255)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "refreshtokens",
+          "columnName": "expiresAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "refreshtokens",
+          "columnName": "createdByIp",
+          "columnType": "varchar(255)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "refreshtokens",
+          "columnName": "createdAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "refreshtokens",
+          "columnName": "updatedAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        }
+      ],
+      "indexes": [
+        {
+          "tableName": "refreshtokens",
+          "indexName": "PRIMARY",
+          "nonUnique": 0,
+          "sequence": 1,
+          "columnName": "id"
+        },
+        {
+          "tableName": "refreshtokens",
+          "indexName": "userId",
+          "nonUnique": 1,
+          "sequence": 1,
+          "columnName": "userId"
+        }
+      ],
+      "foreignKeys": [
+        {
+          "tableName": "refreshtokens",
+          "constraintName": "refreshtokens_ibfk_1",
+          "columnName": "userId",
+          "referencedTable": "users",
+          "referencedColumn": "id"
+        }
+      ]
+    },
+    {
+      "tableName": "reportevidence",
+      "estimatedRows": 0,
+      "exactRows": 0,
+      "columns": [
+        {
+          "tableName": "reportevidence",
+          "columnName": "id",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "PRI",
+          "extra": "auto_increment"
+        },
+        {
+          "tableName": "reportevidence",
+          "columnName": "reportId",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "MUL",
+          "extra": ""
+        },
+        {
+          "tableName": "reportevidence",
+          "columnName": "originalName",
+          "columnType": "varchar(255)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "reportevidence",
+          "columnName": "storagePath",
+          "columnType": "varchar(255)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "reportevidence",
+          "columnName": "mimeType",
+          "columnType": "varchar(255)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "reportevidence",
+          "columnName": "sizeBytes",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "reportevidence",
+          "columnName": "createdAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        }
+      ],
+      "indexes": [
+        {
+          "tableName": "reportevidence",
+          "indexName": "PRIMARY",
+          "nonUnique": 0,
+          "sequence": 1,
+          "columnName": "id"
+        },
+        {
+          "tableName": "reportevidence",
+          "indexName": "report_evidence_report_created",
+          "nonUnique": 1,
+          "sequence": 1,
+          "columnName": "reportId"
+        },
+        {
+          "tableName": "reportevidence",
+          "indexName": "report_evidence_report_created",
+          "nonUnique": 1,
+          "sequence": 2,
+          "columnName": "createdAt"
+        }
+      ],
+      "foreignKeys": [
+        {
+          "tableName": "reportevidence",
+          "constraintName": "reportevidence_ibfk_1",
+          "columnName": "reportId",
+          "referencedTable": "reports",
+          "referencedColumn": "id"
+        }
+      ]
+    },
+    {
+      "tableName": "reports",
+      "estimatedRows": 0,
+      "exactRows": 0,
+      "columns": [
+        {
+          "tableName": "reports",
+          "columnName": "id",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "PRI",
+          "extra": "auto_increment"
+        },
+        {
+          "tableName": "reports",
+          "columnName": "reporterUserId",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "MUL",
+          "extra": ""
+        },
+        {
+          "tableName": "reports",
+          "columnName": "reportedUserId",
+          "columnType": "int(11)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "MUL",
+          "extra": ""
+        },
+        {
+          "tableName": "reports",
+          "columnName": "targetType",
+          "columnType": "enum('profile','event','message')",
+          "isNullable": "NO",
+          "columnDefault": "'profile'",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "reports",
+          "columnName": "targetId",
+          "columnType": "varchar(255)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "reports",
+          "columnName": "reason",
+          "columnType": "enum('fake_profile','harassment','inappropriate_photo','scam','spam','other')",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "reports",
+          "columnName": "notes",
+          "columnType": "text",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "reports",
+          "columnName": "status",
+          "columnType": "enum('open','reviewing','resolved','dismissed')",
+          "isNullable": "NO",
+          "columnDefault": "'open'",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "reports",
+          "columnName": "createdAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "reports",
+          "columnName": "updatedAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        }
+      ],
+      "indexes": [
+        {
+          "tableName": "reports",
+          "indexName": "PRIMARY",
+          "nonUnique": 0,
+          "sequence": 1,
+          "columnName": "id"
+        },
+        {
+          "tableName": "reports",
+          "indexName": "reports_duplicate_guard_lookup",
+          "nonUnique": 1,
+          "sequence": 1,
+          "columnName": "reporterUserId"
+        },
+        {
+          "tableName": "reports",
+          "indexName": "reports_duplicate_guard_lookup",
+          "nonUnique": 1,
+          "sequence": 2,
+          "columnName": "targetType"
+        },
+        {
+          "tableName": "reports",
+          "indexName": "reports_duplicate_guard_lookup",
+          "nonUnique": 1,
+          "sequence": 3,
+          "columnName": "targetId"
+        },
+        {
+          "tableName": "reports",
+          "indexName": "reports_duplicate_guard_lookup",
+          "nonUnique": 1,
+          "sequence": 4,
+          "columnName": "reason"
+        },
+        {
+          "tableName": "reports",
+          "indexName": "reports_duplicate_guard_lookup",
+          "nonUnique": 1,
+          "sequence": 5,
+          "columnName": "createdAt"
+        },
+        {
+          "tableName": "reports",
+          "indexName": "reports_reported_user_status",
+          "nonUnique": 1,
+          "sequence": 1,
+          "columnName": "reportedUserId"
+        },
+        {
+          "tableName": "reports",
+          "indexName": "reports_reported_user_status",
+          "nonUnique": 1,
+          "sequence": 2,
+          "columnName": "status"
+        }
+      ],
+      "foreignKeys": [
+        {
+          "tableName": "reports",
+          "constraintName": "reports_ibfk_1",
+          "columnName": "reporterUserId",
+          "referencedTable": "users",
+          "referencedColumn": "id"
+        },
+        {
+          "tableName": "reports",
+          "constraintName": "reports_ibfk_2",
+          "columnName": "reportedUserId",
+          "referencedTable": "users",
+          "referencedColumn": "id"
+        }
+      ]
+    },
+    {
+      "tableName": "sequelizemeta",
+      "estimatedRows": 12,
+      "exactRows": 12,
+      "columns": [
+        {
+          "tableName": "sequelizemeta",
+          "columnName": "name",
+          "columnType": "varchar(255)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "PRI",
+          "extra": ""
+        }
+      ],
+      "indexes": [
+        {
+          "tableName": "sequelizemeta",
+          "indexName": "PRIMARY",
+          "nonUnique": 0,
+          "sequence": 1,
+          "columnName": "name"
+        }
+      ],
+      "foreignKeys": []
+    },
+    {
+      "tableName": "subscriptionplans",
+      "estimatedRows": 3,
+      "exactRows": 3,
+      "columns": [
+        {
+          "tableName": "subscriptionplans",
+          "columnName": "id",
+          "columnType": "varchar(64)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "PRI",
+          "extra": ""
+        },
+        {
+          "tableName": "subscriptionplans",
+          "columnName": "name",
+          "columnType": "varchar(120)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "subscriptionplans",
+          "columnName": "displayName",
+          "columnType": "varchar(160)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "subscriptionplans",
+          "columnName": "description",
+          "columnType": "varchar(500)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "subscriptionplans",
+          "columnName": "priceMinor",
+          "columnType": "int(10) unsigned",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "subscriptionplans",
+          "columnName": "currency",
+          "columnType": "varchar(3)",
+          "isNullable": "NO",
+          "columnDefault": "'INR'",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "subscriptionplans",
+          "columnName": "billingPeriod",
+          "columnType": "enum('day','week','month','year')",
+          "isNullable": "NO",
+          "columnDefault": "'month'",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "subscriptionplans",
+          "columnName": "billingInterval",
+          "columnType": "int(10) unsigned",
+          "isNullable": "NO",
+          "columnDefault": "1",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "subscriptionplans",
+          "columnName": "features",
+          "columnType": "longtext",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "subscriptionplans",
+          "columnName": "entitlements",
+          "columnType": "longtext",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "subscriptionplans",
+          "columnName": "trialDays",
+          "columnType": "int(10) unsigned",
+          "isNullable": "NO",
+          "columnDefault": "0",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "subscriptionplans",
+          "columnName": "offerText",
+          "columnType": "varchar(255)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "subscriptionplans",
+          "columnName": "active",
+          "columnType": "tinyint(1)",
+          "isNullable": "NO",
+          "columnDefault": "1",
+          "columnKey": "MUL",
+          "extra": ""
+        },
+        {
+          "tableName": "subscriptionplans",
+          "columnName": "sortOrder",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": "0",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "subscriptionplans",
+          "columnName": "createdAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "subscriptionplans",
+          "columnName": "updatedAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        }
+      ],
+      "indexes": [
+        {
+          "tableName": "subscriptionplans",
+          "indexName": "PRIMARY",
+          "nonUnique": 0,
+          "sequence": 1,
+          "columnName": "id"
+        },
+        {
+          "tableName": "subscriptionplans",
+          "indexName": "subscription_plans_catalog",
+          "nonUnique": 1,
+          "sequence": 1,
+          "columnName": "active"
+        },
+        {
+          "tableName": "subscriptionplans",
+          "indexName": "subscription_plans_catalog",
+          "nonUnique": 1,
+          "sequence": 2,
+          "columnName": "sortOrder"
+        },
+        {
+          "tableName": "subscriptionplans",
+          "indexName": "subscription_plans_catalog",
+          "nonUnique": 1,
+          "sequence": 3,
+          "columnName": "id"
+        }
+      ],
+      "foreignKeys": []
+    },
+    {
+      "tableName": "subscriptions",
+      "estimatedRows": 0,
+      "exactRows": 0,
+      "columns": [
+        {
+          "tableName": "subscriptions",
+          "columnName": "id",
+          "columnType": "bigint(20) unsigned",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "PRI",
+          "extra": "auto_increment"
+        },
+        {
+          "tableName": "subscriptions",
+          "columnName": "userId",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "UNI",
+          "extra": ""
+        },
+        {
+          "tableName": "subscriptions",
+          "columnName": "planId",
+          "columnType": "varchar(64)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "MUL",
+          "extra": ""
+        },
+        {
+          "tableName": "subscriptions",
+          "columnName": "status",
+          "columnType": "enum('active','expired','cancelled','past_due','trialing')",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "MUL",
+          "extra": ""
+        },
+        {
+          "tableName": "subscriptions",
+          "columnName": "provider",
+          "columnType": "varchar(32)",
+          "isNullable": "NO",
+          "columnDefault": "'razorpay'",
+          "columnKey": "MUL",
+          "extra": ""
+        },
+        {
+          "tableName": "subscriptions",
+          "columnName": "providerCustomerId",
+          "columnType": "varchar(120)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "subscriptions",
+          "columnName": "providerSubscriptionId",
+          "columnType": "varchar(120)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "subscriptions",
+          "columnName": "startedAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "subscriptions",
+          "columnName": "currentPeriodStart",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "subscriptions",
+          "columnName": "currentPeriodEnd",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "subscriptions",
+          "columnName": "autoRenew",
+          "columnType": "tinyint(1)",
+          "isNullable": "NO",
+          "columnDefault": "0",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "subscriptions",
+          "columnName": "cancelAtPeriodEnd",
+          "columnType": "tinyint(1)",
+          "isNullable": "NO",
+          "columnDefault": "0",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "subscriptions",
+          "columnName": "cancelledAt",
+          "columnType": "datetime",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "subscriptions",
+          "columnName": "endedAt",
+          "columnType": "datetime",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "subscriptions",
+          "columnName": "createdAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "subscriptions",
+          "columnName": "updatedAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        }
+      ],
+      "indexes": [
+        {
+          "tableName": "subscriptions",
+          "indexName": "planId",
+          "nonUnique": 1,
+          "sequence": 1,
+          "columnName": "planId"
+        },
+        {
+          "tableName": "subscriptions",
+          "indexName": "PRIMARY",
+          "nonUnique": 0,
+          "sequence": 1,
+          "columnName": "id"
+        },
+        {
+          "tableName": "subscriptions",
+          "indexName": "subscriptions_entitlement_lookup",
+          "nonUnique": 1,
+          "sequence": 1,
+          "columnName": "status"
+        },
+        {
+          "tableName": "subscriptions",
+          "indexName": "subscriptions_entitlement_lookup",
+          "nonUnique": 1,
+          "sequence": 2,
+          "columnName": "currentPeriodEnd"
+        },
+        {
+          "tableName": "subscriptions",
+          "indexName": "subscriptions_entitlement_lookup",
+          "nonUnique": 1,
+          "sequence": 3,
+          "columnName": "userId"
+        },
+        {
+          "tableName": "subscriptions",
+          "indexName": "subscriptions_provider_reference_unique",
+          "nonUnique": 0,
+          "sequence": 1,
+          "columnName": "provider"
+        },
+        {
+          "tableName": "subscriptions",
+          "indexName": "subscriptions_provider_reference_unique",
+          "nonUnique": 0,
+          "sequence": 2,
+          "columnName": "providerSubscriptionId"
+        },
+        {
+          "tableName": "subscriptions",
+          "indexName": "subscriptions_user_unique",
+          "nonUnique": 0,
+          "sequence": 1,
+          "columnName": "userId"
+        }
+      ],
+      "foreignKeys": [
+        {
+          "tableName": "subscriptions",
+          "constraintName": "subscriptions_ibfk_1",
+          "columnName": "userId",
+          "referencedTable": "users",
+          "referencedColumn": "id"
+        },
+        {
+          "tableName": "subscriptions",
+          "constraintName": "subscriptions_ibfk_2",
+          "columnName": "planId",
+          "referencedTable": "subscriptionplans",
+          "referencedColumn": "id"
+        }
+      ]
+    },
+    {
+      "tableName": "users",
+      "estimatedRows": 7,
+      "exactRows": 7,
+      "columns": [
+        {
+          "tableName": "users",
+          "columnName": "id",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "PRI",
+          "extra": "auto_increment"
+        },
+        {
+          "tableName": "users",
+          "columnName": "name",
+          "columnType": "varchar(255)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "users",
+          "columnName": "email",
+          "columnType": "varchar(255)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "UNI",
+          "extra": ""
+        },
+        {
+          "tableName": "users",
+          "columnName": "phoneNumber",
+          "columnType": "varchar(255)",
+          "isNullable": "NO",
+          "columnDefault": "''",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "users",
+          "columnName": "passwordHash",
+          "columnType": "varchar(255)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "users",
+          "columnName": "authProvider",
+          "columnType": "enum('local','google')",
+          "isNullable": "NO",
+          "columnDefault": "'local'",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "users",
+          "columnName": "googleId",
+          "columnType": "varchar(255)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "UNI",
+          "extra": ""
+        },
+        {
+          "tableName": "users",
+          "columnName": "isVerified",
+          "columnType": "tinyint(1)",
+          "isNullable": "YES",
+          "columnDefault": "0",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "users",
+          "columnName": "termsAcceptedAt",
+          "columnType": "datetime",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "users",
+          "columnName": "createdAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "users",
+          "columnName": "updatedAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "users",
+          "columnName": "accountStatus",
+          "columnType": "enum('active','deactivated','deleted')",
+          "isNullable": "NO",
+          "columnDefault": "'active'",
+          "columnKey": "MUL",
+          "extra": ""
+        },
+        {
+          "tableName": "users",
+          "columnName": "deactivatedAt",
+          "columnType": "datetime",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "users",
+          "columnName": "deletedAt",
+          "columnType": "datetime",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "users",
+          "columnName": "tokenVersion",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": "0",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "users",
+          "columnName": "deletionReason",
+          "columnType": "varchar(255)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "users",
+          "columnName": "deletionDetails",
+          "columnType": "text",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "users",
+          "columnName": "role",
+          "columnType": "enum('user','host','admin')",
+          "isNullable": "NO",
+          "columnDefault": "'user'",
+          "columnKey": "",
+          "extra": ""
+        }
+      ],
+      "indexes": [
+        {
+          "tableName": "users",
+          "indexName": "email",
+          "nonUnique": 0,
+          "sequence": 1,
+          "columnName": "email"
+        },
+        {
+          "tableName": "users",
+          "indexName": "googleId",
+          "nonUnique": 0,
+          "sequence": 1,
+          "columnName": "googleId"
+        },
+        {
+          "tableName": "users",
+          "indexName": "PRIMARY",
+          "nonUnique": 0,
+          "sequence": 1,
+          "columnName": "id"
+        },
+        {
+          "tableName": "users",
+          "indexName": "users_account_status",
+          "nonUnique": 1,
+          "sequence": 1,
+          "columnName": "accountStatus"
+        },
+        {
+          "tableName": "users",
+          "indexName": "users_account_status",
+          "nonUnique": 1,
+          "sequence": 2,
+          "columnName": "id"
+        }
+      ],
+      "foreignKeys": []
+    },
+    {
+      "tableName": "walletproducts",
+      "estimatedRows": 5,
+      "exactRows": 5,
+      "columns": [
+        {
+          "tableName": "walletproducts",
+          "columnName": "id",
+          "columnType": "varchar(64)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "PRI",
+          "extra": ""
+        },
+        {
+          "tableName": "walletproducts",
+          "columnName": "type",
+          "columnType": "enum('top_up','redemption')",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "MUL",
+          "extra": ""
+        },
+        {
+          "tableName": "walletproducts",
+          "columnName": "name",
+          "columnType": "varchar(120)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "walletproducts",
+          "columnName": "description",
+          "columnType": "varchar(255)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "walletproducts",
+          "columnName": "credits",
+          "columnType": "int(10) unsigned",
+          "isNullable": "NO",
+          "columnDefault": "0",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "walletproducts",
+          "columnName": "priceMinor",
+          "columnType": "int(10) unsigned",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "walletproducts",
+          "columnName": "currency",
+          "columnType": "varchar(3)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "walletproducts",
+          "columnName": "redemptionKind",
+          "columnType": "enum('boost')",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "walletproducts",
+          "columnName": "grantQuantity",
+          "columnType": "int(10) unsigned",
+          "isNullable": "NO",
+          "columnDefault": "0",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "walletproducts",
+          "columnName": "durationMinutes",
+          "columnType": "int(10) unsigned",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "walletproducts",
+          "columnName": "active",
+          "columnType": "tinyint(1)",
+          "isNullable": "NO",
+          "columnDefault": "1",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "walletproducts",
+          "columnName": "sortOrder",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": "0",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "walletproducts",
+          "columnName": "createdAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "walletproducts",
+          "columnName": "updatedAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        }
+      ],
+      "indexes": [
+        {
+          "tableName": "walletproducts",
+          "indexName": "PRIMARY",
+          "nonUnique": 0,
+          "sequence": 1,
+          "columnName": "id"
+        },
+        {
+          "tableName": "walletproducts",
+          "indexName": "wallet_products_catalog",
+          "nonUnique": 1,
+          "sequence": 1,
+          "columnName": "type"
+        },
+        {
+          "tableName": "walletproducts",
+          "indexName": "wallet_products_catalog",
+          "nonUnique": 1,
+          "sequence": 2,
+          "columnName": "active"
+        },
+        {
+          "tableName": "walletproducts",
+          "indexName": "wallet_products_catalog",
+          "nonUnique": 1,
+          "sequence": 3,
+          "columnName": "sortOrder"
+        }
+      ],
+      "foreignKeys": []
+    },
+    {
+      "tableName": "wallets",
+      "estimatedRows": 0,
+      "exactRows": 0,
+      "columns": [
+        {
+          "tableName": "wallets",
+          "columnName": "id",
+          "columnType": "bigint(20) unsigned",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "PRI",
+          "extra": "auto_increment"
+        },
+        {
+          "tableName": "wallets",
+          "columnName": "userId",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "UNI",
+          "extra": ""
+        },
+        {
+          "tableName": "wallets",
+          "columnName": "status",
+          "columnType": "enum('active','frozen','closed')",
+          "isNullable": "NO",
+          "columnDefault": "'active'",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "wallets",
+          "columnName": "creditUnit",
+          "columnType": "varchar(32)",
+          "isNullable": "NO",
+          "columnDefault": "'AMORAA_CREDITS'",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "wallets",
+          "columnName": "balance",
+          "columnType": "bigint(20)",
+          "isNullable": "NO",
+          "columnDefault": "0",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "wallets",
+          "columnName": "createdAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "wallets",
+          "columnName": "updatedAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        }
+      ],
+      "indexes": [
+        {
+          "tableName": "wallets",
+          "indexName": "PRIMARY",
+          "nonUnique": 0,
+          "sequence": 1,
+          "columnName": "id"
+        },
+        {
+          "tableName": "wallets",
+          "indexName": "wallets_user_unique",
+          "nonUnique": 0,
+          "sequence": 1,
+          "columnName": "userId"
+        }
+      ],
+      "foreignKeys": [
+        {
+          "tableName": "wallets",
+          "constraintName": "wallets_ibfk_1",
+          "columnName": "userId",
+          "referencedTable": "users",
+          "referencedColumn": "id"
+        }
+      ]
+    },
+    {
+      "tableName": "wallettransactions",
+      "estimatedRows": 0,
+      "exactRows": 0,
+      "columns": [
+        {
+          "tableName": "wallettransactions",
+          "columnName": "id",
+          "columnType": "bigint(20) unsigned",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "PRI",
+          "extra": "auto_increment"
+        },
+        {
+          "tableName": "wallettransactions",
+          "columnName": "walletId",
+          "columnType": "bigint(20) unsigned",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "MUL",
+          "extra": ""
+        },
+        {
+          "tableName": "wallettransactions",
+          "columnName": "userId",
+          "columnType": "int(11)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "MUL",
+          "extra": ""
+        },
+        {
+          "tableName": "wallettransactions",
+          "columnName": "type",
+          "columnType": "enum('top_up','gift_spend','boost_spend','redemption','refund','adjustment')",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "wallettransactions",
+          "columnName": "direction",
+          "columnType": "enum('credit','debit')",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "wallettransactions",
+          "columnName": "amount",
+          "columnType": "bigint(20) unsigned",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "wallettransactions",
+          "columnName": "referenceType",
+          "columnType": "varchar(50)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "wallettransactions",
+          "columnName": "referenceId",
+          "columnType": "varchar(100)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "wallettransactions",
+          "columnName": "idempotencyKey",
+          "columnType": "varchar(100)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "wallettransactions",
+          "columnName": "balanceBefore",
+          "columnType": "bigint(20)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "wallettransactions",
+          "columnName": "balanceAfter",
+          "columnType": "bigint(20)",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "wallettransactions",
+          "columnName": "status",
+          "columnType": "enum('posted','reversed')",
+          "isNullable": "NO",
+          "columnDefault": "'posted'",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "wallettransactions",
+          "columnName": "description",
+          "columnType": "varchar(255)",
+          "isNullable": "YES",
+          "columnDefault": "NULL",
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "wallettransactions",
+          "columnName": "createdAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        },
+        {
+          "tableName": "wallettransactions",
+          "columnName": "updatedAt",
+          "columnType": "datetime",
+          "isNullable": "NO",
+          "columnDefault": null,
+          "columnKey": "",
+          "extra": ""
+        }
+      ],
+      "indexes": [
+        {
+          "tableName": "wallettransactions",
+          "indexName": "PRIMARY",
+          "nonUnique": 0,
+          "sequence": 1,
+          "columnName": "id"
+        },
+        {
+          "tableName": "wallettransactions",
+          "indexName": "wallet_transactions_idempotency_unique",
+          "nonUnique": 0,
+          "sequence": 1,
+          "columnName": "walletId"
+        },
+        {
+          "tableName": "wallettransactions",
+          "indexName": "wallet_transactions_idempotency_unique",
+          "nonUnique": 0,
+          "sequence": 2,
+          "columnName": "idempotencyKey"
+        },
+        {
+          "tableName": "wallettransactions",
+          "indexName": "wallet_transactions_type_filter",
+          "nonUnique": 1,
+          "sequence": 1,
+          "columnName": "userId"
+        },
+        {
+          "tableName": "wallettransactions",
+          "indexName": "wallet_transactions_type_filter",
+          "nonUnique": 1,
+          "sequence": 2,
+          "columnName": "type"
+        },
+        {
+          "tableName": "wallettransactions",
+          "indexName": "wallet_transactions_type_filter",
+          "nonUnique": 1,
+          "sequence": 3,
+          "columnName": "createdAt"
+        },
+        {
+          "tableName": "wallettransactions",
+          "indexName": "wallet_transactions_user_history",
+          "nonUnique": 1,
+          "sequence": 1,
+          "columnName": "userId"
+        },
+        {
+          "tableName": "wallettransactions",
+          "indexName": "wallet_transactions_user_history",
+          "nonUnique": 1,
+          "sequence": 2,
+          "columnName": "createdAt"
+        },
+        {
+          "tableName": "wallettransactions",
+          "indexName": "wallet_transactions_user_history",
+          "nonUnique": 1,
+          "sequence": 3,
+          "columnName": "id"
+        }
+      ],
+      "foreignKeys": [
+        {
+          "tableName": "wallettransactions",
+          "constraintName": "wallettransactions_ibfk_1",
+          "columnName": "walletId",
+          "referencedTable": "wallets",
+          "referencedColumn": "id"
+        },
+        {
+          "tableName": "wallettransactions",
+          "constraintName": "wallettransactions_ibfk_2",
+          "columnName": "userId",
+          "referencedTable": "users",
+          "referencedColumn": "id"
+        }
+      ]
+    }
+  ],
+  "appliedMigrations": [
+    "202608090001-create-baseline-schema.js",
+    "202608100000-rename-legacy-otp-email.js",
+    "202608100001-add-communication-style.js",
+    "202608110001-add-phase1-query-indexes.js",
+    "202608120001-add-account-lifecycle.js",
+    "202608120002-create-blocks.js",
+    "202608120003-create-reports-and-evidence.js",
+    "202608130001-create-chat-foundation.js",
+    "202608140001-create-events-foundation.js",
+    "202608140002-add-event-feedback-media.js",
+    "202608150001-create-monetization-foundation.js",
+    "202608150002-allow-wallet-reversal-balances.js"
+  ],
+  "environmentCapabilities": {
+    "nodeEnv": "development",
+    "googleAuthConfigured": false,
+    "smsConfigured": false,
+    "smtpConfigured": false,
+    "razorpayConfigured": false
+  }
+}

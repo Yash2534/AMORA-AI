@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:amora_ai/core/constants/app_images.dart';
+import 'package:amora_ai/core/auth/auth_service.dart';
+import 'package:amora_ai/core/config/amora_api_config.dart';
 import 'package:amora_ai/core/widgets/amora_dob_field.dart';
 import 'package:amora_ai/features/profile/domain/profile_completion_calculator.dart';
 import 'package:amora_ai/features/profile/domain/communication_style.dart';
@@ -326,6 +328,7 @@ class LocalProfileRepository extends ChangeNotifier {
   final Map<String, String> _photoMimeTypes = {};
   final Map<String, String> _photoErrors = {};
   int _nextPhotoId = 0;
+  String? lastSyncError;
 
   List<ProfilePhotoViewData> get currentPhotos =>
       List.unmodifiable(<ProfilePhotoViewData>[
@@ -349,6 +352,15 @@ class LocalProfileRepository extends ChangeNotifier {
       ]);
 
   Future<void> initialize() async {
+    if (AuthService.instance.currentUser != null) {
+      prepareForAuthenticatedUser();
+      try {
+        await refreshFromServer();
+      } on AuthException catch (error) {
+        lastSyncError = error.message;
+      }
+      return;
+    }
     try {
       final preferences = await SharedPreferences.getInstance();
       final stored = preferences.getString(_storageKey);
@@ -362,14 +374,156 @@ class LocalProfileRepository extends ChangeNotifier {
     }
   }
 
+  void prepareForAuthenticatedUser() {
+    final user = AuthService.instance.currentUser;
+    if (user == null) return;
+    _apply(
+      UserProfile(
+        name: user.name,
+        email: user.email,
+        phoneNumber: user.phoneNumber,
+        birthdate: '',
+        gender: '',
+        bio: '',
+        profession: '',
+        company: '',
+        education: '',
+        location: '',
+        datingIntention: '',
+        interests: const <String>[],
+        prompts: const <String, String>{},
+        lifestyle: const <String, String>{},
+        photos: const <String>[],
+        primaryPhotoIndex: 0,
+        voicePrompt: null,
+        videoPrompt: null,
+      ),
+    );
+  }
+
   void save(UserProfile profile) {
+    if (AuthService.instance.currentUser != null) {
+      final previous = _profile;
+      _apply(profile);
+      unawaited(
+        _saveRemote(profile).catchError((Object error) {
+          lastSyncError = error is AuthException
+              ? error.message
+              : error.toString();
+          _apply(previous);
+        }),
+      );
+      return;
+    }
     _apply(profile);
     unawaited(_persistSafely());
   }
 
   Future<void> savePersisted(UserProfile profile) async {
+    if (AuthService.instance.currentUser != null) {
+      await _saveRemote(profile);
+      return;
+    }
     _apply(profile);
     await _persist();
+  }
+
+  Future<void> refreshFromServer() async {
+    if (AuthService.instance.currentUser == null) return;
+    final response = await AuthService.instance.authenticatedRequest(
+      'GET',
+      '/api/profiles/me',
+    );
+    final profile = ((response['data'] as Map?)?['profile'] as Map?)
+        ?.cast<String, dynamic>();
+    if (profile == null)
+      throw const AuthException('Own profile response is invalid.');
+    lastSyncError = null;
+    _apply(UserProfile.fromJson(profile.cast<String, Object?>()));
+  }
+
+  Future<void> _saveRemote(UserProfile profile) async {
+    final birthDate = profile.dateOfBirth;
+    final response = await AuthService.instance.authenticatedRequest(
+      'PUT',
+      '/api/profiles/me',
+      body: <String, dynamic>{
+        'name': profile.name,
+        if (birthDate != null)
+          'birthdate':
+              '${birthDate.year.toString().padLeft(4, '0')}-${birthDate.month.toString().padLeft(2, '0')}-${birthDate.day.toString().padLeft(2, '0')}',
+        'gender': profile.gender,
+        'bio': profile.bio,
+        'profession': profile.profession,
+        'company': profile.company,
+        'education': profile.education,
+        'location': profile.location,
+        'datingIntention': profile.datingIntention,
+        'interests': profile.interests,
+        'prompts': profile.prompts,
+        'lifestyle': profile.lifestyle,
+        'hometown': profile.hometown,
+        'valuedQualities': profile.valuedQualities,
+        'pronouns': profile.pronouns,
+        'sexuality': profile.sexuality,
+        'preferredTalkingHours': profile.preferredTalkingHours,
+        'loveLanguages': profile.loveLanguages,
+        'iceBreaker': profile.iceBreaker,
+        if (profile.communicationStyle != null)
+          'communicationStyle': profile.communicationStyle!.storageValue,
+        if (profile.photos.isNotEmpty &&
+            profile.photos.every((value) => value.startsWith('http')))
+          'photos': profile.photos,
+        if (profile.photos.isNotEmpty &&
+            profile.photos.every((value) => value.startsWith('http')))
+          'primaryPhotoIndex': profile.primaryPhotoIndex,
+      },
+    );
+    final canonical = ((response['data'] as Map?)?['profile'] as Map?)
+        ?.cast<String, dynamic>();
+    if (canonical == null)
+      throw const AuthException('Updated profile response is invalid.');
+    lastSyncError = null;
+    _apply(UserProfile.fromJson(canonical.cast<String, Object?>()));
+  }
+
+  Future<String> uploadPhoto(String localSource) async {
+    final bytes = _photoBytes[localSource];
+    final mimeType = _photoMimeTypes[localSource];
+    if (bytes == null || mimeType == null) {
+      throw const AuthException('The selected photo is no longer available.');
+    }
+    final extension = switch (mimeType) {
+      'image/png' => 'png',
+      'image/webp' => 'webp',
+      _ => 'jpg',
+    };
+    final response = await AuthService.instance.authenticatedMultipart(
+      '/api/onboarding/photos',
+      field: 'photos',
+      bytes: bytes,
+      filename: 'profile-${DateTime.now().microsecondsSinceEpoch}.$extension',
+      mimeType: mimeType,
+    );
+    final onboarding = ((response['data'] as Map?)?['onboarding'] as Map?)
+        ?.cast<String, dynamic>();
+    final photos = (onboarding?['photos'] as List?) ?? const <dynamic>[];
+    if (photos.isEmpty)
+      throw const AuthException('The photo upload returned no file.');
+    final value = photos.last.toString();
+    return value.startsWith('http') ? value : '${AmoraApiConfig.baseUrl}$value';
+  }
+
+  Future<void> deletePhotoPersisted(int index) async {
+    if (AuthService.instance.currentUser == null) {
+      removePhotoInSession(index);
+      return;
+    }
+    await AuthService.instance.authenticatedRequest(
+      'DELETE',
+      '/api/onboarding/photos/$index',
+    );
+    await refreshFromServer();
   }
 
   void updatePhotos(List<String> photos, int primaryPhotoIndex) {
@@ -592,15 +746,20 @@ class LocalProfileRepository extends ChangeNotifier {
   }
 
   Future<void> clearForAccountDeletion() async {
+    clearSessionProfile();
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.remove(_storageKey);
+  }
+
+  void clearSessionProfile() {
     _profile = _clearedProfile;
+    lastSyncError = null;
     _photoIds.clear();
     _photoStates.clear();
     _photoBytes.clear();
     _photoMimeTypes.clear();
     _photoErrors.clear();
     notifyListeners();
-    final preferences = await SharedPreferences.getInstance();
-    await preferences.remove(_storageKey);
   }
 
   @visibleForTesting

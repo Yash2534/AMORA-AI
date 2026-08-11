@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:developer' as developer;
+import 'dart:math';
 
 import 'package:amora_ai/core/config/amora_api_config.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -10,12 +11,16 @@ Map<String, String> buildDiscoverFeedQuery({
   required int page,
   required int limit,
   Iterable<String> communicationStyles = const <String>[],
+  bool? onlineNow,
+  bool? hasEventInterest,
 }) {
   final styles = communicationStyles.toSet().toList(growable: false);
   return {
     'page': '$page',
     'limit': '$limit',
     if (styles.isNotEmpty) 'communicationStyles': styles.join(','),
+    if (onlineNow != null) 'onlineNow': '$onlineNow',
+    if (hasEventInterest != null) 'hasEventInterest': '$hasEventInterest',
   };
 }
 
@@ -66,6 +71,9 @@ class DiscoverApiService {
   static const _timeout = Duration(seconds: 10);
   static const _storage = FlutterSecureStorage();
   final http.Client _client;
+
+  String newIdempotencyKey(String operation) =>
+      'flutter:$operation:${DateTime.now().microsecondsSinceEpoch}:${Random.secure().nextInt(1 << 32)}';
 
   Future<DiscoverApiResult<DiscoverFeedPage>> getFeed({
     required int page,
@@ -137,8 +145,14 @@ class DiscoverApiService {
 
   Future<DiscoverApiResult<Map<String, dynamic>>> rewind() =>
       _request('POST', '/api/discover/rewind');
-  Future<DiscoverApiResult<Map<String, dynamic>>> boost() =>
-      _request('POST', '/api/discover/boost');
+  Future<DiscoverApiResult<Map<String, dynamic>>> boost(
+    String idempotencyKey,
+  ) => _request(
+    'POST',
+    '/api/discover/boost',
+    body: {'idempotencyKey': idempotencyKey},
+    headers: {'Idempotency-Key': idempotencyKey},
+  );
 
   Future<DiscoverApiResult<Map<String, dynamic>>> getFilters() async {
     final result = await _request('GET', '/api/discover/filters');
@@ -183,6 +197,7 @@ class DiscoverApiService {
     String path, {
     Map<String, String>? query,
     Map<String, dynamic>? body,
+    Map<String, String>? headers,
   }) async {
     final setup = await _setup(path, query);
     if (setup == null) {
@@ -197,7 +212,8 @@ class DiscoverApiService {
     }
     try {
       final request = http.Request(method, setup.uri)
-        ..headers.addAll(setup.headers);
+        ..headers.addAll(setup.headers)
+        ..headers.addAll(headers ?? const <String, String>{});
       if (body != null) request.body = jsonEncode(body);
       final response = await http.Response.fromStream(
         await _client.send(request).timeout(_timeout),

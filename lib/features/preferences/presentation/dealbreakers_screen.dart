@@ -10,9 +10,13 @@ import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/profile/domain/profile_form_options.dart';
 import 'package:flutter/material.dart';
+import 'package:amora_ai/core/auth/auth_service.dart';
+import 'package:amora_ai/features/discover/data/discover_api_service.dart';
 
 class DealbreakersScreen extends StatefulWidget {
-  const DealbreakersScreen({super.key});
+  const DealbreakersScreen({super.key, this.apiService});
+
+  final DiscoverApiService? apiService;
 
   static const routeName = '/dealbreakers';
 
@@ -21,6 +25,7 @@ class DealbreakersScreen extends StatefulWidget {
 }
 
 class _DealbreakersScreenState extends State<DealbreakersScreen> {
+  late final DiscoverApiService _api;
   RangeValues _age = const RangeValues(24, 34);
   double _distance = 25;
   final Set<String> _mustHaves = {'Relationship intention', 'City'};
@@ -33,9 +38,92 @@ class _DealbreakersScreenState extends State<DealbreakersScreen> {
     'City': 'Ahmedabad',
     'Education': 'Undergraduate',
   };
+  bool _loading = false;
+  bool _saving = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _api = widget.apiService ?? DiscoverApiService();
+    if (widget.apiService != null || AuthService.instance.currentUser != null) {
+      _load();
+    }
+  }
+
+  Future<void> _load() async {
+    setState(() => _loading = true);
+    final result = await _api.getFilters();
+    if (!mounted) return;
+    if (!result.success || result.data == null) {
+      setState(() {
+        _loading = false;
+        _error = result.message;
+      });
+      return;
+    }
+    final value = result.data!;
+    setState(() {
+      _age = RangeValues(
+        (value['minAge'] as num?)?.toDouble() ?? 24,
+        (value['maxAge'] as num?)?.toDouble() ?? 34,
+      );
+      _distance = (value['maxDistanceKm'] as num?)?.toDouble() ?? 25;
+      _mustHaves.clear();
+      if ((value['smoking']?.toString() ?? '').isNotEmpty)
+        _mustHaves.add('Smoking');
+      if ((value['drinking']?.toString() ?? '').isNotEmpty)
+        _mustHaves.add('Drinking');
+      if (((value['datingIntentions'] as List?) ?? const []).isNotEmpty)
+        _mustHaves.add('Relationship intention');
+      if ((value['city']?.toString() ?? '').isNotEmpty) _mustHaves.add('City');
+      if ((value['education']?.toString() ?? '').isNotEmpty)
+        _mustHaves.add('Education');
+      if ((value['community']?.toString() ?? '').isNotEmpty)
+        _mustHaves.add('Religion/Community');
+      _loading = false;
+      _error = null;
+    });
+  }
+
+  Future<void> _save() async {
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    final result = await _api.updateFilters(<String, dynamic>{
+      'minAge': _age.start.round(),
+      'maxAge': _age.end.round(),
+      'maxDistanceKm': _distance.round(),
+      'smoking': _mustHaves.contains('Smoking') ? _values['Smoking'] : '',
+      'drinking': _mustHaves.contains('Drinking') ? _values['Drinking'] : '',
+      'datingIntentions': _mustHaves.contains('Relationship intention')
+          ? <String>[_values['Relationship intention']!]
+          : <String>[],
+      'city': _mustHaves.contains('City') ? _values['City'] : '',
+      'education': _mustHaves.contains('Education') ? _values['Education'] : '',
+      'community': _mustHaves.contains('Religion/Community')
+          ? _values['Religion/Community']
+          : '',
+    });
+    if (!mounted) return;
+    setState(() {
+      _saving = false;
+      _error = result.success ? null : result.message;
+    });
+    showAmoraSnackBar(
+      context,
+      message: result.success ? 'Preferences saved' : result.message,
+      tone: result.success
+          ? AmoraSnackBarTone.success
+          : AmoraSnackBarTone.error,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (_loading)
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     return Scaffold(
       body: SafeArea(
         child: ResponsiveMobileFrame(
@@ -126,13 +214,20 @@ class _DealbreakersScreenState extends State<DealbreakersScreen> {
                     ),
                   ),
                 const SizedBox(height: AmoraSpacing.space8),
+                if (_error != null) ...[
+                  Text(
+                    _error!,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
+                  const SizedBox(height: AmoraSpacing.space8),
+                ],
                 AppPrimaryButton(
                   label: 'Save Preferences',
                   icon: AmoraIcons.check,
-                  onPressed: () => showAmoraSnackBar(
-                    context,
-                    message: 'Dealbreakers saved for future feed integration',
-                  ),
+                  isLoading: _saving,
+                  onPressed: _saving ? null : _save,
                 ),
               ],
             ),

@@ -5,6 +5,7 @@ import 'package:amora_ai/core/data/gujarat_hometowns.dart';
 import 'package:amora_ai/core/theme/amora_theme.dart';
 import 'package:amora_ai/core/widgets/amoraa_select_field.dart';
 import 'package:amora_ai/features/discover/presentation/advanced_filters_screen.dart';
+import 'package:amora_ai/features/discover/data/discover_api_service.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
 import 'package:amora_ai/features/profile/domain/profile_form_options.dart';
 import 'package:amora_ai/features/profile/presentation/controllers/profile_form_controller.dart';
@@ -14,6 +15,22 @@ import 'package:amora_ai/features/profile/presentation/widgets/amoraa_public_pro
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+class _SuccessfulFilterApi extends DiscoverApiService {
+  Map<String, dynamic> filters = <String, dynamic>{};
+
+  @override
+  Future<DiscoverApiResult<Map<String, dynamic>>> getFilters() async =>
+      DiscoverApiResult.success(filters, statusCode: 200);
+
+  @override
+  Future<DiscoverApiResult<Map<String, dynamic>>> updateFilters(
+    Map<String, dynamic> values,
+  ) async {
+    filters = <String, dynamic>{...filters, ...values};
+    return DiscoverApiResult.success(filters, statusCode: 200);
+  }
+}
 
 void main() {
   final repository = LocalProfileRepository.instance;
@@ -254,7 +271,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           theme: AmoraTheme.light(),
-          home: const AdvancedFiltersScreen(),
+          home: AdvancedFiltersScreen(apiService: _SuccessfulFilterApi()),
           routes: {'/browse': (_) => const Scaffold(body: Text('Browse'))},
         ),
       );
@@ -340,7 +357,7 @@ void main() {
         MaterialApp(
           key: UniqueKey(),
           theme: AmoraTheme.light(),
-          home: const AdvancedFiltersScreen(),
+          home: AdvancedFiltersScreen(apiService: _SuccessfulFilterApi()),
         ),
       );
       await tester.pumpAndSettle();

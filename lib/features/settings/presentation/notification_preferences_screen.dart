@@ -2,17 +2,24 @@ import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/permissions/amoraa_permission_service.dart';
+import 'package:amora_ai/core/auth/auth_service.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/amora_app_bar.dart';
 import 'package:amora_ai/core/widgets/amora_screen_title.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:flutter/material.dart';
+import 'package:amora_ai/features/settings/data/notification_preferences_repository.dart';
 
 class NotificationPreferencesScreen extends StatefulWidget {
-  const NotificationPreferencesScreen({super.key, this.permissionService});
+  const NotificationPreferencesScreen({
+    super.key,
+    this.permissionService,
+    this.repository,
+  });
 
   final AmoraaPermissionService? permissionService;
+  final NotificationPreferencesRepository? repository;
 
   static const routeName = '/notification-preferences';
 
@@ -24,6 +31,7 @@ class NotificationPreferencesScreen extends StatefulWidget {
 class _NotificationPreferencesScreenState
     extends State<NotificationPreferencesScreen> {
   late final AmoraaPermissionService _permissionService;
+  late final NotificationPreferencesRepository _repository;
   final Map<String, bool> _categories = {
     'New matches': true,
     'Messages': true,
@@ -40,6 +48,9 @@ class _NotificationPreferencesScreenState
   bool _quiet = true;
   TimeOfDay _from = const TimeOfDay(hour: 22, minute: 0);
   TimeOfDay _to = const TimeOfDay(hour: 7, minute: 0);
+  bool _loading = false;
+  bool _saving = false;
+  String? _error;
 
   static const _categoryMeta = {
     'New matches': (
@@ -82,11 +93,20 @@ class _NotificationPreferencesScreenState
     super.initState();
     _permissionService =
         widget.permissionService ?? AmoraaPermissionService.instance;
-    _syncNotificationPermission();
+    _repository =
+        widget.repository ?? NotificationPreferencesRepository.instance;
+    if (widget.repository != null || AuthService.instance.currentUser != null) {
+      _load();
+    } else {
+      _syncNotificationPermission();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_loading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -155,10 +175,20 @@ class _NotificationPreferencesScreenState
                       onTo: () => _pickTime(false),
                     ),
                     const SizedBox(height: AmoraSpacing.space20),
+                    if (_error != null) ...[
+                      Text(
+                        _error!,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
+                      const SizedBox(height: AmoraSpacing.space12),
+                    ],
                     AppPrimaryButton(
                       label: 'Save preferences',
                       icon: Icons.check_rounded,
-                      onPressed: _save,
+                      isLoading: _saving,
+                      onPressed: _saving ? null : _save,
                     ),
                   ],
                 ),
@@ -182,7 +212,9 @@ class _NotificationPreferencesScreenState
   Future<void> _syncNotificationPermission() async {
     final result = await _permissionService.notificationPermissionStatus();
     if (!mounted) return;
-    setState(() => _channels['Push notifications'] = result.allowsFeature);
+    if (!result.allowsFeature) {
+      setState(() => _channels['Push notifications'] = false);
+    }
   }
 
   Future<void> _changeChannel(String channel, bool value) async {
@@ -205,15 +237,88 @@ class _NotificationPreferencesScreenState
     );
   }
 
-  void _save() {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        const SnackBar(
-          content: Text('Notification preferences saved'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      _apply(await _repository.get());
+      await _syncNotificationPermission();
+    } on AuthException catch (error) {
+      if (mounted) setState(() => _error = error.message);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  void _apply(NotificationPreferences value) {
+    if (!mounted) return;
+    TimeOfDay parse(String value, TimeOfDay fallback) {
+      final parts = value.split(':');
+      if (parts.length != 2) return fallback;
+      final hour = int.tryParse(parts[0]);
+      final minute = int.tryParse(parts[1]);
+      return hour == null || minute == null
+          ? fallback
+          : TimeOfDay(hour: hour, minute: minute);
+    }
+
+    setState(() {
+      _categories
+        ..['New matches'] = value.newMatches
+        ..['Messages'] = value.messages
+        ..['Event reminders'] = value.eventReminders
+        ..['Payments & membership'] = value.paymentsAndMembership
+        ..['Offers from AMORAA'] = value.offers
+        ..['Safety updates'] = value.safetyUpdates;
+      _channels
+        ..['Push notifications'] = value.pushEnabled
+        ..['Email'] = value.emailEnabled
+        ..['SMS'] = value.smsEnabled;
+      _quiet = value.quietHoursEnabled;
+      _from = parse(value.quietStart, _from);
+      _to = parse(value.quietEnd, _to);
+    });
+  }
+
+  String _time(TimeOfDay value) =>
+      '${value.hour.toString().padLeft(2, '0')}:${value.minute.toString().padLeft(2, '0')}';
+
+  Future<void> _save() async {
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    try {
+      final canonical = await _repository.update(<String, dynamic>{
+        'newMatches': _categories['New matches'],
+        'messages': _categories['Messages'],
+        'eventReminders': _categories['Event reminders'],
+        'paymentsAndMembership': _categories['Payments & membership'],
+        'offers': _categories['Offers from AMORAA'],
+        'pushEnabled': _channels['Push notifications'],
+        'emailEnabled': _channels['Email'],
+        'smsEnabled': _channels['SMS'],
+        'quietHoursEnabled': _quiet,
+        'quietStart': _time(_from),
+        'quietEnd': _time(_to),
+      });
+      _apply(canonical);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text('Notification preferences saved'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+    } on AuthException catch (error) {
+      if (mounted) setState(() => _error = error.message);
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 }
 

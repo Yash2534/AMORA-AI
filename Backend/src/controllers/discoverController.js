@@ -169,10 +169,6 @@ function buildProfileWhere(filters) {
     clauses.push(where(fn('JSON_LENGTH', col('OnboardingProfile.prompts')), { [Op.gt]: 0 }));
   }
 
-  // There is no persisted presence or event-participation source in the Phase 1 schema.
-  // An active filter therefore has no eligible rows instead of using placeholder state.
-  if (filters.onlineNow || filters.hasEventInterest) clauses.push(literal('1 = 0'));
-
   if (clauses.length) whereValues[Op.and] = clauses;
   return whereValues;
 }
@@ -224,6 +220,17 @@ exports.getFeed = async (req, res, next) => {
       [Op.and]: [notBlockedUserSql(sequelize, req.user.sub)],
     };
     if (filters.verifiedOnly) userWhere.isVerified = true;
+    if (filters.onlineNow) {
+      const thresholdMinutes = Math.max(1, Number(process.env.ONLINE_NOW_WINDOW_MINUTES || 5));
+      userWhere.lastActiveAt = { [Op.gte]: new Date(Date.now() - thresholdMinutes * 60 * 1000) };
+    }
+    if (filters.hasEventInterest) {
+      const quote = (value) => sequelize.getQueryInterface().queryGenerator.quoteIdentifier(value);
+      const registrations = quote(getModels().EventRegistration.getTableName());
+      const waitlist = quote(getModels().EventWaitlist.getTableName());
+      const candidate = `${quote('User')}.${quote('id')}`;
+      userWhere[Op.and].push(literal(`(EXISTS (SELECT 1 FROM ${registrations} AS ${quote('eventInterestRegistration')} WHERE ${quote('eventInterestRegistration')}.${quote('userId')} = ${candidate} AND ${quote('eventInterestRegistration')}.${quote('status')} IN ('registered', 'promoted')) OR EXISTS (SELECT 1 FROM ${waitlist} AS ${quote('eventInterestWaitlist')} WHERE ${quote('eventInterestWaitlist')}.${quote('userId')} = ${candidate} AND ${quote('eventInterestWaitlist')}.${quote('status')} IN ('waiting', 'promoted')))`));
+    }
 
     const profileWhere = buildProfileWhere(filters);
     const users = await User.findAll({

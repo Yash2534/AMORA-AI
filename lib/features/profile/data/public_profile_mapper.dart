@@ -7,6 +7,7 @@ class PublicRelationshipState {
     this.superLiked = false,
     this.blocked = false,
     this.matched = false,
+    this.saved = false,
     this.matchId,
   });
 
@@ -14,6 +15,7 @@ class PublicRelationshipState {
   final bool superLiked;
   final bool blocked;
   final bool matched;
+  final bool saved;
   final String? matchId;
 
   factory PublicRelationshipState.fromJson(Map<String, dynamic>? json) {
@@ -23,6 +25,7 @@ class PublicRelationshipState {
       superLiked: value['superLiked'] == true,
       blocked: value['blocked'] == true,
       matched: value['matched'] == true,
+      saved: value['saved'] == true,
       matchId: value['matchId']?.toString(),
     );
   }

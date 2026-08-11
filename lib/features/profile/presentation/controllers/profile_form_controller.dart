@@ -278,7 +278,6 @@ class ProfileFormController extends ChangeNotifier {
     }
     prompts[promptTitle] = answer;
     final updated = _baseProfile.copyWith(prompts: prompts);
-    final previousProfile = repository.profile;
     saving = true;
     notifyListeners();
     try {
@@ -289,14 +288,11 @@ class ProfileFormController extends ChangeNotifier {
           selection: TextSelection.collapsed(offset: answer.length),
         );
       }
-      _baseProfile = updated;
+      _baseProfile = repository.profile;
       _originalPromptTitle = null;
       promptEditorActive = false;
       dirty = hasOtherChanges;
-      return updated;
-    } catch (_) {
-      repository.save(previousProfile);
-      rethrow;
+      return _baseProfile;
     } finally {
       saving = false;
       notifyListeners();
@@ -438,11 +434,11 @@ class ProfileFormController extends ChangeNotifier {
     final updated = draftProfile;
     try {
       await repository.savePersisted(updated);
-      _baseProfile = updated;
+      _baseProfile = repository.profile;
       _originalPromptTitle = null;
       promptEditorActive = false;
       dirty = false;
-      return updated;
+      return _baseProfile;
     } finally {
       saving = false;
       notifyListeners();

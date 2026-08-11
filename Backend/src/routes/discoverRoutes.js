@@ -10,7 +10,7 @@ const communicationStylesBody = body('communicationStyles').optional().custom((v
   return true;
 }).customSanitizer((value) => parseCommunicationStyles(value));
 router.use(requireAuth);
-router.get('/feed', [optionalInt('page', 1, 100000), optionalInt('limit', 1, 30), optionalInt('minAge', 18, 99), optionalInt('maxAge', 18, 99), optionalInt('maxDistanceKm', 1, 500), optionalInt('minScore', 0, 100), communicationStylesQuery, query('verifiedOnly').optional().isBoolean().withMessage('verifiedOnly must be a boolean.'), query('onlineNow').optional().isBoolean().withMessage('onlineNow must be a boolean.')], validateRequest, controller.getFeed);
+router.get('/feed', [optionalInt('page', 1, 100000), optionalInt('limit', 1, 30), optionalInt('minAge', 18, 99), optionalInt('maxAge', 18, 99), optionalInt('maxDistanceKm', 1, 500), optionalInt('minScore', 0, 100), communicationStylesQuery, query('verifiedOnly').optional().isBoolean().withMessage('verifiedOnly must be a boolean.'), query('onlineNow').optional().isBoolean().withMessage('onlineNow must be a boolean.'), query('hasEventInterest').optional().isBoolean().withMessage('hasEventInterest must be a boolean.')], validateRequest, controller.getFeed);
 router.post('/swipe', discoverSwipeLimiter, [body('targetUserId').isInt({ min: 1 }).withMessage('targetUserId must be a valid user id.').toInt(), body('action').isIn(['pass', 'like', 'superLike']).withMessage('action must be pass, like, or superLike.')], validateRequest, controller.swipe);
 router.post('/rewind', controller.rewind);
 router.post('/boost', [body('idempotencyKey').optional().isString().isLength({ min: 8, max: 100 })], validateRequest, controller.boost);

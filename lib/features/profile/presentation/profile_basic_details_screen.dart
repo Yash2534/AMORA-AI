@@ -277,7 +277,7 @@ class _ProfileBasicDetailsScreenState extends State<ProfileBasicDetailsScreen> {
   String? _required(String? value) =>
       value == null || value.trim().isEmpty ? 'Required' : null;
 
-  void _save() {
+  Future<void> _save() async {
     FocusScope.of(context).unfocus();
     if (_education.text == 'Other') {
       final trimmedCustomEducation = _customEducation.text.trim();
@@ -296,17 +296,27 @@ class _ProfileBasicDetailsScreenState extends State<ProfileBasicDetailsScreen> {
       return;
     }
     final repository = LocalProfileRepository.instance;
-    repository.save(
-      repository.profile.copyWith(
-        name: _name.text.trim(),
-        birthdate: AmoraDateOfBirth.format(_birthDate!),
-        gender: ProfileFormOptions.storedGenderValue(_gender),
-        profession: _profession.text.trim(),
-        company: _company.text.trim(),
-        education: _education.text.trim(),
-        location: _city.text.trim(),
-      ),
-    );
-    Navigator.of(context).pop(true);
+    try {
+      await repository.savePersisted(
+        repository.profile.copyWith(
+          name: _name.text.trim(),
+          birthdate: AmoraDateOfBirth.format(_birthDate!),
+          gender: ProfileFormOptions.storedGenderValue(_gender),
+          profession: _profession.text.trim(),
+          company: _company.text.trim(),
+          education: _education.text.trim(),
+          location: _city.text.trim(),
+        ),
+      );
+      if (mounted) Navigator.of(context).pop(true);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not save profile details. Please try again.'),
+          ),
+        );
+      }
+    }
   }
 }

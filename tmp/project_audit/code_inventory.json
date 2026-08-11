@@ -1,0 +1,1582 @@
+{
+  "backend_endpoints": [
+    {
+      "method": "DELETE",
+      "path": "/api/account",
+      "route_file": "Backend/src/routes/accountRoutes.js",
+      "line": 10
+    },
+    {
+      "method": "POST",
+      "path": "/api/account/deactivate",
+      "route_file": "Backend/src/routes/accountRoutes.js",
+      "line": 8
+    },
+    {
+      "method": "POST",
+      "path": "/api/account/reactivate",
+      "route_file": "Backend/src/routes/accountRoutes.js",
+      "line": 9
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/forgot-password",
+      "route_file": "Backend/src/routes/authRoutes.js",
+      "line": 11
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/google",
+      "route_file": "Backend/src/routes/authRoutes.js",
+      "line": 10
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/login",
+      "route_file": "Backend/src/routes/authRoutes.js",
+      "line": 9
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/logout",
+      "route_file": "Backend/src/routes/authRoutes.js",
+      "line": 15
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me",
+      "route_file": "Backend/src/routes/authRoutes.js",
+      "line": 16
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/refresh-token",
+      "route_file": "Backend/src/routes/authRoutes.js",
+      "line": 14
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/resend-verification-code",
+      "route_file": "Backend/src/routes/authRoutes.js",
+      "line": 8
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/reset-password",
+      "route_file": "Backend/src/routes/authRoutes.js",
+      "line": 13
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/signup",
+      "route_file": "Backend/src/routes/authRoutes.js",
+      "line": 6
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/verify-account",
+      "route_file": "Backend/src/routes/authRoutes.js",
+      "line": 7
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/verify-reset-code",
+      "route_file": "Backend/src/routes/authRoutes.js",
+      "line": 12
+    },
+    {
+      "method": "GET",
+      "path": "/api/blocks",
+      "route_file": "Backend/src/routes/blockRoutes.js",
+      "line": 9
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/blocks/:userId",
+      "route_file": "Backend/src/routes/blockRoutes.js",
+      "line": 11
+    },
+    {
+      "method": "POST",
+      "path": "/api/blocks/:userId",
+      "route_file": "Backend/src/routes/blockRoutes.js",
+      "line": 10
+    },
+    {
+      "method": "GET",
+      "path": "/api/boosts/me",
+      "route_file": "Backend/src/routes/boostRoutes.js",
+      "line": 8
+    },
+    {
+      "method": "GET",
+      "path": "/api/boosts/products",
+      "route_file": "Backend/src/routes/boostRoutes.js",
+      "line": 8
+    },
+    {
+      "method": "POST",
+      "path": "/api/boosts/purchase",
+      "route_file": "Backend/src/routes/boostRoutes.js",
+      "line": 9
+    },
+    {
+      "method": "GET",
+      "path": "/api/conversations",
+      "route_file": "Backend/src/routes/conversationRoutes.js",
+      "line": 31
+    },
+    {
+      "method": "POST",
+      "path": "/api/conversations",
+      "route_file": "Backend/src/routes/conversationRoutes.js",
+      "line": 32
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/conversations/:conversationId/draft",
+      "route_file": "Backend/src/routes/conversationRoutes.js",
+      "line": 51
+    },
+    {
+      "method": "PUT",
+      "path": "/api/conversations/:conversationId/draft",
+      "route_file": "Backend/src/routes/conversationRoutes.js",
+      "line": 48
+    },
+    {
+      "method": "POST",
+      "path": "/api/conversations/:conversationId/media",
+      "route_file": "Backend/src/routes/conversationRoutes.js",
+      "line": 45
+    },
+    {
+      "method": "GET",
+      "path": "/api/conversations/:conversationId/messages",
+      "route_file": "Backend/src/routes/conversationRoutes.js",
+      "line": 35
+    },
+    {
+      "method": "POST",
+      "path": "/api/conversations/:conversationId/messages",
+      "route_file": "Backend/src/routes/conversationRoutes.js",
+      "line": 38
+    },
+    {
+      "method": "PUT",
+      "path": "/api/conversations/:conversationId/read",
+      "route_file": "Backend/src/routes/conversationRoutes.js",
+      "line": 42
+    },
+    {
+      "method": "POST",
+      "path": "/api/discover/boost",
+      "route_file": "Backend/src/routes/discoverRoutes.js",
+      "line": 16
+    },
+    {
+      "method": "GET",
+      "path": "/api/discover/feed",
+      "route_file": "Backend/src/routes/discoverRoutes.js",
+      "line": 13
+    },
+    {
+      "method": "GET",
+      "path": "/api/discover/filters",
+      "route_file": "Backend/src/routes/discoverRoutes.js",
+      "line": 17
+    },
+    {
+      "method": "PUT",
+      "path": "/api/discover/filters",
+      "route_file": "Backend/src/routes/discoverRoutes.js",
+      "line": 18
+    },
+    {
+      "method": "POST",
+      "path": "/api/discover/rewind",
+      "route_file": "Backend/src/routes/discoverRoutes.js",
+      "line": 15
+    },
+    {
+      "method": "POST",
+      "path": "/api/discover/swipe",
+      "route_file": "Backend/src/routes/discoverRoutes.js",
+      "line": 14
+    },
+    {
+      "method": "GET",
+      "path": "/api/events",
+      "route_file": "Backend/src/routes/eventRoutes.js",
+      "line": 14
+    },
+    {
+      "method": "GET",
+      "path": "/api/events/:eventId",
+      "route_file": "Backend/src/routes/eventRoutes.js",
+      "line": 25
+    },
+    {
+      "method": "POST",
+      "path": "/api/events/:eventId/check-in",
+      "route_file": "Backend/src/routes/eventRoutes.js",
+      "line": 30
+    },
+    {
+      "method": "POST",
+      "path": "/api/events/:eventId/feedback",
+      "route_file": "Backend/src/routes/eventRoutes.js",
+      "line": 37
+    },
+    {
+      "method": "GET",
+      "path": "/api/events/:eventId/group-chat/messages",
+      "route_file": "Backend/src/routes/eventRoutes.js",
+      "line": 43
+    },
+    {
+      "method": "POST",
+      "path": "/api/events/:eventId/group-chat/messages",
+      "route_file": "Backend/src/routes/eventRoutes.js",
+      "line": 44
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/events/:eventId/registration",
+      "route_file": "Backend/src/routes/eventRoutes.js",
+      "line": 27
+    },
+    {
+      "method": "POST",
+      "path": "/api/events/:eventId/registration",
+      "route_file": "Backend/src/routes/eventRoutes.js",
+      "line": 26
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/events/:eventId/waitlist",
+      "route_file": "Backend/src/routes/eventRoutes.js",
+      "line": 29
+    },
+    {
+      "method": "POST",
+      "path": "/api/events/:eventId/waitlist",
+      "route_file": "Backend/src/routes/eventRoutes.js",
+      "line": 28
+    },
+    {
+      "method": "GET",
+      "path": "/api/events/me",
+      "route_file": "Backend/src/routes/eventRoutes.js",
+      "line": 24
+    },
+    {
+      "method": "GET",
+      "path": "/api/gifts",
+      "route_file": "Backend/src/routes/giftRoutes.js",
+      "line": 8
+    },
+    {
+      "method": "POST",
+      "path": "/api/gifts/send",
+      "route_file": "Backend/src/routes/giftRoutes.js",
+      "line": 9
+    },
+    {
+      "method": "GET",
+      "path": "/api/host/dashboard",
+      "route_file": "Backend/src/routes/hostEventRoutes.js",
+      "line": 31
+    },
+    {
+      "method": "POST",
+      "path": "/api/host/events",
+      "route_file": "Backend/src/routes/hostEventRoutes.js",
+      "line": 32
+    },
+    {
+      "method": "PUT",
+      "path": "/api/host/events/:eventId",
+      "route_file": "Backend/src/routes/hostEventRoutes.js",
+      "line": 37
+    },
+    {
+      "method": "GET",
+      "path": "/api/matches",
+      "route_file": "Backend/src/routes/matchRoutes.js",
+      "line": 9
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/matches/:matchId",
+      "route_file": "Backend/src/routes/matchRoutes.js",
+      "line": 11
+    },
+    {
+      "method": "GET",
+      "path": "/api/matches/:matchId",
+      "route_file": "Backend/src/routes/matchRoutes.js",
+      "line": 10
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/messages/:messageId",
+      "route_file": "Backend/src/routes/messageRoutes.js",
+      "line": 12
+    },
+    {
+      "method": "GET",
+      "path": "/api/messages/:messageId/media/:mediaId",
+      "route_file": "Backend/src/routes/messageRoutes.js",
+      "line": 8
+    },
+    {
+      "method": "PUT",
+      "path": "/api/onboarding/age",
+      "route_file": "Backend/src/routes/onboardingRoutes.js",
+      "line": 8
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboarding/complete",
+      "route_file": "Backend/src/routes/onboardingRoutes.js",
+      "line": 18
+    },
+    {
+      "method": "PUT",
+      "path": "/api/onboarding/gender",
+      "route_file": "Backend/src/routes/onboardingRoutes.js",
+      "line": 9
+    },
+    {
+      "method": "PUT",
+      "path": "/api/onboarding/interested-in",
+      "route_file": "Backend/src/routes/onboardingRoutes.js",
+      "line": 10
+    },
+    {
+      "method": "PUT",
+      "path": "/api/onboarding/location",
+      "route_file": "Backend/src/routes/onboardingRoutes.js",
+      "line": 12
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboarding/photos",
+      "route_file": "Backend/src/routes/onboardingRoutes.js",
+      "line": 15
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/onboarding/photos/:index",
+      "route_file": "Backend/src/routes/onboardingRoutes.js",
+      "line": 16
+    },
+    {
+      "method": "PUT",
+      "path": "/api/onboarding/photos/primary",
+      "route_file": "Backend/src/routes/onboardingRoutes.js",
+      "line": 17
+    },
+    {
+      "method": "PUT",
+      "path": "/api/onboarding/profile-completion",
+      "route_file": "Backend/src/routes/onboardingRoutes.js",
+      "line": 14
+    },
+    {
+      "method": "PUT",
+      "path": "/api/onboarding/relationship-goal",
+      "route_file": "Backend/src/routes/onboardingRoutes.js",
+      "line": 11
+    },
+    {
+      "method": "PUT",
+      "path": "/api/onboarding/starter-profile",
+      "route_file": "Backend/src/routes/onboardingRoutes.js",
+      "line": 13
+    },
+    {
+      "method": "GET",
+      "path": "/api/onboarding/status",
+      "route_file": "Backend/src/routes/onboardingRoutes.js",
+      "line": 7
+    },
+    {
+      "method": "POST",
+      "path": "/api/payments/orders",
+      "route_file": "Backend/src/routes/paymentRoutes.js",
+      "line": 9
+    },
+    {
+      "method": "POST",
+      "path": "/api/payments/verify",
+      "route_file": "Backend/src/routes/paymentRoutes.js",
+      "line": 20
+    },
+    {
+      "method": "POST",
+      "path": "/api/payments/webhook",
+      "route_file": "Backend/src/routes/paymentRoutes.js",
+      "line": 8
+    },
+    {
+      "method": "GET",
+      "path": "/api/profiles/:userId",
+      "route_file": "Backend/src/routes/profileRoutes.js",
+      "line": 7
+    },
+    {
+      "method": "POST",
+      "path": "/api/realtime/token",
+      "route_file": "Backend/src/routes/realtimeRoutes.js",
+      "line": 6
+    },
+    {
+      "method": "POST",
+      "path": "/api/reports",
+      "route_file": "Backend/src/routes/reportRoutes.js",
+      "line": 17
+    },
+    {
+      "method": "POST",
+      "path": "/api/reports/:reportId/evidence",
+      "route_file": "Backend/src/routes/reportRoutes.js",
+      "line": 25
+    },
+    {
+      "method": "POST",
+      "path": "/api/subscriptions/cancel",
+      "route_file": "Backend/src/routes/subscriptionRoutes.js",
+      "line": 7
+    },
+    {
+      "method": "GET",
+      "path": "/api/subscriptions/me",
+      "route_file": "Backend/src/routes/subscriptionRoutes.js",
+      "line": 6
+    },
+    {
+      "method": "GET",
+      "path": "/api/subscriptions/plans",
+      "route_file": "Backend/src/routes/subscriptionRoutes.js",
+      "line": 5
+    },
+    {
+      "method": "POST",
+      "path": "/api/subscriptions/restore",
+      "route_file": "Backend/src/routes/subscriptionRoutes.js",
+      "line": 8
+    },
+    {
+      "method": "GET",
+      "path": "/api/wallet",
+      "route_file": "Backend/src/routes/walletRoutes.js",
+      "line": 8
+    },
+    {
+      "method": "GET",
+      "path": "/api/wallet/products",
+      "route_file": "Backend/src/routes/walletRoutes.js",
+      "line": 9
+    },
+    {
+      "method": "POST",
+      "path": "/api/wallet/redemptions",
+      "route_file": "Backend/src/routes/walletRoutes.js",
+      "line": 11
+    },
+    {
+      "method": "POST",
+      "path": "/api/wallet/top-up/orders",
+      "route_file": "Backend/src/routes/walletRoutes.js",
+      "line": 12
+    },
+    {
+      "method": "GET",
+      "path": "/api/wallet/transactions",
+      "route_file": "Backend/src/routes/walletRoutes.js",
+      "line": 10
+    }
+  ],
+  "frontend_endpoint_literals": [
+    {
+      "method": "DELETE",
+      "path": "/api/account",
+      "raw_path": "/api/account",
+      "file": "lib/core/api/phase_two_api_service.dart",
+      "line": 115
+    },
+    {
+      "method": "POST",
+      "path": "/api/account/deactivate",
+      "raw_path": "/api/account/deactivate",
+      "file": "lib/core/api/phase_two_api_service.dart",
+      "line": 109
+    },
+    {
+      "method": "POST",
+      "path": "/api/account/reactivate",
+      "raw_path": "/api/account/reactivate",
+      "file": "lib/core/auth/auth_service.dart",
+      "line": 194
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/forgot-password",
+      "raw_path": "/api/auth/forgot-password",
+      "file": "lib/core/auth/auth_service.dart",
+      "line": 129
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/google",
+      "raw_path": "/api/auth/google",
+      "file": "lib/core/auth/auth_service.dart",
+      "line": 124
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/login",
+      "raw_path": "/api/auth/login",
+      "file": "lib/core/auth/auth_service.dart",
+      "line": 105
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/logout",
+      "raw_path": "/api/auth/logout",
+      "file": "lib/core/auth/auth_service.dart",
+      "line": 157
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me",
+      "raw_path": "/api/auth/me",
+      "file": "lib/core/auth/auth_service.dart",
+      "line": 150
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/refresh-token",
+      "raw_path": "/api/auth/refresh-token",
+      "file": "lib/core/auth/auth_service.dart",
+      "line": 381
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/resend-verification-code",
+      "raw_path": "/api/auth/resend-verification-code",
+      "file": "lib/core/auth/auth_service.dart",
+      "line": 94
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/reset-password",
+      "raw_path": "/api/auth/reset-password",
+      "file": "lib/core/auth/auth_service.dart",
+      "line": 143
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/signup",
+      "raw_path": "/api/auth/signup",
+      "file": "lib/core/auth/auth_service.dart",
+      "line": 83
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/verify-account",
+      "raw_path": "/api/auth/verify-account",
+      "file": "lib/core/auth/auth_service.dart",
+      "line": 97
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/verify-reset-code",
+      "raw_path": "/api/auth/verify-reset-code",
+      "file": "lib/core/auth/auth_service.dart",
+      "line": 132
+    },
+    {
+      "method": "GET",
+      "path": "/api/blocks",
+      "raw_path": "/api/blocks",
+      "file": "lib/core/api/phase_two_api_service.dart",
+      "line": 57
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/blocks/:userId",
+      "raw_path": "/api/blocks/$userId",
+      "file": "lib/core/api/phase_two_api_service.dart",
+      "line": 71
+    },
+    {
+      "method": "POST",
+      "path": "/api/blocks/:userId",
+      "raw_path": "/api/blocks/$userId",
+      "file": "lib/core/api/phase_two_api_service.dart",
+      "line": 69
+    },
+    {
+      "method": "GET",
+      "path": "/api/boosts/me",
+      "raw_path": "/api/boosts/me",
+      "file": "lib/features/monetization/data/monetization_repository.dart",
+      "line": 228
+    },
+    {
+      "method": "GET",
+      "path": "/api/boosts/products",
+      "raw_path": "/api/boosts/products",
+      "file": "lib/features/monetization/data/monetization_repository.dart",
+      "line": 218
+    },
+    {
+      "method": "POST",
+      "path": "/api/boosts/purchase",
+      "raw_path": "/api/boosts/purchase",
+      "file": "lib/features/monetization/data/monetization_repository.dart",
+      "line": 240
+    },
+    {
+      "method": "GET",
+      "path": "/api/conversations",
+      "raw_path": "/api/conversations?page=1&limit=20",
+      "file": "lib/features/chat/data/chat_repository.dart",
+      "line": 235
+    },
+    {
+      "method": "POST",
+      "path": "/api/conversations",
+      "raw_path": "/api/conversations",
+      "file": "lib/features/chat/data/chat_repository.dart",
+      "line": 295
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/conversations/:conversationId/draft",
+      "raw_path": "/api/conversations/$conversationId/draft",
+      "file": "lib/features/chat/data/chat_repository.dart",
+      "line": 409
+    },
+    {
+      "method": "PUT",
+      "path": "/api/conversations/:conversationId/draft",
+      "raw_path": "/api/conversations/$conversationId/draft",
+      "file": "lib/features/chat/data/chat_repository.dart",
+      "line": 396
+    },
+    {
+      "method": "POST",
+      "path": "/api/conversations/:conversationId/media",
+      "raw_path": "/api/conversations/$conversationId/media",
+      "file": "lib/features/chat/data/chat_repository.dart",
+      "line": 471
+    },
+    {
+      "method": "GET",
+      "path": "/api/conversations/:conversationId/messages",
+      "raw_path": "/api/conversations/$conversationId/messages?limit=30${cursor == null ? ",
+      "file": "lib/features/chat/data/chat_repository.dart",
+      "line": 334
+    },
+    {
+      "method": "POST",
+      "path": "/api/conversations/:conversationId/messages",
+      "raw_path": "/api/conversations/$conversationId/messages",
+      "file": "lib/features/chat/data/chat_repository.dart",
+      "line": 447
+    },
+    {
+      "method": "PUT",
+      "path": "/api/conversations/:conversationId/read",
+      "raw_path": "/api/conversations/$conversationId/read",
+      "file": "lib/features/chat/data/chat_repository.dart",
+      "line": 375
+    },
+    {
+      "method": "POST",
+      "path": "/api/discover/boost",
+      "raw_path": "/api/discover/boost",
+      "file": "lib/features/discover/data/discover_api_service.dart",
+      "line": 141
+    },
+    {
+      "method": "GET",
+      "path": "/api/discover/feed",
+      "raw_path": "/api/discover/feed",
+      "file": "lib/features/discover/data/discover_api_service.dart",
+      "line": 77
+    },
+    {
+      "method": "GET",
+      "path": "/api/discover/filters",
+      "raw_path": "/api/discover/filters",
+      "file": "lib/features/discover/data/discover_api_service.dart",
+      "line": 144
+    },
+    {
+      "method": "PUT",
+      "path": "/api/discover/filters",
+      "raw_path": "/api/discover/filters",
+      "file": "lib/features/discover/data/discover_api_service.dart",
+      "line": 164
+    },
+    {
+      "method": "POST",
+      "path": "/api/discover/rewind",
+      "raw_path": "/api/discover/rewind",
+      "file": "lib/features/discover/data/discover_api_service.dart",
+      "line": 139
+    },
+    {
+      "method": "POST",
+      "path": "/api/discover/swipe",
+      "raw_path": "/api/discover/swipe",
+      "file": "lib/features/discover/data/discover_api_service.dart",
+      "line": 112
+    },
+    {
+      "method": "GET",
+      "path": "/api/events",
+      "raw_path": "/api/events",
+      "file": "lib/features/events/data/event_repository.dart",
+      "line": 98
+    },
+    {
+      "method": "GET",
+      "path": "/api/events/:eventId",
+      "raw_path": "/api/events/$eventId",
+      "file": "lib/features/events/data/event_repository.dart",
+      "line": 104
+    },
+    {
+      "method": "POST",
+      "path": "/api/events/:eventId/check-in",
+      "raw_path": "/api/events/$eventId/check-in",
+      "file": "lib/features/events/data/event_repository.dart",
+      "line": 164
+    },
+    {
+      "method": "POST",
+      "path": "/api/events/:eventId/feedback",
+      "raw_path": "/api/events/$eventId/feedback",
+      "file": "lib/features/events/data/event_repository.dart",
+      "line": 192
+    },
+    {
+      "method": "GET",
+      "path": "/api/events/:eventId/group-chat/messages",
+      "raw_path": "/api/events/$eventId/group-chat/messages",
+      "file": "lib/features/events/data/event_repository.dart",
+      "line": 225
+    },
+    {
+      "method": "POST",
+      "path": "/api/events/:eventId/group-chat/messages",
+      "raw_path": "/api/events/$eventId/group-chat/messages",
+      "file": "lib/features/events/data/event_repository.dart",
+      "line": 240
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/events/:eventId/registration",
+      "raw_path": "/api/events/$eventId/registration",
+      "file": "lib/features/events/data/event_repository.dart",
+      "line": 158
+    },
+    {
+      "method": "POST",
+      "path": "/api/events/:eventId/registration",
+      "raw_path": "/api/events/$eventId/registration",
+      "file": "lib/features/events/data/event_repository.dart",
+      "line": 156
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/events/:eventId/waitlist",
+      "raw_path": "/api/events/$eventId/waitlist",
+      "file": "lib/features/events/data/event_repository.dart",
+      "line": 162
+    },
+    {
+      "method": "POST",
+      "path": "/api/events/:eventId/waitlist",
+      "raw_path": "/api/events/$eventId/waitlist",
+      "file": "lib/features/events/data/event_repository.dart",
+      "line": 160
+    },
+    {
+      "method": "GET",
+      "path": "/api/events/me",
+      "raw_path": "/api/events/me",
+      "file": "lib/features/events/data/event_repository.dart",
+      "line": 144
+    },
+    {
+      "method": "GET",
+      "path": "/api/gifts",
+      "raw_path": "/api/gifts",
+      "file": "lib/features/monetization/data/monetization_repository.dart",
+      "line": 257
+    },
+    {
+      "method": "POST",
+      "path": "/api/gifts/send",
+      "raw_path": "/api/gifts/send",
+      "file": "lib/features/monetization/data/monetization_repository.dart",
+      "line": 274
+    },
+    {
+      "method": "GET",
+      "path": "/api/host/dashboard",
+      "raw_path": "/api/host/dashboard",
+      "file": "lib/features/events/data/event_repository.dart",
+      "line": 109
+    },
+    {
+      "method": "POST",
+      "path": "/api/host/events",
+      "raw_path": "/api/host/events",
+      "file": "lib/features/events/data/event_repository.dart",
+      "line": 118
+    },
+    {
+      "method": "PUT",
+      "path": "/api/host/events/:eventId",
+      "raw_path": "/api/host/events/$eventId",
+      "file": "lib/features/events/data/event_repository.dart",
+      "line": 130
+    },
+    {
+      "method": "GET",
+      "path": "/api/matches",
+      "raw_path": "/api/matches",
+      "file": "lib/core/api/phase_two_api_service.dart",
+      "line": 33
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/matches/:matchId",
+      "raw_path": "/api/matches/$matchId",
+      "file": "lib/core/api/phase_two_api_service.dart",
+      "line": 73
+    },
+    {
+      "method": "GET",
+      "path": "/api/matches/:matchId",
+      "raw_path": "/api/matches/$matchId",
+      "file": "lib/core/api/phase_two_api_service.dart",
+      "line": 43
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/messages/:messageId",
+      "raw_path": "/api/messages/$messageId",
+      "file": "lib/features/chat/data/chat_repository.dart",
+      "line": 488
+    },
+    {
+      "method": "GET",
+      "path": "/api/messages/:messageId/media/:mediaId",
+      "raw_path": "response media URL",
+      "file": "lib/features/chat/data/chat_repository.dart",
+      "line": 483
+    },
+    {
+      "method": "PUT",
+      "path": "/api/onboarding/age",
+      "raw_path": "/api/onboarding/age",
+      "file": "lib/features/onboarding/data/onboarding_api_service.dart",
+      "line": 54
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboarding/complete",
+      "raw_path": "/api/onboarding/complete",
+      "file": "lib/features/onboarding/data/onboarding_api_service.dart",
+      "line": 161
+    },
+    {
+      "method": "PUT",
+      "path": "/api/onboarding/gender",
+      "raw_path": "/api/onboarding/gender",
+      "file": "lib/features/onboarding/data/onboarding_api_service.dart",
+      "line": 63
+    },
+    {
+      "method": "PUT",
+      "path": "/api/onboarding/interested-in",
+      "raw_path": "/api/onboarding/interested-in",
+      "file": "lib/features/onboarding/data/onboarding_api_service.dart",
+      "line": 71
+    },
+    {
+      "method": "PUT",
+      "path": "/api/onboarding/location",
+      "raw_path": "/api/onboarding/location",
+      "file": "lib/features/onboarding/data/onboarding_api_service.dart",
+      "line": 88
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboarding/photos",
+      "raw_path": "/api/onboarding/photos",
+      "file": "lib/features/onboarding/data/onboarding_api_service.dart",
+      "line": 113
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/onboarding/photos/:index",
+      "raw_path": "/api/onboarding/photos/$index",
+      "file": "lib/features/onboarding/data/onboarding_api_service.dart",
+      "line": 150
+    },
+    {
+      "method": "PUT",
+      "path": "/api/onboarding/photos/primary",
+      "raw_path": "/api/onboarding/photos/primary",
+      "file": "lib/features/onboarding/data/onboarding_api_service.dart",
+      "line": 156
+    },
+    {
+      "method": "PUT",
+      "path": "/api/onboarding/profile-completion",
+      "raw_path": "/api/onboarding/profile-completion",
+      "file": "lib/features/onboarding/data/onboarding_api_service.dart",
+      "line": 108
+    },
+    {
+      "method": "PUT",
+      "path": "/api/onboarding/relationship-goal",
+      "raw_path": "/api/onboarding/relationship-goal",
+      "file": "lib/features/onboarding/data/onboarding_api_service.dart",
+      "line": 79
+    },
+    {
+      "method": "PUT",
+      "path": "/api/onboarding/starter-profile",
+      "raw_path": "/api/onboarding/starter-profile",
+      "file": "lib/features/onboarding/data/onboarding_api_service.dart",
+      "line": 98
+    },
+    {
+      "method": "GET",
+      "path": "/api/onboarding/status",
+      "raw_path": "/api/onboarding/status",
+      "file": "lib/features/onboarding/data/onboarding_api_service.dart",
+      "line": 48
+    },
+    {
+      "method": "POST",
+      "path": "/api/payments/orders",
+      "raw_path": "/api/payments/orders",
+      "file": "lib/features/monetization/data/monetization_repository.dart",
+      "line": 105
+    },
+    {
+      "method": "POST",
+      "path": "/api/payments/verify",
+      "raw_path": "/api/payments/verify",
+      "file": "lib/features/monetization/data/monetization_repository.dart",
+      "line": 120
+    },
+    {
+      "method": "GET",
+      "path": "/api/profiles/:userId",
+      "raw_path": "/api/profiles/$userId",
+      "file": "lib/core/api/phase_two_api_service.dart",
+      "line": 25
+    },
+    {
+      "method": "POST",
+      "path": "/api/realtime/token",
+      "raw_path": "/api/realtime/token",
+      "file": "lib/features/chat/data/chat_repository.dart",
+      "line": 538
+    },
+    {
+      "method": "POST",
+      "path": "/api/reports",
+      "raw_path": "/api/reports",
+      "file": "lib/core/api/phase_two_api_service.dart",
+      "line": 84
+    },
+    {
+      "method": "POST",
+      "path": "/api/reports/:reportId/evidence",
+      "raw_path": "/api/reports/$reportId/evidence",
+      "file": "lib/core/api/phase_two_api_service.dart",
+      "line": 100
+    },
+    {
+      "method": "POST",
+      "path": "/api/subscriptions/cancel",
+      "raw_path": "/api/subscriptions/cancel",
+      "file": "lib/features/monetization/data/monetization_repository.dart",
+      "line": 71
+    },
+    {
+      "method": "GET",
+      "path": "/api/subscriptions/me",
+      "raw_path": "/api/subscriptions/me",
+      "file": "lib/features/monetization/data/monetization_repository.dart",
+      "line": 61
+    },
+    {
+      "method": "GET",
+      "path": "/api/subscriptions/plans",
+      "raw_path": "/api/subscriptions/plans",
+      "file": "lib/features/monetization/data/monetization_repository.dart",
+      "line": 50
+    },
+    {
+      "method": "POST",
+      "path": "/api/subscriptions/restore",
+      "raw_path": "/api/subscriptions/restore",
+      "file": "lib/features/monetization/data/monetization_repository.dart",
+      "line": 82
+    },
+    {
+      "method": "GET",
+      "path": "/api/wallet",
+      "raw_path": "/api/wallet",
+      "file": "lib/features/monetization/data/monetization_repository.dart",
+      "line": 138
+    },
+    {
+      "method": "GET",
+      "path": "/api/wallet/products",
+      "raw_path": "/api/wallet/products",
+      "file": "lib/features/monetization/data/monetization_repository.dart",
+      "line": 146
+    },
+    {
+      "method": "POST",
+      "path": "/api/wallet/redemptions",
+      "raw_path": "/api/wallet/redemptions",
+      "file": "lib/features/monetization/data/monetization_repository.dart",
+      "line": 195
+    },
+    {
+      "method": "POST",
+      "path": "/api/wallet/top-up/orders",
+      "raw_path": "/api/wallet/top-up/orders",
+      "file": "lib/features/monetization/data/monetization_repository.dart",
+      "line": 208
+    },
+    {
+      "method": "GET",
+      "path": "/api/wallet/transactions",
+      "raw_path": "/api/wallet/transactions",
+      "file": "lib/features/monetization/data/monetization_repository.dart",
+      "line": 171
+    }
+  ],
+  "dart": {
+    "dart_file_count": 208,
+    "presentation_file_count": 114,
+    "route_definition_count": 99,
+    "route_definitions": [
+      {
+        "path": "/accessibility-settings",
+        "file": "lib/features/accessibility/presentation/accessibility_settings_screen.dart",
+        "line": 13
+      },
+      {
+        "path": "/account-verification",
+        "file": "lib/features/auth/presentation/account_verification_screen.dart",
+        "line": 54
+      },
+      {
+        "path": "/admin-panel",
+        "file": "lib/features/admin/presentation/admin_panel_screen.dart",
+        "line": 14
+      },
+      {
+        "path": "/advanced-ai-discovery",
+        "file": "lib/features/roadmap/presentation/phase23_premium_screens.dart",
+        "line": 486
+      },
+      {
+        "path": "/ai-coach",
+        "file": "lib/features/ai_coach/presentation/ai_dating_coach_screen.dart",
+        "line": 12
+      },
+      {
+        "path": "/ai-deepfake-detection",
+        "file": "lib/features/roadmap/presentation/phase23_premium_screens.dart",
+        "line": 133
+      },
+      {
+        "path": "/ai-group-dating-rooms",
+        "file": "lib/features/roadmap/presentation/phase23_premium_screens.dart",
+        "line": 712
+      },
+      {
+        "path": "/ai-icebreakers",
+        "file": "lib/features/ai_coach/presentation/ai_icebreakers_screen.dart",
+        "line": 19
+      },
+      {
+        "path": "/ai-learning-dashboard",
+        "file": "lib/features/roadmap/presentation/phase23_premium_screens.dart",
+        "line": 55
+      },
+      {
+        "path": "/astrology-matching",
+        "file": "lib/features/roadmap/presentation/phase23_premium_screens.dart",
+        "line": 522
+      },
+      {
+        "path": "/bio-builder",
+        "file": "lib/features/profile/presentation/bio_builder_screen.dart",
+        "line": 19
+      },
+      {
+        "path": "/blocked-profiles",
+        "file": "lib/features/settings/presentation/managed_profiles_screen.dart",
+        "line": 58
+      },
+      {
+        "path": "/browse",
+        "file": "lib/features/discover/presentation/browse_grid_screen.dart",
+        "line": 55
+      },
+      {
+        "path": "/business-networking",
+        "file": "lib/features/roadmap/presentation/phase23_premium_screens.dart",
+        "line": 676
+      },
+      {
+        "path": "/camera-roll-scan",
+        "file": "lib/features/roadmap/presentation/phase23_premium_screens.dart",
+        "line": 96
+      },
+      {
+        "path": "/chat-detail",
+        "file": "lib/features/chat/presentation/chat_detail_screen.dart",
+        "line": 53
+      },
+      {
+        "path": "/chats",
+        "file": "lib/features/chat/presentation/chat_list_screen.dart",
+        "line": 24
+      },
+      {
+        "path": "/community-events",
+        "file": "lib/features/roadmap/presentation/phase23_premium_screens.dart",
+        "line": 748
+      },
+      {
+        "path": "/community-filters",
+        "file": "lib/features/roadmap/presentation/phase23_premium_screens.dart",
+        "line": 630
+      },
+      {
+        "path": "/community-guidelines",
+        "file": "lib/features/legal/presentation/community_guidelines_screen.dart",
+        "line": 7
+      },
+      {
+        "path": "/compatibility",
+        "file": "lib/features/auth/presentation/compatibility_onboarding_screen.dart",
+        "line": 17
+      },
+      {
+        "path": "/dark-mode-settings",
+        "file": "lib/features/theme/presentation/dark_mode_settings_screen.dart",
+        "line": 12
+      },
+      {
+        "path": "/data-export",
+        "file": "lib/features/privacy/presentation/data_export_screen.dart",
+        "line": 11
+      },
+      {
+        "path": "/date-spots",
+        "file": "lib/features/date_spots/presentation/date_spots_map_screen.dart",
+        "line": 17
+      },
+      {
+        "path": "/dating-recap",
+        "file": "lib/features/insights/presentation/dating_recap_screen.dart",
+        "line": 12
+      },
+      {
+        "path": "/deactivate-account",
+        "file": "lib/features/settings/presentation/account_action_screens.dart",
+        "line": 53
+      },
+      {
+        "path": "/dealbreakers",
+        "file": "lib/features/preferences/presentation/dealbreakers_screen.dart",
+        "line": 17
+      },
+      {
+        "path": "/delete-account",
+        "file": "lib/features/settings/presentation/account_action_screens.dart",
+        "line": 168
+      },
+      {
+        "path": "/discover",
+        "file": "lib/features/discover/presentation/discover_screen.dart",
+        "line": 8
+      },
+      {
+        "path": "/edit-profile",
+        "file": "lib/features/profile/presentation/profile_edit_screen.dart",
+        "line": 10
+      },
+      {
+        "path": "/event-detail",
+        "file": "lib/features/events/presentation/event_detail_screen.dart",
+        "line": 28
+      },
+      {
+        "path": "/event-group-chat",
+        "file": "lib/features/events/presentation/event_group_chat_screen.dart",
+        "line": 16
+      },
+      {
+        "path": "/event-planning-dashboard",
+        "file": "lib/features/roadmap/presentation/phase23_premium_screens.dart",
+        "line": 373
+      },
+      {
+        "path": "/event-waitlist",
+        "file": "lib/features/events/presentation/event_waitlist_screen.dart",
+        "line": 14
+      },
+      {
+        "path": "/events",
+        "file": "lib/features/events/presentation/events_browse_screen.dart",
+        "line": 19
+      },
+      {
+        "path": "/filters",
+        "file": "lib/features/discover/presentation/advanced_filters_screen.dart",
+        "line": 65
+      },
+      {
+        "path": "/first-date-question-deck",
+        "file": "lib/features/roadmap/presentation/phase23_premium_screens.dart",
+        "line": 174
+      },
+      {
+        "path": "/forgot-password",
+        "file": "lib/features/auth/presentation/forgot_password_screen.dart",
+        "line": 20
+      },
+      {
+        "path": "/friendship-mode",
+        "file": "lib/features/roadmap/presentation/phase23_premium_screens.dart",
+        "line": 558
+      },
+      {
+        "path": "/gift-shop-catalog",
+        "file": "lib/features/commerce/presentation/gift_catalog_screen.dart",
+        "line": 13
+      },
+      {
+        "path": "/group-meetups",
+        "file": "lib/features/roadmap/presentation/phase23_premium_screens.dart",
+        "line": 337
+      },
+      {
+        "path": "/home",
+        "file": "lib/features/home/presentation/amora_home_screen.dart",
+        "line": 46
+      },
+      {
+        "path": "/host-dashboard",
+        "file": "lib/features/host/presentation/host_dashboard_screen.dart",
+        "line": 14
+      },
+      {
+        "path": "/human-matchmaker",
+        "file": "lib/features/roadmap/presentation/phase23_premium_screens.dart",
+        "line": 409
+      },
+      {
+        "path": "/kyc",
+        "file": "lib/features/profile/presentation/kyc_verification_screen.dart",
+        "line": 32
+      },
+      {
+        "path": "/language-selection",
+        "file": "lib/features/settings/presentation/language_selection_screen.dart",
+        "line": 13
+      },
+      {
+        "path": "/liked-you-paywall",
+        "file": "lib/features/monetization/presentation/liked_you_paywall_screen.dart",
+        "line": 17
+      },
+      {
+        "path": "/likes-super-likes",
+        "file": "lib/features/settings/presentation/likes_super_likes_screen.dart",
+        "line": 18
+      },
+      {
+        "path": "/liveness-check",
+        "file": "lib/features/roadmap/presentation/roadmap_feature_screens.dart",
+        "line": 10
+      },
+      {
+        "path": "/login",
+        "file": "lib/features/auth/presentation/login_screen.dart",
+        "line": 17
+      },
+      {
+        "path": "/logout",
+        "file": "lib/features/settings/presentation/account_action_screens.dart",
+        "line": 19
+      },
+      {
+        "path": "/main",
+        "file": "lib/core/navigation/main_shell.dart",
+        "line": 19
+      },
+      {
+        "path": "/match",
+        "file": "lib/features/messaging/presentation/match_screen.dart",
+        "line": 22
+      },
+      {
+        "path": "/matches",
+        "file": "lib/features/matches/presentation/matches_screen.dart",
+        "line": 29
+      },
+      {
+        "path": "/my-events",
+        "file": "lib/features/events/presentation/my_events_screen.dart",
+        "line": 18
+      },
+      {
+        "path": "/notification-preferences",
+        "file": "lib/features/settings/presentation/notification_preferences_screen.dart",
+        "line": 17
+      },
+      {
+        "path": "/notifications",
+        "file": "lib/features/notifications/presentation/notifications_hub_screen.dart",
+        "line": 19
+      },
+      {
+        "path": "/offline-mode",
+        "file": "lib/features/settings/presentation/offline_mode_screen.dart",
+        "line": 13
+      },
+      {
+        "path": "/onboarding",
+        "file": "lib/features/onboarding/presentation/onboarding_screen.dart",
+        "line": 18
+      },
+      {
+        "path": "/payment",
+        "file": "lib/features/payment/presentation/payment_screen.dart",
+        "line": 33
+      },
+      {
+        "path": "/photo-manager",
+        "file": "lib/features/profile/presentation/photo_manager_screen.dart",
+        "line": 37
+      },
+      {
+        "path": "/poll-prompts",
+        "file": "lib/features/roadmap/presentation/roadmap_feature_screens.dart",
+        "line": 85
+      },
+      {
+        "path": "/post-event-feedback",
+        "file": "lib/features/events/presentation/post_event_feedback_screen.dart",
+        "line": 25
+      },
+      {
+        "path": "/privacy-policy",
+        "file": "lib/features/legal/presentation/legal_document_screen.dart",
+        "line": 33
+      },
+      {
+        "path": "/professional-networking",
+        "file": "lib/features/roadmap/presentation/phase23_premium_screens.dart",
+        "line": 594
+      },
+      {
+        "path": "/profile",
+        "file": "lib/features/profile/presentation/profile_screen.dart",
+        "line": 39
+      },
+      {
+        "path": "/profile-basic-details",
+        "file": "lib/features/profile/presentation/profile_basic_details_screen.dart",
+        "line": 18
+      },
+      {
+        "path": "/profile-boost",
+        "file": "lib/features/monetization/presentation/profile_boost_screen.dart",
+        "line": 19
+      },
+      {
+        "path": "/profile-completion",
+        "file": "lib/features/profile/presentation/profile_completion_screen.dart",
+        "line": 26
+      },
+      {
+        "path": "/profile-detail",
+        "file": "lib/features/profile/presentation/profile_detail_screen.dart",
+        "line": 45
+      },
+      {
+        "path": "/profile-onboarding",
+        "file": "lib/features/onboarding/presentation/profile_onboarding_flow.dart",
+        "line": 24
+      },
+      {
+        "path": "/profile-preview",
+        "file": "lib/features/profile/presentation/profile_preview_screen.dart",
+        "line": 17
+      },
+      {
+        "path": "/profile-settings",
+        "file": "lib/features/settings/presentation/profile_settings_screen.dart",
+        "line": 22
+      },
+      {
+        "path": "/profile-setup",
+        "file": "lib/features/profile/presentation/profile_setup_screen.dart",
+        "line": 20
+      },
+      {
+        "path": "/refer-earn",
+        "file": "lib/features/referral/presentation/refer_earn_screen.dart",
+        "line": 15
+      },
+      {
+        "path": "/referral-leaderboard",
+        "file": "lib/features/referral/presentation/referral_leaderboard_screen.dart",
+        "line": 13
+      },
+      {
+        "path": "/relationship-ecosystem",
+        "file": "lib/features/roadmap/presentation/phase23_premium_screens.dart",
+        "line": 11
+      },
+      {
+        "path": "/relationship-prediction",
+        "file": "lib/features/roadmap/presentation/phase23_premium_screens.dart",
+        "line": 265
+      },
+      {
+        "path": "/report-flow",
+        "file": "lib/features/safety/presentation/report_flow_screen.dart",
+        "line": 26
+      },
+      {
+        "path": "/reset-password",
+        "file": "lib/features/auth/presentation/reset_password_screen.dart",
+        "line": 28
+      },
+      {
+        "path": "/safety-center",
+        "file": "lib/features/settings/presentation/safety_privacy_screen.dart",
+        "line": 23
+      },
+      {
+        "path": "/saved-profiles",
+        "file": "lib/features/settings/presentation/managed_profiles_screen.dart",
+        "line": 21
+      },
+      {
+        "path": "/send-gift",
+        "file": "lib/features/commerce/presentation/send_gift_screen.dart",
+        "line": 12
+      },
+      {
+        "path": "/settings",
+        "file": "lib/features/settings/presentation/settings_screen.dart",
+        "line": 20
+      },
+      {
+        "path": "/signup",
+        "file": "lib/features/auth/presentation/signup_screen.dart",
+        "line": 21
+      },
+      {
+        "path": "/sos-checkin",
+        "file": "lib/features/safety/presentation/sos_checkin_screen.dart",
+        "line": 17
+      },
+      {
+        "path": "/splash",
+        "file": "lib/features/splash/presentation/amora_splash_screen.dart",
+        "line": 11
+      },
+      {
+        "path": "/stories",
+        "file": "lib/features/roadmap/presentation/roadmap_feature_screens.dart",
+        "line": 25
+      },
+      {
+        "path": "/subscription",
+        "file": "lib/features/subscription/presentation/subscription_screen.dart",
+        "line": 23
+      },
+      {
+        "path": "/success-stories",
+        "file": "lib/features/social_proof/presentation/success_stories_screen.dart",
+        "line": 14
+      },
+      {
+        "path": "/support",
+        "file": "lib/features/support/presentation/faq_support_screen.dart",
+        "line": 21
+      },
+      {
+        "path": "/terms",
+        "file": "lib/features/legal/presentation/legal_document_screen.dart",
+        "line": 14
+      },
+      {
+        "path": "/travel-mode",
+        "file": "lib/features/roadmap/presentation/phase23_premium_screens.dart",
+        "line": 450
+      },
+      {
+        "path": "/trusted-contacts",
+        "file": "lib/features/roadmap/presentation/roadmap_feature_screens.dart",
+        "line": 55
+      },
+      {
+        "path": "/twenty-questions",
+        "file": "lib/features/roadmap/presentation/roadmap_feature_screens.dart",
+        "line": 40
+      },
+      {
+        "path": "/video-speed-dating-room",
+        "file": "lib/features/roadmap/presentation/roadmap_feature_screens.dart",
+        "line": 70
+      },
+      {
+        "path": "/virtual-speed-dating",
+        "file": "lib/features/roadmap/presentation/phase23_premium_screens.dart",
+        "line": 301
+      },
+      {
+        "path": "/wallet",
+        "file": "lib/features/wallet/presentation/amora_wallet_screen.dart",
+        "line": 16
+      },
+      {
+        "path": "/why-we-matched",
+        "file": "lib/features/match/presentation/why_we_matched_screen.dart",
+        "line": 18
+      }
+    ]
+  },
+  "backend_endpoint_count": 83,
+  "frontend_endpoint_literal_count": 82
+}
