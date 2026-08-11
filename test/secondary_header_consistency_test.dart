@@ -14,12 +14,14 @@ void main() {
     String? subtitle,
     double width = 320,
     double textScale = 1,
+    int actionCount = 1,
+    bool useAmoraTheme = true,
   }) async {
     await tester.binding.setSurfaceSize(Size(width, 640));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(
       MaterialApp(
-        theme: AmoraTheme.light(),
+        theme: useAmoraTheme ? AmoraTheme.light() : null,
         builder: (context, child) => MediaQuery(
           data: MediaQuery.of(
             context,
@@ -32,11 +34,14 @@ void main() {
             subtitle: subtitle,
             onBack: () {},
             actions: [
-              AmoraHeaderActionButton(
-                tooltip: 'More',
-                icon: Icons.more_horiz_rounded,
-                onPressed: () {},
-              ),
+              for (var index = 0; index < actionCount; index++)
+                AmoraHeaderActionButton(
+                  tooltip: index == 0 ? 'More' : 'Action $index',
+                  icon: index == 0
+                      ? Icons.mark_email_read_rounded
+                      : Icons.settings_rounded,
+                  onPressed: () {},
+                ),
             ],
           ),
           body: const SizedBox.expand(),
@@ -166,5 +171,50 @@ void main() {
         );
       }
     }
+  });
+
+  testWidgets('secondary headers align to the responsive content grid', (
+    tester,
+  ) async {
+    for (final width in <double>[320, 390, 430, 600, 768]) {
+      await pumpHeader(
+        tester,
+        title: 'Notification Preferences',
+        subtitle: 'Stay informed without the noise.',
+        width: width,
+      );
+
+      final frameWidth = width < 460 ? width : 460.0;
+      final frameLeft = (width - frameWidth) / 2;
+      final expectedLeft = frameLeft + AmoraHeaderTokens.contentHorizontalInset;
+      final expectedRight =
+          frameLeft + frameWidth - AmoraHeaderTokens.contentHorizontalInset;
+      final back = tester.getRect(find.byType(AmoraHeaderBackButton));
+      final action = tester.getRect(find.byType(AmoraHeaderActionButton));
+      final title = tester.getRect(find.text('Notification Preferences'));
+
+      expect(back.left, closeTo(expectedLeft, .1));
+      expect(action.right, closeTo(expectedRight, .1));
+      expect(
+        title.left,
+        closeTo(back.right + AmoraHeaderTokens.backTitleGap, .1),
+      );
+      expect(back.center.dy, closeTo(action.center.dy, .1));
+      expect(tester.takeException(), isNull);
+    }
+  });
+
+  testWidgets('two-action headers fit compact scaled layouts', (tester) async {
+    await pumpHeader(
+      tester,
+      title: 'Notifications',
+      width: 320,
+      textScale: 1.3,
+      actionCount: 2,
+      useAmoraTheme: false,
+    );
+
+    expect(find.byType(AmoraHeaderActionButton), findsNWidgets(2));
+    expect(tester.takeException(), isNull);
   });
 }

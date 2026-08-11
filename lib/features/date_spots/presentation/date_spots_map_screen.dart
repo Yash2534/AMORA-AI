@@ -1,6 +1,4 @@
-import 'package:amora_ai/core/theme/amora_icons.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
-import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/amora_search_bar.dart';
 import 'package:amora_ai/core/widgets/amora_app_bar.dart';

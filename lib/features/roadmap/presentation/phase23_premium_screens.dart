@@ -838,11 +838,7 @@ class _PremiumScaffold extends StatelessWidget {
               slivers: [
                 SliverPadding(
                   padding: const EdgeInsets.fromLTRB(20, 16, 20, 110),
-                  sliver: SliverList.list(
-                    children: [
-                      ...children,
-                    ],
-                  ),
+                  sliver: SliverList.list(children: [...children]),
                 ),
               ],
             ),

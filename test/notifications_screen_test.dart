@@ -3,7 +3,9 @@ import 'package:amora_ai/core/widgets/amora_filter_chip.dart';
 import 'package:amora_ai/core/widgets/amoraa_select_field.dart';
 import 'package:amora_ai/features/notifications/data/notification_inbox_repository.dart';
 import 'package:amora_ai/features/notifications/presentation/notifications_hub_screen.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class _NotificationRemote implements NotificationInboxRemoteDataSource {
@@ -163,6 +165,7 @@ void main() {
     WidgetTester tester, {
     ValueChanged<RouteSettings>? onRoute,
     _NotificationRemote? remote,
+    double textScale = 1,
   }) async {
     final repository = NotificationInboxRepository(
       remote: remote ?? _NotificationRemote(),
@@ -170,6 +173,12 @@ void main() {
     addTearDown(repository.dispose);
     await tester.pumpWidget(
       MaterialApp(
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(
+            context,
+          ).copyWith(textScaler: TextScaler.linear(textScale)),
+          child: child!,
+        ),
         home: NotificationsHubScreen(repository: repository),
         onGenerateRoute: (settings) {
           onRoute?.call(settings);
@@ -242,6 +251,35 @@ void main() {
     expect(find.text('Your most meaningful update comes first'), findsNothing);
     expect(find.text('Mark all as read'), findsNothing);
     expect(find.textContaining('Push token'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('header and feed remain overflow-free at 1.3x text', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(320, 760));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await pumpNotifications(
+      tester,
+      remote: _NotificationRemote(empty: true),
+      textScale: 1.3,
+    );
+    final previousDebugPrint = debugPrint;
+    var remainingFlexLines = 0;
+    debugPrint = (message, {wrapWidth}) {
+      for (final line in (message ?? '').split('\n')) {
+        if (line.contains('RenderFlex#')) remainingFlexLines = 12;
+        if (remainingFlexLines > 0) {
+          previousDebugPrint(line, wrapWidth: wrapWidth);
+          remainingFlexLines--;
+        }
+      }
+    };
+    debugDumpRenderTree();
+    debugPrint = previousDebugPrint;
+
+    expect(find.text('Notifications'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
