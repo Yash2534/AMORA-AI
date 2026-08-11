@@ -334,7 +334,7 @@ void main() {
     await pumpChats(tester, size: const Size(1200, 900));
 
     final appBarRect = tester.getRect(find.byType(ChatsAppBar));
-    expect(appBarRect.width, lessThanOrEqualTo(648));
+    expect(appBarRect.width, lessThanOrEqualTo(680));
     expect(appBarRect.center.dx, closeTo(600, 1));
     expect(find.byType(ConversationTile), findsWidgets);
     expect(tester.takeException(), isNull);

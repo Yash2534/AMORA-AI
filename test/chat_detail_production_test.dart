@@ -1,4 +1,5 @@
 import 'package:amora_ai/core/data/image_repository.dart';
+import 'package:amora_ai/core/theme/amora_header_tokens.dart';
 import 'package:amora_ai/features/chat/data/local_chat_repository.dart';
 import 'package:amora_ai/features/chat/presentation/chat_detail_screen.dart';
 import 'package:amora_ai/features/chat/presentation/widgets/chat_presence_avatar.dart';
@@ -128,8 +129,11 @@ void main() {
     expect(avatar.right, lessThan(identity.left));
     expect(identity.left - avatar.right, closeTo(10, .1));
     expect(identity.right, lessThanOrEqualTo(more.left));
-    expect(back.left, closeTo(16, .1));
-    expect(more.right, closeTo(304, .1));
+    expect(back.left, closeTo(AmoraHeaderTokens.pageHorizontalInset, .1));
+    expect(
+      more.right,
+      closeTo(320 - AmoraHeaderTokens.pageHorizontalInset, .1),
+    );
     expect(back.size, const Size.square(48));
     expect(more.size, const Size.square(48));
     expect(back.center.dy, closeTo(more.center.dy, .1));
@@ -185,8 +189,11 @@ void main() {
       final more = tester.getRect(
         find.byKey(const ValueKey('chat-header-more')),
       );
-      expect(back.left, closeTo(16, .1));
-      expect(more.right, closeTo(width - 16, .1));
+      expect(back.left, closeTo(AmoraHeaderTokens.pageHorizontalInset, .1));
+      expect(
+        more.right,
+        closeTo(width - AmoraHeaderTokens.pageHorizontalInset, .1),
+      );
       expect(back.center.dy, closeTo(more.center.dy, .1));
       expect(back.center.dy, closeTo(avatar.center.dy, .1));
       expect(back.center.dy, closeTo(identity.center.dy, .1));

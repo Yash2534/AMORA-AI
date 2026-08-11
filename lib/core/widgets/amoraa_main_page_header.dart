@@ -8,7 +8,6 @@ class AmoraaMainPageHeader extends StatelessWidget {
     super.key,
     required this.actions,
     this.title,
-    this.subtitle,
     this.titleWidget,
   }) : assert(
          (title == null) != (titleWidget == null),
@@ -21,89 +20,146 @@ class AmoraaMainPageHeader extends StatelessWidget {
       AmoraHeaderTokens.contentHorizontalInset;
   static const double safeTopSpacing = AmoraHeaderTokens.safeTopSpacing;
   static const double contentSpacing = AmoraHeaderTokens.mainBodyGap;
-  static const double compactHeight = AmoraHeaderTokens.singleLineHeight;
+  static const double compactHeight = AmoraHeaderTokens.mainToolbarHeight;
   static const double scaledHeight = AmoraHeaderTokens.scaledMainHeight;
   static const double verticalPadding = 0;
   static const double actionSize = AmoraHeaderTokens.touchTarget;
   static const double actionIconSize = AmoraHeaderTokens.iconSize;
   static const double actionSpacing = AmoraHeaderTokens.actionGap;
-  static const double textActionSpacing = AmoraHeaderTokens.actionGap;
+  static const double textActionSpacing = AmoraHeaderTokens.titleActionGap;
   static const TextStyle titleStyle = AmoraHeaderTokens.titleStyle;
-  static const TextStyle subtitleStyle = AmoraHeaderTokens.subtitleStyle;
 
   final String? title;
-  final String? subtitle;
   final Widget? titleWidget;
   final List<Widget> actions;
 
-  static double heightFor(BuildContext context) {
+  static double toolbarHeightFor(BuildContext context) {
     final scale = MediaQuery.textScalerOf(context).scale(1);
     if (scale > 1.15) return scaledHeight;
-    if (scale > 1) return 64;
     return compactHeight;
   }
 
-  static double sliverExtentFor(BuildContext context) =>
-      heightFor(context) + safeTopSpacing;
+  static double extentFor(BuildContext context) =>
+      toolbarHeightFor(context) + safeTopSpacing;
+
+  static double heightFor(BuildContext context) => toolbarHeightFor(context);
+
+  static double sliverExtentFor(BuildContext context) => extentFor(context);
+
+  @override
+  Widget build(BuildContext context) {
+    return AmoraaMainPageHeaderFrame(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(child: titleWidget ?? _HeaderText(title!)),
+          if (actions.isNotEmpty) ...[
+            const SizedBox(width: textActionSpacing),
+            for (var index = 0; index < actions.length; index++) ...[
+              if (index > 0) const SizedBox(width: actionSpacing),
+              actions[index],
+            ],
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Owns the complete main-header geometry so individual pages cannot add
+/// competing top or horizontal padding.
+class AmoraaMainPageHeaderFrame extends StatelessWidget {
+  const AmoraaMainPageHeaderFrame({super.key, required this.child});
+
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: heightFor(context),
+      height: AmoraaMainPageHeader.extentFor(context),
       child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: contentHorizontalInset - pageHorizontalInset,
-          vertical: verticalPadding,
+        padding: const EdgeInsets.fromLTRB(
+          AmoraaMainPageHeader.contentHorizontalInset,
+          AmoraaMainPageHeader.safeTopSpacing,
+          AmoraaMainPageHeader.contentHorizontalInset,
+          0,
         ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Expanded(child: titleWidget ?? _HeaderText(title!, subtitle)),
-            if (actions.isNotEmpty) ...[
-              const SizedBox(width: textActionSpacing),
-              for (var index = 0; index < actions.length; index++) ...[
-                if (index > 0) const SizedBox(width: actionSpacing),
-                actions[index],
-              ],
-            ],
-          ],
+        child: SizedBox(
+          height: AmoraaMainPageHeader.toolbarHeightFor(context),
+          child: child,
         ),
       ),
     );
   }
 }
 
-class _HeaderText extends StatelessWidget {
-  const _HeaderText(this.title, this.subtitle);
+/// Shared pinned adapter for main destinations built with slivers.
+class AmoraaPinnedMainPageHeader extends StatelessWidget {
+  const AmoraaPinnedMainPageHeader({
+    super.key,
+    required this.child,
+    this.pinned = true,
+  });
 
-  final String title;
-  final String? subtitle;
+  final Widget child;
+  final bool pinned;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Semantics(
-          header: true,
-          child: Text(
-            title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: AmoraaMainPageHeader.titleStyle,
-          ),
-        ),
-        if (subtitle != null) ...[
-          const SizedBox(height: AmoraHeaderTokens.titleSubtitleGap),
-          Text(
-            subtitle!,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: AmoraaMainPageHeader.subtitleStyle,
-          ),
-        ],
-      ],
+    return SliverPersistentHeader(
+      pinned: pinned,
+      delegate: _AmoraaMainPageHeaderDelegate(
+        extent: AmoraaMainPageHeader.extentFor(context),
+        child: child,
+      ),
+    );
+  }
+}
+
+class _AmoraaMainPageHeaderDelegate extends SliverPersistentHeaderDelegate {
+  const _AmoraaMainPageHeaderDelegate({
+    required this.extent,
+    required this.child,
+  });
+
+  final double extent;
+  final Widget child;
+
+  @override
+  double get minExtent => extent;
+
+  @override
+  double get maxExtent => extent;
+
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    return ColoredBox(color: AppColors.background, child: child);
+  }
+
+  @override
+  bool shouldRebuild(covariant _AmoraaMainPageHeaderDelegate oldDelegate) =>
+      oldDelegate.extent != extent || oldDelegate.child != child;
+}
+
+class _HeaderText extends StatelessWidget {
+  const _HeaderText(this.title);
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      header: true,
+      child: Text(
+        title,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: AmoraaMainPageHeader.titleStyle,
+      ),
     );
   }
 }

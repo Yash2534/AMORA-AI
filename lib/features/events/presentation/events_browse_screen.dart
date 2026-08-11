@@ -145,14 +145,40 @@ class _EventsMemberExperienceState extends State<EventsMemberExperience> {
 
   @override
   Widget build(BuildContext context) {
+    return Column(
+      children: [
+        EventsAppBar(
+          onSearch: _showSearch,
+          onCalendar: () =>
+              Navigator.of(context).pushNamed(MyEventsScreen.routeName),
+        ),
+        Expanded(child: _buildMemberFeed(context)),
+      ],
+    );
+  }
+
+  Widget _buildMemberFeed(BuildContext context) {
     if (_loading) {
       return const SingleChildScrollView(
-        padding: EdgeInsets.fromLTRB(20, 18, 20, 32),
+        padding: EdgeInsets.fromLTRB(
+          AmoraaMainPageHeader.contentHorizontalInset,
+          AmoraaMainPageHeader.contentSpacing,
+          AmoraaMainPageHeader.contentHorizontalInset,
+          32,
+        ),
         child: EventsSkeleton(),
       );
     }
     if (_loadError) {
-      return Center(child: EventsErrorState(onRetry: _loadEvents));
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(
+          AmoraaMainPageHeader.contentHorizontalInset,
+          AmoraaMainPageHeader.contentSpacing,
+          AmoraaMainPageHeader.contentHorizontalInset,
+          0,
+        ),
+        child: Center(child: EventsErrorState(onRetry: _loadEvents)),
+      );
     }
 
     final filtered = _filteredEvents;
@@ -186,22 +212,11 @@ class _EventsMemberExperienceState extends State<EventsMemberExperience> {
       controller: _scrollController,
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       slivers: [
-        SliverPersistentHeader(
-          pinned: true,
-          delegate: _EventsHeaderDelegate(
-            extent: AmoraaMainPageHeader.sliverExtentFor(context),
-            child: EventsAppBar(
-              onSearch: _showSearch,
-              onCalendar: () =>
-                  Navigator.of(context).pushNamed(MyEventsScreen.routeName),
-            ),
-          ),
-        ),
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(
-            20,
+            AmoraaMainPageHeader.contentHorizontalInset,
             AmoraaMainPageHeader.contentSpacing,
-            20,
+            AmoraaMainPageHeader.contentHorizontalInset,
             0,
           ),
           sliver: SliverList.list(
@@ -680,43 +695,6 @@ class _EventSearchDelegate extends SearchDelegate<EventModel?> {
       },
     );
   }
-}
-
-class _EventsHeaderDelegate extends SliverPersistentHeaderDelegate {
-  const _EventsHeaderDelegate({required this.extent, required this.child});
-
-  final double extent;
-  final Widget child;
-
-  @override
-  double get minExtent => extent;
-
-  @override
-  double get maxExtent => extent;
-
-  @override
-  Widget build(
-    BuildContext context,
-    double shrinkOffset,
-    bool overlapsContent,
-  ) {
-    return ColoredBox(
-      color: AppColors.background,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(
-          AmoraaMainPageHeader.pageHorizontalInset,
-          AmoraaMainPageHeader.safeTopSpacing,
-          AmoraaMainPageHeader.pageHorizontalInset,
-          0,
-        ),
-        child: child,
-      ),
-    );
-  }
-
-  @override
-  bool shouldRebuild(covariant _EventsHeaderDelegate oldDelegate) =>
-      oldDelegate.extent != extent || oldDelegate.child != child;
 }
 
 class _EventRail extends StatelessWidget {

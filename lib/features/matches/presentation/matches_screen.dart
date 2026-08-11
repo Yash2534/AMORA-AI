@@ -150,19 +150,13 @@ class _MatchesScreenState extends State<MatchesScreen> {
                 children: [
                   Column(
                     children: [
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(
-                          AmoraaMainPageHeader.pageHorizontalInset,
-                          AmoraaMainPageHeader.safeTopSpacing,
-                          AmoraaMainPageHeader.pageHorizontalInset,
-                          0,
-                        ),
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 220),
-                          switchInCurve: Curves.easeOutCubic,
-                          switchOutCurve: Curves.easeInCubic,
-                          child: _selectionMode
-                              ? AiMatchesSelectionToolbar(
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 220),
+                        switchInCurve: Curves.easeOutCubic,
+                        switchOutCurve: Curves.easeInCubic,
+                        child: _selectionMode
+                            ? AmoraaMainPageHeaderFrame(
+                                child: AiMatchesSelectionToolbar(
                                   key: const ValueKey(
                                     'ai-matches-selection-toolbar',
                                   ),
@@ -177,15 +171,15 @@ class _MatchesScreenState extends State<MatchesScreen> {
                                   onClose: _exitSelectionMode,
                                   onSelectAll: _selectAllVisible,
                                   onClearAll: _clearSelection,
-                                )
-                              : AiMatchesAppBar(
-                                  key: const ValueKey(
-                                    'ai-matches-default-app-bar',
-                                  ),
-                                  onInfo: _showRecommendationInfo,
-                                  onSelect: _enterSelectionMode,
                                 ),
-                        ),
+                              )
+                            : AiMatchesAppBar(
+                                key: const ValueKey(
+                                  'ai-matches-default-app-bar',
+                                ),
+                                onInfo: _showRecommendationInfo,
+                                onSelect: _enterSelectionMode,
+                              ),
                       ),
                       Expanded(
                         child: _loading
@@ -213,14 +207,12 @@ class _MatchesScreenState extends State<MatchesScreen> {
                                 ),
                                 slivers: [
                                   SliverPadding(
-                                    padding: EdgeInsets.fromLTRB(
-                                      desktop
-                                          ? AmoraSpacing.space24
-                                          : AmoraSpacing.space20,
+                                    padding: const EdgeInsets.fromLTRB(
+                                      AmoraaMainPageHeader
+                                          .contentHorizontalInset,
                                       AmoraSpacing.space8,
-                                      desktop
-                                          ? AmoraSpacing.space24
-                                          : AmoraSpacing.space20,
+                                      AmoraaMainPageHeader
+                                          .contentHorizontalInset,
                                       AmoraSpacing.space12,
                                     ),
                                     sliver: SliverToBoxAdapter(
@@ -258,14 +250,12 @@ class _MatchesScreenState extends State<MatchesScreen> {
                                   ),
                                   SliverToBoxAdapter(
                                     child: Padding(
-                                      padding: EdgeInsets.fromLTRB(
-                                        desktop
-                                            ? AmoraSpacing.space24
-                                            : AmoraSpacing.space20,
+                                      padding: const EdgeInsets.fromLTRB(
+                                        AmoraaMainPageHeader
+                                            .contentHorizontalInset,
                                         AmoraSpacing.space8,
-                                        desktop
-                                            ? AmoraSpacing.space24
-                                            : AmoraSpacing.space20,
+                                        AmoraaMainPageHeader
+                                            .contentHorizontalInset,
                                         AmoraSpacing.space20,
                                       ),
                                       child: AiMatchFilterBar(
@@ -305,10 +295,9 @@ class _MatchesScreenState extends State<MatchesScreen> {
                                     )
                                   else ...[
                                     SliverPadding(
-                                      padding: EdgeInsets.symmetric(
-                                        horizontal: desktop
-                                            ? AmoraSpacing.space24
-                                            : AmoraSpacing.space20,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: AmoraaMainPageHeader
+                                            .contentHorizontalInset,
                                       ),
                                       sliver: SliverToBoxAdapter(
                                         child: Column(
@@ -387,7 +376,8 @@ class _MatchesScreenState extends State<MatchesScreen> {
                                       if (desktop)
                                         SliverPadding(
                                           padding: const EdgeInsets.symmetric(
-                                            horizontal: AmoraSpacing.space24,
+                                            horizontal: AmoraaMainPageHeader
+                                                .contentHorizontalInset,
                                           ),
                                           sliver: SliverGrid.builder(
                                             gridDelegate:
@@ -827,7 +817,6 @@ class AiMatchesAppBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return AmoraaMainPageHeader(
       title: 'AI Matches',
-      subtitle: 'Curated for you',
       actions: [
         AmoraaMainPageHeaderAction(
           key: const ValueKey('ai-matches-select'),

@@ -6,7 +6,7 @@ import 'package:amora_ai/core/widgets/amoraa_main_page_header.dart';
 import 'package:amora_ai/features/chat/presentation/chat_list_screen.dart';
 import 'package:amora_ai/features/events/presentation/widgets/events_widgets.dart';
 import 'package:amora_ai/features/matches/presentation/matches_screen.dart';
-import 'package:amora_ai/features/matches/presentation/widgets/amoraa_inline_compatibility_filter.dart';
+import 'package:amora_ai/features/profile/presentation/profile_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -64,24 +64,31 @@ void main() {
     final headers = find.byType(AmoraaMainPageHeader, skipOffstage: false);
     expect(headers, findsNWidgets(5));
 
-    final rects = headers.evaluate().map(rectFor).toList(growable: false);
     final headerContext = tester.element(headers.first);
     expect(
       AmoraaMainPageHeader.sliverExtentFor(headerContext) -
-          AmoraaMainPageHeader.heightFor(headerContext),
+          AmoraaMainPageHeader.toolbarHeightFor(headerContext),
       AmoraaMainPageHeader.safeTopSpacing,
     );
-    expect(AmoraaMainPageHeader.contentSpacing, inInclusiveRange(8, 12));
+    expect(AmoraaMainPageHeader.contentSpacing, 8);
     expect(AmoraaMainPageHeader.contentHorizontalInset, 20);
-    for (final rect in rects) {
-      expect(rect.left, closeTo(AmoraaMainPageHeader.pageHorizontalInset, .1));
-      expect(rect.right, closeTo(304, .1));
-      expect(rect.top, AmoraaMainPageHeader.safeTopSpacing);
+    for (final header in headers.evaluate()) {
+      final rect = rectFor(header);
+      final contentRect = rectFor(contentRowFor(header));
+      expect(rect.left, 0);
+      expect(rect.right, 320);
+      expect(rect.top, 0);
       expect(
         rect.height,
-        AmoraaMainPageHeader.heightFor(tester.element(headers.first)),
+        AmoraaMainPageHeader.extentFor(tester.element(headers.first)),
       );
-      expect(rect.height, AmoraaMainPageHeader.compactHeight);
+      expect(contentRect.left, AmoraaMainPageHeader.contentHorizontalInset);
+      expect(
+        contentRect.right,
+        320 - AmoraaMainPageHeader.contentHorizontalInset,
+      );
+      expect(contentRect.top, AmoraaMainPageHeader.safeTopSpacing);
+      expect(contentRect.height, AmoraaMainPageHeader.compactHeight);
     }
 
     final actions = find.byType(
@@ -125,7 +132,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('main page titles and subtitles use shared type tokens', (
+  testWidgets('main page titles use one token without redundant subtitles', (
     tester,
   ) async {
     await pumpMainShell(tester, width: 430);
@@ -143,7 +150,10 @@ void main() {
         of: find.byType(EventsAppBar, skipOffstage: false),
         matching: find.text('Events', skipOffstage: false),
       ),
-      find.text('My Dating Identity', skipOffstage: false),
+      find.descendant(
+        of: find.byType(AmoraaMainPageHeader, skipOffstage: false),
+        matching: find.text('Profile', skipOffstage: false),
+      ),
     ];
     for (final finder in titleFinders) {
       expect(
@@ -152,16 +162,13 @@ void main() {
       );
     }
 
-    for (final subtitle in <String>[
+    for (final redundantSubtitle in <String>[
       'Your conversations',
       'Curated for you',
       'Meaningful ways to meet',
       'Your dating identity',
     ]) {
-      expect(
-        tester.widget<Text>(find.text(subtitle, skipOffstage: false)).style,
-        AmoraaMainPageHeader.subtitleStyle,
-      );
+      expect(find.text(redundantSubtitle, skipOffstage: false), findsNothing);
     }
     expect(tester.takeException(), isNull);
   });
@@ -173,10 +180,17 @@ void main() {
 
     final headers = find.byType(AmoraaMainPageHeader, skipOffstage: false);
     expect(headers, findsNWidgets(5));
-    for (final rect in headers.evaluate().map(rectFor)) {
-      expect(rect.left, closeTo(AmoraaMainPageHeader.pageHorizontalInset, .1));
-      expect(rect.right, closeTo(304, .1));
-      expect(rect.height, AmoraaMainPageHeader.scaledHeight);
+    for (final header in headers.evaluate()) {
+      final rect = rectFor(header);
+      final contentRect = rectFor(contentRowFor(header));
+      expect(rect.left, 0);
+      expect(rect.right, 320);
+      expect(
+        rect.height,
+        AmoraaMainPageHeader.scaledHeight + AmoraaMainPageHeader.safeTopSpacing,
+      );
+      expect(contentRect.left, AmoraaMainPageHeader.contentHorizontalInset);
+      expect(contentRect.height, AmoraaMainPageHeader.scaledHeight);
     }
     expect(
       find.byKey(const ValueKey('discover-notifications'), skipOffstage: false),
@@ -211,7 +225,7 @@ void main() {
     for (final finder in <Finder>[
       find.byKey(const ValueKey('discover-filter-rail'), skipOffstage: false),
       find.byKey(const ValueKey('chats-search-container'), skipOffstage: false),
-      find.byType(AmoraaInlineCompatibilityFilter, skipOffstage: false),
+      find.byType(ProfileHero, skipOffstage: false),
     ]) {
       expect(finder, findsOneWidget);
       expect(
@@ -296,14 +310,12 @@ void main() {
         for (final rect in headerElements.map(rectFor)) {
           expect(
             rect.height,
-            AmoraaMainPageHeader.heightFor(context),
+            AmoraaMainPageHeader.extentFor(context),
             reason: 'Header height at $width px and ${textScale}x text scale',
           );
-          expect(rect.height, lessThanOrEqualTo(70));
+          expect(rect.height, lessThanOrEqualTo(60));
         }
-        final internalInset =
-            AmoraaMainPageHeader.contentHorizontalInset -
-            AmoraaMainPageHeader.pageHorizontalInset;
+        const internalInset = AmoraaMainPageHeader.contentHorizontalInset;
         for (final header in headerElements) {
           final headerRect = rectFor(header);
           final contentRect = rectFor(contentRowFor(header));

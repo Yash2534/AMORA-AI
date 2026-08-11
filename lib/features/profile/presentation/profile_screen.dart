@@ -85,18 +85,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: CustomScrollView(
             key: const PageStorageKey('main-profile-scroll'),
             slivers: [
-              SliverPersistentHeader(
-                pinned: true,
-                delegate: _ProfileHeaderDelegate(
-                  extent: AmoraaMainPageHeader.sliverExtentFor(context),
-                  onSettings: () => _open(ProfileSettingsScreen.routeName),
+              AmoraaPinnedMainPageHeader(
+                child: AmoraaMainPageHeader(
+                  title: 'Profile',
+                  actions: [
+                    AmoraaMainPageHeaderAction(
+                      key: const ValueKey('profile-settings-button'),
+                      tooltip: 'Profile settings',
+                      semanticLabel: 'Open profile settings',
+                      onPressed: () => _open(ProfileSettingsScreen.routeName),
+                      icon: Icons.settings_rounded,
+                    ),
+                  ],
                 ),
               ),
               SliverPadding(
                 padding: EdgeInsets.fromLTRB(
-                  20,
+                  AmoraaMainPageHeader.contentHorizontalInset,
                   AmoraaMainPageHeader.contentSpacing,
-                  20,
+                  AmoraaMainPageHeader.contentHorizontalInset,
                   bottomInset,
                 ),
                 sliver: SliverList.list(
@@ -188,59 +195,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _open(String route) async {
     await Navigator.of(context).pushNamed(route);
     if (mounted) setState(() {});
-  }
-}
-
-class _ProfileHeaderDelegate extends SliverPersistentHeaderDelegate {
-  const _ProfileHeaderDelegate({
-    required this.extent,
-    required this.onSettings,
-  });
-
-  final double extent;
-  final VoidCallback onSettings;
-
-  @override
-  double get minExtent => extent;
-
-  @override
-  double get maxExtent => extent;
-
-  @override
-  Widget build(
-    BuildContext context,
-    double shrinkOffset,
-    bool overlapsContent,
-  ) {
-    return ColoredBox(
-      color: AppColors.background,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(
-          AmoraaMainPageHeader.pageHorizontalInset,
-          AmoraaMainPageHeader.safeTopSpacing,
-          AmoraaMainPageHeader.pageHorizontalInset,
-          0,
-        ),
-        child: AmoraaMainPageHeader(
-          title: 'My Dating Identity',
-          subtitle: 'Your dating identity',
-          actions: [
-            AmoraaMainPageHeaderAction(
-              key: const ValueKey('profile-settings-button'),
-              tooltip: 'Profile settings',
-              semanticLabel: 'Open profile settings',
-              onPressed: onSettings,
-              icon: Icons.settings_rounded,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  @override
-  bool shouldRebuild(covariant _ProfileHeaderDelegate oldDelegate) {
-    return oldDelegate.extent != extent || oldDelegate.onSettings != onSettings;
   }
 }
 

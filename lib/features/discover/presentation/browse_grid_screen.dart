@@ -357,44 +357,38 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
                 focusNode: _keyboardFocus,
                 autofocus: true,
                 onKeyEvent: _handleKeyEvent,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    AmoraaMainPageHeader.pageHorizontalInset,
-                    AmoraaMainPageHeader.safeTopSpacing,
-                    AmoraaMainPageHeader.pageHorizontalInset,
-                    10,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _DiscoverHeader(
-                        onNotifications: () => Navigator.of(
-                          context,
-                        ).pushNamed(NotificationsHubScreen.routeName),
-                      ),
-                      const SizedBox(height: 12),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AmoraSpacing.space4,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _DiscoverHeader(
+                      onNotifications: () => Navigator.of(
+                        context,
+                      ).pushNamed(NotificationsHubScreen.routeName),
+                    ),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(
+                          AmoraaMainPageHeader.contentHorizontalInset,
+                          AmoraaMainPageHeader.contentSpacing,
+                          AmoraaMainPageHeader.contentHorizontalInset,
+                          10,
                         ),
-                        child: _DiscoverFilterRail(
-                          filters: _quickFilters,
-                          selected: _selectedQuickFilters,
-                          onFilters: _openFilters,
-                          onToggle: _toggleQuickFilter,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: AmoraSpacing.space4,
-                          ),
-                          child: _buildExperience(),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _DiscoverFilterRail(
+                              filters: _quickFilters,
+                              selected: _selectedQuickFilters,
+                              onFilters: _openFilters,
+                              onToggle: _toggleQuickFilter,
+                            ),
+                            const SizedBox(height: 12),
+                            Expanded(child: _buildExperience()),
+                          ],
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
               Positioned.fill(

@@ -151,6 +151,8 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
       subtitle:
           "We'll send a 6-digit verification code to confirm your number.",
       stepLabel: 'Mobile verification',
+      alignStepLabelRight: true,
+      compactLayout: true,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -169,7 +171,7 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
               child: AuthInlineAlert(message: _error!),
             ),
           ],
-          const SizedBox(height: AmoraSpacing.space20),
+          const SizedBox(height: AmoraSpacing.space16),
           AuthPrimaryButton(
             key: const ValueKey('send-otp-button'),
             label: _isSendingOtp ? 'Sending OTP…' : 'Send OTP',
@@ -177,8 +179,11 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
             isLoading: _isSendingOtp,
             onPressed: _isValidPhone && !_isBusy ? _sendOtp : null,
           ),
-          const SizedBox(height: AmoraSpacing.space16),
-          const AuthTrustNote(text: 'Standard SMS charges may apply.'),
+          const SizedBox(height: AmoraSpacing.space12),
+          const AuthTrustNote(
+            text: 'Standard SMS charges may apply.',
+            icon: Icons.info_outline_rounded,
+          ),
         ],
       ),
     );
@@ -190,6 +195,8 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
       title: 'Enter verification code',
       subtitle: 'We sent a 6-digit code to ${_maskedPhone()}',
       stepLabel: 'Mobile verification',
+      alignStepLabelRight: true,
+      compactLayout: true,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -255,6 +262,8 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
       title: 'Verification complete',
       subtitle: 'Your mobile number has been verified successfully.',
       stepLabel: 'Mobile verification',
+      alignStepLabelRight: true,
+      compactLayout: true,
       child: Semantics(
         liveRegion: true,
         label: 'Mobile number verification complete',
@@ -624,154 +633,172 @@ class _UnifiedMobileNumberFieldState extends State<_UnifiedMobileNumberField> {
       children: [
         Text(
           'Mobile number',
-          style: AmoraTextStyles.labelMedium.copyWith(
+          style: AmoraTextStyles.labelLarge.copyWith(
             color: focused ? AppColors.primary : AppColors.text,
+            fontSize: 13,
+            letterSpacing: .1,
           ),
         ),
         const SizedBox(height: AmoraSpacing.space8),
-        AnimatedContainer(
-          key: const ValueKey('unified-mobile-number-field'),
-          duration: const Duration(milliseconds: 180),
-          curve: Curves.easeOutCubic,
-          height: AmoraSpacing.controlHeight,
-          decoration: BoxDecoration(
-            color: widget.enabled
-                ? AppColors.surface
-                : AppColors.tertiary.withValues(alpha: .26),
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: borderColor, width: focused ? 1.5 : 1),
-            boxShadow: focused
-                ? [
-                    BoxShadow(
-                      color: AppColors.secondary.withValues(alpha: .10),
-                      blurRadius: 16,
-                      spreadRadius: 1,
-                    ),
-                  ]
-                : null,
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Semantics(
-                button: true,
-                enabled: widget.enabled,
-                label:
-                    'Select country code. ${widget.country.name}, ${widget.country.dialCode}',
-                child: InkWell(
-                  key: const ValueKey('country-code-selector'),
-                  onTap: widget.enabled ? widget.onCountryTap : null,
-                  borderRadius: const BorderRadius.horizontal(
-                    left: Radius.circular(17),
-                  ),
-                  child: SizedBox(
-                    width: 112,
-                    child: SizedBox(
-                      height: double.infinity,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AmoraSpacing.space12,
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final narrow = constraints.maxWidth < 280;
+            final countryWidth = narrow ? 102.0 : 108.0;
+            final phoneIconWidth = narrow ? 38.0 : 42.0;
+            return AnimatedContainer(
+              key: const ValueKey('unified-mobile-number-field'),
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOutCubic,
+              height: AmoraSpacing.controlHeight,
+              decoration: BoxDecoration(
+                color: widget.enabled
+                    ? AppColors.surface
+                    : AppColors.tertiary.withValues(alpha: .26),
+                borderRadius: AmoraRadius.input,
+                border: Border.all(
+                  color: borderColor,
+                  width: focused ? 1.5 : 1,
+                ),
+                boxShadow: focused
+                    ? [
+                        BoxShadow(
+                          color: AppColors.secondary.withValues(alpha: .10),
+                          blurRadius: 14,
+                          spreadRadius: 1,
                         ),
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          alignment: Alignment.centerLeft,
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const SizedBox(
-                                width: 24,
-                                height: 24,
-                                child: FittedBox(
-                                  fit: BoxFit.contain,
-                                  child: Text(
-                                    '🇮🇳',
-                                    style: TextStyle(fontSize: 20),
+                      ]
+                    : null,
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Semantics(
+                    button: true,
+                    enabled: widget.enabled,
+                    label:
+                        'Select country code. ${widget.country.name}, ${widget.country.dialCode}',
+                    child: InkWell(
+                      key: const ValueKey('country-code-selector'),
+                      onTap: widget.enabled ? widget.onCountryTap : null,
+                      borderRadius: const BorderRadius.horizontal(
+                        left: Radius.circular(15),
+                      ),
+                      child: SizedBox(
+                        width: countryWidth,
+                        child: SizedBox(
+                          height: double.infinity,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AmoraSpacing.space8,
+                            ),
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerLeft,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const SizedBox(
+                                    width: 22,
+                                    height: 22,
+                                    child: FittedBox(
+                                      fit: BoxFit.contain,
+                                      child: Text(
+                                        '🇮🇳',
+                                        style: TextStyle(fontSize: 18),
+                                      ),
+                                    ),
                                   ),
-                                ),
+                                  const SizedBox(width: 7),
+                                  Text(
+                                    widget.country.dialCode,
+                                    style: AmoraTextStyles.bodyMedium.copyWith(
+                                      color: AppColors.primary,
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 2),
+                                  const Icon(
+                                    Icons.keyboard_arrow_down_rounded,
+                                    color: AppColors.primary,
+                                    size: 18,
+                                  ),
+                                ],
                               ),
-                              const SizedBox(width: AmoraSpacing.space8),
-                              Text(
-                                widget.country.dialCode,
-                                style: AmoraTextStyles.bodyLarge.copyWith(
-                                  color: AppColors.primary,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              const SizedBox(width: AmoraSpacing.space4),
-                              const Icon(
-                                Icons.keyboard_arrow_down_rounded,
-                                color: AppColors.primary,
-                                size: 20,
-                              ),
-                            ],
+                            ),
                           ),
                         ),
                       ),
                     ),
                   ),
-                ),
-              ),
-              Align(
-                alignment: Alignment.center,
-                child: SizedBox(
-                  width: 1,
-                  height: 32,
-                  child: ColoredBox(
-                    color: borderColor.withValues(alpha: focused ? .72 : .82),
-                  ),
-                ),
-              ),
-              Expanded(
-                child: Semantics(
-                  textField: true,
-                  label: 'Mobile number',
-                  child: TextFormField(
-                    key: const ValueKey('mobile-number-field'),
-                    controller: widget.controller,
-                    focusNode: _focusNode,
-                    enabled: widget.enabled,
-                    keyboardType: TextInputType.phone,
-                    textInputAction: TextInputAction.done,
-                    autofillHints: const [
-                      AutofillHints.telephoneNumberNational,
-                    ],
-                    inputFormatters: [
-                      FilteringTextInputFormatter.digitsOnly,
-                      LengthLimitingTextInputFormatter(10),
-                    ],
-                    onFieldSubmitted: widget.onSubmitted,
-                    style: AmoraTextStyles.bodyLarge,
-                    textAlignVertical: TextAlignVertical.center,
-                    cursorColor: AppColors.secondary,
-                    decoration: const InputDecoration(
-                      isDense: true,
-                      hintText: '9723653140',
-                      prefixIcon: Center(
-                        child: Icon(
-                          Icons.phone_iphone_rounded,
-                          color: AppColors.primary,
-                          size: 21,
+                  Align(
+                    alignment: Alignment.center,
+                    child: SizedBox(
+                      width: 1,
+                      height: 28,
+                      child: ColoredBox(
+                        color: borderColor.withValues(
+                          alpha: focused ? .72 : .82,
                         ),
-                      ),
-                      prefixIconConstraints: BoxConstraints.tightFor(
-                        width: AmoraSpacing.space48,
-                        height: AmoraSpacing.controlHeight,
-                      ),
-                      border: InputBorder.none,
-                      enabledBorder: InputBorder.none,
-                      focusedBorder: InputBorder.none,
-                      disabledBorder: InputBorder.none,
-                      errorBorder: InputBorder.none,
-                      focusedErrorBorder: InputBorder.none,
-                      contentPadding: EdgeInsets.only(
-                        right: AmoraSpacing.space12,
                       ),
                     ),
                   ),
-                ),
+                  Expanded(
+                    child: Semantics(
+                      textField: true,
+                      label: 'Mobile number',
+                      child: TextFormField(
+                        key: const ValueKey('mobile-number-field'),
+                        controller: widget.controller,
+                        focusNode: _focusNode,
+                        enabled: widget.enabled,
+                        keyboardType: TextInputType.phone,
+                        textInputAction: TextInputAction.done,
+                        autofillHints: const [
+                          AutofillHints.telephoneNumberNational,
+                        ],
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                          LengthLimitingTextInputFormatter(10),
+                        ],
+                        onFieldSubmitted: widget.onSubmitted,
+                        style: AmoraTextStyles.bodyLarge,
+                        textAlignVertical: TextAlignVertical.center,
+                        cursorColor: AppColors.secondary,
+                        decoration: InputDecoration(
+                          isDense: true,
+                          hintText: '9723653140',
+                          hintStyle: AmoraTextStyles.bodyLarge.copyWith(
+                            color: AppColors.text.withValues(alpha: .48),
+                          ),
+                          prefixIcon: const Center(
+                            child: Icon(
+                              Icons.phone_iphone_rounded,
+                              color: AppColors.primary,
+                              size: 19,
+                            ),
+                          ),
+                          prefixIconConstraints: BoxConstraints.tightFor(
+                            width: phoneIconWidth,
+                            height: AmoraSpacing.controlHeight,
+                          ),
+                          border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          disabledBorder: InputBorder.none,
+                          errorBorder: InputBorder.none,
+                          focusedErrorBorder: InputBorder.none,
+                          contentPadding: const EdgeInsets.only(
+                            right: AmoraSpacing.space12,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            );
+          },
         ),
       ],
     );

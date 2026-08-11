@@ -2,6 +2,7 @@ import 'package:amora_ai/core/access/amora_access.dart';
 import 'package:amora_ai/core/theme/amora_theme.dart';
 import 'package:amora_ai/core/navigation/main_shell.dart';
 import 'package:amora_ai/core/widgets/amora_filter_chip.dart';
+import 'package:amora_ai/core/widgets/amoraa_main_page_header.dart';
 import 'package:amora_ai/core/widgets/amoraa_select_field.dart';
 import 'package:amora_ai/core/widgets/floating_bottom_nav.dart';
 import 'package:amora_ai/features/events/data/events_dummy_data.dart';
@@ -58,10 +59,19 @@ void main() {
         home: const EventsBrowseScreen(showNavigation: false),
       ),
     );
+    expect(find.byKey(const ValueKey('events-search-button')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('events-my-events-button')),
+      findsOneWidget,
+    );
     await tester.pump(const Duration(milliseconds: 520));
     await tester.pump();
 
     expect(find.text('Featured experience'), findsOneWidget);
+    expect(
+      tester.getRect(find.byType(EventsContextBar)).left,
+      AmoraaMainPageHeader.contentHorizontalInset,
+    );
     expect(find.byKey(const ValueKey('events-filter-button')), findsNothing);
     expect(find.byTooltip('Filter events'), findsNothing);
     expect(find.byKey(const ValueKey('events-search-button')), findsOneWidget);

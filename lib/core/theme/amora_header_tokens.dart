@@ -7,16 +7,17 @@ import 'package:flutter/material.dart';
 /// Heights exclude the status-bar inset. The owning Scaffold/SafeArea applies
 /// that inset exactly once.
 abstract final class AmoraHeaderTokens {
-  static const double pageHorizontalInset = AmoraSpacing.space16;
+  static const double pageHorizontalInset = AmoraSpacing.space20;
   static const double contentHorizontalInset = AmoraSpacing.space20;
-  static const double safeTopSpacing = AmoraSpacing.space8;
+  static const double safeTopSpacing = AmoraSpacing.space4;
   static const double mainBodyGap = AmoraSpacing.space8;
   static const double secondaryBodyGap = AmoraSpacing.space16;
 
+  static const double mainToolbarHeight = AmoraSpacing.compactControlHeight;
   static const double singleLineHeight = AmoraSpacing.appBarHeight;
   static const double titleSubtitleHeight =
       AmoraSpacing.appBarWithSubtitleHeight;
-  static const double scaledMainHeight = 70;
+  static const double scaledMainHeight = AmoraSpacing.controlHeight;
   static const double chatDetailHeight = 72;
 
   static const double touchTarget = AmoraSpacing.minimumTouchTarget;
@@ -24,7 +25,8 @@ abstract final class AmoraHeaderTokens {
   static const double iconSize = 20;
   static const double chatIconSize = 21;
   static const double backTitleGap = AmoraSpacing.space8;
-  static const double actionGap = AmoraSpacing.space8;
+  static const double actionGap = AmoraSpacing.space0;
+  static const double titleActionGap = AmoraSpacing.space8;
   static const double titleSubtitleGap = 2;
 
   static const double discoverLogoWidth = 112;

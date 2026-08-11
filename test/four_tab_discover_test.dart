@@ -1,5 +1,6 @@
 import 'package:amora_ai/core/navigation/main_shell.dart';
 import 'package:amora_ai/core/theme/amora_theme.dart';
+import 'package:amora_ai/core/widgets/amoraa_main_page_header.dart';
 import 'package:amora_ai/core/widgets/floating_bottom_nav.dart';
 import 'package:amora_ai/features/discover/presentation/browse_grid_screen.dart';
 import 'package:flutter/material.dart';
@@ -36,15 +37,21 @@ void main() {
       FloatingBottomNav.barHeight + FloatingBottomNav.minimumBottomSpacing,
     );
 
-    for (final destination in <(String, String)>[
-      ('Chats', 'Your conversations'),
-      ('AI Matches', 'Curated for you'),
-      ('Events', 'Meaningful ways to meet'),
-      ('Profile', 'Your dating identity'),
+    for (final destination in <String>[
+      'Chats',
+      'AI Matches',
+      'Events',
+      'Profile',
     ]) {
-      await tester.tap(find.byKey(ValueKey('bottom-nav-${destination.$1}')));
+      await tester.tap(find.byKey(ValueKey('bottom-nav-$destination')));
       await tester.pumpAndSettle();
-      expect(find.text(destination.$2), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(AmoraaMainPageHeader),
+          matching: find.text(destination),
+        ),
+        findsOneWidget,
+      );
       expect(find.byType(FloatingBottomNav), findsOneWidget);
     }
     expect(tester.takeException(), isNull);

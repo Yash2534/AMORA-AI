@@ -93,30 +93,20 @@ class _ChatListScreenState extends State<ChatListScreen> {
           maxWidth: 680,
           child: Column(
             children: [
+              ChatsAppBar(onCompose: _showComposeSheet),
               Padding(
                 padding: const EdgeInsets.fromLTRB(
-                  AmoraaMainPageHeader.pageHorizontalInset,
-                  AmoraaMainPageHeader.safeTopSpacing,
-                  AmoraaMainPageHeader.pageHorizontalInset,
+                  AmoraaMainPageHeader.contentHorizontalInset,
+                  AmoraaMainPageHeader.contentSpacing,
+                  AmoraaMainPageHeader.contentHorizontalInset,
                   AmoraSpacing.space12,
                 ),
-                child: Column(
-                  children: [
-                    ChatsAppBar(onCompose: _showComposeSheet),
-                    const SizedBox(height: AmoraSpacing.space12),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AmoraSpacing.space4,
-                      ),
-                      child: ChatSearchField(
-                        controller: _searchController,
-                        focusNode: _searchFocusNode,
-                        hasQuery: _query.isNotEmpty,
-                        onChanged: (value) => setState(() => _query = value),
-                        onClear: _clearSearch,
-                      ),
-                    ),
-                  ],
+                child: ChatSearchField(
+                  controller: _searchController,
+                  focusNode: _searchFocusNode,
+                  hasQuery: _query.isNotEmpty,
+                  onChanged: (value) => setState(() => _query = value),
+                  onClear: _clearSearch,
                 ),
               ),
               Expanded(
@@ -397,7 +387,6 @@ class ChatsAppBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return AmoraaMainPageHeader(
       title: 'Chats',
-      subtitle: 'Your conversations',
       actions: [
         AmoraaMainPageHeaderAction(
           key: const ValueKey('chats-compose-action'),

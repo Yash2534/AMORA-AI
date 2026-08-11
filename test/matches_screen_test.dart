@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:amora_ai/core/data/image_repository.dart';
 import 'package:amora_ai/core/widgets/amora_filter_chip.dart';
+import 'package:amora_ai/core/widgets/amoraa_main_page_header.dart';
 import 'package:amora_ai/core/widgets/amoraa_select_field.dart';
 import 'package:amora_ai/features/chat/data/chat_repository.dart';
 import 'package:amora_ai/features/matches/presentation/matches_screen.dart';
@@ -45,9 +46,13 @@ void main() {
     await pumpMatches(tester, size: const Size(320, 760));
 
     expect(find.byType(AiMatchesAppBar), findsOneWidget);
-    expect(find.text('Curated for you'), findsOneWidget);
+    expect(find.text('Curated for you'), findsNothing);
     expect(find.text('Best Matches'), findsWidgets);
     expect(find.byType(AmoraaInlineCompatibilityFilter), findsOneWidget);
+    expect(
+      tester.getRect(find.byType(AmoraaInlineCompatibilityFilter)).left,
+      AmoraaMainPageHeader.contentHorizontalInset,
+    );
     expect(
       find.byKey(const ValueKey('ai-compatibility-filter-button')),
       findsNothing,
@@ -409,7 +414,7 @@ void main() {
     await pumpMatches(tester, size: const Size(1200, 900));
 
     final appBarRect = tester.getRect(find.byType(AiMatchesAppBar));
-    expect(appBarRect.width, lessThanOrEqualTo(1048));
+    expect(appBarRect.width, lessThanOrEqualTo(1080));
     expect(appBarRect.center.dx, closeTo(600, 1));
     expect(find.byType(FeaturedAiMatchCard), findsOneWidget);
     final featured = tester.widget<FeaturedAiMatchCard>(

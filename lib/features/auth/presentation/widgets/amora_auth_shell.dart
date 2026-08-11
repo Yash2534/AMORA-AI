@@ -18,6 +18,7 @@ class AmoraAuthShell extends StatelessWidget {
     this.stepLabelKey,
     this.statement,
     this.showComposition = false,
+    this.compactLayout = false,
   });
 
   final String title;
@@ -28,6 +29,7 @@ class AmoraAuthShell extends StatelessWidget {
   final String? stepLabel;
   final bool alignStepLabelRight;
   final Key? stepLabelKey;
+  final bool compactLayout;
 
   // Retained for source compatibility with existing auth routes.
   final String? statement;
@@ -51,6 +53,7 @@ class AmoraAuthShell extends StatelessWidget {
                     ? AmoraSpacing.space20
                     : AmoraSpacing.space32;
                 final compactHeight = viewport.maxHeight < 700;
+                final contentMaxWidth = compactLayout ? 440.0 : 520.0;
                 return SingleChildScrollView(
                   key: PageStorageKey<String>(
                     'auth-scroll-${ModalRoute.of(context)?.settings.name ?? title}',
@@ -66,7 +69,7 @@ class AmoraAuthShell extends StatelessWidget {
                   child: Center(
                     child: ConstrainedBox(
                       constraints: BoxConstraints(
-                        maxWidth: 520,
+                        maxWidth: contentMaxWidth,
                         minHeight:
                             viewport.maxHeight -
                             view.padding.vertical -
@@ -81,11 +84,14 @@ class AmoraAuthShell extends StatelessWidget {
                               stepLabel: stepLabel,
                               alignStepLabelRight: alignStepLabelRight,
                               stepLabelKey: stepLabelKey,
+                              compact: compactLayout,
                             ),
                           ),
                           SizedBox(
                             height: compactHeight
                                 ? AmoraSpacing.space20
+                                : compactLayout
+                                ? 28
                                 : AmoraSpacing.space32,
                           ),
                           AuthReveal(
@@ -93,12 +99,20 @@ class AmoraAuthShell extends StatelessWidget {
                             child: AuthPageHeader(
                               title: title,
                               subtitle: subtitle,
+                              compact: compactLayout,
                             ),
                           ),
-                          const SizedBox(height: AmoraSpacing.space20),
+                          SizedBox(
+                            height: compactLayout
+                                ? AmoraSpacing.space16
+                                : AmoraSpacing.space20,
+                          ),
                           AuthReveal(
                             delay: const Duration(milliseconds: 180),
-                            child: AuthFormSurface(child: child),
+                            child: AuthFormSurface(
+                              compact: compactLayout,
+                              child: child,
+                            ),
                           ),
                           if (footer != null) ...[
                             const SizedBox(height: AmoraSpacing.space20),
@@ -187,15 +201,53 @@ class AuthBrandHeader extends StatelessWidget {
     this.stepLabel,
     this.alignStepLabelRight = false,
     this.stepLabelKey,
+    this.compact = false,
   });
 
   final VoidCallback? onBack;
   final String? stepLabel;
   final bool alignStepLabelRight;
   final Key? stepLabelKey;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
+    final stepBadge = stepLabel == null
+        ? null
+        : Container(
+            key: stepLabelKey,
+            padding: EdgeInsets.symmetric(
+              horizontal: compact ? 10 : AmoraSpacing.space12,
+              vertical: compact ? 7 : AmoraSpacing.space8,
+            ),
+            decoration: BoxDecoration(
+              color: AppColors.surface.withValues(alpha: .88),
+              borderRadius: AmoraRadius.pillBorder,
+              border: Border.all(color: AppColors.tertiary),
+            ),
+            child: compact
+                ? FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.center,
+                    child: Text(
+                      stepLabel!,
+                      maxLines: 1,
+                      style: AmoraTextStyles.labelMedium.copyWith(
+                        color: AppColors.primary,
+                        fontSize: 11.5,
+                        letterSpacing: .15,
+                      ),
+                    ),
+                  )
+                : Text(
+                    stepLabel!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AmoraTextStyles.labelMedium.copyWith(
+                      color: AppColors.primary,
+                    ),
+                  ),
+          );
     return Row(
       children: [
         if (onBack != null) ...[
@@ -220,8 +272,8 @@ class AuthBrandHeader extends StatelessWidget {
         ],
         Image.asset(
           AmoraBrandAssets.icon,
-          width: 34,
-          height: 34,
+          width: compact ? 32 : 34,
+          height: compact ? 32 : 34,
           fit: BoxFit.contain,
           semanticLabel: 'AMORAA icon',
         ),
@@ -229,7 +281,7 @@ class AuthBrandHeader extends StatelessWidget {
         if (alignStepLabelRight && stepLabel != null) ...[
           Image.asset(
             AmoraBrandAssets.wordmark,
-            height: 19,
+            height: compact ? 16.5 : 19,
             fit: BoxFit.contain,
             alignment: Alignment.centerLeft,
             semanticLabel: 'AMORAA',
@@ -241,37 +293,22 @@ class AuthBrandHeader extends StatelessWidget {
               alignment: Alignment.centerLeft,
               child: Image.asset(
                 AmoraBrandAssets.wordmark,
-                height: 19,
+                height: compact ? 16.5 : 19,
                 fit: BoxFit.contain,
                 alignment: Alignment.centerLeft,
                 semanticLabel: 'AMORAA',
               ),
             ),
           ),
-        if (stepLabel != null) ...[
+        if (stepBadge != null) ...[
           const SizedBox(width: AmoraSpacing.space8),
-          Flexible(
-            child: Container(
-              key: stepLabelKey,
-              padding: const EdgeInsets.symmetric(
-                horizontal: AmoraSpacing.space12,
-                vertical: AmoraSpacing.space8,
-              ),
-              decoration: BoxDecoration(
-                color: AppColors.surface.withValues(alpha: .88),
-                borderRadius: AmoraRadius.pillBorder,
-                border: Border.all(color: AppColors.tertiary),
-              ),
-              child: Text(
-                stepLabel!,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AmoraTextStyles.labelMedium.copyWith(
-                  color: AppColors.primary,
-                ),
-              ),
-            ),
-          ),
+          if (alignStepLabelRight && compact)
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 132),
+              child: stepBadge,
+            )
+          else
+            Flexible(child: stepBadge),
         ],
       ],
     );
@@ -283,10 +320,12 @@ class AuthPageHeader extends StatelessWidget {
     super.key,
     required this.title,
     required this.subtitle,
+    this.compact = false,
   });
 
   final String title;
   final String subtitle;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -296,17 +335,28 @@ class AuthPageHeader extends StatelessWidget {
       children: [
         Text(
           title,
-          style:
-              (narrow
-                      ? AmoraTextStyles.headlineSmall
-                      : AmoraTextStyles.headlineMedium)
-                  .copyWith(letterSpacing: -.35),
+          style: compact
+              ? (narrow
+                        ? AmoraTextStyles.headlineSmall
+                        : AmoraTextStyles.headlineMedium)
+                    .copyWith(
+                      fontSize: narrow ? 24 : 26,
+                      height: 1.18,
+                      letterSpacing: -.45,
+                    )
+              : (narrow
+                        ? AmoraTextStyles.headlineSmall
+                        : AmoraTextStyles.headlineMedium)
+                    .copyWith(letterSpacing: -.35),
         ),
         const SizedBox(height: AmoraSpacing.space8),
         Text(
           subtitle,
           style: AmoraTextStyles.bodyLarge.copyWith(
-            color: AppColors.text.withValues(alpha: .72),
+            color: AppColors.text.withValues(alpha: compact ? .68 : .72),
+            fontSize: compact ? 15 : null,
+            height: compact ? 1.45 : null,
+            letterSpacing: compact ? .05 : null,
           ),
         ),
       ],
@@ -315,9 +365,10 @@ class AuthPageHeader extends StatelessWidget {
 }
 
 class AuthFormSurface extends StatelessWidget {
-  const AuthFormSurface({super.key, required this.child});
+  const AuthFormSurface({super.key, required this.child, this.compact = false});
 
   final Widget child;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -325,13 +376,21 @@ class AuthFormSurface extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         color: AppColors.surface.withValues(alpha: .96),
-        borderRadius: BorderRadius.circular(narrow ? 22 : 26),
-        border: Border.all(color: AppColors.tertiary.withValues(alpha: .78)),
-        boxShadow: AmoraShadows.level2,
+        borderRadius: BorderRadius.circular(
+          compact ? (narrow ? 20 : 24) : (narrow ? 22 : 26),
+        ),
+        border: Border.all(
+          color: AppColors.tertiary.withValues(alpha: compact ? .64 : .78),
+        ),
+        boxShadow: compact ? AmoraShadows.level1 : AmoraShadows.level2,
       ),
       child: Padding(
         padding: EdgeInsets.all(
-          narrow ? AmoraSpacing.space16 : AmoraSpacing.space24,
+          narrow
+              ? AmoraSpacing.space16
+              : compact
+              ? AmoraSpacing.space20
+              : AmoraSpacing.space24,
         ),
         child: child,
       ),

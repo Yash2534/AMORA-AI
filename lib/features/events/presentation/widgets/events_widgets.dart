@@ -74,7 +74,6 @@ class EventsAppBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return AmoraaMainPageHeader(
       title: 'Events',
-      subtitle: 'Meaningful ways to meet',
       actions: [
         AmoraaMainPageHeaderAction(
           key: const ValueKey('events-search-button'),
@@ -1957,8 +1956,6 @@ class EventsSkeleton extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _SkeletonBlock(height: 56),
-        const SizedBox(height: 16),
         const _SkeletonBlock(height: 76),
         const SizedBox(height: 14),
         SizedBox(

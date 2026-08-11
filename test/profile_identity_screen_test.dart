@@ -1,4 +1,5 @@
 import 'package:amora_ai/core/theme/amora_theme.dart';
+import 'package:amora_ai/core/widgets/amoraa_main_page_header.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
 import 'package:amora_ai/features/profile/presentation/profile_edit_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_screen.dart';
@@ -43,7 +44,7 @@ void main() {
       reason: 'Initial compact Profile layout overflowed',
     );
 
-    expect(find.text('My Dating Identity'), findsOneWidget);
+    expect(find.text('Profile'), findsOneWidget);
     expect(find.textContaining(original.name), findsOneWidget);
     expect(find.text('Edit Profile'), findsOneWidget);
     expect(find.text('Preview'), findsOneWidget);
@@ -198,8 +199,14 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('My Dating Identity'), findsOneWidget);
-      expect(find.text('Your dating identity'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(AmoraaMainPageHeader),
+          matching: find.text('Profile'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Your dating identity'), findsNothing);
       expect(
         find.byKey(const ValueKey('profile-settings-button')),
         findsOneWidget,
