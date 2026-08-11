@@ -202,7 +202,7 @@ class _ProfileBoostScreenState extends State<ProfileBoostScreen> {
     try {
       final result = await _discoverApi.boost(_activationIdempotencyKey!);
       if (!result.success) {
-        if (result.statusCode >= 400 && result.statusCode < 500) {
+        if (!isRetryableDiscoverFailure(result.statusCode)) {
           _activationIdempotencyKey = null;
         }
         if (mounted) showPremiumSnack(context, result.message);

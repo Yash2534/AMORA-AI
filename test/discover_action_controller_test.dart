@@ -125,6 +125,20 @@ void main() {
     },
   );
 
+  test('timeout retry preserves the same idempotency key', () async {
+    api
+      ..failNextBoost = true
+      ..failureStatusCode = 408
+      ..failureMessage = 'The Discover request timed out.';
+
+    expect(await controller.boostProfile(), isFalse);
+    expect(await controller.boostProfile(), isTrue);
+    expect(api.boostKeys, <String>[
+      'flutter:boost-activation:test-key-1',
+      'flutter:boost-activation:test-key-1',
+    ]);
+  });
+
   test('a new activation after success receives a new key', () async {
     expect(await controller.boostProfile(), isTrue);
     controller.consumeBoostRequest();

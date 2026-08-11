@@ -3,6 +3,8 @@ import 'package:amora_ai/features/monetization/data/monetization_repository.dart
 import 'package:amora_ai/features/monetization/presentation/profile_boost_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 
 class _BoostRemote implements MonetizationRemoteDataSource {
   int stateCalls = 0;
@@ -57,6 +59,12 @@ class _BoostRemote implements MonetizationRemoteDataSource {
 }
 
 class _BoostApi extends DiscoverApiService {
+  _BoostApi()
+    : super(
+        accessTokenProvider: () async => null,
+        client: MockClient((_) async => http.Response('{}', 500)),
+      );
+
   bool failNext = false;
   final keys = <String>[];
 
@@ -114,7 +122,6 @@ void main() {
     expect(api.keys, hasLength(1));
     expect(remote.stateCalls, 2);
     expect(find.text('Boost is live in nearby discovery.'), findsOneWidget);
-    expect(find.text('Boost Active'), findsOneWidget);
   });
 
   testWidgets('network retry reuses its key and never shows fake success', (

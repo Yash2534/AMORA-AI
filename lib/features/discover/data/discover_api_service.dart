@@ -9,6 +9,12 @@ import 'package:http/http.dart' as http;
 
 typedef DiscoverAccessTokenProvider = Future<String?> Function();
 
+bool isRetryableDiscoverFailure(int statusCode) =>
+    statusCode == 0 ||
+    statusCode == 408 ||
+    statusCode == 429 ||
+    statusCode >= 500;
+
 Map<String, String> buildDiscoverFeedQuery({
   required int page,
   required int limit,

@@ -127,7 +127,7 @@ class DiscoverActionController extends ChangeNotifier {
     if (!result.success) {
       _activeAction = null;
       _lastError = result.message;
-      if (result.statusCode >= 400 && result.statusCode < 500) {
+      if (!isRetryableDiscoverFailure(result.statusCode)) {
         _boostIdempotencyKey = null;
       }
       notifyListeners();
