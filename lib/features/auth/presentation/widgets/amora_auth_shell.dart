@@ -376,9 +376,7 @@ class AuthPageHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.sizeOf(context).width;
-    final veryNarrow = screenWidth < 320;
-    final narrow = screenWidth < 360;
+    final narrow = MediaQuery.sizeOf(context).width < 360;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -421,7 +419,9 @@ class AuthFormSurface extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final narrow = MediaQuery.sizeOf(context).width < 360;
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final veryNarrow = screenWidth < 320;
+    final narrow = screenWidth < 360;
     return DecoratedBox(
       decoration: BoxDecoration(
         color: AppColors.surface.withValues(alpha: .96),
