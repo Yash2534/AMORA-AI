@@ -3,9 +3,7 @@ import 'package:amora_ai/core/widgets/amora_filter_chip.dart';
 import 'package:amora_ai/core/widgets/amoraa_select_field.dart';
 import 'package:amora_ai/features/notifications/data/notification_inbox_repository.dart';
 import 'package:amora_ai/features/notifications/presentation/notifications_hub_screen.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class _NotificationRemote implements NotificationInboxRemoteDataSource {
@@ -265,19 +263,6 @@ void main() {
       remote: _NotificationRemote(empty: true),
       textScale: 1.3,
     );
-    final previousDebugPrint = debugPrint;
-    var remainingFlexLines = 0;
-    debugPrint = (message, {wrapWidth}) {
-      for (final line in (message ?? '').split('\n')) {
-        if (line.contains('RenderFlex#')) remainingFlexLines = 12;
-        if (remainingFlexLines > 0) {
-          previousDebugPrint(line, wrapWidth: wrapWidth);
-          remainingFlexLines--;
-        }
-      }
-    };
-    debugDumpRenderTree();
-    debugPrint = previousDebugPrint;
 
     expect(find.text('Notifications'), findsOneWidget);
     expect(tester.takeException(), isNull);

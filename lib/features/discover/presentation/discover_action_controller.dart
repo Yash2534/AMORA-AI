@@ -15,11 +15,10 @@ class DiscoverHistoryEntry {
   final DiscoverAction action;
 }
 
-/// Deterministic, frontend-only state for the Discover deck.
+/// Backend-synchronized state for the Discover deck.
 ///
-/// Buttons and swipe gestures call the same methods. The controller owns tap
-/// guarding, stable profile IDs, rewind history, per-profile image position,
-/// and local liked/passed/super-liked state.
+/// Buttons and swipe gestures call the same persisted API operations. Local
+/// state advances only after the backend accepts an action.
 class DiscoverActionController extends ChangeNotifier {
   DiscoverActionController({
     required Iterable<String> profileIds,

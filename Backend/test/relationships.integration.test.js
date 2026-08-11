@@ -106,6 +106,7 @@ test('all /api/me relationship endpoints require Bearer authentication', async (
   assert.equal((await request(`/api/me/saved-profiles/${users.targetA.id}`, { method: 'DELETE' })).status, 401);
   assert.equal((await request('/api/me/likes')).status, 401);
   assert.equal((await request('/api/me/super-likes')).status, 401);
+  assert.equal((await request('/api/me/received-likes')).status, 401);
 });
 
 test('saved profiles are owner-scoped, idempotent, paginated, and visibility-filtered', async () => {
@@ -176,6 +177,33 @@ test('sent likes persist, paginate, preserve reciprocal matching, and enforce vi
   await json('/api/discover/swipe', 'POST', users.viewer, { targetUserId: users.targetA.id, action: 'like' });
   const first = Math.min(users.viewer.id, users.targetA.id); const second = Math.max(users.viewer.id, users.targetA.id);
   assert.equal(await models.Match.count({ where: { userOneId: first, userTwoId: second } }), 1);
+});
+
+test('received likes are database-backed, owner-scoped, and visibility-filtered', async () => {
+  const received = await request('/api/me/received-likes?page=1&limit=20', {
+    headers: auth(users.viewer),
+  });
+  assert.equal(received.status, 200);
+  assert.equal(received.body.data.total, 2);
+  assert.deepEqual(
+    new Set(received.body.data.profiles.map((profile) => profile.id)),
+    new Set([String(users.otherOwner.id), String(users.targetA.id)]),
+  );
+  assert.equal(
+    received.body.data.profiles.some((profile) => profile.id === String(users.targetB.id)),
+    false,
+  );
+
+  await models.Block.create({ blockerUserId: users.viewer.id, blockedUserId: users.otherOwner.id });
+  const filtered = await request('/api/me/received-likes?page=1&limit=20', {
+    headers: auth(users.viewer),
+  });
+  assert.equal(filtered.body.data.total, 1);
+  assert.equal(
+    filtered.body.data.profiles.some((profile) => profile.id === String(users.otherOwner.id)),
+    false,
+  );
+  await models.Block.destroy({ where: { blockerUserId: users.viewer.id, blockedUserId: users.otherOwner.id } });
 });
 
 test('Super Likes use DiscoverActions, paginate, deduplicate, and enforce visibility', async () => {

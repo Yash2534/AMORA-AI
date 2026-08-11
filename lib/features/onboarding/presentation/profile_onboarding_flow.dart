@@ -42,6 +42,7 @@ class _ProfileOnboardingFlowState extends State<ProfileOnboardingFlow> {
   final _cityController = TextEditingController();
   late final PageController _pageController;
   late int _page;
+  bool _finishing = false;
 
   @override
   void initState() {
@@ -156,7 +157,10 @@ class _ProfileOnboardingFlowState extends State<ProfileOnboardingFlow> {
                             ? 'Start discovering'
                             : 'Continue',
                         icon: Icons.arrow_forward_rounded,
-                        onPressed: _canContinue ? _continue : null,
+                        isLoading: _finishing,
+                        onPressed: _canContinue && !_finishing
+                            ? _continue
+                            : null,
                       ),
                     ),
                   ],
@@ -194,7 +198,7 @@ class _ProfileOnboardingFlowState extends State<ProfileOnboardingFlow> {
 
   void _back() => _goTo(_page - 1, MediaQuery.disableAnimationsOf(context));
 
-  void _continue() {
+  Future<void> _continue() async {
     if (_page == 1) {
       _repository.update(
         _repository.state.copyWith(
@@ -220,13 +224,18 @@ class _ProfileOnboardingFlowState extends State<ProfileOnboardingFlow> {
       );
     }
     if (_page == _stages.length - 1) {
-      _repository.update(
+      setState(() => _finishing = true);
+      final saved = await _repository.updatePersisted(
         _repository.state.copyWith(
           onboardingCompleted: true,
           stage: OnboardingStage.complete,
         ),
       );
-      _seedStarterProfile();
+      if (!mounted) return;
+      if (!saved) {
+        setState(() => _finishing = false);
+        return;
+      }
       Navigator.of(
         context,
       ).pushNamedAndRemoveUntil(MainShell.routeName, (route) => false);
@@ -238,21 +247,6 @@ class _ProfileOnboardingFlowState extends State<ProfileOnboardingFlow> {
   Future<void> _openPhotoManager() async {
     await Navigator.of(context).pushNamed(PhotoManagerScreen.routeName);
     if (mounted) setState(() {});
-  }
-
-  void _seedStarterProfile() {
-    final onboarding = _repository.state;
-    final current = LocalProfileRepository.instance.profile;
-    LocalProfileRepository.instance.save(
-      current.copyWith(
-        gender: ProfileFormOptions.storedGenderValue(
-          onboarding.gender,
-          customValue: onboarding.customGender,
-        ),
-        location: onboarding.city,
-        datingIntention: onboarding.primaryRelationshipGoal,
-      ),
-    );
   }
 
   void _goTo(int page, bool reducedMotion) {

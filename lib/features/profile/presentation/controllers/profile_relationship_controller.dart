@@ -54,6 +54,10 @@ class ProfileRelationshipController extends ChangeNotifier {
   final List<String> _blockedProfileIds = <String>[];
   final List<String> _likedProfileIds = <String>[];
   final List<String> _superLikedProfileIds = <String>[];
+  final List<String> _receivedLikeProfileIds = <String>[];
+  int receivedLikesTotal = 0;
+  bool receivedLikesLoading = false;
+  String? receivedLikesError;
   bool loading = false;
   bool _savedLoadingMore = false;
   bool _likesLoadingMore = false;
@@ -102,6 +106,31 @@ class ProfileRelationshipController extends ChangeNotifier {
       error = 'Could not load saved profiles and reactions.';
     } finally {
       loading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> refreshReceivedLikes() async {
+    if (!_canUseRemote || receivedLikesLoading) return;
+    receivedLikesLoading = true;
+    receivedLikesError = null;
+    notifyListeners();
+    try {
+      final response = await _remote!.request(
+        'GET',
+        '/api/me/received-likes?page=1&limit=30',
+      );
+      _replaceProfiles(_receivedLikeProfileIds, _profiles(response));
+      final total = _data(response)['total'];
+      receivedLikesTotal = total is num
+          ? total.toInt()
+          : _receivedLikeProfileIds.length;
+    } on AuthException catch (exception) {
+      receivedLikesError = exception.message;
+    } catch (_) {
+      receivedLikesError = 'Could not load received likes.';
+    } finally {
+      receivedLikesLoading = false;
       notifyListeners();
     }
   }
@@ -240,6 +269,9 @@ class ProfileRelationshipController extends ChangeNotifier {
 
   List<DummyProfile> get superLikedProfiles => _resolved(_superLikedProfileIds);
 
+  List<DummyProfile> get receivedLikeProfiles =>
+      _resolved(_receivedLikeProfileIds);
+
   bool isSaved(String profileId) => _savedProfileIds.contains(profileId);
 
   bool isBlocked(String profileId) => _blockedProfileIds.contains(profileId);
@@ -364,7 +396,8 @@ class ProfileRelationshipController extends ChangeNotifier {
         _savedProfileIds.isEmpty &&
         _blockedProfileIds.isEmpty &&
         _likedProfileIds.isEmpty &&
-        _superLikedProfileIds.isEmpty) {
+        _superLikedProfileIds.isEmpty &&
+        _receivedLikeProfileIds.isEmpty) {
       return;
     }
     _profilesById.clear();
@@ -372,6 +405,10 @@ class ProfileRelationshipController extends ChangeNotifier {
     _blockedProfileIds.clear();
     _likedProfileIds.clear();
     _superLikedProfileIds.clear();
+    _receivedLikeProfileIds.clear();
+    receivedLikesTotal = 0;
+    receivedLikesLoading = false;
+    receivedLikesError = null;
     _savedNextPage = 1;
     _likesNextPage = 1;
     _superLikesNextPage = 1;
@@ -393,7 +430,8 @@ class ProfileRelationshipController extends ChangeNotifier {
     if (!_savedProfileIds.contains(profileId) &&
         !_blockedProfileIds.contains(profileId) &&
         !_likedProfileIds.contains(profileId) &&
-        !_superLikedProfileIds.contains(profileId)) {
+        !_superLikedProfileIds.contains(profileId) &&
+        !_receivedLikeProfileIds.contains(profileId)) {
       _profilesById.remove(profileId);
     }
   }

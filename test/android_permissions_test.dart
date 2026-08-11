@@ -25,6 +25,7 @@ void main() {
       ).allMatches(manifest).map((match) => match.group(1)).toSet();
 
       expect(permissions, {
+        'android.permission.INTERNET',
         'android.permission.CAMERA',
         'android.permission.ACCESS_COARSE_LOCATION',
         'android.permission.ACCESS_FINE_LOCATION',

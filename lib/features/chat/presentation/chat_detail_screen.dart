@@ -205,15 +205,10 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     if ((conversationId == null || conversationId.isEmpty) &&
         _recipientId != null) {
       try {
-        final profile = ImageRepository.profiles
-            .where((item) => item.id == _recipientId)
-            .firstOrNull;
-        if (profile != null) {
-          conversationId = await _repository.createConversationForProfile(
-            profile,
-          );
-          _conversationId = conversationId;
-        }
+        conversationId = await _repository.createConversationForUserId(
+          _recipientId!,
+        );
+        _conversationId = conversationId;
       } catch (error) {
         _error = error;
       }

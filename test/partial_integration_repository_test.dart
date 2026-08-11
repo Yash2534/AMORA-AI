@@ -36,6 +36,15 @@ class _RelationshipRemote implements ProfileRelationshipRemoteDataSource {
     if (failLike && method == 'POST' && path == '/api/discover/swipe') {
       throw const AuthException('Like could not be saved.');
     }
+    if (path.startsWith('/api/me/received-likes?')) {
+      return <String, dynamic>{
+        'data': <String, dynamic>{
+          'profiles': <dynamic>[_profile('8', 'Received like')],
+          'total': 1,
+          'pagination': <String, dynamic>{'hasMore': false},
+        },
+      };
+    }
     if (path.startsWith('/api/me/saved-profiles?page=2')) {
       return <String, dynamic>{
         'data': <String, dynamic>{
@@ -158,9 +167,12 @@ void main() {
       final controller = ProfileRelationshipController(remote: remote);
       addTearDown(controller.dispose);
       await controller.refreshRemote();
+      await controller.refreshReceivedLikes();
       expect(controller.savedProfileIds, <String>['2']);
       expect(controller.likedProfileIds, <String>['3']);
       expect(controller.superLikedProfileIds, <String>['4']);
+      expect(controller.receivedLikeProfiles.single.name, 'Received like');
+      expect(controller.receivedLikesTotal, 1);
       expect(controller.savedHasMore, isTrue);
       await controller.loadMoreSaved();
       expect(controller.savedProfileIds, <String>['2', '5']);

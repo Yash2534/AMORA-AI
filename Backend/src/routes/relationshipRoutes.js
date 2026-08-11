@@ -26,5 +26,6 @@ me.put('/saved-profiles/:userId', [userId], validate, controller.save);
 me.delete('/saved-profiles/:userId', [userId], validate, controller.unsave);
 me.get('/likes', [page, limit], validate, controller.listLikes);
 me.get('/super-likes', [page, limit], validate, controller.listSuperLikes);
+me.get('/received-likes', [page, limit], validate, controller.listReceivedLikes);
 
 module.exports = { saved, reactions, me };

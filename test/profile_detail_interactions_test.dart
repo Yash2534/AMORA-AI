@@ -4,22 +4,88 @@ import 'package:amora_ai/core/access/amora_access.dart';
 import 'package:amora_ai/core/data/image_repository.dart';
 import 'package:amora_ai/features/chat/data/local_chat_repository.dart';
 import 'package:amora_ai/features/chat/presentation/chat_detail_screen.dart';
+import 'package:amora_ai/features/monetization/data/monetization_repository.dart';
 import 'package:amora_ai/features/profile/presentation/profile_detail_screen.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_rose_gift_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+class _GiftRemote implements MonetizationRemoteDataSource {
+  @override
+  Future<Map<String, dynamic>> request(
+    String method,
+    String path, {
+    Map<String, dynamic>? body,
+  }) async => {'success': true, 'data': <String, dynamic>{}};
+}
+
+DummyProfile _withNumericId(DummyProfile source) => DummyProfile(
+  id: '2',
+  gender: source.gender,
+  name: source.name,
+  age: source.age,
+  city: source.city,
+  profession: source.profession,
+  education: source.education,
+  distance: source.distance,
+  score: source.score,
+  intent: source.intent,
+  personality: source.personality,
+  status: source.status,
+  bio: source.bio,
+  interests: source.interests,
+  imageUrl: source.imageUrl,
+  gallery: source.gallery,
+  languages: source.languages,
+  verification: source.verification,
+  lifestyle: source.lifestyle,
+  promptAnswers: source.promptAnswers,
+  travelPreference: source.travelPreference,
+  musicTaste: source.musicTaste,
+  foodPreference: source.foodPreference,
+  weekendPlan: source.weekendPlan,
+  petPreference: source.petPreference,
+  coffeePreference: source.coffeePreference,
+  religion: source.religion,
+  community: source.community,
+  height: source.height,
+  fitnessLevel: source.fitnessLevel,
+  smoking: source.smoking,
+  drinking: source.drinking,
+  weed: source.weed,
+  children: source.children,
+  loveLanguage: source.loveLanguage,
+  greenFlags: source.greenFlags,
+  redFlags: source.redFlags,
+  familyValues: source.familyValues,
+  dateIdeas: source.dateIdeas,
+  hometown: source.hometown,
+  valuedQualities: source.valuedQualities,
+  pronouns: source.pronouns,
+  sexuality: source.sexuality,
+  preferredTalkingHours: source.preferredTalkingHours,
+  loveLanguages: source.loveLanguages,
+  iceBreaker: source.iceBreaker,
+  communicationStyle: source.communicationStyle,
+);
+
 void main() {
   final repository = LocalChatRepository.instance;
-  final profile = ImageRepository.profiles.first;
+  final profile = _withNumericId(ImageRepository.profiles.first);
 
   setUp(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
     AmoraSession.logIn();
     await repository.resetForTesting();
+    MonetizationRepository.debugOverride = MonetizationRepository(
+      remote: _GiftRemote(),
+    );
   });
 
-  tearDown(AmoraSession.logOut);
+  tearDown(() {
+    MonetizationRepository.debugOverride = null;
+    AmoraSession.logOut();
+  });
 
   Future<void> pumpProfile(
     WidgetTester tester, {

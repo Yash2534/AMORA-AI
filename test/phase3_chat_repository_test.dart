@@ -120,6 +120,21 @@ void main() {
     expect(repository.conversations, isEmpty);
   });
 
+  test('recipient ID creates and caches the canonical conversation', () async {
+    final remote = _FakeChatRemote();
+    remote.responses['POST /api/conversations'] = {
+      'success': true,
+      'data': {'conversation': _summary(id: '12')},
+    };
+    await repository.resetForTesting(remote: remote);
+
+    final conversationId = await repository.createConversationForUserId('2');
+
+    expect(conversationId, '12');
+    expect(repository.conversation('12')?.user.id, '2');
+    expect(remote.calls, contains('POST /api/conversations'));
+  });
+
   test(
     'history, send, read, and incoming realtime state use persisted IDs',
     () async {

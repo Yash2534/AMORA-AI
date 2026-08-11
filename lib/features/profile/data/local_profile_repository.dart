@@ -232,8 +232,8 @@ class UserProfile {
     final completion = json['profileCompletion'] as Map<Object?, Object?>?;
     return UserProfile(
       name: json['name'] as String? ?? '',
-      email: json['email'] as String? ?? 'member@amora.ai',
-      phoneNumber: json['phoneNumber'] as String? ?? '+91 98765 43210',
+      email: json['email'] as String? ?? '',
+      phoneNumber: json['phoneNumber'] as String? ?? '',
       birthdate: json['birthdate'] as String? ?? '',
       gender: json['gender'] as String? ?? '',
       bio: json['bio'] as String? ?? '',
@@ -805,7 +805,7 @@ class LocalProfileRepository extends ChangeNotifier {
 
   @visibleForTesting
   Future<void> resetForTesting([UserProfile? profile]) async {
-    _profile = profile ?? _defaultProfile;
+    _profile = profile ?? _testProfile;
     _photoIds.clear();
     _photoStates.clear();
     _photoBytes.clear();
@@ -844,7 +844,13 @@ class LocalProfileRepository extends ChangeNotifier {
   }
 }
 
-const _defaultProfile = UserProfile(
+// Production starts with no profile data. Authenticated sessions replace this
+// from /api/me/profile; unauthenticated sessions must never inherit a demo user.
+const _defaultProfile = _clearedProfile;
+
+// Explicit fixture used only through resetForTesting. It is never selected by
+// the application startup, signup, login, or profile-loading paths.
+const _testProfile = UserProfile(
   name: 'Yash Andrapiya',
   email: 'member@amora.ai',
   phoneNumber: '+91 98765 43210',

@@ -17,7 +17,8 @@ void main() {
   final profiles = LocalProfileRepository.instance;
   late LocalProfileDraft originalProfile;
 
-  setUp(() {
+  setUp(() async {
+    await profiles.resetForTesting();
     originalProfile = profiles.profile;
     onboarding.resetForTesting();
   });

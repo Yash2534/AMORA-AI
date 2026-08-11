@@ -20,7 +20,18 @@ class AmoraApiConfig {
     );
 
     if (configured.isNotEmpty) {
+      final uri = Uri.tryParse(configured);
+      if (uri == null || !uri.hasScheme || uri.host.isEmpty) {
+        throw StateError('AMORA_API_BASE_URL must be an absolute URL.');
+      }
+      if (kReleaseMode && uri.scheme != 'https') {
+        throw StateError('Release builds require an HTTPS API URL.');
+      }
       return configured;
+    }
+
+    if (kReleaseMode) {
+      throw StateError('AMORA_API_BASE_URL is required for release builds.');
     }
 
     if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {

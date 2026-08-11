@@ -26,8 +26,67 @@ async function verifyOtp(identifier, code, purpose) {
   if (!(await bcrypt.compare(code, otp.codeHash))) { otp.attempts += 1; if (otp.attempts >= 5) otp.consumed = true; await otp.save(); return { error: [otp.attempts >= 5 ? 'OTP_MAX_ATTEMPTS' : 'OTP_INVALID', otp.attempts >= 5 ? 'Maximum verification attempts reached. Request a new code.' : 'Invalid verification code.', 5 - otp.attempts] }; }
   otp.consumed = true; await otp.save(); return { otp };
 }
-exports.signup = async (req, res) => { const { User } = getModels(); const email = emailOf(req.body.email); if (await User.findOne({ where: { email } })) return res.status(409).json({ success: false, message: 'An account with this email already exists.', code: 'EMAIL_EXISTS', errors: [] }); const user = await User.create({ name: req.body.name.trim(), email, phoneNumber: phoneOf(req.body.phoneNumber), passwordHash: await bcrypt.hash(req.body.password, 12), termsAcceptedAt: new Date() }); const { code } = await createOtp(user.phoneNumber, 'account_verification'); return success(res, 'Account created. Verification code sent.', { userId: user.id, email, phoneNumber: user.phoneNumber }, code); };
-exports.verifyAccount = async (req, res) => { const { User } = getModels(); const phoneNumber = phoneOf(req.body.phoneNumber); const checked = await verifyOtp(phoneNumber, req.body.code, 'account_verification'); if (checked.error) return res.status(400).json({ success: false, message: checked.error[1], code: checked.error[0], errors: checked.error[2] !== undefined ? [{ remainingAttempts: checked.error[2] }] : [] }); const user = await User.findOne({ where: { phoneNumber } }); if (!user) return res.status(400).json({ success: false, message: 'Account not found.', code: 'OTP_INVALID', errors: [] }); user.isVerified = true; await user.save(); const tokens = await issueTokens(user, req.ip); return success(res, 'Account verified.', { ...tokens, user: profile(user) }); };
+exports.signup = async (req, res, next) => {
+  const { User } = getModels();
+  const email = emailOf(req.body.email);
+  const phoneNumber = phoneOf(req.body.phoneNumber);
+  let user;
+  let code;
+  try {
+    await User.sequelize.transaction(async (transaction) => {
+      const existing = await User.findOne({
+        where: { [Op.or]: [{ email }, { phoneNumber }] },
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+      });
+      if (existing) {
+        const phoneConflict = existing.phoneNumber === phoneNumber;
+        const error = new Error(
+          phoneConflict
+            ? 'An account with this phone number already exists.'
+            : 'An account with this email already exists.',
+        );
+        error.status = 409;
+        error.code = phoneConflict ? 'PHONE_EXISTS' : 'EMAIL_EXISTS';
+        throw error;
+      }
+      user = await User.create({
+        name: req.body.name.trim(),
+        email,
+        phoneNumber,
+        passwordHash: await bcrypt.hash(req.body.password, 12),
+        termsAcceptedAt: new Date(),
+      }, { transaction });
+      ({ code } = await createOtp(phoneNumber, 'account_verification', { transaction }));
+    });
+  } catch (error) {
+    if (!error.status && /SMS|Twilio/i.test(error.message || '')) {
+      error.status = 503;
+      error.code = 'OTP_DELIVERY_FAILED';
+    }
+    return next(error);
+  }
+  return success(res, 'Account created. Verification code sent.', {
+    userId: user.id,
+    email,
+    phoneNumber,
+  }, code);
+};
+exports.verifyAccount = async (req, res) => {
+  const { User } = getModels();
+  const phoneNumber = phoneOf(req.body.phoneNumber);
+  const user = await User.findOne({
+    where: { phoneNumber, authProvider: 'local', isVerified: false },
+    order: [['createdAt', 'DESC']],
+  });
+  if (!user) return res.status(400).json({ success: false, message: 'Account not found.', code: 'OTP_INVALID', errors: [] });
+  const checked = await verifyOtp(phoneNumber, req.body.code, 'account_verification');
+  if (checked.error) return res.status(400).json({ success: false, message: checked.error[1], code: checked.error[0], errors: checked.error[2] !== undefined ? [{ remainingAttempts: checked.error[2] }] : [] });
+  user.isVerified = true;
+  await user.save();
+  const tokens = await issueTokens(user, req.ip);
+  return success(res, 'Account verified.', { ...tokens, user: profile(user) });
+};
 exports.resendVerification = async (req, res) => {
   const phoneNumber = phoneOf(req.body.phoneNumber);
   const { User, OtpToken } = getModels();

@@ -1,5 +1,3 @@
-import 'package:amora_ai/core/data/amora_image_data.dart';
-import 'package:amora_ai/core/data/image_repository.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
@@ -32,6 +30,23 @@ class _AiIcebreakersScreenState extends State<AiIcebreakersScreen> {
     final profile = _IcebreakerProfile.fromArgs(
       ModalRoute.of(context)?.settings.arguments,
     );
+    if (profile == null) {
+      return Scaffold(
+        appBar: AmoraAppBar(
+          title: 'AI Icebreakers',
+          onBack: () => Navigator.of(context).maybePop(),
+        ),
+        body: const Center(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Text(
+              'Open AI Icebreakers from an available match.',
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      );
+    }
     return Scaffold(
       appBar: AmoraAppBar(
         title: 'AI Icebreakers',
@@ -174,22 +189,27 @@ class _AiIcebreakersScreenState extends State<AiIcebreakersScreen> {
     final profile = _IcebreakerProfile.fromArgs(
       ModalRoute.of(context)?.settings.arguments,
     );
-    final participant = ImageRepository.profileByName(profile.name);
-    final conversationId = await ChatRepository.instance
-        .createConversationForProfile(participant);
-    if (!mounted) return;
-    Navigator.of(context).pushNamed(
-      ChatDetailScreen.routeName,
-      arguments: ChatDetailArgs(
-        conversationId: conversationId,
-        prefillText: text,
-      ),
-    );
+    if (profile == null) return;
+    try {
+      final conversationId = await ChatRepository.instance
+          .createConversationForUserId(profile.id);
+      if (!mounted) return;
+      Navigator.of(context).pushNamed(
+        ChatDetailScreen.routeName,
+        arguments: ChatDetailArgs(
+          conversationId: conversationId,
+          prefillText: text,
+        ),
+      );
+    } catch (_) {
+      if (mounted) showPremiumSnack(context, 'Could not open this chat.');
+    }
   }
 }
 
 class _IcebreakerProfile {
   const _IcebreakerProfile({
+    required this.id,
     required this.name,
     required this.subtitle,
     required this.imageUrl,
@@ -197,6 +217,7 @@ class _IcebreakerProfile {
     required this.initials,
   });
 
+  final String id;
   final String name;
   final String subtitle;
   final String imageUrl;
@@ -205,31 +226,27 @@ class _IcebreakerProfile {
 
   String get firstName => name.split(',').first.split(' ').first;
 
-  static _IcebreakerProfile fromArgs(Object? args) {
+  static _IcebreakerProfile? fromArgs(Object? args) {
     if (args is Map) {
+      final id = args['id']?.toString();
       final name = args['name']?.toString();
-      if (name != null && name.trim().isNotEmpty) {
+      if (id != null &&
+          int.tryParse(id) != null &&
+          name != null &&
+          name.trim().isNotEmpty) {
         return _IcebreakerProfile(
+          id: id,
           name: name,
           subtitle:
               args['subtitle']?.toString() ??
               'Thoughtful profile, shared interests',
-          imageUrl:
-              args['imageUrl']?.toString() ?? AmoraImageData.profileAadhya,
-          fallbackAsset:
-              args['fallbackAsset']?.toString() ??
-              AmoraImageData.assetProfileAadhya,
+          imageUrl: args['imageUrl']?.toString() ?? '',
+          fallbackAsset: args['fallbackAsset']?.toString() ?? '',
           initials: args['initials']?.toString() ?? 'AM',
         );
       }
     }
-    return _IcebreakerProfile(
-      name: 'Aadhya, 23',
-      subtitle: 'Architecture, poetry, old-city cafes',
-      imageUrl: AmoraImageData.profileAadhya,
-      fallbackAsset: AmoraImageData.assetProfileAadhya,
-      initials: 'AA',
-    );
+    return null;
   }
 }
 

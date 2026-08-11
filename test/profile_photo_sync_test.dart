@@ -22,8 +22,8 @@ void main() {
 
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
+    await repository.resetForTesting();
     originalProfile = repository.profile;
-    await repository.resetForTesting(originalProfile);
   });
 
   tearDown(() async {

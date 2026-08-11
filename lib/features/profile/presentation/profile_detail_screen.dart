@@ -495,7 +495,9 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
       _requireAuth(_openWhyMatched);
       return;
     }
-    Navigator.of(context).pushNamed(WhyWeMatchedScreen.routeName);
+    Navigator.of(
+      context,
+    ).pushNamed(WhyWeMatchedScreen.routeName, arguments: _profile);
   }
 
   Future<void> _requireAuth(VoidCallback action) {

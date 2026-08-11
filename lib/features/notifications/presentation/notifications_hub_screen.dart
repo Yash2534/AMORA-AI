@@ -94,30 +94,15 @@ class _NotificationsHubScreenState extends State<NotificationsHubScreen> {
           onPressed: _goBack,
         ),
         actions: [
-          if (MediaQuery.sizeOf(context).width >= 520)
-            TextButton.icon(
-              key: const ValueKey('notifications-mark-all-read-button'),
-              onPressed: unreadCount == 0
-                  ? null
-                  : () => unawaited(_markAllRead()),
-              style: TextButton.styleFrom(
-                foregroundColor: AppColors.primary,
-                minimumSize: const Size(48, 48),
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-              ),
-              icon: const Icon(Icons.mark_email_read_rounded, size: 20),
-              label: const Text('Mark all'),
-            )
-          else
-            AmoraHeaderActionButton(
-              key: const ValueKey('notifications-mark-all-read-button'),
-              tooltip: 'Mark all as read',
-              semanticLabel: 'Mark all notifications as read',
-              icon: Icons.mark_email_read_rounded,
-              onPressed: unreadCount == 0
-                  ? null
-                  : () => unawaited(_markAllRead()),
-            ),
+          AmoraHeaderActionButton(
+            key: const ValueKey('notifications-mark-all-read-button'),
+            tooltip: 'Mark all as read',
+            semanticLabel: 'Mark all notifications as read',
+            icon: Icons.mark_email_read_rounded,
+            onPressed: unreadCount == 0
+                ? null
+                : () => unawaited(_markAllRead()),
+          ),
           AmoraHeaderActionButton(
             key: const ValueKey('notifications-settings-button'),
             tooltip: 'Notification preferences',

@@ -1,6 +1,5 @@
 import 'dart:math' as math;
 
-import 'package:amora_ai/core/constants/app_images.dart';
 import 'package:amora_ai/core/data/image_repository.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
@@ -9,11 +8,11 @@ import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/widgets/amora_profile_image.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
-import 'package:amora_ai/core/widgets/profile_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/chat/presentation/chat_detail_screen.dart';
 import 'package:amora_ai/features/chat/data/chat_repository.dart';
 import 'package:amora_ai/features/match/presentation/why_we_matched_screen.dart';
+import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
 import 'package:flutter/material.dart';
 
 class MatchScreen extends StatelessWidget {
@@ -24,12 +23,37 @@ class MatchScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final argument = ModalRoute.of(context)?.settings.arguments;
-    final profile = argument is AmoraProfileCardData ? argument : null;
-    final name = profile?.name ?? 'Kavya Shah';
-    final image = profile?.imageUrl ?? AppImages.profileKavya;
-    final fallback = profile?.fallbackAsset ?? AppImages.femaleProfileFallback;
-    final initials = profile?.initials ?? AppImages.initialsForName(name);
-    final score = profile?.score ?? 92;
+    final profile = argument is DummyProfile
+        ? argument
+        : argument is Map && argument['profile'] is DummyProfile
+        ? argument['profile'] as DummyProfile
+        : null;
+    if (profile == null) {
+      return Scaffold(
+        body: SafeArea(
+          child: Center(
+            child: TextButton.icon(
+              onPressed: () => Navigator.of(context).maybePop(),
+              icon: const Icon(Icons.arrow_back_rounded),
+              label: const Text('Match details are unavailable'),
+            ),
+          ),
+        ),
+      );
+    }
+    final name = profile.name;
+    final image = profile.imageUrl;
+    final fallback = profile.fallbackAsset;
+    final initials = profile.initials;
+    final score = profile.score;
+    final viewer = LocalProfileRepository.instance.profile;
+    final viewerInitials = viewer.name
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((part) => part.isNotEmpty)
+        .take(2)
+        .map((part) => part[0].toUpperCase())
+        .join();
 
     return Scaffold(
       body: DecoratedBox(
@@ -71,6 +95,9 @@ class MatchScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: AmoraSpacing.space16),
                   _CompatibilityHero(
+                    viewerImage: viewer.primaryPhoto,
+                    viewerFallback: viewer.primaryPhoto,
+                    viewerInitials: viewerInitials,
                     name: name,
                     image: image,
                     fallback: fallback,
@@ -98,9 +125,10 @@ class MatchScreen extends StatelessWidget {
                   AppPrimaryButton(
                     label: 'Open Detailed Report',
                     icon: Icons.insights_rounded,
-                    onPressed: () => Navigator.of(
-                      context,
-                    ).pushNamed(WhyWeMatchedScreen.routeName),
+                    onPressed: () => Navigator.of(context).pushNamed(
+                      WhyWeMatchedScreen.routeName,
+                      arguments: profile,
+                    ),
                   ),
                   const SizedBox(height: AmoraSpacing.space12),
                   AppPrimaryButton(
@@ -108,9 +136,8 @@ class MatchScreen extends StatelessWidget {
                     icon: Icons.chat_bubble_rounded,
                     variant: AppPrimaryButtonVariant.outlined,
                     onPressed: () async {
-                      final participant = ImageRepository.profileByName(name);
                       final conversationId = await ChatRepository.instance
-                          .createConversationForProfile(participant);
+                          .createConversationForProfile(profile);
                       if (!context.mounted) return;
                       Navigator.of(context).pushNamed(
                         ChatDetailScreen.routeName,
@@ -132,6 +159,9 @@ class MatchScreen extends StatelessWidget {
 
 class _CompatibilityHero extends StatelessWidget {
   const _CompatibilityHero({
+    required this.viewerImage,
+    required this.viewerFallback,
+    required this.viewerInitials,
     required this.name,
     required this.image,
     required this.fallback,
@@ -139,6 +169,9 @@ class _CompatibilityHero extends StatelessWidget {
     required this.score,
   });
 
+  final String viewerImage;
+  final String viewerFallback;
+  final String viewerInitials;
   final String name;
   final String image;
   final String fallback;
@@ -160,9 +193,9 @@ class _CompatibilityHero extends StatelessWidget {
                 Positioned(
                   left: AmoraSpacing.space20,
                   child: _MatchAvatar(
-                    image: AppImages.profileYash,
-                    fallback: AppImages.maleProfileFallback,
-                    initials: 'YA',
+                    image: viewerImage,
+                    fallback: viewerFallback,
+                    initials: viewerInitials,
                   ),
                 ),
                 Positioned(

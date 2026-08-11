@@ -285,15 +285,28 @@ class ChatRepository extends ChangeNotifier {
     final existing = conversationIdForProfile(profile.id);
     if (existing != null) return existing;
     if (_testingMode) {
-      final value = _testingConversation(profile, 'test-${profile.id}');
+      final value = _testingConversation(
+        profile,
+        int.tryParse(profile.id) == null ? 'test-${profile.id}' : profile.id,
+      );
       _conversations = [value, ..._conversations];
       _emit(value);
       return value.id;
     }
+    return createConversationForUserId(profile.id);
+  }
+
+  Future<String> createConversationForUserId(String profileId) async {
+    final targetUserId = int.tryParse(profileId);
+    if (targetUserId == null || targetUserId < 1) {
+      throw const AuthException('The selected profile is unavailable.');
+    }
+    final existing = conversationIdForProfile(profileId);
+    if (existing != null) return existing;
     final response = await _remote.request(
       'POST',
       '/api/conversations',
-      body: {'targetUserId': int.parse(profile.id)},
+      body: {'targetUserId': targetUserId},
     );
     final json = (_data(response)['conversation'] as Map)
         .cast<String, dynamic>();

@@ -1,5 +1,6 @@
 import 'package:amora_ai/core/access/amora_access.dart';
 import 'package:amora_ai/core/data/image_repository.dart';
+import 'package:amora_ai/features/chat/data/chat_repository.dart';
 import 'package:amora_ai/features/profile/presentation/profile_detail_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -39,9 +40,10 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  setUp(() {
+  setUp(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
     AmoraSession.logIn();
+    await ChatRepository.instance.resetForTesting();
   });
 
   tearDown(AmoraSession.logOut);

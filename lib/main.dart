@@ -138,9 +138,6 @@ class _MyAppState extends State<MyApp> {
           ),
           ResetPasswordScreen.routeName: (_) =>
               ResetPasswordScreen(onReset: AuthService.instance.resetPassword),
-          // Mobile OTP endpoints are not available in the current API contract.
-          // The screen remains callback-ready and reports this safely until they
-          // are supplied by the backend.
           AccountVerificationScreen.routeName: (_) =>
               const AccountVerificationScreen(),
           ProfileOnboardingFlow.routeName: (_) => const ProfileOnboardingFlow(),

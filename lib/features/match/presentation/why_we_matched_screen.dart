@@ -18,7 +18,21 @@ class WhyWeMatchedScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final profile = ImageRepository.profileByName(_profileName(context));
+    final arguments = ModalRoute.of(context)?.settings.arguments;
+    final profile = arguments is DummyProfile
+        ? arguments
+        : arguments is Map && arguments['profile'] is DummyProfile
+        ? arguments['profile'] as DummyProfile
+        : null;
+    if (profile == null) {
+      return Scaffold(
+        appBar: AmoraAppBar(
+          title: 'Why We Matched',
+          onBack: () => Navigator.of(context).maybePop(),
+        ),
+        body: const Center(child: Text('Match details are unavailable.')),
+      );
+    }
     return Scaffold(
       appBar: AmoraAppBar(
         title: 'Why We Matched',
@@ -83,9 +97,10 @@ class WhyWeMatchedScreen extends StatelessWidget {
                       child: AppPrimaryButton(
                         label: 'View Profile',
                         icon: Icons.person_rounded,
-                        onPressed: () => Navigator.of(
-                          context,
-                        ).pushNamed(ProfileDetailScreen.routeName),
+                        onPressed: () => Navigator.of(context).pushNamed(
+                          ProfileDetailScreen.routeName,
+                          arguments: profile,
+                        ),
                       ),
                     ),
                     const SizedBox(width: AmoraSpacing.space12),
@@ -94,9 +109,15 @@ class WhyWeMatchedScreen extends StatelessWidget {
                         label: 'Icebreaker',
                         icon: Icons.chat_bubble_rounded,
                         variant: AppPrimaryButtonVariant.outlined,
-                        onPressed: () => Navigator.of(
-                          context,
-                        ).pushNamed(AiIcebreakersScreen.routeName),
+                        onPressed: () => Navigator.of(context).pushNamed(
+                          AiIcebreakersScreen.routeName,
+                          arguments: <String, Object?>{
+                            'id': profile.id,
+                            'name': profile.name,
+                            'imageUrl': profile.imageUrl,
+                            'fallbackAsset': profile.fallbackAsset,
+                          },
+                        ),
                       ),
                     ),
                   ],
@@ -107,12 +128,6 @@ class WhyWeMatchedScreen extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  String _profileName(BuildContext context) {
-    final args = ModalRoute.of(context)?.settings.arguments;
-    if (args is Map && args['name'] != null) return args['name'].toString();
-    return 'Aadhya';
   }
 }
 

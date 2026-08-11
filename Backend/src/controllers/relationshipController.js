@@ -142,6 +142,69 @@ exports.listReactions = (req, res, next) => listReactions(req, res, next, req.qu
 exports.listLikes = (req, res, next) => listReactions(req, res, next, 'like');
 exports.listSuperLikes = (req, res, next) => listReactions(req, res, next, 'superLike');
 
+exports.listReceivedLikes = async (req, res, next) => {
+  try {
+    const userId = Number(req.user.sub);
+    const { page, limit } = pagination(req);
+    const { DiscoverAction, User, OnboardingProfile, Subscription } = getModels();
+    const rows = await DiscoverAction.findAll({
+      where: {
+        targetUserId: userId,
+        action: { [Op.in]: ['like', 'superLike'] },
+      },
+      include: [{
+        model: User,
+        as: 'actor',
+        required: true,
+        where: {
+          ...activeAccountWhere(),
+          [Op.and]: [notBlockedUserSql(DiscoverAction.sequelize, userId, 'actor')],
+        },
+        include: [
+          { model: OnboardingProfile, required: true, where: { onboardingCompleted: true } },
+          { model: Subscription, as: 'subscription', required: false, attributes: ['status', 'currentPeriodEnd'] },
+        ],
+      }],
+      order: [['createdAt', 'DESC'], ['id', 'DESC']],
+      offset: (page - 1) * limit,
+      limit: limit + 1,
+      subQuery: false,
+    });
+    const hasMore = rows.length > limit;
+    const selected = hasMore ? rows.slice(0, limit) : rows;
+    const viewer = await viewerProfile(userId);
+    const total = await DiscoverAction.count({
+      where: {
+        targetUserId: userId,
+        action: { [Op.in]: ['like', 'superLike'] },
+      },
+      include: [{
+        model: User,
+        as: 'actor',
+        required: true,
+        where: {
+          ...activeAccountWhere(),
+          [Op.and]: [notBlockedUserSql(DiscoverAction.sequelize, userId, 'actor')],
+        },
+        include: [{ model: OnboardingProfile, required: true, where: { onboardingCompleted: true } }],
+      }],
+      distinct: true,
+    });
+    return res.json({
+      success: true,
+      message: selected.length ? 'Received likes retrieved.' : 'No received likes found.',
+      data: {
+        profiles: selected.map((row) => serializePublicProfile(req, row.actor, row.actor.OnboardingProfile, {
+          viewer,
+          relationship: { receivedLike: true, receivedSuperLike: row.action === 'superLike' },
+        })),
+        total,
+        pagination: { page, limit, hasMore, nextPage: hasMore ? page + 1 : null },
+      },
+    });
+  } catch (error) { return next(error); }
+};
+
 exports.removeReaction = async (req, res, next) => {
   try {
     const actorUserId = Number(req.user.sub);

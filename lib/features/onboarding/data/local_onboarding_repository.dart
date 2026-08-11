@@ -130,7 +130,7 @@ class LocalOnboardingState {
   }
 }
 
-/// Deterministic, device-session state for the frontend prototype.
+/// Local presentation state mirrored to the authenticated onboarding API.
 ///
 /// No server verification, GPS, or identity claim is made here. The singleton
 /// matches the project's existing local repository pattern and can later be
@@ -145,6 +145,8 @@ class LocalOnboardingRepository extends ChangeNotifier
   LocalOnboardingState _state = const LocalOnboardingState();
   final OnboardingApiService _api = OnboardingApiService();
   Future<void> _syncQueue = Future<void>.value();
+  int _syncFailureCount = 0;
+  bool _testingMode = false;
   bool _lifecycleObserverRegistered = false;
   final ValueNotifier<String?> syncError = ValueNotifier<String?>(null);
   LocalOnboardingState get state => _state;
@@ -222,7 +224,18 @@ class LocalOnboardingRepository extends ChangeNotifier
     _syncUserProfile();
     notifyListeners();
     unawaited(_persistSafely());
-    unawaited(_enqueueSync(state));
+    if (!_testingMode) unawaited(_enqueueSync(state));
+  }
+
+  Future<bool> updatePersisted(LocalOnboardingState state) async {
+    final failureCheckpoint = _syncFailureCount;
+    _state = state;
+    _syncUserProfile();
+    notifyListeners();
+    await _persist();
+    if (_testingMode) return true;
+    await _enqueueSync(state);
+    return _syncFailureCount == failureCheckpoint;
   }
 
   void hydrateFromUserProfile() {
@@ -287,6 +300,9 @@ class LocalOnboardingRepository extends ChangeNotifier
 
   @visibleForTesting
   void resetForTesting([LocalOnboardingState? state]) {
+    _testingMode = true;
+    _syncFailureCount = 0;
+    _syncQueue = Future<void>.value();
     _state = state ?? const LocalOnboardingState();
     notifyListeners();
   }
@@ -611,6 +627,7 @@ class LocalOnboardingRepository extends ChangeNotifier
     _ => 'jpg',
   };
   void _logFailure(String operation, String message) {
+    _syncFailureCount++;
     developer.log(
       'Onboarding $operation sync failed: $message',
       name: 'AmoraOnboarding',
