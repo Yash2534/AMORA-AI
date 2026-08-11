@@ -79,6 +79,7 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
   bool _isSendingOtp = false;
   bool _isVerifyingOtp = false;
   bool _isResendingOtp = false;
+  bool _showPhoneValidation = false;
   int _secondsLeft = 0;
   bool _initialized = false;
 
@@ -91,6 +92,12 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
   bool get _isBusy => _isSendingOtp || _isVerifyingOtp || _isResendingOtp;
   bool get _isValidPhone =>
       _country.code == 'IN' && RegExp(r'^[6-9]\d{9}$').hasMatch(_localNumber);
+  String? get _phoneValidationMessage {
+    if (!_showPhoneValidation || _isValidPhone) return null;
+    return _localNumber.isEmpty
+        ? 'Mobile number is required.'
+        : 'Enter a valid mobile number.';
+  }
 
   @override
   void didChangeDependencies() {
@@ -160,10 +167,14 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
             controller: _phoneController,
             country: _country,
             enabled: !_isBusy,
-            hasError: _error != null,
+            hasError: _error != null || _phoneValidationMessage != null,
             onCountryTap: _showCountrySelector,
-            onSubmitted: (_) => _sendOtp(),
+            onSubmitted: (_) => _submitPhone(),
           ),
+          if (_phoneValidationMessage case final message?) ...[
+            const SizedBox(height: AmoraSpacing.space8),
+            _InlineFieldError(message: message),
+          ],
           if (_error != null) ...[
             const SizedBox(height: AmoraSpacing.space12),
             Semantics(
@@ -339,8 +350,19 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
 
   void _onPhoneChanged() {
     if (mounted) {
-      setState(() => _error = null);
+      setState(() {
+        _error = null;
+        _showPhoneValidation = false;
+      });
     }
+  }
+
+  void _submitPhone() {
+    if (!_isValidPhone) {
+      setState(() => _showPhoneValidation = true);
+      return;
+    }
+    _sendOtp();
   }
 
   void _pasteOtp(String value) {
@@ -408,6 +430,7 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
       }
       _error = null;
       _confirmation = null;
+      _showPhoneValidation = false;
     });
     try {
       await request(_normalizedPhone);
@@ -547,6 +570,45 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
                   : "Couldn't send the code. Please try again.")
             : 'Verification unavailable. Please try again shortly.',
     };
+  }
+}
+
+class _InlineFieldError extends StatelessWidget {
+  const _InlineFieldError({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      liveRegion: true,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: AmoraSpacing.space4),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Padding(
+              padding: EdgeInsets.only(top: 1),
+              child: Icon(
+                Icons.error_outline_rounded,
+                color: AppColors.primary,
+                size: 16,
+              ),
+            ),
+            const SizedBox(width: AmoraSpacing.space8),
+            Expanded(
+              child: Text(
+                message,
+                style: AmoraTextStyles.bodySmall.copyWith(
+                  color: AppColors.primary,
+                  height: 1.35,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -771,8 +833,9 @@ class _UnifiedMobileNumberFieldState extends State<_UnifiedMobileNumberField> {
                         textAlignVertical: TextAlignVertical.center,
                         cursorColor: AppColors.secondary,
                         decoration: InputDecoration(
+                          filled: false,
                           isDense: true,
-                          hintText: '9723653140',
+                          hintText: '10 digits',
                           hintStyle: AmoraTextStyles.bodyLarge.copyWith(
                             color: AppColors.text.withValues(alpha: .48),
                           ),

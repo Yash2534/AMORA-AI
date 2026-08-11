@@ -621,6 +621,18 @@ void main() {
               .onPressed,
           isNull,
         );
+        await tester.tap(find.byKey(const ValueKey('mobile-number-field')));
+        await tester.pump();
+        await tester.testTextInput.receiveAction(TextInputAction.done);
+        await tester.pump();
+        expect(find.text('Mobile number is required.'), findsOneWidget);
+        await tester.enterText(
+          find.byKey(const ValueKey('mobile-number-field')),
+          '12345',
+        );
+        await tester.testTextInput.receiveAction(TextInputAction.done);
+        await tester.pump();
+        expect(find.text('Enter a valid mobile number.'), findsOneWidget);
         await tester.tap(find.byKey(const ValueKey('country-code-selector')));
         await tester.pumpAndSettle();
         expect(find.text('Select country code'), findsOneWidget);
@@ -631,6 +643,7 @@ void main() {
           '9876543210',
         );
         await tester.pump();
+        expect(find.text('Enter a valid mobile number.'), findsNothing);
         expect(
           tester
               .widget<AuthPrimaryButton>(
