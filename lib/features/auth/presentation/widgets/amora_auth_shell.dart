@@ -47,8 +47,8 @@ class AmoraAuthShell extends StatelessWidget {
           SafeArea(
             child: LayoutBuilder(
               builder: (context, viewport) {
-                final horizontalPadding = compactLayout &&
-                        viewport.maxWidth < 320
+                final horizontalPadding =
+                    compactLayout && viewport.maxWidth < 320
                     ? AmoraSpacing.space12
                     : viewport.maxWidth < 360
                     ? AmoraSpacing.space16
@@ -427,7 +427,11 @@ class AuthFormSurface extends StatelessWidget {
         color: AppColors.surface.withValues(alpha: .96),
         borderRadius: BorderRadius.circular(
           compact
-              ? (veryNarrow ? 18 : narrow ? 20 : 24)
+              ? (veryNarrow
+                    ? 18
+                    : narrow
+                    ? 20
+                    : 24)
               : (narrow ? 22 : 26),
         ),
         border: Border.all(

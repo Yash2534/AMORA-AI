@@ -646,6 +646,8 @@ void main() {
       'mobile number field remains aligned and contained at supported widths',
       (tester) async {
         const configurations = <(double, double)>[
+          (280, 1.0),
+          (300, 1.3),
           (320, 1.3),
           (360, 1.0),
           (390, 1.0),
@@ -699,6 +701,71 @@ void main() {
           expect(phoneIcon.center.dy, closeTo(field.center.dy, 1));
           expect(field.left, greaterThanOrEqualTo(0));
           expect(field.right, lessThanOrEqualTo(width));
+          expect(tester.takeException(), isNull);
+        }
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+      },
+    );
+
+    testWidgets(
+      'mobile verification respects horizontal safe areas at compact heights',
+      (tester) async {
+        const configurations = <(Size, EdgeInsets, double)>[
+          (Size(280, 568), EdgeInsets.fromLTRB(8, 24, 8, 16), 1.0),
+          (Size(320, 640), EdgeInsets.fromLTRB(8, 24, 8, 16), 1.3),
+          (Size(360, 640), EdgeInsets.only(top: 24, bottom: 16), 1.0),
+          (Size(430, 932), EdgeInsets.only(top: 24, bottom: 16), 1.0),
+        ];
+
+        for (final configuration in configurations) {
+          final (size, safeInsets, textScale) = configuration;
+          await tester.binding.setSurfaceSize(size);
+          await tester.pumpWidget(
+            app(
+              home: MediaQuery(
+                data: MediaQueryData(
+                  size: size,
+                  padding: safeInsets,
+                  textScaler: TextScaler.linear(textScale),
+                ),
+                child: const AccountVerificationScreen(
+                  arguments: MobileVerificationArguments(
+                    phoneNumber: '9876543210',
+                  ),
+                ),
+              ),
+            ),
+          );
+          await settleEntrance(tester);
+
+          final card = tester.getRect(find.byType(AuthFormSurface));
+          final field = tester.getRect(
+            find.byKey(const ValueKey('unified-mobile-number-field')),
+          );
+          final button = tester.getRect(
+            find.byKey(const ValueKey('send-otp-button')),
+          );
+          final info = tester.getRect(find.byType(AuthTrustNote));
+          final header = tester.getRect(find.byType(AuthBrandHeader));
+          final country = tester.getRect(
+            find.byKey(const ValueKey('country-code-selector')),
+          );
+          final phoneText = tester.getRect(find.byType(EditableText));
+          final safeLeft = safeInsets.left;
+          final safeRight = size.width - safeInsets.right;
+          final safeCenter = (safeLeft + safeRight) / 2;
+
+          for (final rect in <Rect>[card, field, button, info, header]) {
+            expect(rect.left, greaterThanOrEqualTo(safeLeft));
+            expect(rect.right, lessThanOrEqualTo(safeRight));
+          }
+          expect(card.center.dx, closeTo(safeCenter, .1));
+          expect(field.left, closeTo(button.left, .1));
+          expect(field.right, closeTo(button.right, .1));
+          expect(info.left, closeTo(button.left, .1));
+          expect(info.right, closeTo(button.right, .1));
+          expect(country.center.dy, closeTo(field.center.dy, 1));
+          expect(phoneText.center.dy, closeTo(field.center.dy, 1));
           expect(tester.takeException(), isNull);
         }
         addTearDown(() => tester.binding.setSurfaceSize(null));

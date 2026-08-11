@@ -644,8 +644,8 @@ class _UnifiedMobileNumberFieldState extends State<_UnifiedMobileNumberField> {
           builder: (context, constraints) {
             final availableWidth = constraints.maxWidth;
             final narrow = availableWidth < 260;
-            final countryWidth = (availableWidth * .36).clamp(84.0, 108.0);
-            final phoneIconWidth = (availableWidth * .14).clamp(34.0, 42.0);
+            final countryWidth = (availableWidth * .33).clamp(80.0, 104.0);
+            final phoneIconWidth = (availableWidth * .13).clamp(32.0, 40.0);
             return AnimatedContainer(
               key: const ValueKey('unified-mobile-number-field'),
               duration: const Duration(milliseconds: 180),
@@ -793,8 +793,8 @@ class _UnifiedMobileNumberFieldState extends State<_UnifiedMobileNumberField> {
                           disabledBorder: InputBorder.none,
                           errorBorder: InputBorder.none,
                           focusedErrorBorder: InputBorder.none,
-                          contentPadding: const EdgeInsets.only(
-                            right: AmoraSpacing.space8,
+                          contentPadding: EdgeInsets.only(
+                            right: narrow ? 6 : AmoraSpacing.space8,
                           ),
                         ),
                       ),
