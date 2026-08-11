@@ -79,6 +79,18 @@ class NotificationInboxRepository extends ChangeNotifier {
   int? _nextPage;
   String _filter = 'All';
 
+  void clearSessionState() {
+    _notifications.clear();
+    loading = false;
+    loadingMore = false;
+    error = null;
+    unreadCount = 0;
+    hasMore = false;
+    _nextPage = null;
+    _filter = 'All';
+    notifyListeners();
+  }
+
   Future<void> refresh({String filter = 'All'}) async {
     _filter = filter;
     loading = true;

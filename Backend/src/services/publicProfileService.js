@@ -1,4 +1,5 @@
 const computeCompatibilityScore = require('../utils/computeCompatibilityScore');
+const { compatibilityFor } = require('./compatibilityService');
 
 const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -31,6 +32,7 @@ function serializePublicProfile(req, user, profile, options = {}) {
   const premium = Boolean(subscription
     && ['active', 'trialing', 'cancelled'].includes(subscription.status)
     && new Date(subscription.currentPeriodEnd) > new Date());
+  const compatibility = compatibilityFor(options.viewer, profile, score);
   return {
     id: String(user.id),
     gender: profile.gender || '',
@@ -41,6 +43,7 @@ function serializePublicProfile(req, user, profile, options = {}) {
     education: profile.education || '',
     distance: null,
     score,
+    compatibility,
     intent: list(profile.relationshipGoals)[0] || '',
     personality: profile.personality || '',
     status: null,
@@ -49,7 +52,7 @@ function serializePublicProfile(req, user, profile, options = {}) {
     imageUrl: publicUrl(req, primary),
     gallery: photos.map((photo) => publicUrl(req, photo)).filter(Boolean),
     languages: lifestyleLanguages.length ? lifestyleLanguages : list(profile.languages),
-    verification: user.isVerified ? 'Verified' : 'Unverified',
+    verification: user.identityVerifiedAt ? 'Verified' : 'Unverified',
     premium,
     lifestyle,
     promptAnswers: profile.prompts || {},

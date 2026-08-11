@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:amora_ai/core/access/amora_access.dart';
 import 'package:amora_ai/core/media/amora_media_picker.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
@@ -11,6 +10,7 @@ import 'package:amora_ai/core/widgets/amoraa_adaptive_image.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/discover/presentation/browse_grid_screen.dart';
+import 'package:amora_ai/features/profile/data/identity_verification_repository.dart';
 import 'package:flutter/material.dart';
 
 enum _KycStage { aadhaar, selfie, processing, complete }
@@ -21,17 +21,22 @@ typedef KycVerificationSubmitter =
       required AmoraPickedMedia selfie,
     });
 
+typedef KycVerificationStatusLoader =
+    Future<IdentityVerificationSnapshot> Function();
+
 class KycVerificationScreen extends StatefulWidget {
   const KycVerificationScreen({
     super.key,
     this.mediaPicker = const DeviceAmoraMediaPicker(),
     this.verifyIdentity,
+    this.loadStatus,
   });
 
   static const routeName = '/kyc';
 
   final AmoraMediaPicker mediaPicker;
   final KycVerificationSubmitter? verifyIdentity;
+  final KycVerificationStatusLoader? loadStatus;
 
   @override
   State<KycVerificationScreen> createState() => _KycVerificationScreenState();
@@ -43,6 +48,38 @@ class _KycVerificationScreenState extends State<KycVerificationScreen> {
   AmoraPickedMedia? _aadhaar;
   AmoraPickedMedia? _selfie;
   String? _verificationError;
+  IdentityVerificationStatus _verificationStatus =
+      IdentityVerificationStatus.notStarted;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.loadStatus != null) unawaited(_loadExistingStatus());
+  }
+
+  Future<void> _loadExistingStatus() async {
+    try {
+      final snapshot = await widget.loadStatus!();
+      if (!mounted) return;
+      setState(() {
+        _verificationStatus = snapshot.status;
+        if ({
+          IdentityVerificationStatus.pending,
+          IdentityVerificationStatus.underReview,
+          IdentityVerificationStatus.verified,
+        }.contains(snapshot.status)) {
+          _stage = _KycStage.complete;
+        } else if (snapshot.status == IdentityVerificationStatus.rejected) {
+          _verificationError =
+              snapshot.rejectionReason?.trim().isNotEmpty == true
+              ? 'Previous submission was not approved: ${snapshot.rejectionReason}'
+              : 'Your previous submission was not approved. You can submit new images.';
+        }
+      });
+    } catch (_) {
+      // The upload flow remains available; submission errors are shown inline.
+    }
+  }
 
   double get _progress => switch (_stage) {
     _KycStage.aadhaar => .25,
@@ -177,6 +214,7 @@ class _KycVerificationScreenState extends State<KycVerificationScreen> {
       ),
       _KycStage.complete => _CompletionCard(
         key: const ValueKey('kyc-complete'),
+        status: _verificationStatus,
         onContinue: _complete,
       ),
     };
@@ -250,6 +288,7 @@ class _KycVerificationScreenState extends State<KycVerificationScreen> {
       setState(() {
         _busy = false;
         if (verified) {
+          _verificationStatus = IdentityVerificationStatus.pending;
           _stage = _KycStage.complete;
         } else {
           _verificationError =
@@ -286,7 +325,6 @@ class _KycVerificationScreenState extends State<KycVerificationScreen> {
   }
 
   void _complete() {
-    AmoraSession.completeProfileStep(100);
     _goHome();
   }
 
@@ -847,8 +885,13 @@ class _KycMediaPreview extends StatelessWidget {
 }
 
 class _CompletionCard extends StatelessWidget {
-  const _CompletionCard({super.key, required this.onContinue});
+  const _CompletionCard({
+    super.key,
+    required this.status,
+    required this.onContinue,
+  });
 
+  final IdentityVerificationStatus status;
   final VoidCallback onContinue;
 
   @override
@@ -886,11 +929,19 @@ class _CompletionCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AmoraSpacing.space20),
-          Text('Verification complete', style: AmoraTextStyles.headlineMedium),
+          Text(
+            status == IdentityVerificationStatus.verified
+                ? 'Identity verified'
+                : status == IdentityVerificationStatus.underReview
+                ? 'Verification under review'
+                : 'Submitted for review',
+            style: AmoraTextStyles.headlineMedium,
+          ),
           const SizedBox(height: AmoraSpacing.space8),
           Text(
-            'Your identity check is complete and your verified trust signal is '
-            'ready to appear across AMORAA.',
+            status == IdentityVerificationStatus.verified
+                ? 'Your identity review is complete and the verified trust signal is now active across AMORAA.'
+                : 'Your encrypted submission is in the review queue. AMORAA will show a verified trust signal only after an authorized review approves it.',
             textAlign: TextAlign.center,
             style: AmoraTextStyles.bodyMedium.copyWith(
               color: AppColors.textSecondary,

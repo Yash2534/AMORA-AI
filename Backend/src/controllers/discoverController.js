@@ -4,6 +4,7 @@ const computeCompatibilityScore = require('../utils/computeCompatibilityScore');
 const { areUsersBlocked, notBlockedUserSql } = require('../services/accessControlService');
 const { serializePublicProfile } = require('../services/publicProfileService');
 const { defaults, filtersFor, updateFilters: persistFilters } = require('../services/discoverPreferenceService');
+const { createNotification } = require('../services/notificationService');
 
 const success = (res, message, data) => res.json({ success: true, message, data });
 const fail = (res, status, message, code, errors = []) => res.status(status).json({ success: false, message, code, errors });
@@ -153,7 +154,7 @@ exports.getFeed = async (req, res, next) => {
       accountStatus: 'active',
       [Op.and]: [notBlockedUserSql(sequelize, req.user.sub)],
     };
-    if (filters.verifiedOnly) userWhere.isVerified = true;
+    if (filters.verifiedOnly) userWhere.identityVerifiedAt = { [Op.ne]: null };
     if (filters.onlineNow) {
       const thresholdMinutes = Math.max(1, Number(process.env.ONLINE_NOW_WINDOW_MINUTES || 5));
       userWhere.lastActiveAt = { [Op.gte]: new Date(Date.now() - thresholdMinutes * 60 * 1000) };
@@ -218,36 +219,55 @@ exports.swipe = async (req, res, next) => {
       include: [{ model: OnboardingProfile, required: true, where: { onboardingCompleted: true } }],
     });
     if (!target || await areUsersBlocked(req.user.sub, targetUserId)) return fail(res, 404, 'Profile is not available for Discover.', 'PROFILE_NOT_DISCOVERABLE');
-    await DiscoverAction.upsert({
-      actorUserId: req.user.sub,
-      targetUserId,
-      action: req.body.action,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
     let match = null;
-    if (['like', 'superLike'].includes(req.body.action)) {
-      const reciprocal = await DiscoverAction.findOne({
-        where: {
-          actorUserId: targetUserId,
-          targetUserId: req.user.sub,
-          action: { [Op.in]: ['like', 'superLike'] },
-        },
+    let matchedRow = null;
+    await User.sequelize.transaction(async (transaction) => {
+      const participantIds = [Number(req.user.sub), targetUserId].sort((a, b) => a - b);
+      await User.findAll({
+        where: { id: participantIds },
+        order: [['id', 'ASC']],
+        transaction,
+        lock: transaction.LOCK.UPDATE,
       });
-      if (reciprocal) {
+      await DiscoverAction.upsert({
+        actorUserId: req.user.sub,
+        targetUserId,
+        action: req.body.action,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }, { transaction });
+      if (['like', 'superLike'].includes(req.body.action)) {
+        const reciprocal = await DiscoverAction.findOne({
+          where: {
+            actorUserId: targetUserId,
+            targetUserId: req.user.sub,
+            action: { [Op.in]: ['like', 'superLike'] },
+          },
+          transaction,
+        });
+        if (!reciprocal) return;
         const userOneId = Math.min(Number(req.user.sub), targetUserId);
         const userTwoId = Math.max(Number(req.user.sub), targetUserId);
         const [row] = await Match.findOrCreate({
           where: { userOneId, userTwoId },
           defaults: { userOneId, userTwoId, matchedAt: new Date() },
+          transaction,
         });
-        match = {
-          matched: true,
-          matchId: String(row.id),
-          matchedProfile: profileData(req, target, target.OnboardingProfile, viewer),
-        };
+        matchedRow = row;
       }
+    });
+    if (matchedRow) {
+      match = {
+        matched: true,
+        matchId: String(matchedRow.id),
+        matchedProfile: profileData(req, target, target.OnboardingProfile, viewer),
+      };
+        await Promise.all([
+          createNotification({ userId: Number(req.user.sub), type: 'new_match', category: 'match', title: 'It\'s a match', message: `You and ${target.name} matched.`, data: { matchId: String(matchedRow.id), userId: String(targetUserId) }, dedupeKey: `match:${matchedRow.id}:${req.user.sub}` }),
+          createNotification({ userId: targetUserId, type: 'new_match', category: 'match', title: 'It\'s a match', message: 'You have a new match.', data: { matchId: String(matchedRow.id), userId: String(req.user.sub) }, dedupeKey: `match:${matchedRow.id}:${targetUserId}` }),
+        ]);
     }
+    if (['like', 'superLike'].includes(req.body.action) && !match) await createNotification({ userId: targetUserId, type: req.body.action === 'superLike' ? 'new_super_like' : 'new_like', category: 'like', title: req.body.action === 'superLike' ? 'You received a Super Like' : 'You received a like', message: 'Someone is interested in your profile.', data: { userId: String(req.user.sub) }, dedupeKey: `reaction:${req.user.sub}:${targetUserId}` });
     return success(res, 'Swipe saved.', {
       action: req.body.action,
       targetUserId: String(targetUserId),

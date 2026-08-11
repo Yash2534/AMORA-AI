@@ -49,5 +49,9 @@ router.put('/:conversationId/draft', [conversationId,
   body('text').isString().trim().isLength({ max: 4000 }).withMessage('text must be 4000 characters or less.'),
 ], validate, messageController.saveDraft);
 router.delete('/:conversationId/draft', [conversationId], validate, messageController.clearDraft);
+router.put('/:conversationId/mute', [conversationId,
+  body('mutedUntil').optional({ nullable: true }).isISO8601().withMessage('mutedUntil must be an ISO date.'),
+], validate, conversationController.mute);
+router.delete('/:conversationId/mute', [conversationId], validate, conversationController.unmute);
 
 module.exports = router;

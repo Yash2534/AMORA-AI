@@ -357,8 +357,9 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
 
   void _retryUpload(String source) {
     if (widget.photoUploader == null &&
-        AuthService.instance.currentUser == null)
+        AuthService.instance.currentUser == null) {
       return;
+    }
     unawaited(_uploadPhoto(source));
   }
 

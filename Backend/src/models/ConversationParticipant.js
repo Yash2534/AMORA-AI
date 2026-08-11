@@ -7,6 +7,8 @@ module.exports = (sequelize) => sequelize.define('ConversationParticipant', {
   lastReadMessageId: { type: DataTypes.INTEGER, allowNull: true },
   lastReadAt: { type: DataTypes.DATE, allowNull: true },
   draftText: { type: DataTypes.TEXT, allowNull: true },
+  mutedAt: { type: DataTypes.DATE, allowNull: true },
+  mutedUntil: { type: DataTypes.DATE, allowNull: true },
   joinedAt: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
 }, {
   tableName: 'ConversationParticipants',

@@ -9,7 +9,7 @@ function matchIncludes(User, OnboardingProfile, Subscription) {
     as,
     required: true,
     where: activeAccountWhere(),
-    attributes: ['id', 'name', 'isVerified'],
+    attributes: ['id', 'name', 'identityVerifiedAt'],
     include: [
       { model: OnboardingProfile, required: true, where: { onboardingCompleted: true } },
       { model: Subscription, as: 'subscription', required: false, attributes: ['status', 'currentPeriodEnd'] },

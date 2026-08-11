@@ -48,6 +48,7 @@ import 'package:amora_ai/features/profile/presentation/profile_edit_screen.dart'
 import 'package:amora_ai/features/profile/presentation/profile_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_setup_screen.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
+import 'package:amora_ai/features/profile/data/identity_verification_repository.dart';
 import 'package:amora_ai/features/profile/presentation/controllers/profile_relationship_controller.dart';
 import 'package:amora_ai/features/referral/presentation/referral_leaderboard_screen.dart';
 import 'package:amora_ai/features/match/presentation/why_we_matched_screen.dart';
@@ -149,7 +150,10 @@ class _MyAppState extends State<MyApp> {
           CompatibilityOnboardingScreen.routeName: (_) =>
               const CompatibilityOnboardingScreen(),
           ProfileSetupScreen.routeName: (_) => const ProfileSetupScreen(),
-          KycVerificationScreen.routeName: (_) => const KycVerificationScreen(),
+          KycVerificationScreen.routeName: (_) => KycVerificationScreen(
+            verifyIdentity: IdentityVerificationRepository.instance.submit,
+            loadStatus: IdentityVerificationRepository.instance.status,
+          ),
 
           // Primary app tabs and product flows.
           MainShell.routeName: (_) => const MainShell(),

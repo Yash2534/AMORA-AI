@@ -1,10 +1,4 @@
-import 'dart:async';
-import 'dart:convert';
-
-import 'package:amora_ai/core/config/amora_api_config.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:http/http.dart' as http;
-import 'package:http_parser/http_parser.dart';
+import 'package:amora_ai/core/auth/auth_service.dart';
 
 class OnboardingApiResult<T> {
   const OnboardingApiResult.success(this.data) : success = true, message = '';
@@ -36,13 +30,10 @@ class OnboardingPhotoUpload {
 }
 
 class OnboardingApiService {
-  OnboardingApiService({http.Client? client})
-    : _client = client ?? http.Client();
+  OnboardingApiService({AuthService? auth})
+    : _auth = auth ?? AuthService.instance;
 
-  static const _accessTokenKey = 'amora_access_token';
-  static const _timeout = Duration(seconds: 10);
-  static const _storage = FlutterSecureStorage();
-  final http.Client _client;
+  final AuthService _auth;
 
   Future<OnboardingApiResult<OnboardingRemoteProfile>> status() =>
       _request('GET', '/api/onboarding/status');
@@ -110,39 +101,23 @@ class OnboardingApiService {
   Future<OnboardingApiResult<OnboardingRemoteProfile>> uploadPhotos(
     List<OnboardingPhotoUpload> photos,
   ) async {
-    final setup = await _requestSetup('/api/onboarding/photos');
-    if (setup == null) {
-      return const OnboardingApiResult.failure(
-        'Onboarding service is not configured or authenticated.',
-      );
-    }
     try {
-      final request = http.MultipartRequest('POST', setup.uri)
-        ..headers.addAll(
-          Map<String, String>.from(setup.headers)..remove('Content-Type'),
-        );
-      for (final photo in photos) {
-        request.files.add(
-          http.MultipartFile.fromBytes(
-            'photos',
-            photo.bytes,
-            filename: photo.fileName,
-            contentType: MediaType.parse(photo.mimeType),
-          ),
-        );
-      }
-      final response = await http.Response.fromStream(
-        await _client.send(request).timeout(_timeout),
+      final response = await _auth.authenticatedMultipartFiles(
+        '/api/onboarding/photos',
+        files: photos
+            .map(
+              (photo) => AuthenticatedMultipartFile(
+                field: 'photos',
+                bytes: photo.bytes,
+                filename: photo.fileName,
+                mimeType: photo.mimeType,
+              ),
+            )
+            .toList(growable: false),
       );
       return _parse(response);
-    } on TimeoutException {
-      return const OnboardingApiResult.failure(
-        'The onboarding request timed out.',
-      );
-    } catch (_) {
-      return const OnboardingApiResult.failure(
-        'Unable to sync onboarding data right now.',
-      );
+    } on AuthException catch (error) {
+      return OnboardingApiResult.failure(error.message);
     }
   }
 
@@ -165,54 +140,23 @@ class OnboardingApiService {
     String path, {
     Map<String, dynamic>? body,
   }) async {
-    final setup = await _requestSetup(path);
-    if (setup == null) {
-      return const OnboardingApiResult.failure(
-        'Onboarding service is not configured or authenticated.',
-      );
-    }
     try {
-      final request = http.Request(method, setup.uri)
-        ..headers.addAll(setup.headers);
-      if (body != null) request.body = jsonEncode(body);
-      final response = await http.Response.fromStream(
-        await _client.send(request).timeout(_timeout),
+      final response = await _auth.authenticatedRequest(
+        method,
+        path,
+        body: body,
       );
       return _parse(response);
-    } on TimeoutException {
-      return const OnboardingApiResult.failure(
-        'The onboarding request timed out.',
-      );
-    } catch (_) {
-      return const OnboardingApiResult.failure(
-        'Unable to sync onboarding data right now.',
-      );
+    } on AuthException catch (error) {
+      return OnboardingApiResult.failure(error.message);
     }
   }
 
-  Future<_RequestSetup?> _requestSetup(String path) async {
+  OnboardingApiResult<OnboardingRemoteProfile> _parse(
+    Map<String, dynamic> body,
+  ) {
     try {
-      final baseUrl = AmoraApiConfig.baseUrl;
-      final token = await _storage.read(key: _accessTokenKey);
-      if (baseUrl.isEmpty || token == null || token.isEmpty) return null;
-      return _RequestSetup(Uri.parse('$baseUrl$path'), {
-        'Authorization': 'Bearer $token',
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-      });
-    } catch (_) {
-      return null;
-    }
-  }
-
-  OnboardingApiResult<OnboardingRemoteProfile> _parse(http.Response response) {
-    try {
-      final body = response.body.isEmpty
-          ? <String, dynamic>{}
-          : jsonDecode(response.body) as Map<String, dynamic>;
-      if (response.statusCode >= 200 &&
-          response.statusCode < 300 &&
-          body['success'] == true) {
+      if (body['success'] == true) {
         final data = body['data'] as Map?;
         final profile = data?['onboarding'] as Map?;
         if (profile != null) {
@@ -231,11 +175,4 @@ class OnboardingApiService {
       );
     }
   }
-}
-
-class _RequestSetup {
-  const _RequestSetup(this.uri, this.headers);
-
-  final Uri uri;
-  final Map<String, String> headers;
 }

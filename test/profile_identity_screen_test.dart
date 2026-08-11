@@ -11,13 +11,12 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   late LocalProfileDraft original;
 
-  setUp(() {
+  setUp(() async {
+    await LocalProfileRepository.instance.resetForTesting();
     original = LocalProfileRepository.instance.profile;
   });
 
-  tearDown(() {
-    LocalProfileRepository.instance.save(original);
-  });
+  tearDown(() => LocalProfileRepository.instance.resetForTesting(original));
 
   testWidgets('profile is an identity-first story at compact phone width', (
     tester,

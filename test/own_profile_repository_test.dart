@@ -136,10 +136,26 @@ void main() {
 
     expect(remote.calls.last, 'PUT /api/me/profile');
     expect(remote.lastBody?['bio'], 'Saved through the authenticated API.');
+    expect(remote.lastBody?.keys.toSet(), <String>{'name', 'bio'});
     expect(remote.lastBody, isNot(contains('email')));
     expect(remote.lastBody, isNot(contains('userId')));
     expect(repository.profile.name, 'Server Normalized Name');
     expect(repository.profile.completionPercent, 88);
+  });
+
+  test('section save sends only changed fields', () async {
+    final remote = _FakeOwnProfileRemote();
+    final repository = LocalProfileRepository.testing(remote: remote);
+    addTearDown(repository.dispose);
+    await repository.refreshFromServer();
+
+    await repository.savePersisted(
+      repository.profile.copyWith(bio: 'Only this section changed.'),
+    );
+
+    expect(remote.lastBody, <String, dynamic>{
+      'bio': 'Only this section changed.',
+    });
   });
 
   test(

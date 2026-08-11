@@ -49,9 +49,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       _codeControllers.map((controller) => controller.text).join();
 
   String get _maskedDestination {
-    final phoneNumber = _destinationController.text.trim();
-    if (phoneNumber.length < 4) return phoneNumber;
-    return '+91 ${phoneNumber.substring(0, 2)}•••••${phoneNumber.substring(phoneNumber.length - 3)}';
+    final email = _destinationController.text.trim();
+    final separator = email.indexOf('@');
+    if (separator <= 1) return email;
+    return '${email.substring(0, 1)}***${email.substring(separator)}';
   }
 
   @override
@@ -74,7 +75,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       title: enteringCode ? 'Enter verification code' : 'Reset your password',
       subtitle: enteringCode
           ? 'We sent a code to $_maskedDestination.'
-          : 'Enter your registered mobile number and we’ll send a verification code.',
+          : "Enter your registered email and we'll send a verification code.",
       stepLabel: enteringCode ? 'Step 2 of 3' : 'Step 1 of 3',
       child: AnimatedSwitcher(
         duration: MediaQuery.disableAnimationsOf(context)
@@ -93,20 +94,17 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           AmoraAuthField(
-            key: const ValueKey('recovery-phone-field'),
+            key: const ValueKey('recovery-email-field'),
             controller: _destinationController,
-            label: 'Registered mobile number',
-            hint: '10-digit mobile number',
-            icon: Icons.phone_outlined,
-            keyboardType: TextInputType.phone,
+            label: 'Registered email',
+            hint: 'you@example.com',
+            icon: Icons.email_outlined,
+            keyboardType: TextInputType.emailAddress,
             textInputAction: TextInputAction.done,
-            autofillHints: const [AutofillHints.telephoneNumber],
-            inputFormatters: [
-              FilteringTextInputFormatter.digitsOnly,
-              LengthLimitingTextInputFormatter(10),
-            ],
+            autofillHints: const [AutofillHints.email],
+            inputFormatters: [LengthLimitingTextInputFormatter(254)],
             enabled: !_loading,
-            validator: _validatePhoneNumber,
+            validator: _validateEmail,
             onSubmitted: (_) => _requestCode(),
           ),
           if (_error != null) ...[
@@ -183,7 +181,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         ),
         const SizedBox(height: AmoraSpacing.space8),
         AppPrimaryButton(
-          label: 'Change mobile number',
+          label: 'Change email',
           variant: AppPrimaryButtonVariant.text,
           size: AmoraButtonSize.compact,
           fullWidth: false,
@@ -193,11 +191,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     );
   }
 
-  String? _validatePhoneNumber(String? value) {
+  String? _validateEmail(String? value) {
     final text = value?.trim() ?? '';
-    if (text.isEmpty) return 'Mobile number is required';
-    if (!RegExp(r'^[6-9]\d{9}$').hasMatch(text)) {
-      return 'Enter a valid 10-digit mobile number';
+    if (text.isEmpty) return 'Email is required';
+    if (!RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(text)) {
+      return 'Enter a valid email address';
     }
     return null;
   }
@@ -262,7 +260,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       Navigator.of(context).pushNamed(
         ResetPasswordScreen.routeName,
         arguments: ResetPasswordArgs(
-          phoneNumber: _destinationController.text.trim(),
+          email: _destinationController.text.trim(),
           recoveryToken: token,
         ),
       );

@@ -40,16 +40,25 @@ async function main() {
          AND TABLE_NAME IN (:tables)`,
       { replacements: { tables: expectedTables } },
     );
+    const [messageColumns] = await sequelize.query(
+      `SELECT COLUMN_NAME AS columnName
+       FROM information_schema.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Messages'
+         AND COLUMN_NAME IN ('status', 'deliveredAt', 'readAt')`,
+    );
     const tableNames = new Set(tables.map((row) => row.tableName.toLowerCase()));
     const indexNames = new Set(indexes.map((row) => row.indexName));
     const missingTables = expectedTables.filter(
       (name) => !tableNames.has(name.toLowerCase()),
     );
     const missingIndexes = expectedIndexes.filter((name) => !indexNames.has(name));
-    if (missingTables.length || missingIndexes.length || foreignKeys.length !== 7) {
-      throw new Error(JSON.stringify({ missingTables, missingIndexes, foreignKeyCount: foreignKeys.length }));
+    const requiredMessageColumns = new Set(messageColumns.map((row) => row.columnName));
+    const missingMessageColumns = ['status', 'deliveredAt', 'readAt']
+      .filter((name) => !requiredMessageColumns.has(name));
+    if (missingTables.length || missingIndexes.length || missingMessageColumns.length || foreignKeys.length !== 7) {
+      throw new Error(JSON.stringify({ missingTables, missingIndexes, missingMessageColumns, foreignKeyCount: foreignKeys.length }));
     }
-    console.log(`[Schema] Chat tables=${tables.length}, required indexes=${expectedIndexes.length}, foreign keys=${foreignKeys.length}`);
+    console.log(`[Schema] Chat tables=${tables.length}, required indexes=${expectedIndexes.length}, message status columns=${messageColumns.length}, foreign keys=${foreignKeys.length}`);
   } finally {
     await sequelize.close();
   }

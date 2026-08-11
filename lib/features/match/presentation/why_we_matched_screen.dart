@@ -63,7 +63,9 @@ class WhyWeMatchedScreen extends StatelessWidget {
                       const SizedBox(width: AmoraSpacing.space12),
                       Expanded(
                         child: Text(
-                          '${profile.name.split(' ').first} and you align on intent, rhythm, and values.',
+                          profile.compatibilityReasons.isEmpty
+                              ? 'Compatibility details for ${profile.name.split(' ').first}'
+                              : profile.compatibilityReasons.first.label,
                           style: AmoraTextStyles.titleLarge.copyWith(
                             color: AppColors.deepWine,
                           ),
@@ -73,23 +75,32 @@ class WhyWeMatchedScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: AmoraSpacing.space16),
-                const _AiSummaryCard(),
+                _CompatibilitySummaryCard(profile: profile),
                 const SizedBox(height: AmoraSpacing.space16),
-                const _CompatibilityOverview(),
+                _CompatibilityOverview(profile: profile),
                 const SizedBox(height: AmoraSpacing.space16),
-                GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: _reasons.length,
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    mainAxisSpacing: AmoraSpacing.space12,
-                    crossAxisSpacing: AmoraSpacing.space12,
-                    childAspectRatio: .94,
+                if (profile.compatibilityReasons.isEmpty)
+                  const PremiumCard(
+                    child: Text(
+                      'Add more profile details to receive specific compatibility reasons.',
+                    ),
+                  )
+                else
+                  GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: profile.compatibilityReasons.length,
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          mainAxisSpacing: AmoraSpacing.space12,
+                          crossAxisSpacing: AmoraSpacing.space12,
+                          childAspectRatio: .94,
+                        ),
+                    itemBuilder: (context, index) => _ReasonCard(
+                      reason: profile.compatibilityReasons[index],
+                    ),
                   ),
-                  itemBuilder: (context, index) =>
-                      _ReasonCard(reason: _reasons[index]),
-                ),
                 const SizedBox(height: AmoraSpacing.space8),
                 Row(
                   children: [
@@ -134,7 +145,7 @@ class WhyWeMatchedScreen extends StatelessWidget {
 class _ReasonCard extends StatelessWidget {
   const _ReasonCard({required this.reason});
 
-  final (String, int, IconData) reason;
+  final CompatibilityReason reason;
 
   @override
   Widget build(BuildContext context) {
@@ -150,13 +161,16 @@ class _ReasonCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(reason.$3, color: AppColors.primaryPurple),
+                Icon(
+                  _factorIcon(reason.factor),
+                  color: AppColors.primaryPurple,
+                ),
                 const SizedBox(width: AmoraSpacing.space8),
                 SizedBox(
                   width: 34,
                   height: 34,
                   child: CircularProgressIndicator(
-                    value: reason.$2 / 100,
+                    value: reason.score / 100,
                     strokeWidth: 4,
                     strokeCap: StrokeCap.round,
                     backgroundColor: AppColors.borderGray,
@@ -166,7 +180,7 @@ class _ReasonCard extends StatelessWidget {
             ),
             const SizedBox(height: AmoraSpacing.space12),
             Text(
-              reason.$1,
+              reason.label,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: AmoraTextStyles.titleSmall.copyWith(
@@ -175,7 +189,7 @@ class _ReasonCard extends StatelessWidget {
             ),
             const SizedBox(height: AmoraSpacing.space8),
             Text(
-              '${reason.$2}% aligned',
+              '${reason.score}% signal',
               style: AmoraTextStyles.labelLarge.copyWith(
                 color: AppColors.primaryPurple,
               ),
@@ -187,8 +201,20 @@ class _ReasonCard extends StatelessWidget {
   }
 }
 
+IconData _factorIcon(String factor) => switch (factor) {
+  'relationship_goal' => Icons.flag_rounded,
+  'interests' => Icons.interests_rounded,
+  'languages' => Icons.translate_rounded,
+  'values' => Icons.diversity_1_rounded,
+  'communication_style' => Icons.forum_rounded,
+  'lifestyle' => Icons.self_improvement_rounded,
+  _ => Icons.auto_awesome_rounded,
+};
+
 class _CompatibilityOverview extends StatelessWidget {
-  const _CompatibilityOverview();
+  const _CompatibilityOverview({required this.profile});
+
+  final DummyProfile profile;
 
   @override
   Widget build(BuildContext context) {
@@ -205,7 +231,9 @@ class _CompatibilityOverview extends StatelessWidget {
           ),
           const SizedBox(height: AmoraSpacing.space12),
           Text(
-            'AMORAA weighs emotional rhythm, communication ease, lifestyle, values, love language, goals, interests, future plans, and conversation chemistry.',
+            profile.compatibilityDisclaimer.isNotEmpty
+                ? profile.compatibilityDisclaimer
+                : 'This estimate uses the profile fields both people chose to share. It is not a guarantee of relationship compatibility.',
             style: AmoraTextStyles.bodyMedium.copyWith(
               color: AppColors.textDark,
             ),
@@ -216,30 +244,38 @@ class _CompatibilityOverview extends StatelessWidget {
   }
 }
 
-class _AiSummaryCard extends StatelessWidget {
-  const _AiSummaryCard();
+class _CompatibilitySummaryCard extends StatelessWidget {
+  const _CompatibilitySummaryCard({required this.profile});
+
+  final DummyProfile profile;
 
   @override
   Widget build(BuildContext context) {
     return PremiumCard(
       color: AppColors.lavenderBackground,
-      child: Text(
-        'AI summary: Strong long-term intent match with similar weekend rhythm, coffee-first date preferences, and family-aware decision making.',
-        style: AmoraTextStyles.bodyMedium.copyWith(color: AppColors.deepWine),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '${profile.score}% compatibility estimate',
+            style: AmoraTextStyles.titleMedium.copyWith(
+              color: AppColors.deepWine,
+            ),
+          ),
+          const SizedBox(height: AmoraSpacing.space8),
+          Text(
+            profile.compatibilityReasons.isEmpty
+                ? 'There is not enough shared profile data for a detailed explanation yet.'
+                : profile.compatibilityReasons
+                      .take(2)
+                      .map((reason) => reason.label)
+                      .join('. '),
+            style: AmoraTextStyles.bodyMedium.copyWith(
+              color: AppColors.deepWine,
+            ),
+          ),
+        ],
       ),
     );
   }
 }
-
-const _reasons = [
-  ('Overall compatibility', 92, Icons.auto_awesome_rounded),
-  ('Emotional compatibility', 96, Icons.favorite_rounded),
-  ('Communication style', 93, Icons.forum_rounded),
-  ('Lifestyle rhythm', 91, Icons.self_improvement_rounded),
-  ('Core values', 88, Icons.diversity_1_rounded),
-  ('Love language', 90, Icons.spa_rounded),
-  ('Relationship goals', 96, Icons.flag_rounded),
-  ('Shared interests', 89, Icons.interests_rounded),
-  ('Future plans', 86, Icons.event_available_rounded),
-  ('Conversation chemistry', 94, Icons.psychology_alt_rounded),
-];

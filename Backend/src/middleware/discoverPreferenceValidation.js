@@ -2,7 +2,7 @@ const { body } = require('express-validator');
 const { hasOnlyCommunicationStyles, parseCommunicationStyles } = require('../constants/communicationStyles');
 const { defaults } = require('../services/discoverPreferenceService');
 
-const optionalInt = (name, min, max) => body(name).optional().isInt({ min, max }).withMessage(`${name} must be between ${min} and ${max}.`).toInt();
+const optionalInt = (name, min, max) => body(name).optional({ nullable: true }).isInt({ min, max }).withMessage(`${name} must be between ${min} and ${max}.`).toInt();
 const optionalArray = (name, max = 30) => body(name).optional().isArray({ max }).withMessage(`${name} must be an array with at most ${max} values.`)
   .custom((value) => value.every((item) => typeof item === 'string' && item.length <= 100)).withMessage(`${name} contains an invalid value.`);
 const optionalString = (name, max = 255) => body(name).optional().isString().trim().isLength({ max }).withMessage(`${name} is invalid.`);

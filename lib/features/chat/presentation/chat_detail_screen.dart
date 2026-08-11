@@ -439,10 +439,22 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           ),
           _SheetAction(
             icon: AmoraIcons.notificationsOff,
-            title: 'Mute Conversation',
-            onTap: () {
+            title: _conversation?.muted == true
+                ? 'Unmute Conversation'
+                : 'Mute Conversation',
+            onTap: () async {
+              final nextMuted = _conversation?.muted != true;
               Navigator.pop(context);
-              _snack('Conversation muted');
+              try {
+                await _repository.setMuted(_conversationId!, nextMuted);
+                if (!mounted) return;
+                _snack(
+                  nextMuted ? 'Conversation muted' : 'Conversation unmuted',
+                );
+              } catch (_) {
+                if (!mounted) return;
+                _snack('Could not update conversation notifications');
+              }
             },
           ),
           _SheetAction(

@@ -315,7 +315,7 @@ function serializeGroupMessage(message) {
   return {
     id: String(plain.id), eventId: String(plain.eventId), type: plain.type, text: plain.text,
     createdAt: plain.createdAt,
-    sender: plain.sender ? { id: String(plain.sender.id), name: plain.sender.name, verified: Boolean(plain.sender.isVerified) } : null,
+    sender: plain.sender ? { id: String(plain.sender.id), name: plain.sender.name, verified: Boolean(plain.sender.identityVerifiedAt) } : null,
   };
 }
 
@@ -329,7 +329,7 @@ exports.groupMessages = async (req, res, next) => {
     if (req.query.beforeId) where.id = { [Op.lt]: Number(req.query.beforeId) };
     const rows = await EventGroupMessage.findAll({
       where,
-      include: [{ model: User, as: 'sender', required: true, attributes: ['id', 'name', 'isVerified'] }],
+      include: [{ model: User, as: 'sender', required: true, attributes: ['id', 'name', 'identityVerifiedAt'] }],
       order: [['id', 'DESC']],
       limit: limit + 1,
     });
@@ -348,7 +348,7 @@ exports.sendGroupMessage = async (req, res, next) => {
     if (!access) return fail(res, 403, 'Event group chat is unavailable.', 'EVENT_CHAT_NOT_ALLOWED');
     if (access.event.status === 'cancelled') return fail(res, 409, 'Messaging is closed for this event.', 'EVENT_CHAT_CLOSED');
     const created = await EventGroupMessage.create({ eventId, senderId: userId, type: 'text', text: req.body.text });
-    const message = await EventGroupMessage.findByPk(created.id, { include: [{ model: User, as: 'sender', attributes: ['id', 'name', 'isVerified'] }] });
+    const message = await EventGroupMessage.findByPk(created.id, { include: [{ model: User, as: 'sender', attributes: ['id', 'name', 'identityVerifiedAt'] }] });
     const payload = serializeGroupMessage(message);
     await emitEventGroupMessage(eventId, 'event.message.created', payload);
     return ok(res, 'Event group message sent.', { message: payload }, 201);

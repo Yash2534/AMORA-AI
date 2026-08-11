@@ -12,6 +12,7 @@ async function summaryRows(userId, options = {}) {
   const offset = Number(options.offset || 0);
   const rows = await sequelize.query(`
     SELECT c.id, c.createdAt, c.updatedAt, c.lastMessageAt,
+      me.mutedAt, me.mutedUntil,
       other.userId AS participantUserId,
       lm.id AS lastMessageId, lm.type AS lastMessageType, lm.text AS lastMessageText,
       lm.createdAt AS lastMessageCreatedAt, lm.deletedAt AS lastMessageDeletedAt,
@@ -48,7 +49,7 @@ async function serializeRows(req, rows) {
   const ids = [...new Set(rows.map((row) => Number(row.participantUserId)))];
   const users = ids.length ? await User.findAll({
     where: { id: ids },
-    attributes: ['id', 'name', 'isVerified'],
+    attributes: ['id', 'name', 'identityVerifiedAt'],
     include: [{ model: OnboardingProfile, required: true }],
   }) : [];
   const byId = new Map(users.map((user) => [Number(user.id), user]));
@@ -68,6 +69,8 @@ async function serializeRows(req, rows) {
       participant,
       lastMessage,
       unreadCount: Number(row.unreadCount || 0),
+      muted: Boolean(row.mutedAt) && (!row.mutedUntil || new Date(row.mutedUntil) > new Date()),
+      mutedUntil: row.mutedUntil,
       updatedAt: row.lastMessageAt || row.updatedAt || row.createdAt,
     };
   });
@@ -143,6 +146,37 @@ exports.list = async (req, res, next) => {
   } catch (error) {
     return next(error);
   }
+};
+
+async function membership(req, res) {
+  const { ConversationParticipant } = getModels();
+  const row = await ConversationParticipant.findOne({
+    where: { conversationId: req.params.conversationId, userId: req.user.sub },
+  });
+  if (!row) res.status(404).json({ success: false, message: 'Conversation is not available.', code: 'CONVERSATION_NOT_AVAILABLE', errors: [] });
+  return row;
+}
+
+exports.mute = async (req, res, next) => {
+  try {
+    const row = await membership(req, res);
+    if (!row) return;
+    const mutedUntil = req.body.mutedUntil ? new Date(req.body.mutedUntil) : null;
+    if (mutedUntil && mutedUntil <= new Date()) {
+      return res.status(400).json({ success: false, message: 'mutedUntil must be in the future.', code: 'VALIDATION_ERROR', errors: [{ field: 'mutedUntil', message: 'mutedUntil must be in the future.' }] });
+    }
+    await row.update({ mutedAt: new Date(), mutedUntil });
+    return res.json({ success: true, message: mutedUntil ? 'Conversation muted until the selected time.' : 'Conversation muted.', data: { muted: true, mutedUntil } });
+  } catch (error) { return next(error); }
+};
+
+exports.unmute = async (req, res, next) => {
+  try {
+    const row = await membership(req, res);
+    if (!row) return;
+    await row.update({ mutedAt: null, mutedUntil: null });
+    return res.json({ success: true, message: 'Conversation unmuted.', data: { muted: false, mutedUntil: null } });
+  } catch (error) { return next(error); }
 };
 
 exports._summaryFor = summaryFor;

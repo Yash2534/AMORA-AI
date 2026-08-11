@@ -103,6 +103,7 @@ class ChatConversation {
     required this.time,
     required this.unread,
     required this.online,
+    this.muted = false,
     this.canMessage = true,
     this.unavailableReason,
     this.draft = '',
@@ -117,6 +118,7 @@ class ChatConversation {
   final String time;
   final int unread;
   final bool online;
+  final bool muted;
   final bool canMessage;
   final String? unavailableReason;
   final String draft;
@@ -129,6 +131,7 @@ class ChatConversation {
     String? time,
     int? unread,
     bool? online,
+    bool? muted,
     bool? canMessage,
     String? unavailableReason,
     String? draft,
@@ -142,6 +145,7 @@ class ChatConversation {
     time: time ?? this.time,
     unread: unread ?? this.unread,
     online: online ?? this.online,
+    muted: muted ?? this.muted,
     canMessage: canMessage ?? this.canMessage,
     unavailableReason: unavailableReason ?? this.unavailableReason,
     draft: draft ?? this.draft,
@@ -368,6 +372,7 @@ class ChatRepository extends ChangeNotifier {
       online:
           conversationJson['participant'] is Map &&
           (conversationJson['participant'] as Map)['online'] == true,
+      muted: conversationJson['muted'] == true,
       canMessage: conversationJson['canMessage'] != false,
       draft: conversationJson['draft']?.toString() ?? '',
       hasMoreMessages: pagination['hasMore'] == true,
@@ -423,6 +428,18 @@ class ChatRepository extends ChangeNotifier {
       );
     }
     _replace(current.copyWith(draft: ''));
+  }
+
+  Future<void> setMuted(String conversationId, bool muted) async {
+    final current = conversation(conversationId);
+    if (current == null) return;
+    if (!_testingMode) {
+      await _remote.request(
+        muted ? 'PUT' : 'DELETE',
+        '/api/conversations/$conversationId/mute',
+      );
+    }
+    _replace(current.copyWith(muted: muted));
   }
 
   Future<ChatConversation?> sendMessage(
@@ -581,6 +598,7 @@ class ChatRepository extends ChangeNotifier {
       socket.on('message.created', _handleMessageCreated);
       socket.on('message.deleted', _handleMessageDeleted);
       socket.on('message.read', _handleRead);
+      socket.on('message.delivered', _handleDelivered);
       socket.on('conversation.updated', (_) => unawaited(_refreshQuietly()));
       socket.on('presence.updated', _handlePresence);
       socket.connect();
@@ -641,6 +659,30 @@ class ChatRepository extends ChangeNotifier {
           int.tryParse(message.id) != null &&
           int.parse(message.id) <= readId) {
         return message.copyWith(status: ChatMessageStatus.read);
+      }
+      return message;
+    }).toList();
+    _replace(current.copyWith(messages: messages));
+  }
+
+  void _handleDelivered(dynamic value) {
+    if (value is! Map) return;
+    final conversationId = value['conversationId']?.toString();
+    final recipientId = value['userId']?.toString();
+    final currentUserId = AuthService.instance.currentUser?.id.toString();
+    final deliveredId =
+        int.tryParse(value['lastDeliveredMessageId']?.toString() ?? '') ?? 0;
+    final current = conversationId == null
+        ? null
+        : conversation(conversationId);
+    if (current == null || recipientId == currentUserId) return;
+    final messages = current.messages.map((message) {
+      final messageId = int.tryParse(message.id);
+      if (message.mine &&
+          message.status == ChatMessageStatus.sent &&
+          messageId != null &&
+          messageId <= deliveredId) {
+        return message.copyWith(status: ChatMessageStatus.delivered);
       }
       return message;
     }).toList();
@@ -713,6 +755,7 @@ class ChatRepository extends ChangeNotifier {
       time: _displayConversationTime(lastAt),
       unread: (json['unreadCount'] as num?)?.toInt() ?? 0,
       online: participantJson['online'] == true,
+      muted: json['muted'] == true,
     );
   }
 
@@ -744,9 +787,11 @@ class ChatRepository extends ChangeNotifier {
           : json['senderId']?.toString() == currentUserId,
       time: _displayTime(created.toLocal()),
       createdAtEpochMs: created.millisecondsSinceEpoch,
-      status: json['status'] == 'read'
-          ? ChatMessageStatus.read
-          : ChatMessageStatus.sent,
+      status: switch (json['status']) {
+        'read' => ChatMessageStatus.read,
+        'delivered' => ChatMessageStatus.delivered,
+        _ => ChatMessageStatus.sent,
+      },
       context: context,
       type: json['type']?.toString() ?? 'text',
       mediaUrl: media.isEmpty ? null : (media.first as Map)['url']?.toString(),

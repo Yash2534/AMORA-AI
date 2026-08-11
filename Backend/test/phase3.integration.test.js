@@ -250,9 +250,12 @@ test('two authenticated realtime clients receive only persisted authorized messa
   const bobMessageEvent = nextEvent(bobSocket, 'message.created');
   const sent = await jsonRequest(`/api/conversations/${primaryConversationId}/messages`, 'POST', users.alice, { text: 'Realtime persisted message' });
   assert.equal(sent.status, 201);
+  assert.equal(sent.body.data.message.status, 'delivered');
   const event = await bobMessageEvent;
   assert.equal(event.message.id, sent.body.data.message.id);
-  assert.ok(await models.Message.findByPk(event.message.id));
+  const deliveredMessage = await models.Message.findByPk(event.message.id);
+  assert.equal(deliveredMessage.status, 'delivered');
+  assert.ok(deliveredMessage.deliveredAt);
   await new Promise((resolve) => setTimeout(resolve, 100));
   assert.equal(outsiderReceived, false);
   const aliceReadEvent = nextEvent(aliceSocket, 'message.read');
@@ -261,6 +264,11 @@ test('two authenticated realtime clients receive only persisted authorized messa
   assert.equal((await aliceReadEvent).userId, String(users.bob.id));
   const membership = await models.ConversationParticipant.findOne({ where: { conversationId: primaryConversationId, userId: users.bob.id } });
   assert.equal(String(membership.lastReadMessageId), event.message.id);
+  const readMessage = await models.Message.findByPk(event.message.id);
+  assert.equal(readMessage.status, 'read');
+  assert.ok(readMessage.readAt);
+  const refreshedHistory = await request(`/api/conversations/${primaryConversationId}/messages?limit=30`, { headers: auth(users.alice) });
+  assert.equal(refreshedHistory.body.data.messages.find((item) => item.id === event.message.id).status, 'read');
   const list = await request('/api/conversations', { headers: auth(users.bob) });
   assert.equal(list.body.data.conversations.find((row) => row.id === primaryConversationId).unreadCount, 0);
   const aliceReplyEvent = nextEvent(aliceSocket, 'message.created');
@@ -325,4 +333,31 @@ test('message deletion is sender-only, soft, idempotent, and draft persistence i
   const history = await request(`/api/conversations/${primaryConversationId}/messages?limit=1`, { headers: auth(users.alice) });
   assert.equal(history.body.data.conversation.draft, 'Persist this draft');
   assert.equal((await jsonRequest(`/api/conversations/${primaryConversationId}/draft`, 'DELETE', users.alice)).status, 200);
+});
+
+test('conversation mute persists per participant and suppresses message notification delivery', async () => {
+  await models.NotificationPreference.upsert({ userId: users.bob.id, messages: true, pushEnabled: true });
+  const registered = await jsonRequest('/api/devices', 'POST', users.bob, {
+    pushToken: `phase3-device-token-${users.bob.id}-1234567890`,
+    platform: 'android',
+    installationId: 'phase3-bob-device',
+  });
+  assert.ok([200, 201].includes(registered.status));
+
+  const muted = await jsonRequest(`/api/conversations/${primaryConversationId}/mute`, 'PUT', users.bob, {});
+  assert.equal(muted.status, 200);
+  const list = await request('/api/conversations', { headers: auth(users.bob) });
+  assert.equal(list.body.data.conversations.find((row) => row.id === primaryConversationId).muted, true);
+  const before = await models.Notification.count({ where: { userId: users.bob.id, type: 'new_message' } });
+  assert.equal((await jsonRequest(`/api/conversations/${primaryConversationId}/messages`, 'POST', users.alice, { text: 'Muted notification check' })).status, 201);
+  assert.equal(await models.Notification.count({ where: { userId: users.bob.id, type: 'new_message' } }), before);
+
+  assert.equal((await jsonRequest(`/api/conversations/${primaryConversationId}/mute`, 'DELETE', users.bob, {})).status, 200);
+  const sent = await jsonRequest(`/api/conversations/${primaryConversationId}/messages`, 'POST', users.alice, { text: 'Unmuted notification check' });
+  assert.equal(sent.status, 201);
+  const notification = await models.Notification.findOne({ where: { userId: users.bob.id, dedupeKey: `message:${sent.body.data.message.id}` } });
+  assert.ok(notification);
+  const delivery = await models.NotificationDelivery.findOne({ where: { notificationId: notification.id } });
+  assert.equal(delivery.status, 'credentials_required');
+  assert.equal((await jsonRequest(`/api/conversations/${primaryConversationId}/mute`, 'PUT', users.outsider, {})).status, 404);
 });

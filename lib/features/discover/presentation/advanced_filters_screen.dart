@@ -1543,11 +1543,15 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
       'maxDistanceKm': _distance.round(),
       'minScore': _score.round(),
       'city': _cities.isEmpty ? '' : _cities.first,
-      'minHeight': _minimumHeightCm?.toString() ?? '',
+      'minHeight': _minimumHeightCm,
       'hometown': _hometowns.toList(),
       'datingIntentions': _intents.toList(),
       'lifestyleTags': _lifestyles.toList(),
-      'education': _education.isEmpty ? '' : _education.first,
+      'education': _education.isEmpty
+          ? ''
+          : _education.contains('Other')
+          ? customEducation
+          : _education.first,
       'profession': _profession.isEmpty ? '' : _profession.first,
       'community': _community.isEmpty ? '' : _community.first,
       'religion': _religion.isEmpty ? '' : _religion.first,

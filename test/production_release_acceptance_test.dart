@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:amora_ai/core/theme/amora_theme.dart';
 import 'package:amora_ai/core/widgets/amoraa_select_field.dart';
 import 'package:amora_ai/features/profile/presentation/photo_manager_screen.dart';
+import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
 import 'package:amora_ai/features/profile/presentation/profile_completion_screen.dart';
 import 'package:amora_ai/features/settings/presentation/notification_preferences_screen.dart';
 import 'package:amora_ai/features/settings/presentation/profile_settings_screen.dart';
@@ -82,6 +83,10 @@ void main() {
   });
 
   testWidgets('Photo Manager uses one responsive photo grid', (tester) async {
+    final repository = LocalProfileRepository.instance;
+    final previous = repository.profile;
+    await repository.resetForTesting();
+    addTearDown(() => repository.resetForTesting(previous));
     await pumpScreen(tester, const PhotoManagerScreen());
 
     expect(find.byKey(const ValueKey('profile-photo-grid')), findsOneWidget);

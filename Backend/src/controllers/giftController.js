@@ -2,6 +2,7 @@ const { getModels } = require('../models');
 const { areUsersBlocked } = require('../services/accessControlService');
 const { postWalletTransaction } = require('../services/walletService');
 const { idempotencyKey, publicError } = require('../services/paymentService');
+const { createNotification } = require('../services/notificationService');
 
 exports.catalog = async (_req, res, next) => {
   try { const gifts = await getModels().Gift.findAll({ where: { active: true }, order: [['sortOrder', 'ASC'], ['id', 'ASC']] }); return res.json({ success: true, message: 'Gift catalog retrieved.', data: { gifts: gifts.map((gift) => ({ id: gift.id, name: gift.name, type: gift.type, description: gift.description, priceCredits: Number(gift.priceCredits), creditUnit: gift.creditUnit, assetUrl: gift.assetUrl })) } }); }
@@ -32,6 +33,7 @@ exports.send = async (req, res, next) => {
       }
       transactionRow = await GiftTransaction.create({ senderId, recipientId, giftId: gift.id, walletTransactionId: result.walletTransaction.id, conversationId, priceAtPurchase: gift.priceCredits, creditUnit: gift.creditUnit, idempotencyKey: key, status: 'sent', note: req.body.note?.trim() || null }, { transaction });
     });
+    await createNotification({ userId: recipientId, type: 'gift_received', category: 'gift', title: 'You received a gift', message: `Someone sent you ${gift.name}.`, data: { giftTransactionId: String(transactionRow.id), conversationId: conversationId ? String(conversationId) : '' }, conversationId, dedupeKey: `gift:${transactionRow.id}` });
     return res.status(201).json({ success: true, message: 'Gift sent.', data: { giftTransaction: { id: String(transactionRow.id), recipientId: String(transactionRow.recipientId), giftId: transactionRow.giftId, priceAtPurchase: Number(transactionRow.priceAtPurchase), creditUnit: transactionRow.creditUnit, status: transactionRow.status, createdAt: transactionRow.createdAt }, wallet: { balance: Number(wallet.balance), creditUnit: wallet.creditUnit } } });
   } catch (error) { if (error.code === 'INSUFFICIENT_BALANCE') error.status = 409; return next(error); }
 };

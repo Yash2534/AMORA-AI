@@ -27,5 +27,6 @@ module.exports = {
   paymentVerifyLimiter: rateLimit(options(15 * 60 * 1000, 30, (req) => String(req.user?.sub || req.ip))),
   paymentWebhookLimiter: rateLimit(options(60 * 1000, 300, (req) => String(req.ip))),
   walletValueLimiter: rateLimit(options(5 * 60 * 1000, 30, (req) => String(req.user?.sub || req.ip))),
-  giftSendLimiter: rateLimit(options(5 * 60 * 1000, 30, (req) => String(req.user?.sub || req.ip)))
+  giftSendLimiter: rateLimit(options(5 * 60 * 1000, 30, (req) => String(req.user?.sub || req.ip))),
+  identityVerificationLimiter: rateLimit(options(60 * 60 * 1000, 5, (req) => String(req.user?.sub || req.ip))),
 };

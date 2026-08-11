@@ -7,6 +7,20 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 
+class AuthenticatedMultipartFile {
+  const AuthenticatedMultipartFile({
+    required this.field,
+    required this.bytes,
+    required this.filename,
+    required this.mimeType,
+  });
+
+  final String field;
+  final List<int> bytes;
+  final String filename;
+  final String mimeType;
+}
+
 class AuthException implements Exception {
   const AuthException(this.message, {this.code, this.statusCode});
 
@@ -125,23 +139,23 @@ class AuthService {
     return _saveAuthentication(response, reactivateIfRequired: true);
   }
 
-  Future<void> forgotPassword(String phoneNumber) async =>
-      _post('/api/auth/forgot-password', {'phoneNumber': phoneNumber});
+  Future<void> forgotPassword(String email) async =>
+      _post('/api/auth/forgot-password', {'email': email});
 
-  Future<String> verifyResetCode(String phoneNumber, String code) async {
+  Future<String> verifyResetCode(String email, String code) async {
     final response = await _post('/api/auth/verify-reset-code', {
-      'phoneNumber': phoneNumber,
+      'email': email,
       'code': code,
     });
     return _data(response)['recoveryToken'] as String;
   }
 
   Future<void> resetPassword(
-    String phoneNumber,
+    String email,
     String recoveryToken,
     String newPassword,
   ) async => _post('/api/auth/reset-password', {
-    'phoneNumber': phoneNumber,
+    'email': email,
     'recoveryToken': recoveryToken,
     'newPassword': newPassword,
   });
@@ -253,7 +267,29 @@ class AuthService {
     required String mimeType,
     Map<String, String> fields = const {},
     bool retried = false,
+  }) => authenticatedMultipartFiles(
+    path,
+    files: [
+      AuthenticatedMultipartFile(
+        field: field,
+        bytes: bytes,
+        filename: filename,
+        mimeType: mimeType,
+      ),
+    ],
+    fields: fields,
+    retried: retried,
+  );
+
+  Future<Map<String, dynamic>> authenticatedMultipartFiles(
+    String path, {
+    required List<AuthenticatedMultipartFile> files,
+    Map<String, String> fields = const {},
+    bool retried = false,
   }) async {
+    if (files.isEmpty) {
+      throw const AuthException('At least one upload file is required.');
+    }
     final uri = Uri.parse('${AmoraApiConfig.baseUrl}$path');
     try {
       final request = http.MultipartRequest('POST', uri)
@@ -262,12 +298,14 @@ class AuthService {
         request.headers['Authorization'] = 'Bearer $_accessToken';
       }
       request.fields.addAll(fields);
-      request.files.add(
-        http.MultipartFile.fromBytes(
-          field,
-          bytes,
-          filename: filename,
-          contentType: MediaType.parse(mimeType),
+      request.files.addAll(
+        files.map(
+          (file) => http.MultipartFile.fromBytes(
+            file.field,
+            file.bytes,
+            filename: file.filename,
+            contentType: MediaType.parse(file.mimeType),
+          ),
         ),
       );
       final response = await http.Response.fromStream(
@@ -280,12 +318,9 @@ class AuthService {
           !retried &&
           _refreshToken != null &&
           await _refresh()) {
-        return authenticatedMultipart(
+        return authenticatedMultipartFiles(
           path,
-          field: field,
-          bytes: bytes,
-          filename: filename,
-          mimeType: mimeType,
+          files: files,
           fields: fields,
           retried: true,
         );

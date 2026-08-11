@@ -4,6 +4,7 @@ const { getModels } = require('../models');
 const { conversationAccess } = require('../services/conversationAccessService');
 const { serializePublicProfile } = require('../services/publicProfileService');
 const { emitConversationEvent, isUserOnline } = require('../realtime/realtimeHub');
+const { createNotification } = require('../services/notificationService');
 const { storeMedia, removeStoredMedia, absolutePathFor } = require('../utils/chatMediaStorage');
 
 const unavailable = (res) => res.status(404).json({ success: false, message: 'Conversation is not available.', code: 'CONVERSATION_NOT_AVAILABLE', errors: [] });
@@ -25,7 +26,12 @@ const messageJson = (message, viewerUserId, otherLastReadMessageId) => ({
   deleted: Boolean(message.deletedAt),
   createdAt: message.createdAt,
   updatedAt: message.updatedAt,
-  status: Number(message.senderId) === Number(viewerUserId) && Number(otherLastReadMessageId || 0) >= Number(message.id) ? 'read' : 'sent',
+  status: message.status === 'read'
+    || (Number(message.senderId) === Number(viewerUserId) && Number(otherLastReadMessageId || 0) >= Number(message.id))
+    ? 'read'
+    : message.status === 'delivered' ? 'delivered' : 'sent',
+  deliveredAt: message.deliveredAt,
+  readAt: message.readAt,
   media: message.deletedAt ? [] : mediaFor(message),
 });
 
@@ -44,6 +50,11 @@ exports.history = async (req, res, next) => {
     const access = await conversationAccess(conversationId, userId);
     if (!access) return unavailable(res);
     const { Message, MessageMedia } = getModels();
+    const deliveredAt = new Date();
+    const [deliveredCount] = await Message.update(
+      { status: 'delivered', deliveredAt },
+      { where: { conversationId, senderId: { [Op.ne]: userId }, status: 'sent' } },
+    );
     const limit = Number(req.query.limit || 30);
     const where = { conversationId };
     if (req.query.beforeId) where.id = { [Op.lt]: Number(req.query.beforeId) };
@@ -59,11 +70,33 @@ exports.history = async (req, res, next) => {
     const otherProfile = access.otherUser.OnboardingProfile;
     const participant = serializePublicProfile(req, access.otherUser, otherProfile);
     participant.online = isUserOnline(access.otherUser.id);
+    if (deliveredCount > 0) {
+      const lastDelivered = await Message.findOne({
+        where: { conversationId, senderId: { [Op.ne]: userId }, deliveredAt },
+        attributes: ['id'],
+        order: [['id', 'DESC']],
+      });
+      if (lastDelivered) {
+        await emitConversationEvent(conversationId, 'message.delivered', {
+          conversationId: String(conversationId),
+          userId: String(userId),
+          lastDeliveredMessageId: String(lastDelivered.id),
+        });
+      }
+    }
     return res.json({
       success: true,
       message: pageRows.length ? 'Messages retrieved.' : 'No messages found.',
       data: {
-        conversation: { id: String(conversationId), participant, canMessage: true, draft: access.member.draftText || '' },
+        conversation: {
+          id: String(conversationId),
+          participant,
+          canMessage: true,
+          draft: access.member.draftText || '',
+          muted: Boolean(access.member.mutedAt)
+            && (!access.member.mutedUntil || new Date(access.member.mutedUntil) > new Date()),
+          mutedUntil: access.member.mutedUntil,
+        },
         messages: pageRows.reverse().map((message) => messageJson(message, userId, access.other.lastReadMessageId)),
         pagination: { limit, hasMore, nextCursor: hasMore ? String(pageRows[0].id) : null },
       },
@@ -94,13 +127,23 @@ exports.send = async (req, res, next) => {
     const { Conversation, Message } = getModels();
     let message;
     await Message.sequelize.transaction(async (transaction) => {
-      message = await Message.create({ conversationId, senderId: userId, type: 'text', text, context: sanitizedContext(req.body.context) }, { transaction });
+      const delivered = isUserOnline(access.other.userId);
+      message = await Message.create({
+        conversationId,
+        senderId: userId,
+        type: 'text',
+        text,
+        context: sanitizedContext(req.body.context),
+        status: delivered ? 'delivered' : 'sent',
+        deliveredAt: delivered ? new Date() : null,
+      }, { transaction });
       await Conversation.update({ lastMessageId: message.id, lastMessageAt: message.createdAt }, { where: { id: conversationId }, transaction });
     });
     message = await includedMessage(message.id);
     const payload = messageJson(message, userId, access.other.lastReadMessageId);
     await emitConversationEvent(conversationId, 'message.created', { conversationId: String(conversationId), message: payload });
     await emitConversationEvent(conversationId, 'conversation.updated', { conversationId: String(conversationId), message: payload });
+    await createNotification({ userId: Number(access.other.userId), type: 'new_message', category: 'message', title: req.authUser.name, message: text.slice(0, 160), data: { conversationId: String(conversationId), messageId: String(message.id) }, conversationId, dedupeKey: `message:${message.id}` });
     return res.status(201).json({ success: true, message: 'Message sent.', data: { message: payload } });
   } catch (error) {
     return next(error);
@@ -122,6 +165,13 @@ exports.read = async (req, res, next) => {
     if (nextId > Number(access.member.lastReadMessageId || 0)) {
       await ConversationParticipant.update({ lastReadMessageId: nextId || null, lastReadAt: new Date() }, { where: { id: access.member.id } });
     }
+    if (nextId) {
+      const now = new Date();
+      await Message.update(
+        { status: 'read', deliveredAt: now, readAt: now },
+        { where: { conversationId, senderId: { [Op.ne]: userId }, id: { [Op.lte]: nextId }, status: { [Op.ne]: 'read' } } },
+      );
+    }
     const unreadCount = nextId ? await Message.count({ where: { conversationId, senderId: { [Op.ne]: userId }, deletedAt: null, id: { [Op.gt]: nextId } } }) : 0;
     const payload = { conversationId: String(conversationId), userId: String(userId), lastReadMessageId: nextId ? String(nextId) : null, unreadCount };
     await emitConversationEvent(conversationId, 'message.read', payload);
@@ -142,7 +192,15 @@ exports.media = async (req, res, next) => {
     const { Conversation, Message, MessageMedia } = getModels();
     let message;
     await Message.sequelize.transaction(async (transaction) => {
-      message = await Message.create({ conversationId, senderId: userId, type: 'image', text: req.body.caption?.trim() || null }, { transaction });
+      const delivered = isUserOnline(access.other.userId);
+      message = await Message.create({
+        conversationId,
+        senderId: userId,
+        type: 'image',
+        text: req.body.caption?.trim() || null,
+        status: delivered ? 'delivered' : 'sent',
+        deliveredAt: delivered ? new Date() : null,
+      }, { transaction });
       stored = await storeMedia(message.id, req.file);
       await MessageMedia.create({ messageId: message.id, mediaType: 'image', originalName: stored.originalName, storagePath: stored.storagePath, mimeType: stored.mimeType, sizeBytes: stored.sizeBytes }, { transaction });
       await Conversation.update({ lastMessageId: message.id, lastMessageAt: message.createdAt }, { where: { id: conversationId }, transaction });
@@ -151,6 +209,7 @@ exports.media = async (req, res, next) => {
     const payload = messageJson(message, userId, access.other.lastReadMessageId);
     await emitConversationEvent(conversationId, 'message.created', { conversationId: String(conversationId), message: payload });
     await emitConversationEvent(conversationId, 'conversation.updated', { conversationId: String(conversationId), message: payload });
+    await createNotification({ userId: Number(access.other.userId), type: 'new_message', category: 'message', title: req.authUser.name, message: 'Sent you a photo.', data: { conversationId: String(conversationId), messageId: String(message.id) }, conversationId, dedupeKey: `message:${message.id}` });
     return res.status(201).json({ success: true, message: 'Image message sent.', data: { message: payload } });
   } catch (error) {
     if (stored?.absolutePath) await removeStoredMedia(stored.absolutePath);

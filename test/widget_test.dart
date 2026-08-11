@@ -204,7 +204,7 @@ void main() {
     expect(find.text('City is required'), findsOneWidget);
   });
 
-  testWidgets('login continues to the existing profile onboarding flow', (
+  testWidgets('login never fakes onboarding when authentication fails', (
     tester,
   ) async {
     AmoraSession.logOut();
@@ -227,11 +227,12 @@ void main() {
     await tester.pump(const Duration(milliseconds: 700));
     await tester.pump(const Duration(milliseconds: 400));
 
-    expect(find.text("When's your birthday?"), findsOneWidget);
-    expect(find.text('Step 1 of 6'), findsOneWidget);
+    expect(find.byKey(const ValueKey('login-email-field')), findsOneWidget);
+    expect(find.text("When's your birthday?"), findsNothing);
+    expect(find.text('Step 1 of 6'), findsNothing);
   });
 
-  testWidgets('signup opens mobile verification before profile onboarding', (
+  testWidgets('signup never fakes mobile verification when creation fails', (
     tester,
   ) async {
     AmoraSession.logOut();
@@ -262,9 +263,10 @@ void main() {
     await tester.pump(const Duration(milliseconds: 750));
     await tester.pump(const Duration(milliseconds: 400));
 
-    expect(find.text('Verify your mobile number'), findsOneWidget);
-    expect(find.byKey(const ValueKey('mobile-number-field')), findsOneWidget);
-    expect(find.byKey(const ValueKey('send-otp-button')), findsOneWidget);
+    expect(find.byKey(const ValueKey('signup-email-field')), findsOneWidget);
+    expect(find.text('Verify your mobile number'), findsNothing);
+    expect(find.byKey(const ValueKey('mobile-number-field')), findsNothing);
+    expect(find.byKey(const ValueKey('send-otp-button')), findsNothing);
     expect(find.text("When's your birthday?"), findsNothing);
     expect(find.text('Step 1 of 6'), findsNothing);
   });

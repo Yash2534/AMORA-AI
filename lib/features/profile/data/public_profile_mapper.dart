@@ -57,6 +57,19 @@ PublicProfileResult publicProfileFromJson(Map<String, dynamic> json) {
       : strings(lifestyleValue);
   final imageUrl = json['imageUrl']?.toString() ?? '';
   final gallery = strings(json['gallery']);
+  final compatibility = (json['compatibility'] as Map?)
+      ?.cast<String, dynamic>();
+  final compatibilityReasons = (compatibility?['reasons'] as List? ?? const [])
+      .whereType<Map>()
+      .map(
+        (value) => CompatibilityReason(
+          factor: value['factor']?.toString() ?? '',
+          label: value['label']?.toString() ?? '',
+          score: ((value['score'] as num?)?.round() ?? 0).clamp(0, 100),
+        ),
+      )
+      .where((reason) => reason.label.trim().isNotEmpty)
+      .toList(growable: false);
   final profile = DummyProfile(
     id: json['id']?.toString() ?? '',
     gender: gender,
@@ -108,6 +121,9 @@ PublicProfileResult publicProfileFromJson(Map<String, dynamic> json) {
     communicationStyle: CommunicationStyle.fromStorageValue(
       json['communicationStyle'],
     ),
+    compatibilityReasons: compatibilityReasons,
+    compatibilityMethod: compatibility?['method']?.toString() ?? '',
+    compatibilityDisclaimer: compatibility?['disclaimer']?.toString() ?? '',
   );
   return PublicProfileResult(
     profile: profile,

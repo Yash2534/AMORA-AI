@@ -28,6 +28,8 @@ const giftRoutes = require("./routes/giftRoutes");
 const { saved: savedProfileRoutes, reactions: reactionRoutes, me: meRelationshipRoutes } = require('./routes/relationshipRoutes');
 const notificationPreferenceRoutes = require('./routes/notificationPreferenceRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
+const identityVerificationRoutes = require('./routes/identityVerificationRoutes');
+const deviceRoutes = require('./routes/deviceRoutes');
 const mePreferenceRoutes = require('./routes/mePreferenceRoutes');
 const { attachRealtimeServer } = require("./realtime/realtimeHub");
 const errorHandler = require("./middleware/errorHandler");
@@ -83,6 +85,8 @@ app.use('/api/reactions', reactionRoutes);
 app.use('/api/me', meRelationshipRoutes);
 app.use('/api/notification-preferences', notificationPreferenceRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/identity-verification', identityVerificationRoutes);
+app.use('/api/devices', deviceRoutes);
 app.use((_req, res) =>
   res
     .status(404)

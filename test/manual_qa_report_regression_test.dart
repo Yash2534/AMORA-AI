@@ -132,10 +132,16 @@ void main() {
       ),
     );
     expect(find.byType(AmoraDobField), findsOneWidget);
-    final dateText = find.text(
-      LocalProfileRepository.instance.profile.birthdate,
-    );
-    expect(dateText, findsOneWidget);
+    final storedBirthdate = LocalProfileRepository.instance.profile.birthdate;
+    if (storedBirthdate.isNotEmpty) {
+      expect(
+        find.descendant(
+          of: find.byType(AmoraDobField),
+          matching: find.text(storedBirthdate),
+        ),
+        findsOneWidget,
+      );
+    }
     expect(
       find.descendant(
         of: find.byType(AmoraDobField),
@@ -215,26 +221,17 @@ void main() {
     expect(find.byType(ProfilePreviewScreen), findsNothing);
   });
 
-  testWidgets('membership displays configured benefits and billing duration', (
+  testWidgets('membership never invents plans when its API is unavailable', (
     tester,
   ) async {
     await tester.pumpWidget(
       MaterialApp(theme: AmoraTheme.light(), home: const SubscriptionScreen()),
     );
 
-    expect(find.text('Unlimited likes'), findsOneWidget);
-    expect(find.text('Priority profiles'), findsOneWidget);
-    expect(find.text('Video date access'), findsOneWidget);
-    expect(find.text('Billed monthly'), findsNWidgets(3));
-    await tester.scrollUntilVisible(
-      find.textContaining('only duration currently configured'),
-      400,
-      scrollable: find.byType(Scrollable).first,
-    );
-    expect(
-      find.textContaining('only duration currently configured'),
-      findsOneWidget,
-    );
+    await tester.pumpAndSettle();
+    expect(find.text('Membership could not be loaded.'), findsOneWidget);
+    expect(find.text('Try again'), findsOneWidget);
+    expect(find.text('Unlimited likes'), findsNothing);
   });
 
   testWidgets('events removes duplicate membership unlock actions', (

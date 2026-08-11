@@ -34,6 +34,7 @@ async function createUser(name, birthDate = '1997-04-03') {
     phoneNumber: '',
     authProvider: 'local',
     isVerified: true,
+    identityVerifiedAt: new Date(),
     termsAcceptedAt: new Date(),
   });
   userIds.push(user.id);
@@ -192,4 +193,3 @@ test('account preferences persist, reject unsupported values, and enforce Discov
   assert.equal(otherPreferences.body.data.preferences.minAge, 18);
   assert.equal((await request('/api/me/preferences')).body.data.preferences.minAge, 18);
 });
-

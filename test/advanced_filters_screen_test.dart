@@ -1,8 +1,32 @@
 import 'package:amora_ai/core/theme/amora_theme.dart';
+import 'package:amora_ai/features/discover/data/discover_api_service.dart';
 import 'package:amora_ai/features/discover/presentation/advanced_filters_screen.dart';
 import 'package:amora_ai/features/discover/presentation/widgets/amoraa_minimum_height_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+class _SuccessfulDiscoverApi extends DiscoverApiService {
+  @override
+  Future<DiscoverApiResult<Map<String, dynamic>>> getFilters() async =>
+      const DiscoverApiResult.success(<String, dynamic>{
+        'minAge': 24,
+        'maxAge': 34,
+        'maxDistanceKm': 80,
+        'minScore': 80,
+        'city': 'Ahmedabad',
+        'datingIntentions': <String>['Long-Term Relationship'],
+        'lifestyleTags': <String>['Coffee Dates'],
+        'community': 'Open to all',
+        'languages': <String>['Gujarati'],
+        'verifiedOnly': true,
+        'hasPrompts': true,
+      }, statusCode: 200);
+
+  @override
+  Future<DiscoverApiResult<Map<String, dynamic>>> updateFilters(
+    Map<String, dynamic> filters,
+  ) async => DiscoverApiResult.success(filters, statusCode: 200);
+}
 
 void main() {
   Future<void> pumpFilters(
@@ -14,7 +38,10 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: AmoraTheme.light(),
-        home: AdvancedFiltersScreen(key: UniqueKey()),
+        home: AdvancedFiltersScreen(
+          key: UniqueKey(),
+          apiService: _SuccessfulDiscoverApi(),
+        ),
         routes: {
           '/browse': (_) =>
               const Scaffold(body: Center(child: Text('Discover route'))),

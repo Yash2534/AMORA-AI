@@ -59,6 +59,7 @@ async function verifyIntegrity(models, users) {
     participants: 'SELECT COUNT(*) count_ FROM ConversationParticipants p LEFT JOIN Conversations c ON c.id=p.conversationId LEFT JOIN Users u ON u.id=p.userId WHERE c.id IS NULL OR u.id IS NULL',
     messages: 'SELECT COUNT(*) count_ FROM Messages m LEFT JOIN Conversations c ON c.id=m.conversationId LEFT JOIN Users u ON u.id=m.senderId WHERE c.id IS NULL OR u.id IS NULL',
     notifications: 'SELECT COUNT(*) count_ FROM Notifications n LEFT JOIN Users u ON u.id=n.userId WHERE u.id IS NULL',
+    identityVerifications: 'SELECT COUNT(*) count_ FROM IdentityVerifications v LEFT JOIN Users u ON u.id=v.userId WHERE u.id IS NULL',
     eventRelations: `SELECT (
       (SELECT COUNT(*) FROM EventRegistrations r LEFT JOIN Events e ON e.id=r.eventId LEFT JOIN Users u ON u.id=r.userId WHERE e.id IS NULL OR u.id IS NULL) +
       (SELECT COUNT(*) FROM EventWaitlist w LEFT JOIN Events e ON e.id=w.eventId LEFT JOIN Users u ON u.id=w.userId WHERE e.id IS NULL OR u.id IS NULL) +
@@ -87,6 +88,8 @@ async function verifyIntegrity(models, users) {
   assert.equal(nonParticipantMessages.length, 0, 'A message sender is not a conversation participant.');
   assert.equal(await models.User.count({ where: { email: { [Op.like]: 'qa.%@example.test' } } }), 15);
   assert.equal(await models.OnboardingProfile.count({ where: { userId: Object.values(users).map((user) => user.id) } }), 15);
+  assert.equal(await models.IdentityVerification.count({ where: { userId: Object.values(users).map((user) => user.id) } }), 15);
+  assert.equal(await models.User.count({ where: { id: Object.values(users).map((user) => user.id), identityVerifiedAt: { [Op.ne]: null } } }), 14);
   results.push({ name: 'Database integrity and seed cardinality', method: 'SQL', endpoint: 'MySQL', status: 'PASS', actualStatus: 0 });
 }
 
@@ -108,6 +111,7 @@ async function baselineSummary(models) {
     profiles: await count(models.OnboardingProfile, { userId: userIds }),
     discoveryPreferences: await count(models.DiscoverFilterPreference, { userId: userIds }),
     notificationPreferences: await count(models.NotificationPreference, { userId: userIds }),
+    identityVerifications: await count(models.IdentityVerification, { userId: userIds }),
     discoverActions: await count(models.DiscoverAction, { actorUserId: userIds }),
     matches: await count(models.Match, { userOneId: userIds }),
     savedProfiles: await count(models.SavedProfile, { userId: userIds }),
@@ -185,6 +189,7 @@ async function main() {
     await check('Authenticated account', 'GET', '/api/auth/me', { token, success: true });
     await check('Onboarding status', 'GET', '/api/onboarding/status', { token, success: true, verify: (body) => assert.equal(body.data.onboarding.onboardingCompleted, true) });
     await check('Own profile load', 'GET', '/api/me/profile', { token, success: true, verify: (body) => assert.equal(body.data.profile.name, 'Aarav Mehta') });
+    await check('Identity verification status', 'GET', '/api/identity-verification/me', { token, success: true, verify: (body) => assert.equal(body.data.verification.status, 'verified') });
     await check('Own profile update', 'PUT', '/api/me/profile', {
       token,
       body: { iceBreaker: 'What is one small ritual that makes your week better?' },
@@ -240,7 +245,14 @@ async function main() {
     await check('Save conversation draft', 'PUT', `/api/conversations/${conversation.id}/draft`, { token, body: { text: 'A temporary E2E draft' }, success: true });
     await check('Clear conversation draft', 'DELETE', `/api/conversations/${conversation.id}/draft`, { token, success: true });
 
-    const notifications = await check('Notification inbox', 'GET', '/api/notifications?page=1&limit=20', { token, success: true, verify: (body) => assert.equal(body.data.notifications.length, 10) });
+    const notifications = await check('Notification inbox', 'GET', '/api/notifications?page=1&limit=20', {
+      token,
+      success: true,
+      verify: (body) => {
+        assert.ok(body.data.notifications.length >= 10);
+        assert.ok(body.data.notifications.some((item) => item.type === 'new_match'));
+      },
+    });
     const unread = notifications.body.data.notifications.find((item) => !item.isRead);
     const read = await check('Mark notification read', 'PUT', `/api/notifications/${unread.id}/read`, { token, success: true });
     const readAt = read.body.data.notification.readAt;

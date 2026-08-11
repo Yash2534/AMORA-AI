@@ -51,7 +51,9 @@ function assertSafeTarget() {
 function copySeedAssets() {
   const projectRoot = path.resolve(__dirname, '..', '..');
   const destination = path.resolve(__dirname, '..', 'uploads', 'e2e-test');
+  const identityDestination = path.resolve(__dirname, '..', 'private-uploads', 'identity-verification');
   fs.mkdirSync(destination, { recursive: true });
+  fs.mkdirSync(identityDestination, { recursive: true });
   const profileSources = path.join(projectRoot, 'assets', 'images', 'profiles');
   for (let index = 0; index < personas.length; index += 1) {
     const persona = personas[index];
@@ -64,6 +66,19 @@ function copySeedAssets() {
     const second = path.join(profileSources, group, secondName);
     fs.copyFileSync(first, path.join(destination, `${persona.key}-primary${extension}`));
     fs.copyFileSync(second, path.join(destination, `${persona.key}-gallery${path.extname(secondName)}`));
+    const identityExtension = extension.toLowerCase() === '.jpg' ? '.jpg' : '.png';
+    const aadhaarName = `e2e-${persona.key}-document${identityExtension}`;
+    const selfieName = `e2e-${persona.key}-selfie${identityExtension}`;
+    fs.copyFileSync(first, path.join(identityDestination, aadhaarName));
+    fs.copyFileSync(first, path.join(identityDestination, selfieName));
+    fs.chmodSync(path.join(identityDestination, aadhaarName), 0o600);
+    fs.chmodSync(path.join(identityDestination, selfieName), 0o600);
+    persona.identityFixture = {
+      aadhaarStoragePath: `identity-verification/${aadhaarName}`,
+      selfieStoragePath: `identity-verification/${selfieName}`,
+      mimeType: identityExtension === '.jpg' ? 'image/jpeg' : 'image/png',
+      sizeBytes: fs.statSync(first).size,
+    };
     persona.photos = [
       `/uploads/e2e-test/${persona.key}-primary${extension}`,
       `/uploads/e2e-test/${persona.key}-gallery${path.extname(secondName)}`,
@@ -176,6 +191,10 @@ async function seed() {
       const persona = personas[index];
       const phoneNumber = `+91910000${String(100 + index).padStart(4, '0')}`;
       const accountStatus = persona.accountStatus || 'active';
+      const identityStatus = persona.key === 'isha' ? 'pending' : 'verified';
+      const identityVerifiedAt = identityStatus === 'verified'
+        ? new Date('2026-02-01T10:00:00.000Z')
+        : null;
       const user = await upsertBy(models.User, { email: email(persona.key) }, {
         name: persona.name,
         phoneNumber,
@@ -183,6 +202,7 @@ async function seed() {
         authProvider: 'local',
         googleId: null,
         isVerified: persona.verified,
+        identityVerifiedAt,
         termsAcceptedAt: new Date('2026-01-15T10:00:00.000Z'),
         accountStatus,
         deactivatedAt: accountStatus === 'deactivated' ? new Date(now.getTime() - 14 * 86400000) : null,
@@ -196,6 +216,20 @@ async function seed() {
           : new Date(now.getTime() - (index % 5) * 60000),
       }, transaction);
       users[persona.key] = user;
+      await upsertBy(models.IdentityVerification, { userId: user.id }, {
+        status: identityStatus,
+        aadhaarStoragePath: persona.identityFixture.aadhaarStoragePath,
+        aadhaarMimeType: persona.identityFixture.mimeType,
+        aadhaarSizeBytes: persona.identityFixture.sizeBytes,
+        selfieStoragePath: persona.identityFixture.selfieStoragePath,
+        selfieMimeType: persona.identityFixture.mimeType,
+        selfieSizeBytes: persona.identityFixture.sizeBytes,
+        submittedAt: new Date('2026-01-30T10:00:00.000Z'),
+        reviewedAt: identityVerifiedAt,
+        reviewerUserId: null,
+        reviewNote: identityVerifiedAt ? 'Development-only seeded verification fixture.' : null,
+        rejectionReason: null,
+      }, transaction);
       await upsertBy(models.OnboardingProfile, { userId: user.id }, profileValues(persona, index), transaction);
       await upsertBy(models.DiscoverFilterPreference, { userId: user.id }, {
         minAge: 22,

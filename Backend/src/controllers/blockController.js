@@ -13,7 +13,7 @@ exports.list = async (req, res, next) => {
         as: 'blockedUser',
         required: true,
         where: { accountStatus: { [Op.ne]: 'deleted' } },
-        attributes: ['id', 'name', 'isVerified'],
+        attributes: ['id', 'name', 'identityVerifiedAt'],
         include: [{ model: OnboardingProfile, required: true, where: { onboardingCompleted: true } }],
       }],
       order: [['createdAt', 'DESC'], ['id', 'DESC']],

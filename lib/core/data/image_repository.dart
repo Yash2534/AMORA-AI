@@ -91,6 +91,18 @@ class ImageRepository {
 
 enum Gender { female, male }
 
+class CompatibilityReason {
+  const CompatibilityReason({
+    required this.factor,
+    required this.label,
+    required this.score,
+  });
+
+  final String factor;
+  final String label;
+  final int score;
+}
+
 class DummyProfile {
   const DummyProfile({
     required this.id,
@@ -140,6 +152,9 @@ class DummyProfile {
     this.loveLanguages = const <String>[],
     this.iceBreaker = '',
     this.communicationStyle,
+    this.compatibilityReasons = const <CompatibilityReason>[],
+    this.compatibilityMethod = '',
+    this.compatibilityDisclaimer = '',
   });
 
   final String id;
@@ -189,13 +204,21 @@ class DummyProfile {
   final List<String> loveLanguages;
   final String iceBreaker;
   final CommunicationStyle? communicationStyle;
+  final List<CompatibilityReason> compatibilityReasons;
+  final String compatibilityMethod;
+  final String compatibilityDisclaimer;
 
   String get fallbackAsset => gender == Gender.female
       ? AppImages.femaleProfileFallback
       : AppImages.maleProfileFallback;
   String get initials => AppImages.initialsForName(name);
   String get compatibility => '$score%';
-  bool get verified => verification.toLowerCase().contains('verified');
+  bool get verified {
+    final value = verification.trim().toLowerCase();
+    return value == 'verified' ||
+        (value.contains('verified') && !value.contains('unverified'));
+  }
+
   bool get premium => score >= 91;
 }
 

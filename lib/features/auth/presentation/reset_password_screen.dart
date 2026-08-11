@@ -7,18 +7,15 @@ import 'package:flutter/material.dart';
 
 typedef PasswordResetSubmitter =
     Future<void> Function(
-      String phoneNumber,
+      String email,
       String recoveryToken,
       String newPassword,
     );
 
 class ResetPasswordArgs {
-  const ResetPasswordArgs({
-    required this.phoneNumber,
-    required this.recoveryToken,
-  });
+  const ResetPasswordArgs({required this.email, required this.recoveryToken});
 
-  final String phoneNumber;
+  final String email;
   final String recoveryToken;
 }
 
@@ -210,11 +207,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       _error = null;
     });
     try {
-      await submit(
-        args.phoneNumber,
-        args.recoveryToken,
-        _passwordController.text,
-      );
+      await submit(args.email, args.recoveryToken, _passwordController.text);
       if (!mounted) return;
       _passwordController.clear();
       _confirmationController.clear();

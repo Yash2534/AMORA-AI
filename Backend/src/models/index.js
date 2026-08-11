@@ -8,12 +8,14 @@ const definitions = {
   Wallet: require('./Wallet'), WalletTransaction: require('./WalletTransaction'), WalletProduct: require('./WalletProduct'), BoostProduct: require('./BoostProduct'),
   BoostEntitlement: require('./BoostEntitlement'), Gift: require('./Gift'), GiftTransaction: require('./GiftTransaction'),
   SavedProfile: require('./SavedProfile'), NotificationPreference: require('./NotificationPreference'), Notification: require('./Notification'),
+  IdentityVerification: require('./IdentityVerification'),
+  UserDevice: require('./UserDevice'), NotificationDelivery: require('./NotificationDelivery'),
 };
 let models = {};
 function initModels(sequelize) {
   if (models.User) return models;
   const created = Object.fromEntries(Object.entries(definitions).map(([name, define]) => [name, define(sequelize)]));
-  const { User, RefreshToken, OnboardingProfile, DiscoverAction, Match, Boost, DiscoverFilterPreference, Block, Report, ReportEvidence, Conversation, ConversationParticipant, Message, MessageMedia, Event, EventRegistration, EventWaitlist, EventFeedback, EventCheckIn, EventGroupMessage, SubscriptionPlan, Subscription, Payment, PaymentEvent, Wallet, WalletTransaction, WalletProduct, BoostProduct, BoostEntitlement, Gift, GiftTransaction, SavedProfile, NotificationPreference, Notification } = created;
+  const { User, RefreshToken, OnboardingProfile, DiscoverAction, Match, Boost, DiscoverFilterPreference, Block, Report, ReportEvidence, Conversation, ConversationParticipant, Message, MessageMedia, Event, EventRegistration, EventWaitlist, EventFeedback, EventCheckIn, EventGroupMessage, SubscriptionPlan, Subscription, Payment, PaymentEvent, Wallet, WalletTransaction, WalletProduct, BoostProduct, BoostEntitlement, Gift, GiftTransaction, SavedProfile, NotificationPreference, Notification, IdentityVerification, UserDevice, NotificationDelivery } = created;
   User.hasMany(RefreshToken, { foreignKey: 'userId', onDelete: 'CASCADE' }); RefreshToken.belongsTo(User, { foreignKey: 'userId' }); User.hasOne(OnboardingProfile, { foreignKey: 'userId', onDelete: 'CASCADE' }); OnboardingProfile.belongsTo(User, { foreignKey: 'userId' });
   User.hasMany(DiscoverAction, { foreignKey: 'actorUserId', onDelete: 'CASCADE', as: 'discoverActions' }); DiscoverAction.belongsTo(User, { foreignKey: 'actorUserId', as: 'actor' }); DiscoverAction.belongsTo(User, { foreignKey: 'targetUserId', as: 'target' });
   User.hasMany(Match, { foreignKey: 'userOneId', onDelete: 'CASCADE', as: 'firstMatches' }); User.hasMany(Match, { foreignKey: 'userTwoId', onDelete: 'CASCADE', as: 'secondMatches' }); Match.belongsTo(User, { foreignKey: 'userOneId', as: 'userOne' }); Match.belongsTo(User, { foreignKey: 'userTwoId', as: 'userTwo' });
@@ -22,6 +24,9 @@ function initModels(sequelize) {
   User.hasMany(SavedProfile, { foreignKey: 'userId', as: 'savedProfiles', onDelete: 'CASCADE' }); SavedProfile.belongsTo(User, { foreignKey: 'userId', as: 'owner' }); SavedProfile.belongsTo(User, { foreignKey: 'savedUserId', as: 'savedUser' });
   User.hasOne(NotificationPreference, { foreignKey: 'userId', as: 'notificationPreference', onDelete: 'CASCADE' }); NotificationPreference.belongsTo(User, { foreignKey: 'userId', as: 'user' });
   User.hasMany(Notification, { foreignKey: 'userId', as: 'notifications', onDelete: 'CASCADE' }); Notification.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+  User.hasOne(IdentityVerification, { foreignKey: 'userId', as: 'identityVerification', onDelete: 'CASCADE' }); IdentityVerification.belongsTo(User, { foreignKey: 'userId', as: 'user' }); IdentityVerification.belongsTo(User, { foreignKey: 'reviewerUserId', as: 'reviewer' });
+  User.hasMany(UserDevice, { foreignKey: 'userId', as: 'devices', onDelete: 'CASCADE' }); UserDevice.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+  Notification.hasMany(NotificationDelivery, { foreignKey: 'notificationId', as: 'deliveries', onDelete: 'CASCADE' }); NotificationDelivery.belongsTo(Notification, { foreignKey: 'notificationId', as: 'notification' }); UserDevice.hasMany(NotificationDelivery, { foreignKey: 'userDeviceId', as: 'deliveries', onDelete: 'CASCADE' }); NotificationDelivery.belongsTo(UserDevice, { foreignKey: 'userDeviceId', as: 'device' });
   User.hasMany(Block, { foreignKey: 'blockerUserId', as: 'blocksCreated', onDelete: 'CASCADE' }); User.hasMany(Block, { foreignKey: 'blockedUserId', as: 'blocksReceived', onDelete: 'CASCADE' }); Block.belongsTo(User, { foreignKey: 'blockerUserId', as: 'blocker' }); Block.belongsTo(User, { foreignKey: 'blockedUserId', as: 'blockedUser' });
   User.hasMany(Report, { foreignKey: 'reporterUserId', as: 'reportsCreated' }); User.hasMany(Report, { foreignKey: 'reportedUserId', as: 'reportsReceived' }); Report.belongsTo(User, { foreignKey: 'reporterUserId', as: 'reporter' }); Report.belongsTo(User, { foreignKey: 'reportedUserId', as: 'reportedUser' });
   Report.hasMany(ReportEvidence, { foreignKey: 'reportId', as: 'evidence', onDelete: 'CASCADE' }); ReportEvidence.belongsTo(Report, { foreignKey: 'reportId', as: 'report' });

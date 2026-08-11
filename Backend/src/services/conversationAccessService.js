@@ -27,7 +27,7 @@ async function conversationAccess(conversationId, userId, options = {}) {
         model: User,
         as: 'user',
         required: true,
-        attributes: ['id', 'name', 'isVerified', 'accountStatus'],
+        attributes: ['id', 'name', 'identityVerifiedAt', 'accountStatus'],
         include: [{ model: OnboardingProfile, required: true, where: { onboardingCompleted: true } }],
       }],
     }],
@@ -48,7 +48,7 @@ async function eligibleTarget(targetUserId, transaction) {
   const { User, OnboardingProfile } = getModels();
   return User.findOne({
     where: { id: Number(targetUserId), accountStatus: 'active' },
-    attributes: ['id', 'name', 'isVerified', 'accountStatus'],
+    attributes: ['id', 'name', 'identityVerifiedAt', 'accountStatus'],
     include: [{ model: OnboardingProfile, required: true, where: { onboardingCompleted: true } }],
     transaction,
   });

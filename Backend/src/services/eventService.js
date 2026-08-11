@@ -55,7 +55,7 @@ function eligibilitySql(userId) {
 function participationIncludes(userId) {
   const { EventRegistration, EventWaitlist, EventCheckIn, User } = getModels();
   return [
-    { model: User, as: 'host', required: true, where: { accountStatus: 'active' }, attributes: ['id', 'name', 'isVerified'] },
+    { model: User, as: 'host', required: true, where: { accountStatus: 'active' }, attributes: ['id', 'name', 'identityVerifiedAt'] },
     { model: EventRegistration, as: 'registrations', required: false, where: { userId }, attributes: ['status', 'registeredAt', 'cancelledAt'] },
     { model: EventWaitlist, as: 'waitlist', required: false, where: { userId }, attributes: ['status', 'joinedAt', 'endedAt'] },
     { model: EventCheckIn, as: 'checkIns', required: false, where: { userId }, attributes: ['checkedInAt'] },
@@ -117,7 +117,7 @@ function serializeEvent(event, options = {}) {
     agenda: Array.isArray(plain.agenda) ? plain.agenda : [],
     facilities: Array.isArray(plain.facilities) ? plain.facilities : [],
     interests: Array.isArray(plain.interests) ? plain.interests : [],
-    host: plain.host ? { id: String(plain.host.id), name: plain.host.name, verified: Boolean(plain.host.isVerified) } : null,
+    host: plain.host ? { id: String(plain.host.id), name: plain.host.name, verified: Boolean(plain.host.identityVerifiedAt) } : null,
     participation,
   };
   if (options.host) data.hostMetrics = { checkInCount: Number(plain.checkInCount || 0) };

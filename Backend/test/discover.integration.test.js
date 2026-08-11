@@ -43,6 +43,7 @@ async function createUser(name, values = {}) {
     phoneNumber: values.phoneNumber || '',
     authProvider: 'local',
     isVerified: values.isVerified ?? true,
+    identityVerifiedAt: (values.isVerified ?? true) ? new Date() : null,
     termsAcceptedAt: new Date(),
   });
   userIds.push(user.id);

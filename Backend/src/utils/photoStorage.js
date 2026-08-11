@@ -13,7 +13,8 @@ fs.mkdirSync(uploadDirectory, { recursive: true });
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024, files: 6 },
+  // Keep this in lockstep with DeviceAmoraMediaPicker.maximumImageBytes.
+  limits: { fileSize: 12 * 1024 * 1024, files: 6 },
   fileFilter: (_req, file, callback) => extensions.has(file.mimetype)
     ? callback(null, true)
     : callback(Object.assign(

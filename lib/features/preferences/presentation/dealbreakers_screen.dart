@@ -69,17 +69,24 @@ class _DealbreakersScreenState extends State<DealbreakersScreen> {
       );
       _distance = (value['maxDistanceKm'] as num?)?.toDouble() ?? 25;
       _mustHaves.clear();
-      if ((value['smoking']?.toString() ?? '').isNotEmpty)
+      if ((value['smoking']?.toString() ?? '').isNotEmpty) {
         _mustHaves.add('Smoking');
-      if ((value['drinking']?.toString() ?? '').isNotEmpty)
+      }
+      if ((value['drinking']?.toString() ?? '').isNotEmpty) {
         _mustHaves.add('Drinking');
-      if (((value['datingIntentions'] as List?) ?? const []).isNotEmpty)
+      }
+      if (((value['datingIntentions'] as List?) ?? const []).isNotEmpty) {
         _mustHaves.add('Relationship intention');
-      if ((value['city']?.toString() ?? '').isNotEmpty) _mustHaves.add('City');
-      if ((value['education']?.toString() ?? '').isNotEmpty)
+      }
+      if ((value['city']?.toString() ?? '').isNotEmpty) {
+        _mustHaves.add('City');
+      }
+      if ((value['education']?.toString() ?? '').isNotEmpty) {
         _mustHaves.add('Education');
-      if ((value['community']?.toString() ?? '').isNotEmpty)
+      }
+      if ((value['community']?.toString() ?? '').isNotEmpty) {
         _mustHaves.add('Religion/Community');
+      }
       _loading = false;
       _error = null;
     });
@@ -121,8 +128,9 @@ class _DealbreakersScreenState extends State<DealbreakersScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading)
+    if (_loading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
     return Scaffold(
       appBar: AmoraAppBar(
         title: 'Dealbreakers',

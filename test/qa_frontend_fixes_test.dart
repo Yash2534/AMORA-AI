@@ -120,7 +120,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Events direct state survives large text on narrow screen', (
+  testWidgets('Events failure state survives large text on narrow screen', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(320, 700));
@@ -135,7 +135,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Featured experience'), findsOneWidget);
+    expect(find.text('Try Again'), findsOneWidget);
     expect(find.text('Unlock Events'), findsNothing);
     expect(find.text('View Membership'), findsNothing);
     expect(tester.takeException(), isNull);

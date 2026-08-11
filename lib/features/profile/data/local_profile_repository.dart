@@ -447,7 +447,7 @@ class LocalProfileRepository extends ChangeNotifier {
       final previous = _profile;
       _apply(profile);
       unawaited(
-        _saveRemote(profile).catchError((Object error) {
+        _saveRemote(profile, baseline: previous).catchError((Object error) {
           lastSyncError = error is AuthException
               ? error.message
               : error.toString();
@@ -460,9 +460,15 @@ class LocalProfileRepository extends ChangeNotifier {
     unawaited(_persistSafely());
   }
 
+  /// Replaces presentation state without issuing another backend write.
+  ///
+  /// Server hydration and onboarding field edits use this path so reading a
+  /// canonical profile cannot race a second full-profile PUT back to MySQL.
+  void updateInSession(UserProfile profile) => _apply(profile);
+
   Future<void> savePersisted(UserProfile profile) async {
     if (AuthService.instance.currentUser != null) {
-      await _saveRemote(profile);
+      await _saveRemote(profile, baseline: _profile);
       return;
     }
     _apply(profile);
@@ -481,42 +487,69 @@ class LocalProfileRepository extends ChangeNotifier {
     _apply(UserProfile.fromJson(profile.cast<String, Object?>()));
   }
 
-  Future<void> _saveRemote(UserProfile profile) async {
+  Future<void> _saveRemote(
+    UserProfile profile, {
+    required UserProfile baseline,
+  }) async {
     final birthDate = profile.dateOfBirth;
+    final previousBirthDate = baseline.dateOfBirth;
+    final photosChanged = !listEquals(profile.photos, baseline.photos);
+    final body = <String, dynamic>{
+      if (profile.name != baseline.name) 'name': profile.name,
+      if (birthDate != previousBirthDate && birthDate != null)
+        'birthdate':
+            '${birthDate.year.toString().padLeft(4, '0')}-${birthDate.month.toString().padLeft(2, '0')}-${birthDate.day.toString().padLeft(2, '0')}',
+      if (profile.gender != baseline.gender) 'gender': profile.gender,
+      if (profile.bio != baseline.bio) 'bio': profile.bio,
+      if (profile.profession != baseline.profession)
+        'profession': profile.profession,
+      if (profile.company != baseline.company) 'company': profile.company,
+      if (profile.education != baseline.education)
+        'education': profile.education,
+      if (profile.location != baseline.location) 'location': profile.location,
+      if (profile.datingIntention != baseline.datingIntention)
+        'datingIntention': profile.datingIntention,
+      if (!listEquals(profile.interests, baseline.interests))
+        'interests': profile.interests,
+      if (!mapEquals(profile.prompts, baseline.prompts))
+        'prompts': profile.prompts,
+      if (!mapEquals(profile.lifestyle, baseline.lifestyle))
+        'lifestyle': profile.lifestyle,
+      if (profile.hometown != baseline.hometown) 'hometown': profile.hometown,
+      if (!listEquals(profile.valuedQualities, baseline.valuedQualities))
+        'valuedQualities': profile.valuedQualities,
+      if (!listEquals(profile.pronouns, baseline.pronouns))
+        'pronouns': profile.pronouns,
+      if (profile.sexuality != baseline.sexuality)
+        'sexuality': profile.sexuality,
+      if (!listEquals(
+        profile.preferredTalkingHours,
+        baseline.preferredTalkingHours,
+      ))
+        'preferredTalkingHours': profile.preferredTalkingHours,
+      if (!listEquals(profile.loveLanguages, baseline.loveLanguages))
+        'loveLanguages': profile.loveLanguages,
+      if (profile.iceBreaker != baseline.iceBreaker)
+        'iceBreaker': profile.iceBreaker,
+      if (profile.communicationStyle != baseline.communicationStyle)
+        'communicationStyle': profile.communicationStyle?.storageValue,
+      if (photosChanged &&
+          profile.photos.every((value) => value.startsWith('http')))
+        'photos': profile.photos,
+      if ((photosChanged ||
+              profile.primaryPhotoIndex != baseline.primaryPhotoIndex) &&
+          profile.photos.isNotEmpty &&
+          profile.photos.every((value) => value.startsWith('http')))
+        'primaryPhotoIndex': profile.primaryPhotoIndex,
+    };
+    if (body.isEmpty) {
+      _apply(profile);
+      return;
+    }
     final response = await _remote.request(
       'PUT',
       '/api/me/profile',
-      body: <String, dynamic>{
-        'name': profile.name,
-        if (birthDate != null)
-          'birthdate':
-              '${birthDate.year.toString().padLeft(4, '0')}-${birthDate.month.toString().padLeft(2, '0')}-${birthDate.day.toString().padLeft(2, '0')}',
-        'gender': profile.gender,
-        'bio': profile.bio,
-        'profession': profile.profession,
-        'company': profile.company,
-        'education': profile.education,
-        'location': profile.location,
-        'datingIntention': profile.datingIntention,
-        'interests': profile.interests,
-        'prompts': profile.prompts,
-        'lifestyle': profile.lifestyle,
-        'hometown': profile.hometown,
-        'valuedQualities': profile.valuedQualities,
-        'pronouns': profile.pronouns,
-        'sexuality': profile.sexuality,
-        'preferredTalkingHours': profile.preferredTalkingHours,
-        'loveLanguages': profile.loveLanguages,
-        'iceBreaker': profile.iceBreaker,
-        if (profile.communicationStyle != null)
-          'communicationStyle': profile.communicationStyle!.storageValue,
-        if (profile.photos.isNotEmpty &&
-            profile.photos.every((value) => value.startsWith('http')))
-          'photos': profile.photos,
-        if (profile.photos.isNotEmpty &&
-            profile.photos.every((value) => value.startsWith('http')))
-          'primaryPhotoIndex': profile.primaryPhotoIndex,
-      },
+      body: body,
     );
     final canonical = ((response['data'] as Map?)?['profile'] as Map?)
         ?.cast<String, dynamic>();

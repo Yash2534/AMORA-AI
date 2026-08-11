@@ -22,7 +22,7 @@ const userIds = [];
 
 async function user(name, values = {}) {
   const suffix = `${Date.now()}_${Math.random()}`;
-  const row = await models.User.create({ name, email: `${suffix}@partial.test`, phoneNumber: '', authProvider: 'local', isVerified: true, termsAcceptedAt: new Date(), ...values });
+  const row = await models.User.create({ name, email: `${suffix}@partial.test`, phoneNumber: '', authProvider: 'local', isVerified: true, identityVerifiedAt: new Date(), termsAcceptedAt: new Date(), ...values });
   userIds.push(row.id);
   await models.OnboardingProfile.create({ userId: row.id, birthDate: '1998-02-14', gender: 'Woman', interestedIn: ['Men'], relationshipGoals: ['long_term'], city: 'Ahmedabad', profession: 'Engineer', education: 'Graduate', interests: ['events'], lifestyle: { drinking: 'never' }, prompts: { date: 'Coffee' }, photos: ['/uploads/one.jpg', '/uploads/two.jpg'], stage: 'complete', onboardingCompleted: true });
   return row;
@@ -30,7 +30,7 @@ async function user(name, values = {}) {
 
 async function call(path, method = 'GET', body) {
   const response = await fetch(`${baseUrl}${path}`, { method, headers: { authorization: `Bearer ${token}`, ...(body ? { 'content-type': 'application/json' } : {}) }, ...(body ? { body: JSON.stringify(body) } : {}) });
-  return { status: response.status, body: await response.json() };
+  return { status: response.status, headers: response.headers, body: await response.json() };
 }
 
 before(async () => {
@@ -76,19 +76,24 @@ test('onlineNow and event-interest use server data before pagination', async () 
 });
 
 test('own profile is canonical, persists, rejects mass assignment, and excludes secrets', async () => {
-  const initial = await call('/api/profiles/me');
+  const initial = await call('/api/me/profile');
   assert.equal(initial.status, 200);
   assert.equal(initial.body.data.profile.name, 'Partial Viewer');
   assert.equal('passwordHash' in initial.body.data.profile, false);
-  const updated = await call('/api/profiles/me', 'PUT', { name: 'Canonical Name', bio: 'Persisted bio', iceBreaker: 'Hello there', communicationStyle: 'calls' });
+  const updated = await call('/api/me/profile', 'PUT', { name: 'Canonical Name', bio: 'Persisted bio', iceBreaker: 'Hello there', communicationStyle: 'calls' });
   assert.equal(updated.status, 200);
   assert.equal(updated.body.data.profile.bio, 'Persisted bio');
-  const reloaded = await call('/api/profiles/me');
+  const reloaded = await call('/api/me/profile');
   assert.equal(reloaded.body.data.profile.iceBreaker, 'Hello there');
-  const rejected = await call('/api/profiles/me', 'PUT', { role: 'admin' });
+  const rejected = await call('/api/me/profile', 'PUT', { role: 'admin' });
   assert.equal(rejected.status, 400);
   await viewer.reload();
   assert.equal(viewer.role, 'user');
+
+  const legacy = await call('/api/profiles/me');
+  assert.equal(legacy.status, 200);
+  assert.equal(legacy.headers.get('deprecation'), 'true');
+  assert.match(legacy.headers.get('link'), /\/api\/me\/profile/);
 });
 
 test('saved profiles and sent reactions are authenticated, idempotent, and persistent', async () => {

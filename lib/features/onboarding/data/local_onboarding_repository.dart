@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:developer' as developer;
 
+import 'package:amora_ai/core/auth/auth_service.dart';
+import 'package:amora_ai/core/config/amora_api_config.dart';
 import 'package:amora_ai/core/widgets/amora_dob_field.dart';
 import 'package:amora_ai/features/onboarding/data/onboarding_api_service.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
@@ -229,13 +231,23 @@ class LocalOnboardingRepository extends ChangeNotifier
 
   Future<bool> updatePersisted(LocalOnboardingState state) async {
     final failureCheckpoint = _syncFailureCount;
+    final previous = _state;
     _state = state;
     _syncUserProfile();
     notifyListeners();
     await _persist();
     if (_testingMode) return true;
     await _enqueueSync(state);
-    return _syncFailureCount == failureCheckpoint;
+    final saved = _syncFailureCount == failureCheckpoint;
+    if (!saved) {
+      _state = state.copyWith(
+        stage: previous.stage,
+        onboardingCompleted: previous.onboardingCompleted,
+      );
+      await _persistSafely();
+      notifyListeners();
+    }
+    return saved;
   }
 
   void hydrateFromUserProfile() {
@@ -280,6 +292,7 @@ class LocalOnboardingRepository extends ChangeNotifier
   }
 
   Future<void> syncFromServer() async {
+    if (AuthService.instance.currentUser == null) return;
     final result = await _api.status();
     if (!result.success || result.data == null) {
       _logFailure('status', result.message);
@@ -288,7 +301,6 @@ class LocalOnboardingRepository extends ChangeNotifier
     _applyServerProfile(result.data!);
     await _persistSafely();
     notifyListeners();
-    unawaited(_enqueueSync(_state));
   }
 
   Future<void> clearForAccountDeletion() async {
@@ -563,7 +575,7 @@ class LocalOnboardingRepository extends ChangeNotifier
     );
     final profile = LocalProfileRepository.instance.profile;
     final photos = _strings(values['photos']);
-    LocalProfileRepository.instance.save(
+    LocalProfileRepository.instance.updateInSession(
       profile.copyWith(
         birthdate: birthDate == null
             ? null
@@ -574,42 +586,28 @@ class LocalOnboardingRepository extends ChangeNotifier
                 customValue: values['customGender'] as String? ?? '',
               )
             : null,
-        bio: values['bio'] as String? ?? profile.bio,
-        profession: values['profession'] as String? ?? profile.profession,
-        company: values['company'] as String? ?? profile.company,
-        education: values['education'] as String? ?? profile.education,
-        location: city?.isNotEmpty == true ? city : null,
+        bio: values['bio'] as String? ?? '',
+        profession: values['profession'] as String? ?? '',
+        company: values['company'] as String? ?? '',
+        education: values['education'] as String? ?? '',
+        location: city ?? '',
         datingIntention: relationshipGoals.isEmpty
-            ? null
+            ? ''
             : relationshipGoals.first,
-        interests: _strings(values['interests']).isEmpty
-            ? profile.interests
-            : _strings(values['interests']),
-        prompts: _stringMap(values['prompts']).isEmpty
-            ? profile.prompts
-            : _stringMap(values['prompts']),
-        lifestyle: _stringMap(values['lifestyle']).isEmpty
-            ? profile.lifestyle
-            : _stringMap(values['lifestyle']),
-        photos: photos.isEmpty ? profile.photos : photos,
+        interests: _strings(values['interests']),
+        prompts: _stringMap(values['prompts']),
+        lifestyle: _stringMap(values['lifestyle']),
+        photos: photos.map(_absolutePhotoUrl).toList(growable: false),
         primaryPhotoIndex:
             values['primaryPhotoIndex'] as int? ?? profile.primaryPhotoIndex,
         voicePrompt: values['voicePromptUrl'] as String? ?? profile.voicePrompt,
         videoPrompt: values['videoPromptUrl'] as String? ?? profile.videoPrompt,
         hometown: values['hometown'] as String? ?? profile.hometown,
-        valuedQualities: _strings(values['valuedQualities']).isEmpty
-            ? profile.valuedQualities
-            : _strings(values['valuedQualities']),
-        pronouns: _strings(values['pronouns']).isEmpty
-            ? profile.pronouns
-            : _strings(values['pronouns']),
-        sexuality: values['sexuality'] as String? ?? profile.sexuality,
-        preferredTalkingHours: _strings(values['preferredTalkingHours']).isEmpty
-            ? profile.preferredTalkingHours
-            : _strings(values['preferredTalkingHours']),
-        loveLanguages: _strings(values['loveLanguages']).isEmpty
-            ? profile.loveLanguages
-            : _strings(values['loveLanguages']),
+        valuedQualities: _strings(values['valuedQualities']),
+        pronouns: _strings(values['pronouns']),
+        sexuality: values['sexuality'] as String? ?? '',
+        preferredTalkingHours: _strings(values['preferredTalkingHours']),
+        loveLanguages: _strings(values['loveLanguages']),
       ),
     );
   }
@@ -621,6 +619,10 @@ class LocalOnboardingRepository extends ChangeNotifier
       (value as Map? ?? const <Object?, Object?>{}).map(
         (key, item) => MapEntry(key.toString(), item.toString()),
       );
+  String _absolutePhotoUrl(String value) =>
+      value.startsWith('http://') || value.startsWith('https://')
+      ? value
+      : '${AmoraApiConfig.baseUrl}${value.startsWith('/') ? '' : '/'}$value';
   String _extensionForMimeType(String? mimeType) => switch (mimeType) {
     'image/png' => 'png',
     'image/webp' => 'webp',
@@ -642,7 +644,7 @@ class LocalOnboardingRepository extends ChangeNotifier
       _state.gender,
       customValue: _state.customGender,
     );
-    repository.save(
+    repository.updateInSession(
       profile.copyWith(
         birthdate: _state.birthDate == null
             ? null

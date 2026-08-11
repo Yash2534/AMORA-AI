@@ -116,7 +116,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(verificationCalls, 1);
-    expect(find.text('Verification complete'), findsOneWidget);
+    expect(find.text('Submitted for review'), findsOneWidget);
+    expect(find.text('Identity verified'), findsNothing);
   });
 
   testWidgets('missing KYC backend never shows a verified state', (

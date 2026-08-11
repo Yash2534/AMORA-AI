@@ -392,15 +392,18 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
       return;
     }
     final repository = ChatRepository.instance;
-    late final String conversationId;
-    try {
-      conversationId = await repository.createConversationForProfile(_profile);
-    } catch (_) {
-      if (mounted) _snack('Chat is unavailable for this profile.');
-      return;
+    var conversationId = repository.conversationIdForProfile(_profile.id);
+    if (conversationId == null) {
+      try {
+        conversationId = await repository.createConversationForProfile(
+          _profile,
+        );
+      } catch (_) {
+        // A match is not required for a Rose; unmatched profiles continue
+        // without the optional chat card.
+      }
     }
     if (!mounted) return;
-    String? retryMessageId;
     final giftKey = MonetizationRepository.instance.newIdempotencyKey(
       'rose-gift',
     );
@@ -410,21 +413,6 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
       recipientName: _profile.name,
       onSend: (note) async {
         try {
-          final failedId = retryMessageId;
-          if (failedId != null) {
-            final retried = await repository.retryMessage(
-              conversationId,
-              failedId,
-            );
-            final message = retried?.messages
-                .where((item) => item.id == failedId)
-                .firstOrNull;
-            if (message?.status != ChatMessageStatus.failed) {
-              retryMessageId = null;
-              return message != null;
-            }
-            return false;
-          }
           await MonetizationRepository.instance.sendGift(
             recipientId: _profile.id,
             giftId: 'rose_ritual',
@@ -432,22 +420,20 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
             conversationId: conversationId,
             note: note,
           );
-          final updated = await repository.sendMessage(
-            conversationId,
-            note.isEmpty ? 'Rose' : note,
-            context: const ChatMessageContext.rose(),
-          );
-          return updated != null;
-        } catch (_) {
-          final conversation = repository.conversation(conversationId);
-          for (final message
-              in conversation?.messages.reversed ?? const <ChatMessage>[]) {
-            if (message.context?.type == ChatMessageContextType.rose &&
-                message.status == ChatMessageStatus.failed) {
-              retryMessageId = message.id;
-              break;
+          if (conversationId != null) {
+            try {
+              await repository.sendMessage(
+                conversationId,
+                note.isEmpty ? 'Rose' : note,
+                context: const ChatMessageContext.rose(),
+              );
+            } catch (_) {
+              // The server-confirmed Rose remains successful even if the
+              // optional conversation card cannot be created.
             }
           }
+          return true;
+        } catch (_) {
           return false;
         }
       },
@@ -455,6 +441,10 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
     if (!mounted) return;
     setState(() => _giftSheetOpen = false);
     if (!sent) return;
+    if (conversationId == null) {
+      _snack('Rose sent to ${_profile.name}');
+      return;
+    }
     Navigator.of(context).pushNamed(
       ChatDetailScreen.routeName,
       arguments: ChatDetailArgs(

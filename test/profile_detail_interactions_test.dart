@@ -11,12 +11,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class _GiftRemote implements MonetizationRemoteDataSource {
+  int sendCalls = 0;
+
   @override
   Future<Map<String, dynamic>> request(
     String method,
     String path, {
     Map<String, dynamic>? body,
-  }) async => {'success': true, 'data': <String, dynamic>{}};
+  }) async {
+    if (method == 'POST' && path == '/api/gifts/send') sendCalls++;
+    return {'success': true, 'data': <String, dynamic>{}};
+  }
 }
 
 DummyProfile _withNumericId(DummyProfile source) => DummyProfile(
@@ -72,13 +77,15 @@ DummyProfile _withNumericId(DummyProfile source) => DummyProfile(
 void main() {
   final repository = LocalChatRepository.instance;
   final profile = _withNumericId(ImageRepository.profiles.first);
+  late _GiftRemote giftRemote;
 
   setUp(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
     AmoraSession.logIn();
     await repository.resetForTesting();
+    giftRemote = _GiftRemote();
     MonetizationRepository.debugOverride = MonetizationRepository(
-      remote: _GiftRemote(),
+      remote: giftRemote,
     );
   });
 
@@ -360,7 +367,7 @@ void main() {
   });
 
   testWidgets(
-    'Rose send failure preserves note and retries without duplicate',
+    'confirmed Rose remains successful when optional chat card fails',
     (tester) async {
       await pumpProfile(tester, buildChat: true);
       await openRoseSheet(tester);
@@ -375,23 +382,13 @@ void main() {
           .length;
       repository.failNextPersistenceForTesting();
       await tester.tap(find.byKey(const ValueKey('send-rose-button')));
-      await tester.pump(const Duration(milliseconds: 320));
+      await finishRoseSend(tester);
 
-      expect(find.text('Couldn’t send the Rose'), findsOneWidget);
-      final note = tester.widget<TextField>(
-        find.byKey(const ValueKey('rose-note-field')),
-      );
-      expect(note.controller?.text, 'Please keep this note.');
       expect(
         repository.conversation(conversationId)!.messages,
         hasLength(initialMessageCount),
       );
-
-      await tester.tap(find.byKey(const ValueKey('send-rose-button')));
-      await finishRoseSend(tester);
-      final messages = repository.conversation(conversationId)!.messages;
-      expect(messages, hasLength(initialMessageCount + 1));
-      expect(messages.last.status, ChatMessageStatus.sent);
+      expect(giftRemote.sendCalls, 1);
     },
   );
 

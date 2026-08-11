@@ -15,10 +15,16 @@ process.env.NODE_ENV = 'test';
 const verificationCode = '246810';
 const otpModule = require.resolve('../src/utils/generateOtp');
 const smsModule = require.resolve('../src/utils/sendSms');
+const emailModule = require.resolve('../src/utils/sendEmail');
 require(otpModule);
 require(smsModule);
+require(emailModule);
 require.cache[otpModule].exports = () => verificationCode;
 require.cache[smsModule].exports = async () => {};
+const sentEmails = [];
+require.cache[emailModule].exports = async (to, subject, html, meta) => {
+  sentEmails.push({ to, subject, html, meta });
+};
 
 const { migrate } = require('../src/migrations/run');
 const { initializeDatabase, getSequelize } = require('../src/config/db');
@@ -32,6 +38,7 @@ let user;
 let accessToken;
 let refreshToken;
 let phoneNumber;
+let email;
 const uploadedFiles = [];
 
 async function request(pathname, {
@@ -70,6 +77,7 @@ after(async () => {
     await models.RefreshToken.destroy({ where: { userId: user.id } });
     await models.OnboardingProfile.destroy({ where: { userId: user.id } });
     await models.OtpToken.destroy({ where: { phoneNumber } });
+    await models.OtpToken.destroy({ where: { email } });
     await models.User.destroy({ where: { id: user.id } });
   }
   try { await getSequelize().close(); } catch (_) {}
@@ -78,7 +86,7 @@ after(async () => {
 test('fresh account verifies, completes a persisted profile, reloads it, and logs out', async () => {
   const suffix = `${Date.now()}${Math.floor(Math.random() * 1000)}`;
   phoneNumber = `+919${suffix.slice(-9)}`;
-  const email = `fresh-${suffix}@auth-flow.test`;
+  email = `fresh-${suffix}@auth-flow.test`;
   const password = 'ProductionPass123!';
 
   const signup = await request('/api/auth/signup', {
@@ -93,7 +101,7 @@ test('fresh account verifies, completes a persisted profile, reloads it, and log
       acceptedTerms: true,
     },
   });
-  assert.equal(signup.status, 200);
+  assert.equal(signup.status, 200, JSON.stringify(signup.body));
   user = await models.User.findOne({ where: { email } });
   assert.ok(user);
   assert.equal(user.isVerified, false);
@@ -203,4 +211,92 @@ test('fresh account verifies, completes a persisted profile, reloads it, and log
     body: { refreshToken },
   });
   assert.equal(refreshAfterLogout.status, 401);
+});
+
+test('password recovery is email-based, non-enumerating, and single-use', async () => {
+  const beforeUnknown = sentEmails.length;
+  const unknown = await request('/api/auth/forgot-password', {
+    method: 'POST',
+    token: null,
+    body: { email: `unknown-${Date.now()}@auth-flow.test` },
+  });
+  assert.equal(unknown.status, 200);
+  assert.equal(sentEmails.length, beforeUnknown);
+  assert.equal(Object.hasOwn(unknown.body, 'devOtp'), false);
+
+  const requested = await request('/api/auth/forgot-password', {
+    method: 'POST',
+    token: null,
+    body: { email },
+  });
+  assert.equal(requested.status, 200);
+  assert.equal(sentEmails.length, beforeUnknown + 1);
+  assert.equal(sentEmails.at(-1).to, email);
+  assert.equal(sentEmails.at(-1).meta.code, verificationCode);
+  assert.equal(Object.hasOwn(requested.body, 'devOtp'), false);
+
+  const duplicateRequest = await request('/api/auth/forgot-password', {
+    method: 'POST',
+    token: null,
+    body: { email },
+  });
+  assert.equal(duplicateRequest.status, 429);
+  assert.equal(duplicateRequest.body.code, 'RATE_LIMITED');
+  assert.equal(sentEmails.length, beforeUnknown + 1);
+
+  const wrongCode = await request('/api/auth/verify-reset-code', {
+    method: 'POST',
+    token: null,
+    body: { email, code: '000000' },
+  });
+  assert.equal(wrongCode.status, 400);
+  assert.equal(wrongCode.body.code, 'OTP_INVALID');
+
+  const verified = await request('/api/auth/verify-reset-code', {
+    method: 'POST',
+    token: null,
+    body: { email, code: verificationCode },
+  });
+  assert.equal(verified.status, 200);
+  const recoveryToken = verified.body.data.recoveryToken;
+  assert.ok(recoveryToken);
+
+  const mismatched = await request('/api/auth/reset-password', {
+    method: 'POST',
+    token: null,
+    body: {
+      email: 'someone-else@auth-flow.test',
+      recoveryToken,
+      newPassword: 'ChangedPass123!',
+    },
+  });
+  assert.equal(mismatched.status, 401);
+
+  const reset = await request('/api/auth/reset-password', {
+    method: 'POST',
+    token: null,
+    body: { email, recoveryToken, newPassword: 'ChangedPass123!' },
+  });
+  assert.equal(reset.status, 200);
+
+  const replay = await request('/api/auth/reset-password', {
+    method: 'POST',
+    token: null,
+    body: { email, recoveryToken, newPassword: 'ReplayPass123!' },
+  });
+  assert.equal(replay.status, 401);
+  assert.equal(replay.body.code, 'TOKEN_INVALID');
+
+  const oldPassword = await request('/api/auth/login', {
+    method: 'POST',
+    token: null,
+    body: { email, password: 'ProductionPass123!' },
+  });
+  assert.equal(oldPassword.status, 401);
+  const newPassword = await request('/api/auth/login', {
+    method: 'POST',
+    token: null,
+    body: { email, password: 'ChangedPass123!' },
+  });
+  assert.equal(newPassword.status, 200);
 });
