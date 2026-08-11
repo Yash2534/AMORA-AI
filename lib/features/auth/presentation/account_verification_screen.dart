@@ -642,9 +642,10 @@ class _UnifiedMobileNumberFieldState extends State<_UnifiedMobileNumberField> {
         const SizedBox(height: AmoraSpacing.space8),
         LayoutBuilder(
           builder: (context, constraints) {
-            final narrow = constraints.maxWidth < 280;
-            final countryWidth = narrow ? 102.0 : 108.0;
-            final phoneIconWidth = narrow ? 38.0 : 42.0;
+            final availableWidth = constraints.maxWidth;
+            final narrow = availableWidth < 260;
+            final countryWidth = (availableWidth * .36).clamp(84.0, 108.0);
+            final phoneIconWidth = (availableWidth * .14).clamp(34.0, 42.0);
             return AnimatedContainer(
               key: const ValueKey('unified-mobile-number-field'),
               duration: const Duration(milliseconds: 180),
@@ -762,7 +763,11 @@ class _UnifiedMobileNumberFieldState extends State<_UnifiedMobileNumberField> {
                           LengthLimitingTextInputFormatter(10),
                         ],
                         onFieldSubmitted: widget.onSubmitted,
-                        style: AmoraTextStyles.bodyLarge,
+                        style: AmoraTextStyles.bodyLarge.copyWith(
+                          fontSize: narrow ? 15 : 16,
+                          height: 1.2,
+                          fontWeight: FontWeight.w500,
+                        ),
                         textAlignVertical: TextAlignVertical.center,
                         cursorColor: AppColors.secondary,
                         decoration: InputDecoration(
@@ -789,7 +794,7 @@ class _UnifiedMobileNumberFieldState extends State<_UnifiedMobileNumberField> {
                           errorBorder: InputBorder.none,
                           focusedErrorBorder: InputBorder.none,
                           contentPadding: const EdgeInsets.only(
-                            right: AmoraSpacing.space12,
+                            right: AmoraSpacing.space8,
                           ),
                         ),
                       ),

@@ -47,7 +47,10 @@ class AmoraAuthShell extends StatelessWidget {
           SafeArea(
             child: LayoutBuilder(
               builder: (context, viewport) {
-                final horizontalPadding = viewport.maxWidth < 360
+                final horizontalPadding = compactLayout &&
+                        viewport.maxWidth < 320
+                    ? AmoraSpacing.space12
+                    : viewport.maxWidth < 360
                     ? AmoraSpacing.space16
                     : viewport.maxWidth < 600
                     ? AmoraSpacing.space20
@@ -248,6 +251,50 @@ class AuthBrandHeader extends StatelessWidget {
                     ),
                   ),
           );
+    if (compact && onBack == null && stepBadge != null) {
+      return Row(
+        children: [
+          Expanded(
+            flex: 5,
+            child: Row(
+              children: [
+                Image.asset(
+                  AmoraBrandAssets.icon,
+                  width: 32,
+                  height: 32,
+                  fit: BoxFit.contain,
+                  semanticLabel: 'AMORAA icon',
+                ),
+                const SizedBox(width: AmoraSpacing.space8),
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Image.asset(
+                      AmoraBrandAssets.wordmark,
+                      height: 16.5,
+                      fit: BoxFit.contain,
+                      alignment: Alignment.centerLeft,
+                      semanticLabel: 'AMORAA',
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: AmoraSpacing.space8),
+          Flexible(
+            flex: 4,
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 132),
+                child: stepBadge,
+              ),
+            ),
+          ),
+        ],
+      );
+    }
     return Row(
       children: [
         if (onBack != null) ...[
@@ -329,7 +376,9 @@ class AuthPageHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final narrow = MediaQuery.sizeOf(context).width < 360;
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final veryNarrow = screenWidth < 320;
+    final narrow = screenWidth < 360;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -377,7 +426,9 @@ class AuthFormSurface extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface.withValues(alpha: .96),
         borderRadius: BorderRadius.circular(
-          compact ? (narrow ? 20 : 24) : (narrow ? 22 : 26),
+          compact
+              ? (veryNarrow ? 18 : narrow ? 20 : 24)
+              : (narrow ? 22 : 26),
         ),
         border: Border.all(
           color: AppColors.tertiary.withValues(alpha: compact ? .64 : .78),
@@ -386,7 +437,9 @@ class AuthFormSurface extends StatelessWidget {
       ),
       child: Padding(
         padding: EdgeInsets.all(
-          narrow
+          compact && veryNarrow
+              ? AmoraSpacing.space12
+              : narrow
               ? AmoraSpacing.space16
               : compact
               ? AmoraSpacing.space20
