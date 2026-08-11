@@ -39,6 +39,7 @@ class UserProfile {
     this.loveLanguages = const <String>[],
     this.iceBreaker = '',
     this.communicationStyle,
+    this.serverCompletionPercent,
   });
 
   final String name;
@@ -67,6 +68,7 @@ class UserProfile {
   final List<String> loveLanguages;
   final String iceBreaker;
   final CommunicationStyle? communicationStyle;
+  final int? serverCompletionPercent;
 
   DateTime? get dateOfBirth => AmoraDateOfBirth.parse(birthdate);
 
@@ -98,7 +100,8 @@ class UserProfile {
   List<ProfilePendingField> get pendingFields =>
       ProfileCompletionCalculator.pendingFields(completionInput);
 
-  int get completionPercent => completionResult.percentage;
+  int get completionPercent =>
+      serverCompletionPercent ?? completionResult.percentage;
 
   int get completedPromptCount =>
       prompts.values.where((value) => value.trim().isNotEmpty).length;
@@ -114,7 +117,9 @@ class UserProfile {
       location.trim().isNotEmpty &&
       datingIntention.trim().isNotEmpty;
 
-  bool get requiredProfileComplete => completionResult.isComplete;
+  bool get requiredProfileComplete => serverCompletionPercent == null
+      ? completionResult.isComplete
+      : serverCompletionPercent == 100;
 
   UserProfile copyWith({
     String? name,
@@ -144,6 +149,7 @@ class UserProfile {
     List<String>? loveLanguages,
     String? iceBreaker,
     CommunicationStyle? communicationStyle,
+    int? serverCompletionPercent,
   }) {
     return UserProfile(
       name: name ?? this.name,
@@ -174,6 +180,8 @@ class UserProfile {
       loveLanguages: List<String>.of(loveLanguages ?? this.loveLanguages),
       iceBreaker: iceBreaker ?? this.iceBreaker,
       communicationStyle: communicationStyle ?? this.communicationStyle,
+      serverCompletionPercent:
+          serverCompletionPercent ?? this.serverCompletionPercent,
     );
   }
 
@@ -204,6 +212,11 @@ class UserProfile {
     'loveLanguages': loveLanguages,
     'iceBreaker': iceBreaker,
     'communicationStyle': communicationStyle?.storageValue,
+    if (serverCompletionPercent != null)
+      'profileCompletion': <String, Object?>{
+        'percentage': serverCompletionPercent,
+        'complete': serverCompletionPercent == 100,
+      },
   };
 
   factory UserProfile.fromJson(Map<String, Object?> json) {
@@ -216,6 +229,7 @@ class UserProfile {
           (key, value) => MapEntry(key.toString(), value.toString()),
         );
 
+    final completion = json['profileCompletion'] as Map<Object?, Object?>?;
     return UserProfile(
       name: json['name'] as String? ?? '',
       email: json['email'] as String? ?? 'member@amora.ai',
@@ -245,8 +259,28 @@ class UserProfile {
       communicationStyle: CommunicationStyle.fromStorageValue(
         json['communicationStyle'],
       ),
+      serverCompletionPercent: (completion?['percentage'] as num?)?.toInt(),
     );
   }
+}
+
+abstract interface class OwnProfileRemoteDataSource {
+  Future<Map<String, dynamic>> request(
+    String method,
+    String path, {
+    Map<String, dynamic>? body,
+  });
+}
+
+class AuthOwnProfileRemoteDataSource implements OwnProfileRemoteDataSource {
+  const AuthOwnProfileRemoteDataSource();
+
+  @override
+  Future<Map<String, dynamic>> request(
+    String method,
+    String path, {
+    Map<String, dynamic>? body,
+  }) => AuthService.instance.authenticatedRequest(method, path, body: body);
 }
 
 // Compatibility alias for existing presentation widgets. There is only one
@@ -315,9 +349,16 @@ class ProfilePhotoViewData {
 }
 
 class LocalProfileRepository extends ChangeNotifier {
-  LocalProfileRepository._();
+  LocalProfileRepository._({OwnProfileRemoteDataSource? remote})
+    : _remote = remote ?? const AuthOwnProfileRemoteDataSource();
 
   static final instance = LocalProfileRepository._();
+  @visibleForTesting
+  factory LocalProfileRepository.testing({
+    required OwnProfileRemoteDataSource remote,
+  }) => LocalProfileRepository._(remote: remote);
+
+  final OwnProfileRemoteDataSource _remote;
   static const _storageKey = 'amora.user_profile.v1';
 
   UserProfile _profile = _defaultProfile;
@@ -430,23 +471,21 @@ class LocalProfileRepository extends ChangeNotifier {
 
   Future<void> refreshFromServer() async {
     if (AuthService.instance.currentUser == null) return;
-    final response = await AuthService.instance.authenticatedRequest(
-      'GET',
-      '/api/profiles/me',
-    );
+    final response = await _remote.request('GET', '/api/me/profile');
     final profile = ((response['data'] as Map?)?['profile'] as Map?)
         ?.cast<String, dynamic>();
-    if (profile == null)
+    if (profile == null) {
       throw const AuthException('Own profile response is invalid.');
+    }
     lastSyncError = null;
     _apply(UserProfile.fromJson(profile.cast<String, Object?>()));
   }
 
   Future<void> _saveRemote(UserProfile profile) async {
     final birthDate = profile.dateOfBirth;
-    final response = await AuthService.instance.authenticatedRequest(
+    final response = await _remote.request(
       'PUT',
-      '/api/profiles/me',
+      '/api/me/profile',
       body: <String, dynamic>{
         'name': profile.name,
         if (birthDate != null)
@@ -481,8 +520,9 @@ class LocalProfileRepository extends ChangeNotifier {
     );
     final canonical = ((response['data'] as Map?)?['profile'] as Map?)
         ?.cast<String, dynamic>();
-    if (canonical == null)
+    if (canonical == null) {
       throw const AuthException('Updated profile response is invalid.');
+    }
     lastSyncError = null;
     _apply(UserProfile.fromJson(canonical.cast<String, Object?>()));
   }
@@ -508,8 +548,9 @@ class LocalProfileRepository extends ChangeNotifier {
     final onboarding = ((response['data'] as Map?)?['onboarding'] as Map?)
         ?.cast<String, dynamic>();
     final photos = (onboarding?['photos'] as List?) ?? const <dynamic>[];
-    if (photos.isEmpty)
+    if (photos.isEmpty) {
       throw const AuthException('The photo upload returned no file.');
+    }
     final value = photos.last.toString();
     return value.startsWith('http') ? value : '${AmoraApiConfig.baseUrl}$value';
   }

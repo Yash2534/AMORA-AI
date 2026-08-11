@@ -27,6 +27,7 @@ class LikesSuperLikesScreen extends StatefulWidget {
 
 class _LikesSuperLikesScreenState extends State<LikesSuperLikesScreen> {
   ProfileReactionType _selected = ProfileReactionType.like;
+  late final ScrollController _scrollController;
 
   ProfileRelationshipController get _source =>
       widget.controller ?? ProfileRelationshipController.instance;
@@ -34,6 +35,7 @@ class _LikesSuperLikesScreenState extends State<LikesSuperLikesScreen> {
   @override
   void initState() {
     super.initState();
+    _scrollController = ScrollController()..addListener(_loadMore);
     _source.addListener(_refresh);
     if (widget.controller == null) unawaited(_source.refreshRemote());
   }
@@ -51,7 +53,15 @@ class _LikesSuperLikesScreenState extends State<LikesSuperLikesScreen> {
   @override
   void dispose() {
     _source.removeListener(_refresh);
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  void _loadMore() {
+    if (_scrollController.hasClients &&
+        _scrollController.position.extentAfter < 240) {
+      unawaited(_source.loadMoreReactions(_selected));
+    }
   }
 
   void _refresh() {
@@ -123,6 +133,15 @@ class _LikesSuperLikesScreenState extends State<LikesSuperLikesScreen> {
                       superLikes: superLikes,
                       onSelected: (value) => setState(() => _selected = value),
                     ),
+                    if (_source.error != null && profiles.isNotEmpty) ...[
+                      const SizedBox(height: AmoraSpacing.space8),
+                      TextButton(
+                        onPressed: () => _source.reactionHasMore(_selected)
+                            ? _source.loadMoreReactions(_selected)
+                            : _source.refreshRemote(),
+                        child: Text('${_source.error}\nTry again'),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -140,6 +159,7 @@ class _LikesSuperLikesScreenState extends State<LikesSuperLikesScreen> {
                           ).pushNamed(DiscoverScreen.routeName),
                         )
                       : ListView.separated(
+                          controller: _scrollController,
                           key: ValueKey(
                             'reaction-${_selected.name}-${profiles.map((profile) => profile.id).join('-')}',
                           ),
@@ -149,10 +169,17 @@ class _LikesSuperLikesScreenState extends State<LikesSuperLikesScreen> {
                             AmoraSpacing.space20,
                             AmoraSpacing.space32,
                           ),
-                          itemCount: profiles.length,
+                          itemCount:
+                              profiles.length +
+                              (_source.reactionLoadingMore(_selected) ? 1 : 0),
                           separatorBuilder: (_, _) =>
                               const SizedBox(height: AmoraSpacing.space12),
                           itemBuilder: (context, index) {
+                            if (index == profiles.length) {
+                              return const Center(
+                                child: CircularProgressIndicator(),
+                              );
+                            }
                             final profile = profiles[index];
                             final isLike =
                                 _selected == ProfileReactionType.like;

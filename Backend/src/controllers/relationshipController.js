@@ -85,7 +85,7 @@ exports.save = async (req, res, next) => {
     return res.status(created ? 201 : 200).json({
       success: true,
       message: created ? 'Profile saved.' : 'Profile was already saved.',
-      data: { saved: true, profile: serializePublicProfile(req, target, target.OnboardingProfile, { viewer, relationship: { saved: true } }) },
+      data: { userId: String(targetUserId), saved: true, profile: serializePublicProfile(req, target, target.OnboardingProfile, { viewer, relationship: { saved: true } }) },
     });
   } catch (error) { return next(error); }
 };
@@ -99,11 +99,10 @@ exports.unsave = async (req, res, next) => {
   } catch (error) { return next(error); }
 };
 
-exports.listReactions = async (req, res, next) => {
+async function listReactions(req, res, next, action) {
   try {
     const userId = Number(req.user.sub);
     const { page, limit } = pagination(req);
-    const action = req.query.type;
     const { DiscoverAction, User, OnboardingProfile, Subscription } = getModels();
     const rows = await DiscoverAction.findAll({
       where: { actorUserId: userId, action },
@@ -137,7 +136,11 @@ exports.listReactions = async (req, res, next) => {
       },
     });
   } catch (error) { return next(error); }
-};
+}
+
+exports.listReactions = (req, res, next) => listReactions(req, res, next, req.query.type);
+exports.listLikes = (req, res, next) => listReactions(req, res, next, 'like');
+exports.listSuperLikes = (req, res, next) => listReactions(req, res, next, 'superLike');
 
 exports.removeReaction = async (req, res, next) => {
   try {

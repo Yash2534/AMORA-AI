@@ -1,0 +1,103 @@
+{
+  "info": {
+    "_postman_id": "7be1fb0c-20c2-4e31-a6f0-amoraa-priority2",
+    "name": "AMORAA — Priority 2 Relationships",
+    "description": "Saved Profiles, sent Likes, and sent Super Likes. Configure isolated test-user variables; never store production tokens.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000" },
+    { "key": "bearerToken", "value": "" },
+    { "key": "targetUserId", "value": "" },
+    { "key": "secondTargetUserId", "value": "" },
+    { "key": "selfUserId", "value": "" },
+    { "key": "blockedTargetUserId", "value": "" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{bearerToken}}", "type": "string" }]
+  },
+  "item": [
+    {
+      "name": "Saved Profiles",
+      "item": [
+        {
+          "name": "Unauthorized list",
+          "auth": { "type": "noauth" },
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/me/saved-profiles?page=1&limit=20" },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Bearer auth required', () => pm.response.to.have.status(401));"] } }]
+        },
+        {
+          "name": "Save valid profile",
+          "request": { "method": "PUT", "url": "{{baseUrl}}/api/me/saved-profiles/{{targetUserId}}" },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Profile saved', function () { pm.expect(pm.response.code).to.be.oneOf([200, 201]); pm.expect(pm.response.json().data.saved).to.eql(true); });"] } }]
+        },
+        {
+          "name": "Duplicate save is idempotent",
+          "request": { "method": "PUT", "url": "{{baseUrl}}/api/me/saved-profiles/{{targetUserId}}" },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('No duplicate error', function () { pm.response.to.have.status(200); pm.expect(pm.response.json().data.saved).to.eql(true); });"] } }]
+        },
+        {
+          "name": "Self-save denied",
+          "request": { "method": "PUT", "url": "{{baseUrl}}/api/me/saved-profiles/{{selfUserId}}" },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Self-save denied', () => pm.response.to.have.status(400));"] } }]
+        },
+        {
+          "name": "Blocked target denied",
+          "request": { "method": "PUT", "url": "{{baseUrl}}/api/me/saved-profiles/{{blockedTargetUserId}}" },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Blocked target hidden', () => pm.response.to.have.status(404));"] } }]
+        },
+        {
+          "name": "List page 1",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/me/saved-profiles?page=1&limit=2" },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Paginated saved profiles', function () { pm.response.to.have.status(200); const body = pm.response.json(); pm.expect(body.data.profiles).to.be.an('array'); pm.expect(body.data.pagination.limit).to.eql(2); });"] } }]
+        },
+        {
+          "name": "Unsave",
+          "request": { "method": "DELETE", "url": "{{baseUrl}}/api/me/saved-profiles/{{targetUserId}}" },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Canonical unsaved state', function () { pm.response.to.have.status(200); pm.expect(pm.response.json().data.saved).to.eql(false); });"] } }]
+        }
+      ]
+    },
+    {
+      "name": "Likes",
+      "item": [
+        {
+          "name": "Create Like through Discover",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"targetUserId\": {{targetUserId}},\n  \"action\": \"like\"\n}" },
+            "url": "{{baseUrl}}/api/discover/swipe"
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Like persisted', function () { pm.response.to.have.status(200); pm.expect(pm.response.json().data.action).to.eql('like'); });"] } }]
+        },
+        {
+          "name": "List sent Likes",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/me/likes?page=1&limit=20" },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Sent Likes returned', function () { pm.response.to.have.status(200); pm.expect(pm.response.json().data.profiles).to.be.an('array'); });"] } }]
+        }
+      ]
+    },
+    {
+      "name": "Super Likes",
+      "item": [
+        {
+          "name": "Create Super Like through Discover",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"targetUserId\": {{secondTargetUserId}},\n  \"action\": \"superLike\"\n}" },
+            "url": "{{baseUrl}}/api/discover/swipe"
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Super Like persisted', function () { pm.response.to.have.status(200); pm.expect(pm.response.json().data.action).to.eql('superLike'); });"] } }]
+        },
+        {
+          "name": "List sent Super Likes",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/me/super-likes?page=1&limit=20" },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Sent Super Likes returned', function () { pm.response.to.have.status(200); pm.expect(pm.response.json().data.profiles).to.be.an('array'); });"] } }]
+        }
+      ]
+    }
+  ]
+}

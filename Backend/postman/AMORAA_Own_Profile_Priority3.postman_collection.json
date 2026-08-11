@@ -1,0 +1,91 @@
+{
+  "info": {
+    "name": "AMORAA — Priority 3 Own Profile",
+    "description": "Authenticated Own Profile contract checks. Set baseUrl, accessToken, and userId. No real tokens are committed.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000" },
+    { "key": "accessToken", "value": "" },
+    { "key": "userId", "value": "1" }
+  ],
+  "item": [
+    {
+      "name": "GET own profile",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}", "type": "text" }],
+        "url": "{{baseUrl}}/api/me/profile"
+      }
+    },
+    {
+      "name": "GET own profile — unauthorized",
+      "request": { "method": "GET", "url": "{{baseUrl}}/api/me/profile" }
+    },
+    {
+      "name": "PUT own profile — valid partial update",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}", "type": "text" },
+          { "key": "Content-Type", "value": "application/json", "type": "text" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"bio\": \"Updated through the canonical Own Profile API.\",\n  \"profession\": \"Product Engineer\",\n  \"interests\": [\"Coffee\", \"Travel\", \"Music\"],\n  \"prompts\": {\"My simple pleasure\": \"Fresh filter coffee.\"},\n  \"communicationStyle\": \"calls\"\n}"
+        },
+        "url": "{{baseUrl}}/api/me/profile"
+      }
+    },
+    {
+      "name": "PUT own profile — invalid value",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}", "type": "text" },
+          { "key": "Content-Type", "value": "application/json", "type": "text" }
+        ],
+        "body": { "mode": "raw", "raw": "{\"communicationStyle\":\"telepathy\"}" },
+        "url": "{{baseUrl}}/api/me/profile"
+      }
+    },
+    {
+      "name": "PUT own profile — server-owned field rejected",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}", "type": "text" },
+          { "key": "Content-Type", "value": "application/json", "type": "text" }
+        ],
+        "body": { "mode": "raw", "raw": "{\"role\":\"admin\",\"isVerified\":true}" },
+        "url": "{{baseUrl}}/api/me/profile"
+      }
+    },
+    {
+      "name": "PUT own profile — unauthorized",
+      "request": {
+        "method": "PUT",
+        "header": [{ "key": "Content-Type", "value": "application/json", "type": "text" }],
+        "body": { "mode": "raw", "raw": "{\"bio\":\"must fail\"}" },
+        "url": "{{baseUrl}}/api/me/profile"
+      }
+    },
+    {
+      "name": "GET public profile after save",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}", "type": "text" }],
+        "url": "{{baseUrl}}/api/profiles/{{userId}}"
+      }
+    },
+    {
+      "name": "Existing photo upload",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}", "type": "text" }],
+        "body": { "mode": "formdata", "formdata": [{ "key": "photos", "type": "file", "src": [] }] },
+        "url": "{{baseUrl}}/api/onboarding/photos"
+      }
+    }
+  ]
+}

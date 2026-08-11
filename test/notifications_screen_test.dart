@@ -1,17 +1,176 @@
+import 'package:amora_ai/core/auth/auth_service.dart';
 import 'package:amora_ai/core/widgets/amora_filter_chip.dart';
 import 'package:amora_ai/core/widgets/amoraa_select_field.dart';
+import 'package:amora_ai/features/notifications/data/notification_inbox_repository.dart';
 import 'package:amora_ai/features/notifications/presentation/notifications_hub_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+class _NotificationRemote implements NotificationInboxRemoteDataSource {
+  _NotificationRemote({this.failure, bool empty = false})
+    : rows = empty ? <Map<String, dynamic>>[] : _seed();
+
+  Object? failure;
+  final List<Map<String, dynamic>> rows;
+
+  static List<Map<String, dynamic>> _seed() {
+    final now = DateTime.now();
+    Map<String, dynamic> item(
+      String id,
+      String category,
+      String title, {
+      bool read = false,
+      int minutes = 1,
+      Map<String, dynamic> data = const <String, dynamic>{},
+    }) => <String, dynamic>{
+      'id': id,
+      'type': category.toLowerCase().replaceAll(' ', '_'),
+      'category': category,
+      'title': title,
+      'message': '$title details',
+      'isRead': read,
+      'readAt': read ? now.toIso8601String() : null,
+      'createdAt': now.subtract(Duration(minutes: minutes)).toIso8601String(),
+      'data': data,
+    };
+    return <Map<String, dynamic>>[
+      item(
+        'like-kavya',
+        'Likes',
+        'Kavya liked your profile',
+        data: {'targetUserId': '7'},
+      ),
+      item(
+        'message-riya',
+        'Messages',
+        'Riya sent you a new message',
+        minutes: 2,
+        data: {'conversationId': '5', 'targetUserId': '8'},
+      ),
+      item(
+        'match-aadhya',
+        'Matches',
+        'You have a new match',
+        minutes: 3,
+        data: {'targetUserId': '9'},
+      ),
+      item(
+        'super-like-meera',
+        'Super Likes',
+        'Meera Super Liked you',
+        minutes: 4,
+        data: {'targetUserId': '10'},
+      ),
+      item(
+        'event-reminder',
+        'Events',
+        'Coffee Match Meetup is tomorrow',
+        minutes: 5,
+      ),
+      item(
+        'view-nisha',
+        'Profile Views',
+        'Nisha viewed your profile',
+        read: true,
+        minutes: 6,
+      ),
+      item(
+        'verification',
+        'Verification',
+        'Identity verification approved',
+        minutes: 7,
+      ),
+      item(
+        'security',
+        'Security',
+        'New security login detected',
+        read: true,
+        minutes: 8,
+      ),
+      item(
+        'payment',
+        'Payments',
+        'Subscription renewed',
+        read: true,
+        minutes: 9,
+      ),
+      item('offer', 'Offers', 'A premium offer is available', minutes: 10),
+    ];
+  }
+
+  @override
+  Future<Map<String, dynamic>> request(
+    String method,
+    String path, {
+    Map<String, dynamic>? body,
+  }) async {
+    if (failure case final error?) throw error;
+    final uri = Uri.parse(path);
+    if (method == 'GET') {
+      var filtered = rows.toList(growable: false);
+      if (uri.queryParameters['unread'] == 'true') {
+        filtered = filtered.where((item) => item['isRead'] != true).toList();
+      }
+      final category = uri.queryParameters['category'];
+      if (category != null) {
+        filtered = filtered
+            .where((item) => item['category'] == category)
+            .toList();
+      }
+      return _response(<String, dynamic>{
+        'notifications': filtered,
+        'unreadCount': rows.where((item) => item['isRead'] != true).length,
+        'pagination': <String, dynamic>{'hasMore': false, 'nextPage': null},
+      });
+    }
+    if (method == 'PUT' && path.endsWith('/read-all')) {
+      for (final row in rows) {
+        row['isRead'] = true;
+      }
+      return _response(<String, dynamic>{
+        'updatedCount': rows.length,
+        'unreadCount': 0,
+      });
+    }
+    if (method == 'PUT') {
+      final id = uri.pathSegments[2];
+      final row = rows.firstWhere((item) => item['id'] == id);
+      row['isRead'] = true;
+      row['readAt'] = DateTime.now().toIso8601String();
+      return _response(<String, dynamic>{
+        'notification': row,
+        'unreadCount': rows.where((item) => item['isRead'] != true).length,
+      });
+    }
+    if (method == 'DELETE') {
+      final id = uri.pathSegments.last;
+      rows.removeWhere((item) => item['id'] == id);
+      return _response(<String, dynamic>{
+        'id': id,
+        'deleted': true,
+        'unreadCount': rows.where((item) => item['isRead'] != true).length,
+      });
+    }
+    throw StateError('$method $path is unsupported');
+  }
+
+  Map<String, dynamic> _response(Map<String, dynamic> data) =>
+      <String, dynamic>{'success': true, 'data': data};
+}
 
 void main() {
   Future<void> pumpNotifications(
     WidgetTester tester, {
     ValueChanged<RouteSettings>? onRoute,
+    _NotificationRemote? remote,
   }) async {
+    final repository = NotificationInboxRepository(
+      remote: remote ?? _NotificationRemote(),
+    );
+    addTearDown(repository.dispose);
     await tester.pumpWidget(
       MaterialApp(
-        home: const NotificationsHubScreen(),
+        home: NotificationsHubScreen(repository: repository),
         onGenerateRoute: (settings) {
           onRoute?.call(settings);
           return MaterialPageRoute<void>(
@@ -25,6 +184,29 @@ void main() {
     );
     await tester.pumpAndSettle();
   }
+
+  testWidgets('load failure shows retry without seeded fallback', (
+    tester,
+  ) async {
+    final remote = _NotificationRemote(
+      failure: const AuthException('Notification service unavailable.'),
+    );
+    await pumpNotifications(tester, remote: remote);
+    expect(find.text('Notification service unavailable.'), findsOneWidget);
+    expect(find.text('Kavya liked your profile'), findsNothing);
+    remote.failure = null;
+    await tester.tap(find.text('Retry'));
+    await tester.pumpAndSettle();
+    expect(find.text('Kavya liked your profile'), findsOneWidget);
+  });
+
+  testWidgets('empty backend inbox renders the real empty state', (
+    tester,
+  ) async {
+    await pumpNotifications(tester, remote: _NotificationRemote(empty: true));
+    expect(find.text("You're all caught up"), findsOneWidget);
+    expect(find.text('Kavya liked your profile'), findsNothing);
+  });
 
   testWidgets('renders the premium notification timeline at 320px', (
     tester,
@@ -83,7 +265,7 @@ void main() {
     expect(find.text('/notification-preferences destination'), findsOneWidget);
   });
 
-  testWidgets('horizontal filter bar filters Unread notifications locally', (
+  testWidgets('horizontal filter bar loads Unread notifications remotely', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(320, 760));

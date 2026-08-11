@@ -18,6 +18,10 @@ function publicUrl(req, value) {
 
 function serializePublicProfile(req, user, profile, options = {}) {
   const photos = list(profile.photos);
+  const lifestyle = profile.lifestyle && typeof profile.lifestyle === 'object' ? profile.lifestyle : {};
+  const lifestyleLanguages = typeof lifestyle.Languages === 'string'
+    ? lifestyle.Languages.split(/\s*(?:,|&|\band\b)\s*/i).filter(Boolean)
+    : [];
   const primary = photos[profile.primaryPhotoIndex] || photos[0] || null;
   const queriedScore = profile.getDataValue?.('compatibilityScore');
   const score = options.score ?? (queriedScore === undefined || queriedScore === null
@@ -44,24 +48,24 @@ function serializePublicProfile(req, user, profile, options = {}) {
     interests: list(profile.interests),
     imageUrl: publicUrl(req, primary),
     gallery: photos.map((photo) => publicUrl(req, photo)).filter(Boolean),
-    languages: list(profile.languages),
+    languages: lifestyleLanguages.length ? lifestyleLanguages : list(profile.languages),
     verification: user.isVerified ? 'Verified' : 'Unverified',
     premium,
-    lifestyle: profile.lifestyle || {},
+    lifestyle,
     promptAnswers: profile.prompts || {},
     travelPreference: profile.travelPreference || '',
     musicTaste: profile.musicTaste || '',
-    foodPreference: profile.foodPreference || '',
+    foodPreference: lifestyle['Food preference'] || profile.foodPreference || '',
     weekendPlan: profile.weekendPlan || '',
-    petPreference: profile.petPreference || '',
+    petPreference: lifestyle.Pets || profile.petPreference || '',
     coffeePreference: profile.coffeePreference || '',
-    religion: profile.religion || '',
+    religion: lifestyle.Religion || profile.religion || '',
     community: profile.community || '',
-    height: profile.height || '',
-    fitnessLevel: profile.fitnessLevel || '',
-    smoking: profile.smoking || '',
-    drinking: profile.drinking || '',
-    weed: profile.weed || '',
+    height: lifestyle.Height || profile.height || '',
+    fitnessLevel: lifestyle.Exercise || profile.fitnessLevel || '',
+    smoking: lifestyle.Smoking || profile.smoking || '',
+    drinking: lifestyle.Drinking || profile.drinking || '',
+    weed: lifestyle.Weed || profile.weed || '',
     children: profile.children || '',
     loveLanguage: profile.loveLanguage || '',
     greenFlags: list(profile.greenFlags),

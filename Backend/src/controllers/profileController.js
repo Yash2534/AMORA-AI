@@ -3,6 +3,7 @@ const { getModels } = require('../models');
 const { activeAccountWhere, areUsersBlocked, matchPairWhere } = require('../services/accessControlService');
 const { serializePublicProfile } = require('../services/publicProfileService');
 const { COMMUNICATION_STYLE_VALUES } = require('../constants/communicationStyles');
+const { calculateProfileCompletion } = require('../services/profileCompletionService');
 
 const unavailable = (res) => res.status(404).json({ success: false, message: 'Profile is not available.', code: 'PROFILE_NOT_AVAILABLE', errors: [] });
 const list = (value) => (Array.isArray(value) ? value : []);
@@ -42,6 +43,7 @@ function ownProfileJson(req, user, profile) {
     loveLanguages: list(profile.loveLanguages),
     iceBreaker: profile.iceBreaker || '',
     communicationStyle: profile.communicationStyle || null,
+    profileCompletion: calculateProfileCompletion(user, profile),
   };
 }
 

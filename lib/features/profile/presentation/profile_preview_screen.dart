@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:amora_ai/core/auth/auth_service.dart';
 import 'package:amora_ai/core/data/image_repository.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
@@ -12,7 +15,9 @@ import 'package:amora_ai/features/profile/presentation/widgets/amoraa_public_pro
 import 'package:flutter/material.dart';
 
 class ProfilePreviewScreen extends StatefulWidget {
-  const ProfilePreviewScreen({super.key});
+  const ProfilePreviewScreen({super.key, this.repository});
+
+  final LocalProfileRepository? repository;
 
   static const routeName = '/profile-preview';
 
@@ -21,15 +26,21 @@ class ProfilePreviewScreen extends StatefulWidget {
 }
 
 class _ProfilePreviewScreenState extends State<ProfilePreviewScreen> {
-  final _repository = LocalProfileRepository.instance;
+  late final _repository = widget.repository ?? LocalProfileRepository.instance;
   final _galleryController = PageController();
   int _photoIndex = 0;
+  bool _loading = false;
+  String? _loadError;
 
   @override
   void initState() {
     super.initState();
     _repository.addListener(_refresh);
     AmoraaMembershipStatus.listenable.addListener(_refresh);
+    if (AuthService.instance.currentUser != null) {
+      _loading = true;
+      unawaited(_loadCanonicalProfile());
+    }
   }
 
   @override
@@ -44,8 +55,63 @@ class _ProfilePreviewScreenState extends State<ProfilePreviewScreen> {
     if (mounted) setState(() {});
   }
 
+  Future<void> _loadCanonicalProfile() async {
+    setState(() {
+      _loading = true;
+      _loadError = null;
+    });
+    try {
+      await _repository.refreshFromServer();
+      if (mounted) setState(() => _loading = false);
+    } on AuthException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _loadError = error.message;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _loadError = 'Profile preview could not be loaded.';
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (_loading) {
+      return const Scaffold(
+        backgroundColor: AppColors.background,
+        body: Center(
+          child: CircularProgressIndicator(
+            key: ValueKey('profile-preview-loading'),
+          ),
+        ),
+      );
+    }
+    if (_loadError case final message?) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: AmoraAppBar(
+          title: 'Profile Preview',
+          onBack: () => Navigator.of(context).maybePop(),
+        ),
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(message, key: const ValueKey('profile-preview-load-error')),
+              const SizedBox(height: 12),
+              AppPrimaryButton(
+                label: 'Retry',
+                onPressed: _loadCanonicalProfile,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
     final publicProfile = AmoraaPublicProfileData.fromProfile(
       _repository.profile,
       _repository.currentPhotos,

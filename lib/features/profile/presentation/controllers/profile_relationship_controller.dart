@@ -27,11 +27,15 @@ class AuthProfileRelationshipRemoteDataSource
 }
 
 class ProfileRelationshipController extends ChangeNotifier {
-  ProfileRelationshipController({
+  factory ProfileRelationshipController({
     ProfileRelationshipRemoteDataSource? remote,
     bool allowRemoteWithoutSession = true,
-  }) : _remote = remote,
-       _allowRemoteWithoutSession = allowRemoteWithoutSession;
+  }) => ProfileRelationshipController._(remote, allowRemoteWithoutSession);
+
+  ProfileRelationshipController._(
+    this._remote,
+    this._allowRemoteWithoutSession,
+  );
 
   static final ProfileRelationshipController instance =
       ProfileRelationshipController(
@@ -51,6 +55,15 @@ class ProfileRelationshipController extends ChangeNotifier {
   final List<String> _likedProfileIds = <String>[];
   final List<String> _superLikedProfileIds = <String>[];
   bool loading = false;
+  bool _savedLoadingMore = false;
+  bool _likesLoadingMore = false;
+  bool _superLikesLoadingMore = false;
+  int _savedNextPage = 1;
+  int _likesNextPage = 1;
+  int _superLikesNextPage = 1;
+  bool _savedHasMore = false;
+  bool _likesHasMore = false;
+  bool _superLikesHasMore = false;
   String? error;
 
   Map<String, dynamic> _data(Map<String, dynamic> response) =>
@@ -61,18 +74,28 @@ class ProfileRelationshipController extends ChangeNotifier {
     if (!_canUseRemote || loading) {
       return;
     }
+    final remote = _remote!;
     loading = true;
     error = null;
     notifyListeners();
     try {
       final results = await Future.wait(<Future<Map<String, dynamic>>>[
-        _remote!.request('GET', '/api/saved-profiles?limit=30'),
-        _remote!.request('GET', '/api/reactions?type=like&limit=30'),
-        _remote!.request('GET', '/api/reactions?type=superLike&limit=30'),
+        remote.request('GET', '/api/me/saved-profiles?page=1&limit=20'),
+        remote.request('GET', '/api/me/likes?page=1&limit=20'),
+        remote.request('GET', '/api/me/super-likes?page=1&limit=20'),
       ]);
       _replaceProfiles(_savedProfileIds, _profiles(results[0]));
       _replaceProfiles(_likedProfileIds, _profiles(results[1]));
       _replaceProfiles(_superLikedProfileIds, _profiles(results[2]));
+      final savedPage = _nextPage(results[0]);
+      final likesPage = _nextPage(results[1]);
+      final superLikesPage = _nextPage(results[2]);
+      _savedNextPage = savedPage.$1;
+      _savedHasMore = savedPage.$2;
+      _likesNextPage = likesPage.$1;
+      _likesHasMore = likesPage.$2;
+      _superLikesNextPage = superLikesPage.$1;
+      _superLikesHasMore = superLikesPage.$2;
     } on AuthException catch (exception) {
       error = exception.message;
     } catch (_) {
@@ -92,12 +115,108 @@ class ProfileRelationshipController extends ChangeNotifier {
           )
           .toList(growable: false);
 
+  (int, bool) _nextPage(Map<String, dynamic> response) {
+    final values = _data(response)['pagination'];
+    final pagination = values is Map
+        ? values.cast<String, dynamic>()
+        : const <String, dynamic>{};
+    final hasMore = pagination['hasMore'] == true;
+    return ((pagination['nextPage'] as num?)?.toInt() ?? 1, hasMore);
+  }
+
   void _replaceProfiles(List<String> ids, List<DummyProfile> profiles) {
     ids
       ..clear()
       ..addAll(profiles.map((profile) => profile.id));
     for (final profile in profiles) {
       _profilesById[profile.id] = profile;
+    }
+  }
+
+  void _appendProfiles(List<String> ids, List<DummyProfile> profiles) {
+    for (final profile in profiles) {
+      _profilesById[profile.id] = profile;
+      if (!ids.contains(profile.id)) ids.add(profile.id);
+    }
+  }
+
+  bool get savedHasMore => _savedHasMore;
+  bool get savedLoadingMore => _savedLoadingMore;
+  bool reactionHasMore(ProfileReactionType type) =>
+      type == ProfileReactionType.like ? _likesHasMore : _superLikesHasMore;
+  bool reactionLoadingMore(ProfileReactionType type) =>
+      type == ProfileReactionType.like
+      ? _likesLoadingMore
+      : _superLikesLoadingMore;
+
+  Future<void> loadMoreSaved() async {
+    if (!_canUseRemote || !_savedHasMore || _savedLoadingMore) return;
+    _savedLoadingMore = true;
+    error = null;
+    notifyListeners();
+    try {
+      final response = await _remote!.request(
+        'GET',
+        '/api/me/saved-profiles?page=$_savedNextPage&limit=20',
+      );
+      _appendProfiles(_savedProfileIds, _profiles(response));
+      final nextPage = _nextPage(response);
+      _savedNextPage = nextPage.$1;
+      _savedHasMore = nextPage.$2;
+    } on AuthException catch (exception) {
+      error = exception.message;
+    } catch (_) {
+      error = 'Could not load more saved profiles.';
+    } finally {
+      _savedLoadingMore = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> loadMoreReactions(ProfileReactionType type) async {
+    final hasMore = reactionHasMore(type);
+    final loadingMore = reactionLoadingMore(type);
+    if (!_canUseRemote || !hasMore || loadingMore) return;
+    if (type == ProfileReactionType.like) {
+      _likesLoadingMore = true;
+    } else {
+      _superLikesLoadingMore = true;
+    }
+    error = null;
+    notifyListeners();
+    try {
+      final page = type == ProfileReactionType.like
+          ? _likesNextPage
+          : _superLikesNextPage;
+      final segment = type == ProfileReactionType.like
+          ? 'likes'
+          : 'super-likes';
+      final response = await _remote!.request(
+        'GET',
+        '/api/me/$segment?page=$page&limit=20',
+      );
+      if (type == ProfileReactionType.like) {
+        _appendProfiles(_likedProfileIds, _profiles(response));
+        final nextPage = _nextPage(response);
+        _likesNextPage = nextPage.$1;
+        _likesHasMore = nextPage.$2;
+      } else {
+        _appendProfiles(_superLikedProfileIds, _profiles(response));
+        final nextPage = _nextPage(response);
+        _superLikesNextPage = nextPage.$1;
+        _superLikesHasMore = nextPage.$2;
+      }
+    } on AuthException catch (exception) {
+      error = exception.message;
+    } catch (_) {
+      error = 'Could not load more reactions.';
+    } finally {
+      if (type == ProfileReactionType.like) {
+        _likesLoadingMore = false;
+      } else {
+        _superLikesLoadingMore = false;
+      }
+      notifyListeners();
     }
   }
 
@@ -163,8 +282,9 @@ class ProfileRelationshipController extends ChangeNotifier {
   }
 
   Future<void> removeLikePersisted(String profileId) async {
-    if (_canUseRemote)
+    if (_canUseRemote) {
       await _remote!.request('DELETE', '/api/reactions/$profileId');
+    }
     removeLike(profileId);
   }
 
@@ -182,8 +302,9 @@ class ProfileRelationshipController extends ChangeNotifier {
   }
 
   Future<void> removeSuperLikePersisted(String profileId) async {
-    if (_canUseRemote)
+    if (_canUseRemote) {
       await _remote!.request('DELETE', '/api/reactions/$profileId');
+    }
     removeSuperLike(profileId);
   }
 
@@ -203,8 +324,9 @@ class ProfileRelationshipController extends ChangeNotifier {
   }
 
   Future<void> saveProfilePersisted(DummyProfile profile) async {
-    if (_canUseRemote)
-      await _remote!.request('POST', '/api/saved-profiles/${profile.id}');
+    if (_canUseRemote) {
+      await _remote!.request('PUT', '/api/me/saved-profiles/${profile.id}');
+    }
     saveProfile(profile);
   }
 
@@ -215,8 +337,9 @@ class ProfileRelationshipController extends ChangeNotifier {
   }
 
   Future<void> removeSavedPersisted(String profileId) async {
-    if (_canUseRemote)
-      await _remote!.request('DELETE', '/api/saved-profiles/$profileId');
+    if (_canUseRemote) {
+      await _remote!.request('DELETE', '/api/me/saved-profiles/$profileId');
+    }
     removeSaved(profileId);
   }
 
@@ -249,6 +372,15 @@ class ProfileRelationshipController extends ChangeNotifier {
     _blockedProfileIds.clear();
     _likedProfileIds.clear();
     _superLikedProfileIds.clear();
+    _savedNextPage = 1;
+    _likesNextPage = 1;
+    _superLikesNextPage = 1;
+    _savedHasMore = false;
+    _likesHasMore = false;
+    _superLikesHasMore = false;
+    _savedLoadingMore = false;
+    _likesLoadingMore = false;
+    _superLikesLoadingMore = false;
     notifyListeners();
   }
 

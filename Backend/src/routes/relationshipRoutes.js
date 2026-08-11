@@ -19,4 +19,12 @@ reactions.use(requireAuth);
 reactions.get('/', [query('type').isIn(['like', 'superLike']).withMessage('type must be like or superLike.'), page, limit], validate, controller.listReactions);
 reactions.delete('/:userId', [userId], validate, controller.removeReaction);
 
-module.exports = { saved, reactions };
+const me = express.Router();
+me.use(requireAuth);
+me.get('/saved-profiles', [page, limit], validate, controller.listSaved);
+me.put('/saved-profiles/:userId', [userId], validate, controller.save);
+me.delete('/saved-profiles/:userId', [userId], validate, controller.unsave);
+me.get('/likes', [page, limit], validate, controller.listLikes);
+me.get('/super-likes', [page, limit], validate, controller.listSuperLikes);
+
+module.exports = { saved, reactions, me };

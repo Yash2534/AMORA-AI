@@ -1,9 +1,9 @@
 const { Op, fn, col, where, cast, literal } = require('sequelize');
 const { getModels } = require('../models');
 const computeCompatibilityScore = require('../utils/computeCompatibilityScore');
-const { parseCommunicationStyles } = require('../constants/communicationStyles');
 const { areUsersBlocked, notBlockedUserSql } = require('../services/accessControlService');
 const { serializePublicProfile } = require('../services/publicProfileService');
+const { defaults, filtersFor, updateFilters: persistFilters } = require('../services/discoverPreferenceService');
 
 const success = (res, message, data) => res.json({ success: true, message, data });
 const fail = (res, status, message, code, errors = []) => res.status(status).json({ success: false, message, code, errors });
@@ -11,46 +11,6 @@ const list = (value) => (Array.isArray(value) ? value : []);
 const lower = (value) => String(value || '').trim().toLowerCase();
 const normalizedList = (value) => [...new Set(list(value).map(lower).filter(Boolean))];
 
-const defaults = {
-  minAge: 18,
-  maxAge: 45,
-  maxDistanceKm: 80,
-  minScore: 0,
-  city: '',
-  minHeight: '',
-  hometown: [],
-  datingIntentions: [],
-  lifestyleTags: [],
-  education: '',
-  profession: '',
-  community: '',
-  religion: '',
-  languages: [],
-  pronouns: [],
-  sexuality: '',
-  qualities: [],
-  preferredTalkingHours: [],
-  loveLanguages: [],
-  communicationStyles: [],
-  smoking: '',
-  drinking: '',
-  weed: '',
-  verifiedOnly: true,
-  onlineNow: false,
-  hasPrompts: false,
-  hasEventInterest: false,
-};
-const arrayFilters = new Set([
-  'hometown',
-  'datingIntentions',
-  'lifestyleTags',
-  'languages',
-  'pronouns',
-  'qualities',
-  'preferredTalkingHours',
-  'loveLanguages',
-  'communicationStyles',
-]);
 
 function yearsAgoDate(years) {
   const now = new Date();
@@ -74,32 +34,6 @@ async function requireCompleted(res, userId) {
 
 function profileData(req, user, profile, viewer) {
   return serializePublicProfile(req, user, profile, { viewer });
-}
-
-async function filtersFor(userId, overrides = {}) {
-  const { DiscoverFilterPreference } = getModels();
-  const [stored] = await DiscoverFilterPreference.findOrCreate({
-    where: { userId },
-    defaults: { userId, ...defaults },
-  });
-  const values = { ...defaults, ...stored.toJSON() };
-  for (const key of Object.keys(defaults)) {
-    if (overrides[key] === undefined) continue;
-    if (['minAge', 'maxAge', 'maxDistanceKm', 'minScore'].includes(key)) {
-      values[key] = Number(overrides[key]);
-    } else if (['verifiedOnly', 'onlineNow', 'hasPrompts', 'hasEventInterest'].includes(key)) {
-      values[key] = String(overrides[key]) === 'true';
-    } else if (arrayFilters.has(key)) {
-      values[key] = key === 'communicationStyles'
-        ? parseCommunicationStyles(overrides[key])
-        : typeof overrides[key] === 'string'
-          ? overrides[key].split(',').map((value) => value.trim()).filter(Boolean)
-          : overrides[key];
-    } else {
-      values[key] = overrides[key];
-    }
-  }
-  return values;
 }
 
 function jsonContainsAny(columnName, values) {
@@ -414,13 +348,7 @@ exports.updateFilters = async (req, res, next) => {
         { field: 'minAge', message: 'Minimum age cannot exceed maximum age.' },
       ]);
     }
-    const { DiscoverFilterPreference } = getModels();
-    const values = {};
-    for (const key of Object.keys(defaults)) {
-      if (Object.prototype.hasOwnProperty.call(req.body, key)) values[key] = filters[key];
-    }
-    await DiscoverFilterPreference.upsert({ userId: req.user.sub, ...values });
-    return success(res, 'Discover filters updated.', { filters: await filtersFor(req.user.sub) });
+    return success(res, 'Discover filters updated.', { filters: await persistFilters(req.user.sub, req.body) });
   } catch (error) {
     return next(error);
   }

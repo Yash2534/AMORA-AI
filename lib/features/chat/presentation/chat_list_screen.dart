@@ -65,7 +65,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
     super.initState();
     _repository.addListener(_refreshConversations);
     if (_repository.conversations.isEmpty && !_repository.loading) {
-      unawaited(_refreshFromServer());
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) unawaited(_refreshFromServer());
+      });
     }
   }
 

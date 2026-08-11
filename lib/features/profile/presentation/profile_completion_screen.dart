@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:amora_ai/core/auth/auth_service.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
@@ -39,12 +40,14 @@ class _ProfileCompletionScreenState extends State<ProfileCompletionScreen> {
     for (final id in ProfileCompletionSectionId.values) id: GlobalKey(),
   };
   final Map<ProfileCompletionSectionId, String> _saveErrors = {};
-  late final ProfileFormController _controller;
+  late ProfileFormController _controller;
   late final ProfileFormNavigationTargets _navigationTargets;
   ProfileCompletionSectionId? _savingSection;
   ProfileFormFieldId? _highlightedField;
   int _scrollRequest = 0;
   Timer? _highlightTimer;
+  bool _loadingCanonicalProfile = false;
+  String? _loadError;
 
   @override
   void initState() {
@@ -55,6 +58,10 @@ class _ProfileCompletionScreenState extends State<ProfileCompletionScreen> {
     _repository.addListener(_refresh);
     final next = _repository.profile.completionResult.recommendedNext;
     if (next != null) _expanded.add(next.id);
+    if (AuthService.instance.currentUser != null) {
+      _loadingCanonicalProfile = true;
+      unawaited(_loadCanonicalProfile());
+    }
   }
 
   @override
@@ -74,10 +81,81 @@ class _ProfileCompletionScreenState extends State<ProfileCompletionScreen> {
     if (mounted) setState(() {});
   }
 
+  Future<void> _loadCanonicalProfile() async {
+    setState(() {
+      _loadingCanonicalProfile = true;
+      _loadError = null;
+    });
+    try {
+      await _repository.refreshFromServer();
+      if (!mounted) return;
+      _controller
+        ..removeListener(_refresh)
+        ..dispose();
+      _controller = ProfileFormController(repository: _repository)
+        ..addListener(_refresh);
+      _expanded
+        ..clear()
+        ..addAll(switch (_repository.profile.completionResult.recommendedNext) {
+          final next? => [next.id],
+          null => const <ProfileCompletionSectionId>[],
+        });
+      setState(() => _loadingCanonicalProfile = false);
+    } on AuthException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _loadingCanonicalProfile = false;
+        _loadError = error.message;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _loadingCanonicalProfile = false;
+        _loadError = 'Profile could not be loaded.';
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (_loadingCanonicalProfile) {
+      return const Scaffold(
+        backgroundColor: AppColors.background,
+        body: Center(
+          child: CircularProgressIndicator(
+            key: ValueKey('profile-studio-loading'),
+          ),
+        ),
+      );
+    }
+    if (_loadError case final message?) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: AmoraAppBar(
+          title: 'Profile Completion',
+          onBack: () => Navigator.of(context).maybePop(),
+        ),
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(message, textAlign: TextAlign.center),
+              const SizedBox(height: AmoraSpacing.space12),
+              AppPrimaryButton(
+                label: 'Retry',
+                onPressed: _loadCanonicalProfile,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
     final profile = _repository.profile;
-    final result = profile.completionResult;
+    final draftResult = profile.completionResult;
+    final result = ProfileCompletionResult(
+      percentage: profile.completionPercent,
+      sections: draftResult.sections,
+    );
     final pending = profile.pendingFields;
     return Scaffold(
       backgroundColor: AppColors.background,

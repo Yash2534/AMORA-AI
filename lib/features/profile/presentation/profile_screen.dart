@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:amora_ai/core/auth/auth_service.dart';
 import 'package:amora_ai/core/theme/amora_gradients.dart';
 import 'package:amora_ai/core/theme/amora_shadows.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
@@ -51,6 +53,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     super.initState();
     _repository.addListener(_refresh);
     AmoraaMembershipStatus.listenable.addListener(_refresh);
+    if (AuthService.instance.currentUser != null) {
+      unawaited(_retryProfile());
+    }
   }
 
   @override

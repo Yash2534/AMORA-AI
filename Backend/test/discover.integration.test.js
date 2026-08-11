@@ -232,7 +232,7 @@ test('verification resend is non-enumerating and sends only to eligible users', 
 
   const eligibleResponse = await request('/api/auth/resend-verification-code', {
     method: 'POST',
-    body: JSON.stringify({ phoneNumber: eligiblePhone.slice(3) }),
+    body: JSON.stringify({ phoneNumber: eligiblePhone }),
   });
   const verifiedResponse = await request('/api/auth/resend-verification-code', {
     method: 'POST',

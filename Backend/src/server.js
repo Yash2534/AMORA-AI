@@ -10,6 +10,7 @@ const authRoutes = require("./routes/authRoutes");
 const onboardingRoutes = require("./routes/onboardingRoutes");
 const discoverRoutes = require("./routes/discoverRoutes");
 const profileRoutes = require("./routes/profileRoutes");
+const meProfileRoutes = require("./routes/meProfileRoutes");
 const blockRoutes = require("./routes/blockRoutes");
 const reportRoutes = require("./routes/reportRoutes");
 const accountRoutes = require("./routes/accountRoutes");
@@ -24,8 +25,10 @@ const paymentRoutes = require("./routes/paymentRoutes");
 const walletRoutes = require("./routes/walletRoutes");
 const boostRoutes = require("./routes/boostRoutes");
 const giftRoutes = require("./routes/giftRoutes");
-const { saved: savedProfileRoutes, reactions: reactionRoutes } = require('./routes/relationshipRoutes');
+const { saved: savedProfileRoutes, reactions: reactionRoutes, me: meRelationshipRoutes } = require('./routes/relationshipRoutes');
 const notificationPreferenceRoutes = require('./routes/notificationPreferenceRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
+const mePreferenceRoutes = require('./routes/mePreferenceRoutes');
 const { attachRealtimeServer } = require("./realtime/realtimeHub");
 const errorHandler = require("./middleware/errorHandler");
 const { port } = require("./config/env");
@@ -59,6 +62,8 @@ app.use("/api/auth", authRoutes);
 app.use("/api/onboarding", onboardingRoutes);
 app.use("/api/discover", discoverRoutes);
 app.use("/api/profiles", profileRoutes);
+app.use("/api/me/profile", meProfileRoutes);
+app.use("/api/me/preferences", mePreferenceRoutes);
 app.use("/api/blocks", blockRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/account", accountRoutes);
@@ -75,7 +80,9 @@ app.use("/api/boosts", boostRoutes);
 app.use("/api/gifts", giftRoutes);
 app.use('/api/saved-profiles', savedProfileRoutes);
 app.use('/api/reactions', reactionRoutes);
+app.use('/api/me', meRelationshipRoutes);
 app.use('/api/notification-preferences', notificationPreferenceRoutes);
+app.use('/api/notifications', notificationRoutes);
 app.use((_req, res) =>
   res
     .status(404)

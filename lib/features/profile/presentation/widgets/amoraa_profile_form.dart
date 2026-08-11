@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:amora_ai/core/auth/auth_service.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
@@ -34,11 +35,13 @@ class AmoraaProfileForm extends StatefulWidget {
     super.key,
     this.mode = ProfileFormMode.edit,
     this.initialField,
+    this.repository,
     required this.onSaved,
   });
 
   final ProfileFormMode mode;
   final ProfileFormFieldId? initialField;
+  final LocalProfileRepository? repository;
   final ProfileFormSaved onSaved;
 
   @override
@@ -48,19 +51,26 @@ class AmoraaProfileForm extends StatefulWidget {
 class _AmoraaProfileFormState extends State<AmoraaProfileForm> {
   final _formKey = GlobalKey<FormState>();
   final _scrollController = ScrollController();
-  late final ProfileFormController _controller;
+  late ProfileFormController _controller;
   late final ProfileFormNavigationTargets _navigationTargets;
   bool _showValidation = false;
   ProfileFormFieldId? _highlightedField;
   int _scrollRequest = 0;
   String? _validationSummary;
   Timer? _highlightTimer;
+  bool _loadingCanonicalProfile = false;
+  String? _loadError;
 
   @override
   void initState() {
     super.initState();
-    _controller = ProfileFormController()..addListener(_refresh);
+    _controller = ProfileFormController(repository: widget.repository)
+      ..addListener(_refresh);
     _navigationTargets = ProfileFormNavigationTargets();
+    if (AuthService.instance.currentUser != null) {
+      _loadingCanonicalProfile = true;
+      unawaited(_loadCanonicalProfile());
+    }
     if (widget.initialField case final field?) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _scrollToField(field, requestFocus: true);
@@ -84,8 +94,85 @@ class _AmoraaProfileFormState extends State<AmoraaProfileForm> {
     if (mounted) setState(() {});
   }
 
+  Future<void> _loadCanonicalProfile() async {
+    setState(() {
+      _loadingCanonicalProfile = true;
+      _loadError = null;
+    });
+    try {
+      await _controller.repository.refreshFromServer();
+      if (!mounted) return;
+      _controller
+        ..removeListener(_refresh)
+        ..dispose();
+      _controller = ProfileFormController(repository: widget.repository)
+        ..addListener(_refresh);
+      setState(() => _loadingCanonicalProfile = false);
+      if (widget.initialField case final field?) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _scrollToField(field, requestFocus: true);
+        });
+      }
+    } on AuthException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _loadingCanonicalProfile = false;
+        _loadError = error.message;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _loadingCanonicalProfile = false;
+        _loadError = 'Profile could not be loaded.';
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (_loadingCanonicalProfile) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: AmoraAppBar(
+          title: 'Edit profile',
+          onBack: () => Navigator.of(context).maybePop(),
+        ),
+        body: const Center(
+          child: CircularProgressIndicator(
+            key: ValueKey('own-profile-loading'),
+          ),
+        ),
+      );
+    }
+    if (_loadError case final message?) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: AmoraAppBar(
+          title: 'Edit profile',
+          onBack: () => Navigator.of(context).maybePop(),
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(AmoraSpacing.space20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  message,
+                  key: const ValueKey('own-profile-load-error'),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: AmoraSpacing.space12),
+                AppPrimaryButton(
+                  label: 'Retry',
+                  onPressed: _loadCanonicalProfile,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
     final profile = _controller.draftProfile;
     final pending = profile.pendingFields;
     return PopScope<Object?>(
@@ -364,6 +451,10 @@ class _AmoraaProfileFormState extends State<AmoraaProfileForm> {
       final saved = await _controller.save();
       if (!mounted) return;
       await widget.onSaved(context, saved);
+    } on AuthException catch (error) {
+      if (mounted) {
+        _showError(error.message);
+      }
     } catch (_) {
       if (mounted) {
         _showError('Profile could not be saved. Please try again.');

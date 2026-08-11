@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:amora_ai/core/data/image_repository.dart';
 import 'package:amora_ai/core/widgets/amora_filter_chip.dart';
 import 'package:amora_ai/core/widgets/amoraa_select_field.dart';
+import 'package:amora_ai/features/chat/data/chat_repository.dart';
 import 'package:amora_ai/features/matches/presentation/matches_screen.dart';
 import 'package:amora_ai/features/matches/presentation/widgets/amoraa_inline_compatibility_filter.dart';
 import 'package:flutter/material.dart';
@@ -11,6 +12,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   RouteSettings? openedRoute;
+
+  setUp(ChatRepository.instance.resetForTesting);
 
   Future<void> pumpMatches(
     WidgetTester tester, {

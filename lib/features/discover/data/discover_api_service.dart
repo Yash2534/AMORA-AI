@@ -168,14 +168,14 @@ class DiscoverApiService {
   );
 
   Future<DiscoverApiResult<Map<String, dynamic>>> getFilters() async {
-    final result = await _request('GET', '/api/discover/filters');
+    final result = await _request('GET', '/api/me/preferences');
     if (!result.success || result.data == null) {
       return DiscoverApiResult.failure(
         result.message,
         statusCode: result.statusCode,
       );
     }
-    final filters = result.data!['filters'];
+    final filters = result.data!['preferences'];
     return DiscoverApiResult.success(
       filters is Map ? filters.cast<String, dynamic>() : <String, dynamic>{},
       statusCode: result.statusCode,
@@ -186,18 +186,14 @@ class DiscoverApiService {
   Future<DiscoverApiResult<Map<String, dynamic>>> updateFilters(
     Map<String, dynamic> filters,
   ) async {
-    final result = await _request(
-      'PUT',
-      '/api/discover/filters',
-      body: filters,
-    );
+    final result = await _request('PUT', '/api/me/preferences', body: filters);
     if (!result.success || result.data == null) {
       return DiscoverApiResult.failure(
         result.message,
         statusCode: result.statusCode,
       );
     }
-    final saved = result.data!['filters'];
+    final saved = result.data!['preferences'];
     return DiscoverApiResult.success(
       saved is Map ? saved.cast<String, dynamic>() : <String, dynamic>{},
       statusCode: result.statusCode,

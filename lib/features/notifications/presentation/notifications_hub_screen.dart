@@ -1,4 +1,7 @@
-import 'package:amora_ai/core/data/image_repository.dart';
+import 'dart:async';
+
+import 'package:amora_ai/core/auth/auth_service.dart';
+import 'package:amora_ai/core/constants/app_images.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
@@ -6,7 +9,8 @@ import 'package:amora_ai/core/widgets/amora_filter_chip.dart';
 import 'package:amora_ai/core/widgets/premium_asset_image.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/chat/presentation/chat_detail_screen.dart';
-import 'package:amora_ai/features/events/presentation/event_detail_screen.dart';
+import 'package:amora_ai/features/events/presentation/events_screen.dart';
+import 'package:amora_ai/features/notifications/data/notification_inbox_repository.dart';
 import 'package:amora_ai/features/profile/presentation/kyc_verification_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_detail_screen.dart';
 import 'package:amora_ai/features/settings/presentation/notification_preferences_screen.dart';
@@ -14,7 +18,9 @@ import 'package:amora_ai/features/subscription/presentation/subscription_screen.
 import 'package:flutter/material.dart';
 
 class NotificationsHubScreen extends StatefulWidget {
-  const NotificationsHubScreen({super.key});
+  const NotificationsHubScreen({super.key, this.repository});
+
+  final NotificationInboxRepository? repository;
 
   static const routeName = '/notifications';
 
@@ -23,33 +29,20 @@ class NotificationsHubScreen extends StatefulWidget {
 }
 
 class _NotificationsHubScreenState extends State<NotificationsHubScreen> {
-  final List<_NotificationItem> _notifications = _buildSeedNotifications();
+  late final NotificationInboxRepository _repository;
   final Set<String> _selectedIds = <String>{};
   String _filter = 'All';
 
+  List<_NotificationItem> get _notifications => _repository.notifications
+      .map(_NotificationItem.fromRecord)
+      .toList(growable: false);
   bool get _selectionMode => _selectedIds.isNotEmpty;
-  int get _unreadCount => _notifications.where((item) => item.unread).length;
+  int get _unreadCount => _repository.unreadCount;
 
-  List<String> get _availableFilters => <String>[
-    'All',
-    'Unread',
-    for (final filter in _notificationFilters)
-      if (filter != 'All' &&
-          filter != 'Unread' &&
-          _notifications.any((item) => item.category == filter))
-        filter,
-  ];
+  List<String> get _availableFilters => _notificationFilters;
 
   List<_NotificationItem> get _filteredNotifications {
-    if (_filter == 'All') return _notifications;
-    if (_filter == 'Unread') {
-      return _notifications
-          .where((item) => item.unread)
-          .toList(growable: false);
-    }
-    return _notifications
-        .where((item) => item.category == _filter)
-        .toList(growable: false);
+    return _notifications;
   }
 
   List<Object> get _feedEntries {
@@ -68,6 +61,24 @@ class _NotificationsHubScreenState extends State<NotificationsHubScreen> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _repository = widget.repository ?? NotificationInboxRepository.instance;
+    _repository.addListener(_refresh);
+    unawaited(_repository.refresh());
+  }
+
+  @override
+  void dispose() {
+    _repository.removeListener(_refresh);
+    super.dispose();
+  }
+
+  void _refresh() {
+    if (mounted) setState(() {});
+  }
+
+  @override
   Widget build(BuildContext context) {
     final entries = _feedEntries;
     final unreadCount = _unreadCount;
@@ -80,7 +91,9 @@ class _NotificationsHubScreenState extends State<NotificationsHubScreen> {
             children: [
               _NotificationsAppBar(
                 onBack: _goBack,
-                onMarkAllRead: unreadCount == 0 ? null : _markAllRead,
+                onMarkAllRead: unreadCount == 0
+                    ? null
+                    : () => unawaited(_markAllRead()),
                 onSettings: () => Navigator.of(
                   context,
                 ).pushNamed(NotificationPreferencesScreen.routeName),
@@ -107,6 +120,7 @@ class _NotificationsHubScreenState extends State<NotificationsHubScreen> {
                     _filter = filter;
                     _selectedIds.clear();
                   });
+                  unawaited(_repository.refresh(filter: filter));
                 },
               ),
               AnimatedSwitcher(
@@ -117,8 +131,8 @@ class _NotificationsHubScreenState extends State<NotificationsHubScreen> {
                     ? _SelectionToolbar(
                         key: const ValueKey('notification-selection-toolbar'),
                         count: _selectedIds.length,
-                        onMarkRead: _markSelectedRead,
-                        onDelete: _deleteSelected,
+                        onMarkRead: () => unawaited(_markSelectedRead()),
+                        onDelete: () => unawaited(_deleteSelected()),
                         onClose: () => setState(_selectedIds.clear),
                       )
                     : const SizedBox(
@@ -127,7 +141,14 @@ class _NotificationsHubScreenState extends State<NotificationsHubScreen> {
                       ),
               ),
               Expanded(
-                child: entries.isEmpty
+                child: _repository.loading
+                    ? const NotificationSkeletonLoader()
+                    : _repository.error != null && _notifications.isEmpty
+                    ? _NotificationLoadError(
+                        message: _repository.error!,
+                        onRetry: () => _repository.refresh(filter: _filter),
+                      )
+                    : entries.isEmpty
                     ? _notifications.isEmpty
                           ? _NotificationEmptyState(onDiscover: _openDiscover)
                           : _NotificationFilteredEmptyState(
@@ -138,37 +159,55 @@ class _NotificationsHubScreenState extends State<NotificationsHubScreen> {
                                 });
                               },
                             )
-                    : ListView.builder(
-                        key: const ValueKey('notification-feed'),
-                        padding: const EdgeInsets.fromLTRB(
-                          AmoraSpacing.space16,
-                          AmoraSpacing.space4,
-                          AmoraSpacing.space16,
-                          AmoraSpacing.space24,
-                        ),
-                        physics: const BouncingScrollPhysics(
-                          parent: AlwaysScrollableScrollPhysics(),
-                        ),
-                        itemCount: entries.length,
-                        itemBuilder: (context, index) {
-                          final entry = entries[index];
-                          if (entry is String) {
-                            return _NotificationSectionHeader(label: entry);
+                    : NotificationListener<ScrollNotification>(
+                        onNotification: (notification) {
+                          if (notification.metrics.extentAfter < 240) {
+                            unawaited(_repository.loadMore());
                           }
-                          final item = entry as _NotificationItem;
-                          return _AnimatedNotificationEntry(
-                            key: ValueKey('notification-entry-${item.id}'),
-                            child: _NotificationTile(
-                              item: item,
-                              selected: _selectedIds.contains(item.id),
-                              selectionMode: _selectionMode,
-                              onTap: () => _handleTap(item),
-                              onLongPress: () => _toggleSelection(item),
-                              onMarkRead: () => _markRead(item),
-                              onDelete: () => _delete(item),
-                            ),
-                          );
+                          return false;
                         },
+                        child: ListView.builder(
+                          key: const ValueKey('notification-feed'),
+                          padding: const EdgeInsets.fromLTRB(
+                            AmoraSpacing.space16,
+                            AmoraSpacing.space4,
+                            AmoraSpacing.space16,
+                            AmoraSpacing.space24,
+                          ),
+                          physics: const BouncingScrollPhysics(
+                            parent: AlwaysScrollableScrollPhysics(),
+                          ),
+                          itemCount:
+                              entries.length +
+                              (_repository.loadingMore ? 1 : 0),
+                          itemBuilder: (context, index) {
+                            if (index == entries.length) {
+                              return const Padding(
+                                padding: EdgeInsets.all(16),
+                                child: Center(
+                                  child: CircularProgressIndicator(),
+                                ),
+                              );
+                            }
+                            final entry = entries[index];
+                            if (entry is String) {
+                              return _NotificationSectionHeader(label: entry);
+                            }
+                            final item = entry as _NotificationItem;
+                            return _AnimatedNotificationEntry(
+                              key: ValueKey('notification-entry-${item.id}'),
+                              child: _NotificationTile(
+                                item: item,
+                                selected: _selectedIds.contains(item.id),
+                                selectionMode: _selectionMode,
+                                onTap: () => _handleTap(item),
+                                onLongPress: () => _toggleSelection(item),
+                                onMarkRead: () => _markRead(item),
+                                onDelete: () => _delete(item),
+                              ),
+                            );
+                          },
+                        ),
                       ),
               ),
             ],
@@ -189,11 +228,16 @@ class _NotificationsHubScreenState extends State<NotificationsHubScreen> {
       _toggleSelection(item);
       return;
     }
-    _markRead(item, announce: false);
+    unawaited(_openNotification(item));
+  }
+
+  Future<void> _openNotification(_NotificationItem item) async {
+    if (item.unread && !await _run(() => _repository.markRead(item.id))) return;
     if (item.route == null) {
       _showMessage(item.title);
       return;
     }
+    if (!mounted) return;
     Navigator.of(context).pushNamed(item.route!, arguments: item.arguments);
   }
 
@@ -203,47 +247,59 @@ class _NotificationsHubScreenState extends State<NotificationsHubScreen> {
     });
   }
 
-  void _markRead(_NotificationItem item, {bool announce = true}) {
+  Future<void> _markRead(_NotificationItem item, {bool announce = true}) async {
     if (!item.unread) return;
-    setState(() => item.unread = false);
+    if (!await _run(() => _repository.markRead(item.id))) return;
     if (announce) _showMessage('Marked as read');
   }
 
-  void _delete(_NotificationItem item) {
-    setState(() {
-      _notifications.remove(item);
-      _selectedIds.remove(item.id);
-    });
+  Future<void> _delete(_NotificationItem item) async {
+    if (!await _run(() => _repository.delete(item.id))) return;
+    setState(() => _selectedIds.remove(item.id));
     _showMessage('Notification deleted');
   }
 
-  void _markSelectedRead() {
-    setState(() {
-      for (final item in _notifications) {
-        if (_selectedIds.contains(item.id)) item.unread = false;
+  Future<void> _markSelectedRead() async {
+    final ids = Set<String>.of(_selectedIds);
+    for (final item in _notifications.where((item) => ids.contains(item.id))) {
+      if (item.unread && !await _run(() => _repository.markRead(item.id))) {
+        return;
       }
-      _selectedIds.clear();
-    });
+    }
+    if (mounted) setState(_selectedIds.clear);
     _showMessage('Selected notifications marked as read');
   }
 
-  void _markAllRead() {
+  Future<void> _markAllRead() async {
     if (_unreadCount == 0) return;
-    setState(() {
-      for (final item in _notifications) {
-        item.unread = false;
-      }
-      _selectedIds.clear();
-    });
+    if (!await _run(_repository.markAllRead)) return;
+    if (mounted) setState(_selectedIds.clear);
     _showMessage('All notifications marked as read');
   }
 
-  void _deleteSelected() {
-    setState(() {
-      _notifications.removeWhere((item) => _selectedIds.contains(item.id));
-      _selectedIds.clear();
-    });
+  Future<void> _deleteSelected() async {
+    final ids = Set<String>.of(_selectedIds);
+    for (final id in ids) {
+      if (!await _run(() => _repository.delete(id))) return;
+    }
+    if (mounted) setState(_selectedIds.clear);
     _showMessage('Selected notifications deleted');
+  }
+
+  Future<bool> _run(Future<void> Function() operation) async {
+    try {
+      await operation();
+      return true;
+    } catch (error) {
+      if (mounted) {
+        _showMessage(
+          error is AuthException
+              ? error.message
+              : 'Notification update failed.',
+        );
+      }
+      return false;
+    }
   }
 
   void _openDiscover() {
@@ -715,8 +771,8 @@ class _NotificationTile extends StatefulWidget {
   final bool selectionMode;
   final VoidCallback onTap;
   final VoidCallback onLongPress;
-  final VoidCallback onMarkRead;
-  final VoidCallback onDelete;
+  final Future<void> Function() onMarkRead;
+  final Future<void> Function() onDelete;
 
   @override
   State<_NotificationTile> createState() => _NotificationTileState();
@@ -755,12 +811,12 @@ class _NotificationTileState extends State<_NotificationTile> {
         ),
         confirmDismiss: (direction) async {
           if (direction == DismissDirection.startToEnd) {
-            widget.onMarkRead();
+            await widget.onMarkRead();
             return false;
           }
-          return true;
+          await widget.onDelete();
+          return false;
         },
-        onDismissed: (direction) => widget.onDelete(),
         child: Listener(
           onPointerDown: (_) => setState(() => _pressed = true),
           onPointerUp: (_) => setState(() => _pressed = false),
@@ -1137,6 +1193,39 @@ class NotificationSkeletonLoader extends StatelessWidget {
   }
 }
 
+class _NotificationLoadError extends StatelessWidget {
+  const _NotificationLoadError({required this.message, required this.onRetry});
+
+  final String message;
+  final Future<void> Function() onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AmoraSpacing.space20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.cloud_off_rounded,
+              color: AppColors.primary,
+              size: 42,
+            ),
+            const SizedBox(height: AmoraSpacing.space12),
+            Text(message, textAlign: TextAlign.center),
+            const SizedBox(height: AmoraSpacing.space12),
+            FilledButton(
+              onPressed: () => unawaited(onRetry()),
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _NotificationEmptyState extends StatelessWidget {
   const _NotificationEmptyState({required this.onDiscover});
 
@@ -1291,7 +1380,7 @@ class _NotificationFilteredEmptyState extends StatelessWidget {
 }
 
 class _NotificationItem {
-  _NotificationItem({
+  const _NotificationItem({
     required this.id,
     required this.title,
     required this.description,
@@ -1319,7 +1408,36 @@ class _NotificationItem {
   final String initials;
   final String? route;
   final Object? arguments;
-  bool unread;
+  final bool unread;
+
+  factory _NotificationItem.fromRecord(InboxNotification record) {
+    final route = _notificationRoute(record);
+    final targetUserId = record.data['targetUserId']?.toString();
+    final conversationId = record.data['conversationId']?.toString();
+    final arguments = switch (route) {
+      ProfileDetailScreen.routeName => targetUserId,
+      ChatDetailScreen.routeName => ChatDetailArgs(
+        conversationId: conversationId ?? '',
+        recipientId: targetUserId,
+      ),
+      _ => null,
+    };
+    return _NotificationItem(
+      id: record.id,
+      title: record.title,
+      description: record.message,
+      relativeTime: _relativeTime(record.createdAt),
+      group: _notificationGroup(record.createdAt),
+      category: record.category,
+      icon: _notificationFilterIcon(record.category),
+      imageUrl: record.data['imageUrl']?.toString() ?? '',
+      fallbackAsset: AppImages.fallbackProfile,
+      initials: record.data['initials']?.toString() ?? _initials(record.title),
+      route: route,
+      arguments: arguments,
+      unread: !record.isRead,
+    );
+  }
 }
 
 const _notificationFilters = <String>[
@@ -1344,209 +1462,56 @@ const _notificationGroups = <String>[
   'Earlier',
 ];
 
-List<_NotificationItem> _buildSeedNotifications() => <_NotificationItem>[
-  _profileNotification(
-    id: 'like-kavya',
-    profileName: 'Kavya',
-    title: 'Kavya liked your profile',
-    description: 'Your travel prompt caught her attention.',
-    relativeTime: '2 min ago',
-    group: 'Today',
-    category: 'Likes',
-    icon: Icons.favorite_rounded,
-  ),
-  _profileNotification(
-    id: 'message-riya',
-    profileName: 'Riya',
-    title: 'Riya sent you a new message',
-    description: '“That coffee place looks perfect. Saturday?”',
-    relativeTime: '12 min ago',
-    group: 'Today',
-    category: 'Messages',
-    icon: Icons.chat_bubble_rounded,
-    route: ChatDetailScreen.routeName,
-  ),
-  _profileNotification(
-    id: 'match-aadhya',
-    profileName: 'Aadhya',
-    title: 'You have a new AI Match',
-    description: 'Aadhya is 96% compatible with your relationship goals.',
-    relativeTime: '28 min ago',
-    group: 'Today',
-    category: 'Matches',
-    icon: Icons.auto_awesome_rounded,
-  ),
-  _profileNotification(
-    id: 'super-like-meera',
-    profileName: 'Meera',
-    title: 'Meera Super Liked you',
-    description: 'She thinks your shared love of live music is a strong start.',
-    relativeTime: '1 hr ago',
-    group: 'Today',
-    category: 'Super Likes',
-    icon: Icons.star_rounded,
-  ),
-  _eventNotification(),
-  _profileNotification(
-    id: 'view-nisha',
-    profileName: 'Nisha',
-    title: 'Nisha viewed your profile',
-    description: 'Your profile made an impression yesterday.',
-    relativeTime: 'Yesterday, 8:42 PM',
-    group: 'Yesterday',
-    category: 'Profile Views',
-    icon: Icons.visibility_rounded,
-    unread: false,
-  ),
-  _systemNotification(
-    id: 'verification-approved',
-    title: 'Identity verification approved',
-    description: 'Your verified badge is now visible across AMORAA.',
-    relativeTime: 'Yesterday, 3:18 PM',
-    group: 'Yesterday',
-    category: 'Verification',
-    icon: Icons.verified_user_rounded,
-    route: KycVerificationScreen.routeName,
-  ),
-  _profileNotification(
-    id: 'nearby-matches',
-    profileName: 'Ishita',
-    title: 'New nearby matches found',
-    description: 'Five compatible people joined near Ahmedabad this week.',
-    relativeTime: 'Monday',
-    group: 'This Week',
-    category: 'Matches',
-    icon: Icons.location_on_rounded,
-    unread: false,
-  ),
-  _profileNotification(
-    id: 'coffee-accepted',
-    profileName: 'Sneha',
-    title: 'Coffee Date request accepted',
-    description: 'Sneha accepted your plan for Sunday at 4 PM.',
-    relativeTime: 'Sunday',
-    group: 'This Week',
-    category: 'Messages',
-    icon: Icons.coffee_rounded,
-    unread: false,
-  ),
-  _offerNotification(),
-  _systemNotification(
-    id: 'security-login',
-    title: 'New security login detected',
-    description: 'Chrome on Windows signed in from Ahmedabad.',
-    relativeTime: 'Jun 18',
-    group: 'Earlier',
-    category: 'Security',
-    icon: Icons.lock_rounded,
-    route: null,
-    unread: false,
-  ),
-  _systemNotification(
-    id: 'subscription-renewed',
-    title: 'Subscription renewed',
-    description: 'Your AMORAA Gold membership renewed successfully.',
-    relativeTime: 'Jun 12',
-    group: 'Earlier',
-    category: 'Payments',
-    icon: Icons.credit_card_rounded,
-    route: SubscriptionScreen.routeName,
-    unread: false,
-  ),
-];
-
-_NotificationItem _profileNotification({
-  required String id,
-  required String profileName,
-  required String title,
-  required String description,
-  required String relativeTime,
-  required String group,
-  required String category,
-  required IconData icon,
-  String route = ProfileDetailScreen.routeName,
-  bool unread = true,
-}) {
-  final profile = ImageRepository.profileByName(profileName);
-  final arguments = route == ChatDetailScreen.routeName
-      ? ChatDetailArgs(conversationId: '', recipientId: profile.id)
-      : profile;
-  return _NotificationItem(
-    id: id,
-    title: title,
-    description: description,
-    relativeTime: relativeTime,
-    group: group,
-    category: category,
-    icon: icon,
-    imageUrl: profile.imageUrl,
-    fallbackAsset: profile.fallbackAsset,
-    initials: profile.initials,
-    route: route,
-    arguments: arguments,
-    unread: unread,
-  );
+String? _notificationRoute(InboxNotification notification) {
+  final requested = notification.data['route']?.toString();
+  const allowed = <String>{
+    ProfileDetailScreen.routeName,
+    ChatDetailScreen.routeName,
+    EventsScreen.routeName,
+    KycVerificationScreen.routeName,
+    SubscriptionScreen.routeName,
+  };
+  if (requested != null && allowed.contains(requested)) return requested;
+  return switch (notification.category) {
+    'Likes' || 'Super Likes' || 'Matches' || 'Profile Views' =>
+      notification.data['targetUserId'] == null
+          ? null
+          : ProfileDetailScreen.routeName,
+    'Messages' =>
+      notification.data['conversationId'] == null
+          ? null
+          : ChatDetailScreen.routeName,
+    'Events' => EventsScreen.routeName,
+    'Verification' => KycVerificationScreen.routeName,
+    'Payments' || 'Offers' => SubscriptionScreen.routeName,
+    _ => null,
+  };
 }
 
-_NotificationItem _systemNotification({
-  required String id,
-  required String title,
-  required String description,
-  required String relativeTime,
-  required String group,
-  required String category,
-  required IconData icon,
-  required String? route,
-  bool unread = true,
-}) {
-  final profile = ImageRepository.profileByName('Yash');
-  return _NotificationItem(
-    id: id,
-    title: title,
-    description: description,
-    relativeTime: relativeTime,
-    group: group,
-    category: category,
-    icon: icon,
-    imageUrl: profile.imageUrl,
-    fallbackAsset: profile.fallbackAsset,
-    initials: profile.initials,
-    route: route,
-    unread: unread,
-  );
+String _notificationGroup(DateTime createdAt) {
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  final date = DateTime(createdAt.year, createdAt.month, createdAt.day);
+  final days = today.difference(date).inDays;
+  if (days <= 0) return 'Today';
+  if (days == 1) return 'Yesterday';
+  if (days <= 7) return 'This Week';
+  return 'Earlier';
 }
 
-_NotificationItem _eventNotification() {
-  final event = ImageRepository.eventByName('Coffee Meetup');
-  return _NotificationItem(
-    id: 'event-reminder',
-    title: 'Coffee Match Meetup is tomorrow',
-    description: 'Your event starts at 6 PM. Check in opens 30 minutes early.',
-    relativeTime: 'Yesterday, 9:10 PM',
-    group: 'Yesterday',
-    category: 'Events',
-    icon: Icons.event_available_rounded,
-    imageUrl: event.imageUrl,
-    fallbackAsset: event.fallbackAsset,
-    initials: 'EV',
-    route: EventDetailScreen.routeName,
-    arguments: event,
-  );
+String _relativeTime(DateTime createdAt) {
+  final difference = DateTime.now().difference(createdAt);
+  if (difference.inMinutes < 1) return 'Just now';
+  if (difference.inMinutes < 60) return '${difference.inMinutes} min ago';
+  if (difference.inHours < 24) return '${difference.inHours} hr ago';
+  if (difference.inDays == 1) return 'Yesterday';
+  if (difference.inDays < 7) return '${difference.inDays} days ago';
+  return '${createdAt.day}/${createdAt.month}/${createdAt.year}';
 }
 
-_NotificationItem _offerNotification() {
-  final venue = ImageRepository.venueByName('Skyline Social Lounge');
-  return _NotificationItem(
-    id: 'premium-offer',
-    title: 'A premium offer is available',
-    description: 'Save on AMORAA Gold when you upgrade before Friday.',
-    relativeTime: 'Saturday',
-    group: 'This Week',
-    category: 'Offers',
-    icon: Icons.local_offer_rounded,
-    imageUrl: venue.imageUrl,
-    fallbackAsset: venue.fallbackAsset,
-    initials: 'GO',
-    route: SubscriptionScreen.routeName,
-  );
-}
+String _initials(String title) => title
+    .split(RegExp(r'\s+'))
+    .where((word) => word.isNotEmpty)
+    .take(2)
+    .map((word) => word[0].toUpperCase())
+    .join();

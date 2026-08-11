@@ -29,13 +29,29 @@ class SavedProfilesScreen extends StatefulWidget {
 }
 
 class _SavedProfilesScreenState extends State<SavedProfilesScreen> {
+  late final ScrollController _scrollController;
+
   ProfileRelationshipController get source =>
       widget.controller ?? ProfileRelationshipController.instance;
 
   @override
   void initState() {
     super.initState();
+    _scrollController = ScrollController()..addListener(_loadMore);
     if (widget.controller == null) unawaited(source.refreshRemote());
+  }
+
+  void _loadMore() {
+    if (_scrollController.hasClients &&
+        _scrollController.position.extentAfter < 240) {
+      unawaited(source.loadMoreSaved());
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   @override
@@ -76,6 +92,12 @@ class _SavedProfilesScreenState extends State<SavedProfilesScreen> {
           actionSemanticLabel: (profile) => AmoraaProfileAction.unsave
               .semanticLabel(amoraaProfileActionName(profile.name)),
           actionIcon: Icons.bookmark_remove_rounded,
+          scrollController: _scrollController,
+          loadingMore: source.savedLoadingMore,
+          loadMoreError: source.error,
+          onRetry: source.savedHasMore
+              ? source.loadMoreSaved
+              : source.refreshRemote,
           onAction: (profile) => showAmoraaProfileActionConfirmation(
             context: context,
             action: AmoraaProfileAction.unsave,
@@ -228,6 +250,10 @@ class ManagedProfilesScreen extends StatelessWidget {
     required this.onAction,
     this.emptyActionLabel,
     this.onEmptyAction,
+    this.scrollController,
+    this.loadingMore = false,
+    this.loadMoreError,
+    this.onRetry,
   });
 
   final String title;
@@ -242,6 +268,10 @@ class ManagedProfilesScreen extends StatelessWidget {
   final ValueChanged<DummyProfile> onAction;
   final String? emptyActionLabel;
   final VoidCallback? onEmptyAction;
+  final ScrollController? scrollController;
+  final bool loadingMore;
+  final String? loadMoreError;
+  final VoidCallback? onRetry;
 
   @override
   Widget build(BuildContext context) {
@@ -269,6 +299,7 @@ class ManagedProfilesScreen extends StatelessWidget {
                     onAction: onEmptyAction,
                   )
                 : ListView(
+                    controller: scrollController,
                     key: ValueKey(
                       'managed-$title-${profiles.map((profile) => profile.id).join('-')}',
                     ),
@@ -298,6 +329,19 @@ class ManagedProfilesScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: AmoraSpacing.space12),
                       ],
+                      if (loadingMore)
+                        const Padding(
+                          padding: EdgeInsets.all(AmoraSpacing.space16),
+                          child: Center(child: CircularProgressIndicator()),
+                        ),
+                      if (loadMoreError != null && onRetry != null)
+                        Padding(
+                          padding: const EdgeInsets.all(AmoraSpacing.space12),
+                          child: TextButton(
+                            onPressed: onRetry,
+                            child: Text('$loadMoreError\nTry again'),
+                          ),
+                        ),
                     ],
                   ),
           ),

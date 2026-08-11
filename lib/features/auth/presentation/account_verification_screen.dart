@@ -401,7 +401,7 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
       _confirmation = null;
     });
     try {
-      await request(_localNumber);
+      await request(_normalizedPhone);
       if (!mounted) return;
       setState(() {
         _isSendingOtp = false;
@@ -435,7 +435,7 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
       _confirmation = null;
     });
     try {
-      await verify(_localNumber, _otp);
+      await verify(_normalizedPhone, _otp);
       if (!mounted) return;
       _timer?.cancel();
       AmoraSession.logIn();

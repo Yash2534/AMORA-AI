@@ -4,6 +4,7 @@ import 'package:amora_ai/core/data/image_repository.dart';
 import 'package:amora_ai/core/widgets/premium_image.dart';
 import 'package:amora_ai/features/discover/presentation/browse_grid_screen.dart';
 import 'package:amora_ai/features/discover/presentation/discover_action_controller.dart';
+import 'package:amora_ai/features/discover/data/discover_api_service.dart';
 import 'package:amora_ai/features/profile/presentation/profile_detail_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_screen.dart';
 import 'package:amora_ai/features/settings/presentation/profile_settings_screen.dart';
@@ -19,7 +20,10 @@ void main() {
   }) async {
     await tester.pumpWidget(
       MaterialApp(
-        home: BrowseGridScreen(controller: controller),
+        home: BrowseGridScreen(
+          controller: controller,
+          apiService: _FixtureDiscoverApiService(),
+        ),
         navigatorObservers: observers,
         onGenerateRoute: (settings) {
           onNamedRoute?.call(settings);
@@ -291,7 +295,10 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
 
     expect(observer.lastRoute?.settings.name, '/profile-detail');
-    expect(observer.lastRoute?.settings.arguments, same(firstProfile));
+    expect(
+      (observer.lastRoute?.settings.arguments as DummyProfile).id,
+      firstProfile.id,
+    );
     expect(find.byType(ProfileDetailScreen), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
@@ -556,6 +563,7 @@ void main() {
     RouteSettings? openedRoute;
     final controller = DiscoverActionController(
       profileIds: ImageRepository.profiles.map((profile) => profile.id),
+      apiService: _FixtureDiscoverApiService(),
       transitionDuration: const Duration(milliseconds: 1),
     );
     addTearDown(controller.dispose);
@@ -605,6 +613,83 @@ void main() {
     );
     expect(tester.takeException(), isNull);
   });
+}
+
+class _FixtureDiscoverApiService extends DiscoverApiService {
+  @override
+  Future<DiscoverApiResult<DiscoverFeedPage>> getFeed({
+    required int page,
+    int limit = 10,
+    Iterable<String> communicationStyles = const <String>[],
+  }) async {
+    final profiles = ImageRepository.profiles.map(_profileJson).toList();
+    return DiscoverApiResult.success(
+      DiscoverFeedPage(profiles: profiles, hasMore: false),
+      statusCode: 200,
+    );
+  }
+
+  @override
+  Future<DiscoverApiResult<DiscoverSwipeResult>> swipe({
+    required String targetUserId,
+    required String action,
+  }) async => DiscoverApiResult.success(
+    const DiscoverSwipeResult(matched: false),
+    statusCode: 200,
+  );
+
+  @override
+  Future<DiscoverApiResult<Map<String, dynamic>>> rewind() async =>
+      const DiscoverApiResult.success(<String, dynamic>{}, statusCode: 200);
+
+  Map<String, dynamic> _profileJson(DummyProfile profile) => {
+    'id': profile.id,
+    'gender': profile.gender.name,
+    'name': profile.name,
+    'age': profile.age,
+    'city': profile.city,
+    'profession': profile.profession,
+    'education': profile.education,
+    'distance': int.tryParse(profile.distance.split(' ').first),
+    'score': profile.score,
+    'intent': profile.intent,
+    'personality': profile.personality,
+    'status': profile.status,
+    'bio': profile.bio,
+    'interests': profile.interests,
+    'imageUrl': profile.imageUrl,
+    'gallery': profile.gallery,
+    'languages': profile.languages,
+    'verification': 'verified',
+    'lifestyle': profile.lifestyle,
+    'promptAnswers': profile.promptAnswers,
+    'travelPreference': profile.travelPreference,
+    'musicTaste': profile.musicTaste,
+    'foodPreference': profile.foodPreference,
+    'weekendPlan': profile.weekendPlan,
+    'petPreference': profile.petPreference,
+    'coffeePreference': profile.coffeePreference,
+    'religion': profile.religion,
+    'community': profile.community,
+    'height': profile.height,
+    'fitnessLevel': profile.fitnessLevel,
+    'smoking': profile.smoking,
+    'drinking': profile.drinking,
+    'weed': profile.weed,
+    'children': profile.children,
+    'loveLanguage': profile.loveLanguage,
+    'greenFlags': profile.greenFlags,
+    'redFlags': profile.redFlags,
+    'familyValues': profile.familyValues,
+    'dateIdeas': profile.dateIdeas,
+    'hometown': profile.hometown,
+    'valuedQualities': profile.valuedQualities,
+    'pronouns': profile.pronouns,
+    'sexuality': profile.sexuality,
+    'preferredTalkingHours': profile.preferredTalkingHours,
+    'loveLanguages': profile.loveLanguages,
+    'communicationStyle': profile.communicationStyle?.storageValue,
+  };
 }
 
 class _RecordingNavigatorObserver extends NavigatorObserver {

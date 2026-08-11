@@ -50,12 +50,14 @@ class BrowseGridScreen extends StatefulWidget {
     super.key,
     this.showNavigation = true,
     this.controller,
+    this.apiService,
   });
 
   static const routeName = '/browse';
 
   final bool showNavigation;
   final DiscoverActionController? controller;
+  final DiscoverApiService? apiService;
 
   @override
   State<BrowseGridScreen> createState() => _BrowseGridScreenState();
@@ -80,7 +82,7 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
   late final AnimationController _superLikeAnimation;
   List<DummyProfile> _profiles = const <DummyProfile>[];
   DiscoverActionController? _controller;
-  final DiscoverApiService _discoverApi = DiscoverApiService();
+  late final DiscoverApiService _discoverApi;
   Timer? _loadingTimer;
   Object? _error;
   bool _loading = true;
@@ -100,6 +102,7 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
   void initState() {
     super.initState();
     _keyboardFocus = FocusNode(debugLabel: 'Discover keyboard shortcuts');
+    _discoverApi = widget.apiService ?? DiscoverApiService();
     _superLikeAnimation = AnimationController(
       vsync: this,
       duration: AmoraSuperLikeAnimation.duration,
@@ -323,6 +326,7 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
       mutualLikeProfileIds: profiles
           .where((profile) => profile.score >= 94)
           .map((profile) => profile.id),
+      apiService: _discoverApi,
       transitionDuration: const Duration(milliseconds: 250),
     );
   }
@@ -593,7 +597,7 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
     var saved = false;
     if (action == DiscoverAction.like) {
       saved = await _actions.likeProfile();
-      ProfileRelationshipController.instance.likeProfile(profile);
+      if (saved) ProfileRelationshipController.instance.likeProfile(profile);
       if (!saved && mounted) {
         _showSyncError(_actions.lastError ?? 'Unable to save this like.');
       }
@@ -707,7 +711,9 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
         HapticFeedback.mediumImpact();
         _superLikeProfileName = profile.name;
         final saved = await _actions.superLikeProfile();
-        ProfileRelationshipController.instance.superLikeProfile(profile);
+        if (saved) {
+          ProfileRelationshipController.instance.superLikeProfile(profile);
+        }
         if (!saved && mounted) {
           _showSyncError(
             _actions.lastError ?? 'Unable to save this Super Like.',

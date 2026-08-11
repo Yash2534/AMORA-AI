@@ -1,6 +1,6 @@
 const router = require('express').Router(); const { body } = require('express-validator'); const auth = require('../controllers/authController'); const validate = require('../middleware/validateRequest'); const requireAuth = require('../middleware/authMiddleware'); const { loginLimiter, signupLimiter, otpLimiter } = require('../middleware/rateLimiter');
 const email = body('email').trim().isEmail().withMessage('A valid email is required.').normalizeEmail();
-const phoneNumber = body('phoneNumber').trim().matches(/^[6-9]\d{9}$/).withMessage('Phone number must be a valid 10-digit Indian mobile number.');
+const phoneNumber = body('phoneNumber').trim().matches(/^(?:\+91)?[6-9]\d{9}$/).withMessage('Phone number must be a valid Indian mobile number in national or +91 format.');
 const code = body('code').trim().matches(/^\d{6}$/).withMessage('Code must be a six-digit number.');
 const signupChecks = [body('name').trim().isLength({ min: 2 }).withMessage('Name must have at least 2 characters.'), email, phoneNumber, body('password').isLength({ min: 8 }).withMessage('Password must contain at least 8 characters.'), body('confirmPassword').custom((value, { req }) => value === req.body.password).withMessage('Passwords do not match.'), body('acceptedTerms').isBoolean().custom((value) => value === true).withMessage('You must accept the terms.')];
 router.post('/signup', signupLimiter, signupChecks, validate, auth.signup);

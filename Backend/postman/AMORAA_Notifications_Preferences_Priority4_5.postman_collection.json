@@ -1,0 +1,179 @@
+{
+  "info": {
+    "name": "AMORAA - Priority 4 Notifications + Priority 5 Preferences",
+    "description": "Authenticated notification inbox, notification-preference, and account-preference contract checks. Set baseUrl, accessToken, notificationId, foreignNotificationId, and foreignAccessToken. No real tokens are committed.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000" },
+    { "key": "accessToken", "value": "" },
+    { "key": "foreignAccessToken", "value": "" },
+    { "key": "notificationId", "value": "1" },
+    { "key": "foreignNotificationId", "value": "2" }
+  ],
+  "item": [
+    {
+      "name": "Notifications",
+      "item": [
+        {
+          "name": "GET own notifications - paginated newest first",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}", "type": "text" }],
+            "url": "{{baseUrl}}/api/notifications?page=1&limit=20"
+          }
+        },
+        {
+          "name": "GET own unread notifications",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}", "type": "text" }],
+            "url": "{{baseUrl}}/api/notifications?page=1&limit=20&unread=true"
+          }
+        },
+        {
+          "name": "GET notifications - unauthorized",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/notifications" }
+        },
+        {
+          "name": "PUT mark own notification read",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}", "type": "text" }],
+            "url": "{{baseUrl}}/api/notifications/{{notificationId}}/read"
+          }
+        },
+        {
+          "name": "PUT repeat mark read - idempotent",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}", "type": "text" }],
+            "url": "{{baseUrl}}/api/notifications/{{notificationId}}/read"
+          }
+        },
+        {
+          "name": "PUT cannot mark another user's notification read",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}", "type": "text" }],
+            "url": "{{baseUrl}}/api/notifications/{{foreignNotificationId}}/read"
+          }
+        },
+        {
+          "name": "PUT mark all own notifications read",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}", "type": "text" }],
+            "url": "{{baseUrl}}/api/notifications/read-all"
+          }
+        },
+        {
+          "name": "DELETE own notification",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}", "type": "text" }],
+            "url": "{{baseUrl}}/api/notifications/{{notificationId}}"
+          }
+        },
+        {
+          "name": "DELETE cannot delete another user's notification",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}", "type": "text" }],
+            "url": "{{baseUrl}}/api/notifications/{{foreignNotificationId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Notification Preferences",
+      "item": [
+        {
+          "name": "GET notification preferences",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}", "type": "text" }],
+            "url": "{{baseUrl}}/api/notification-preferences"
+          }
+        },
+        {
+          "name": "PUT notification preferences",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"newMatches\": true,\n  \"messages\": true,\n  \"eventReminders\": false,\n  \"pushEnabled\": true,\n  \"emailEnabled\": false\n}" },
+            "url": "{{baseUrl}}/api/notification-preferences"
+          }
+        },
+        {
+          "name": "PUT notification preferences - invalid key",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": { "mode": "raw", "raw": "{\"role\":\"admin\"}" },
+            "url": "{{baseUrl}}/api/notification-preferences"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Account Preferences",
+      "item": [
+        {
+          "name": "GET own account preferences",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}", "type": "text" }],
+            "url": "{{baseUrl}}/api/me/preferences"
+          }
+        },
+        {
+          "name": "GET own account preferences - unauthorized",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/me/preferences" }
+        },
+        {
+          "name": "PUT own account preferences",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"minAge\": 24,\n  \"maxAge\": 38,\n  \"maxDistanceKm\": 75,\n  \"verifiedOnly\": true\n}" },
+            "url": "{{baseUrl}}/api/me/preferences"
+          }
+        },
+        {
+          "name": "PUT own account preferences - invalid range",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": { "mode": "raw", "raw": "{\"minAge\":50,\"maxAge\":20}" },
+            "url": "{{baseUrl}}/api/me/preferences"
+          }
+        },
+        {
+          "name": "PUT own account preferences - server-owned field rejected",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": { "mode": "raw", "raw": "{\"role\":\"admin\",\"subscriptionStatus\":\"premium\"}" },
+            "url": "{{baseUrl}}/api/me/preferences"
+          }
+        }
+      ]
+    }
+  ]
+}
