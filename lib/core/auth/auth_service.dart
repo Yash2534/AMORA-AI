@@ -22,11 +22,22 @@ class AuthenticatedMultipartFile {
 }
 
 class AuthException implements Exception {
-  const AuthException(this.message, {this.code, this.statusCode});
+  const AuthException(
+    this.message, {
+    this.code,
+    this.statusCode,
+    this.errors = const <String, String>{},
+  });
 
   final String message;
   final String? code;
   final int? statusCode;
+  final Map<String, String> errors;
+
+  String get userMessage {
+    if (errors.isEmpty) return message;
+    return '$message ${errors.values.join(' ')}';
+  }
 }
 
 class AmoraUser {
@@ -332,6 +343,7 @@ class AuthService {
           decoded['message'] as String? ?? 'The upload could not be completed.',
           code: decoded['code'] as String?,
           statusCode: response.statusCode,
+          errors: _errorDetails(decoded['errors']),
         );
       }
       return decoded;
@@ -396,6 +408,7 @@ class AuthService {
               'The request could not be completed.',
           code: decoded['code'] as String?,
           statusCode: response.statusCode,
+          errors: _errorDetails(decoded['errors']),
         );
       }
       return decoded;
@@ -431,4 +444,20 @@ class AuthService {
   Map<String, dynamic> _data(Map<String, dynamic> response) =>
       (response['data'] as Map?)?.cast<String, dynamic>() ??
       <String, dynamic>{};
+
+  Map<String, String> _errorDetails(Object? value) {
+    if (value is Map) {
+      return value.map(
+        (field, message) => MapEntry(field.toString(), message.toString()),
+      );
+    }
+    if (value is! List) return const <String, String>{};
+    final details = <String, String>{};
+    for (final item in value.whereType<Map>()) {
+      final field = item['field']?.toString().trim() ?? '';
+      final message = item['message']?.toString().trim() ?? '';
+      if (field.isNotEmpty && message.isNotEmpty) details[field] = message;
+    }
+    return details;
+  }
 }

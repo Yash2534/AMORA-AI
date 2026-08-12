@@ -153,7 +153,10 @@ class ProfileFormController extends ChangeNotifier {
         customValue: customOccupation.text,
       ),
       company: company.text.trim(),
-      education: education.text.trim(),
+      education: ProfileFormOptions.storedEducationValue(
+        education.text,
+        customValue: customEducation.text,
+      ),
       location: city.text.trim(),
       datingIntention: datingIntention.text.trim(),
       interests: [...interests, ..._retiredInterests],

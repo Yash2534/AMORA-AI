@@ -117,7 +117,7 @@ class OnboardingApiService {
       );
       return _parse(response);
     } on AuthException catch (error) {
-      return OnboardingApiResult.failure(error.message);
+      return OnboardingApiResult.failure(error.userMessage);
     }
   }
 
@@ -148,7 +148,7 @@ class OnboardingApiService {
       );
       return _parse(response);
     } on AuthException catch (error) {
-      return OnboardingApiResult.failure(error.message);
+      return OnboardingApiResult.failure(error.userMessage);
     }
   }
 

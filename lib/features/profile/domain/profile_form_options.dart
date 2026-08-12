@@ -516,6 +516,22 @@ abstract final class ProfileFormOptions {
     return normalizeEducation(value) == 'Other' ? value : '';
   }
 
+  static String storedEducationValue(
+    String? frontendValue, {
+    String customValue = '',
+  }) {
+    final selected = normalizeEducation(frontendValue);
+    if (selected == 'Other') return customValue.trim();
+    return selected;
+  }
+
+  static String displayEducation(String? storedValue) {
+    final value = storedValue?.trim() ?? '';
+    if (value.isEmpty || value.toLowerCase() == 'other') return '';
+    final normalized = normalizeEducation(value);
+    return normalized == 'Other' ? value : normalized;
+  }
+
   static String normalizeOccupation(String? storedValue) {
     final value = storedValue?.trim() ?? '';
     if (value.isEmpty) return '';

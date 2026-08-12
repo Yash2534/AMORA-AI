@@ -24,7 +24,7 @@ import 'package:amora_ai/features/discover/presentation/discover_action_controll
 import 'package:amora_ai/features/discover/data/discover_api_service.dart';
 import 'package:amora_ai/features/notifications/presentation/notifications_hub_screen.dart';
 import 'package:amora_ai/features/profile/domain/profile_interest_policy.dart';
-import 'package:amora_ai/features/profile/domain/communication_style.dart';
+import 'package:amora_ai/features/profile/data/public_profile_mapper.dart';
 import 'package:amora_ai/features/profile/presentation/controllers/profile_relationship_controller.dart';
 import 'package:amora_ai/features/profile/presentation/profile_detail_screen.dart';
 import 'package:flutter/material.dart';
@@ -178,77 +178,7 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
   }
 
   DummyProfile _profileFromRemote(Map<String, dynamic> values) {
-    String text(Object? value) => value?.toString() ?? '';
-    List<String> strings(Object? value) => value is List
-        ? value
-              .map(text)
-              .where((value) => value.trim().isNotEmpty)
-              .toList(growable: false)
-        : const <String>[];
-    Map<String, String> prompts(Object? value) => value is Map
-        ? value.map((key, item) => MapEntry(key.toString(), text(item)))
-        : const <String, String>{};
-    final lifestyle = values['lifestyle'];
-    final lifestyleValues = lifestyle is Map
-        ? lifestyle.entries
-              .map((entry) => '${entry.key}: ${entry.value}')
-              .toList(growable: false)
-        : strings(lifestyle);
-    final distance = values['distance'];
-    return DummyProfile(
-      id: text(values['id']),
-      gender: text(values['gender']).toLowerCase() == 'female'
-          ? Gender.female
-          : Gender.male,
-      name: text(values['name']),
-      age: (values['age'] as num?)?.toInt() ?? 0,
-      city: text(values['city']),
-      profession: text(values['profession']),
-      education: text(values['education']),
-      distance: distance is num ? '${distance.round()} km' : text(distance),
-      score: (values['score'] as num?)?.round() ?? 0,
-      intent: text(values['intent']),
-      personality: text(values['personality']),
-      status: text(values['status']),
-      bio: text(values['bio']),
-      interests: strings(values['interests']),
-      imageUrl: text(values['imageUrl']),
-      gallery: strings(values['gallery']),
-      languages: strings(values['languages']),
-      verification: text(values['verification']).toLowerCase() == 'verified'
-          ? 'Verified'
-          : 'Not verified',
-      lifestyle: lifestyleValues,
-      promptAnswers: prompts(values['promptAnswers']),
-      travelPreference: text(values['travelPreference']),
-      musicTaste: text(values['musicTaste']),
-      foodPreference: text(values['foodPreference']),
-      weekendPlan: text(values['weekendPlan']),
-      petPreference: text(values['petPreference']),
-      coffeePreference: text(values['coffeePreference']),
-      religion: text(values['religion']),
-      community: text(values['community']),
-      height: text(values['height']),
-      fitnessLevel: text(values['fitnessLevel']),
-      smoking: text(values['smoking']),
-      drinking: text(values['drinking']),
-      weed: text(values['weed']),
-      children: text(values['children']),
-      loveLanguage: text(values['loveLanguage']),
-      greenFlags: strings(values['greenFlags']),
-      redFlags: strings(values['redFlags']),
-      familyValues: text(values['familyValues']),
-      dateIdeas: strings(values['dateIdeas']),
-      hometown: text(values['hometown']),
-      valuedQualities: strings(values['valuedQualities']),
-      pronouns: strings(values['pronouns']),
-      sexuality: text(values['sexuality']),
-      preferredTalkingHours: strings(values['preferredTalkingHours']),
-      loveLanguages: strings(values['loveLanguages']),
-      communicationStyle: CommunicationStyle.fromStorageValue(
-        values['communicationStyle'],
-      ),
-    );
+    return publicProfileFromJson(values).profile;
   }
 
   List<DummyProfile> get _filteredProfiles {

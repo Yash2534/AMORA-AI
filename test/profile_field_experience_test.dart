@@ -103,7 +103,7 @@ void main() {
       expect(formKey.currentState!.validate(), isTrue);
       await controller.save();
       expect(controller.customEducation.text, 'Montessori training');
-      expect(repository.profile.education, 'Other');
+      expect(repository.profile.education, 'Montessori training');
 
       await tester.tap(selector);
       await tester.pumpAndSettle();

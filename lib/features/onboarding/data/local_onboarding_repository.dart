@@ -7,6 +7,7 @@ import 'package:amora_ai/core/config/amora_api_config.dart';
 import 'package:amora_ai/core/widgets/amora_dob_field.dart';
 import 'package:amora_ai/features/onboarding/data/onboarding_api_service.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
+import 'package:amora_ai/features/profile/domain/communication_style.dart';
 import 'package:amora_ai/features/profile/domain/profile_form_options.dart';
 import 'package:flutter/widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -218,7 +219,10 @@ class LocalOnboardingRepository extends ChangeNotifier
     } catch (_) {
       // Keep the last valid state if local storage is unavailable or invalid.
     }
-    unawaited(syncFromServer());
+    if (AuthService.instance.currentUser != null) {
+      final synchronized = await syncFromServer();
+      if (!synchronized) prepareForAuthenticatedUser();
+    }
   }
 
   void update(LocalOnboardingState state) {
@@ -230,6 +234,9 @@ class LocalOnboardingRepository extends ChangeNotifier
   }
 
   Future<bool> updatePersisted(LocalOnboardingState state) async {
+    if (!_testingMode && state.stage == OnboardingStage.complete) {
+      return completeOnboarding(state);
+    }
     final failureCheckpoint = _syncFailureCount;
     final previous = _state;
     _state = state;
@@ -248,6 +255,37 @@ class LocalOnboardingRepository extends ChangeNotifier
       notifyListeners();
     }
     return saved;
+  }
+
+  Future<bool> completeOnboarding([LocalOnboardingState? desiredState]) async {
+    final next = desiredState ?? _state;
+    if (_testingMode) {
+      _state = next.copyWith(
+        stage: OnboardingStage.complete,
+        onboardingCompleted: true,
+      );
+      notifyListeners();
+      return true;
+    }
+    await _syncQueue;
+    syncError.value = null;
+    final completed = await _syncAll(next);
+    if (!completed) return false;
+    try {
+      await LocalProfileRepository.instance.refreshFromServer();
+      await syncFromServer();
+    } on AuthException catch (error) {
+      _logFailure('refresh', error.userMessage);
+      return false;
+    }
+    final confirmed = _state.onboardingCompleted;
+    if (!confirmed) {
+      _logFailure(
+        'complete',
+        'The server did not confirm profile completion. Please try again.',
+      );
+    }
+    return confirmed;
   }
 
   void hydrateFromUserProfile() {
@@ -284,6 +322,15 @@ class LocalOnboardingRepository extends ChangeNotifier
     unawaited(_persistSafely());
   }
 
+  void prepareForAuthenticatedUser() {
+    if (_testingMode) return;
+    _state = LocalOnboardingState(
+      stage: OnboardingStage.age,
+      accountVerified: AuthService.instance.currentUser?.isVerified ?? false,
+    );
+    notifyListeners();
+  }
+
   void clearSyncError() => syncError.value = null;
 
   @override
@@ -291,16 +338,17 @@ class LocalOnboardingRepository extends ChangeNotifier
     if (state == AppLifecycleState.resumed) unawaited(syncFromServer());
   }
 
-  Future<void> syncFromServer() async {
-    if (AuthService.instance.currentUser == null) return;
+  Future<bool> syncFromServer() async {
+    if (AuthService.instance.currentUser == null) return false;
     final result = await _api.status();
     if (!result.success || result.data == null) {
       _logFailure('status', result.message);
-      return;
+      return false;
     }
     _applyServerProfile(result.data!);
     await _persistSafely();
     notifyListeners();
+    return true;
   }
 
   Future<void> clearForAccountDeletion() async {
@@ -419,37 +467,61 @@ class LocalOnboardingRepository extends ChangeNotifier
     }
   }
 
-  Future<void> _syncAll(LocalOnboardingState state) async {
+  Future<bool> _syncAll(LocalOnboardingState state) async {
     if (state.birthDate != null) {
-      await _record('age', _api.saveAge(state.birthDate!));
+      if (!await _record('age', _api.saveAge(state.birthDate!))) return false;
     }
     if (state.gender != null && state.gender!.isNotEmpty) {
-      await _record(
+      if (!await _record(
         'gender',
         _api.saveGender(state.gender!, customGender: state.customGender),
-      );
+      )) {
+        return false;
+      }
     }
     if (state.interestedIn.isNotEmpty) {
-      await _record('interestedIn', _api.saveInterestedIn(state.interestedIn));
+      if (!await _record(
+        'interestedIn',
+        _api.saveInterestedIn(state.interestedIn),
+      )) {
+        return false;
+      }
     }
     if (state.selectedRelationshipGoals.isNotEmpty) {
-      await _record(
+      if (!await _record(
         'relationshipGoal',
         _api.saveRelationshipGoals(state.selectedRelationshipGoals),
-      );
+      )) {
+        return false;
+      }
     }
     if (state.city != null && state.city!.trim().isNotEmpty) {
-      await _record(
+      if (!await _record(
         'location',
         _api.saveLocation(state.city!.trim(), state.preferredDistance),
-      );
+      )) {
+        return false;
+      }
     }
-    await _syncProfileData(includeStarter: true, includeCompletion: true);
-    await _syncPhotos();
-    await _record('complete', _api.complete());
+    if (!await _syncProfileData(
+      includeStarter: true,
+      includeCompletion: true,
+    )) {
+      return false;
+    }
+    if (!await _syncPhotos()) return false;
+    final result = await _api.complete();
+    if (!result.success || result.data == null) {
+      _logFailure('complete', result.message);
+      return false;
+    }
+    _applyServerProfile(result.data!);
+    await _persistSafely();
+    notifyListeners();
+    return true;
   }
 
-  Future<void> _syncProfileData({
+  Future<bool> _syncProfileData({
     required bool includeStarter,
     required bool includeCompletion,
   }) async {
@@ -457,17 +529,19 @@ class LocalOnboardingRepository extends ChangeNotifier
     if (includeStarter &&
         profile.profession.trim().isNotEmpty &&
         profile.education.trim().isNotEmpty) {
-      await _record(
+      if (!await _record(
         'starterProfile',
         _api.saveStarterProfile(
           profession: profile.profession.trim(),
           company: profile.company.trim(),
           education: profile.education.trim(),
         ),
-      );
+      )) {
+        return false;
+      }
     }
     if (includeCompletion) {
-      await _record(
+      if (!await _record(
         'profileCompletion',
         _api.saveProfileCompletion(<String, dynamic>{
           'bio': profile.bio,
@@ -481,21 +555,36 @@ class LocalOnboardingRepository extends ChangeNotifier
           'loveLanguages': profile.loveLanguages,
           'preferredTalkingHours': profile.preferredTalkingHours,
           'communicationStyle': profile.communicationStyle?.storageValue,
-          'voicePromptUrl': profile.voicePrompt,
-          'videoPromptUrl': profile.videoPrompt,
+          if (profile.voicePrompt != null)
+            'voicePromptUrl': profile.voicePrompt,
+          if (profile.videoPrompt != null)
+            'videoPromptUrl': profile.videoPrompt,
         }),
-      );
+      )) {
+        return false;
+      }
     }
+    return true;
   }
 
-  Future<void> _syncPhotos() async {
+  Future<bool> _syncPhotos() async {
     final profileRepository = LocalProfileRepository.instance;
     final photos = profileRepository.currentPhotos;
+    if (photos.any(
+      (photo) => photo.uploadState == ProfilePhotoUploadState.uploading,
+    )) {
+      _logFailure('photos', 'Wait for every photo upload to finish.');
+      return false;
+    }
+    if (photos.any(
+      (photo) => photo.isLocal && (photo.bytes == null || photo.bytes!.isEmpty),
+    )) {
+      _logFailure('photos', 'Upload every local photo before continuing.');
+      return false;
+    }
     final uploads = <OnboardingPhotoUpload>[
       for (final photo in photos)
-        if (photo.bytes != null &&
-            photo.bytes!.isNotEmpty &&
-            !photo.source.startsWith('/uploads/'))
+        if (photo.isLocal && photo.bytes != null && photo.bytes!.isNotEmpty)
           OnboardingPhotoUpload(
             bytes: photo.bytes!,
             mimeType: photo.mimeType ?? 'image/jpeg',
@@ -506,31 +595,40 @@ class LocalOnboardingRepository extends ChangeNotifier
       final result = await _api.uploadPhotos(uploads);
       if (!result.success || result.data == null) {
         _logFailure('photos', result.message);
-        return;
+        return false;
       }
       final serverPhotos = _strings(result.data!.values['photos']);
-      if (serverPhotos.length == photos.length) {
-        await profileRepository.updatePhotosPersisted(
-          serverPhotos,
-          result.data!.values['primaryPhotoIndex'] as int? ?? 0,
-        );
+      if (serverPhotos.length != photos.length) {
+        _logFailure('photos', 'The server returned an invalid photo set.');
+        return false;
       }
+      profileRepository.updatePhotosInSession(
+        serverPhotos.map(_absolutePhotoUrl).toList(growable: false),
+        result.data!.values['primaryPhotoIndex'] as int? ?? 0,
+      );
     }
     final current = profileRepository.profile;
     if (current.photos.isNotEmpty) {
-      await _record(
+      if (!await _record(
         'primaryPhoto',
         _api.setPrimaryPhoto(current.primaryPhotoIndex),
-      );
+      )) {
+        return false;
+      }
     }
+    return true;
   }
 
-  Future<void> _record(
+  Future<bool> _record(
     String operation,
     Future<OnboardingApiResult<OnboardingRemoteProfile>> request,
   ) async {
     final result = await request;
-    if (!result.success) _logFailure(operation, result.message);
+    if (!result.success) {
+      _logFailure(operation, result.message);
+      return false;
+    }
+    return true;
   }
 
   void _applyServerProfile(OnboardingRemoteProfile remote) {
@@ -549,29 +647,20 @@ class LocalOnboardingRepository extends ChangeNotifier
         OnboardingStage.age;
     _state = LocalOnboardingState(
       stage: serverStage,
-      birthDate: birthDate ?? _state.birthDate,
-      gender: gender?.isNotEmpty == true ? gender : _state.gender,
-      customGender: values['customGender'] as String? ?? _state.customGender,
-      showGender: _state.showGender,
-      interestedIn: interestedIn.isEmpty
-          ? _state.interestedIn
-          : interestedIn.toSet(),
-      relationshipGoals: relationshipGoals.isEmpty
-          ? _state.relationshipGoals
-          : relationshipGoals.toSet(),
-      relationshipGoal: relationshipGoals.isEmpty
-          ? _state.relationshipGoal
-          : relationshipGoals.first,
-      city: city?.isNotEmpty == true ? city : _state.city,
+      birthDate: birthDate,
+      gender: gender?.isNotEmpty == true ? gender : null,
+      customGender: values['customGender'] as String? ?? '',
+      showGender: true,
+      interestedIn: interestedIn.toSet(),
+      relationshipGoals: relationshipGoals.toSet(),
+      relationshipGoal: relationshipGoals.firstOrNull,
+      city: city?.isNotEmpty == true ? city : null,
       preferredDistance:
-          (values['preferredDistance'] as num?)?.toDouble() ??
-          _state.preferredDistance,
-      accountVerified: _state.accountVerified,
-      onboardingCompleted:
-          values['onboardingCompleted'] as bool? ?? _state.onboardingCompleted,
+          (values['preferredDistance'] as num?)?.toDouble() ?? 50,
+      accountVerified: AuthService.instance.currentUser?.isVerified ?? false,
+      onboardingCompleted: values['onboardingCompleted'] as bool? ?? false,
       profileCompleted:
-          _state.profileCompleted ||
-          (values['bio'] as String? ?? '').isNotEmpty,
+          serverStage.index >= OnboardingStage.profileCompletion.index,
     );
     final profile = LocalProfileRepository.instance.profile;
     final photos = _strings(values['photos']);
@@ -600,14 +689,20 @@ class LocalOnboardingRepository extends ChangeNotifier
         photos: photos.map(_absolutePhotoUrl).toList(growable: false),
         primaryPhotoIndex:
             values['primaryPhotoIndex'] as int? ?? profile.primaryPhotoIndex,
-        voicePrompt: values['voicePromptUrl'] as String? ?? profile.voicePrompt,
-        videoPrompt: values['videoPromptUrl'] as String? ?? profile.videoPrompt,
+        voicePrompt: values['voicePromptUrl'] as String?,
+        clearVoicePrompt: values['voicePromptUrl'] == null,
+        videoPrompt: values['videoPromptUrl'] as String?,
+        clearVideoPrompt: values['videoPromptUrl'] == null,
         hometown: values['hometown'] as String? ?? profile.hometown,
         valuedQualities: _strings(values['valuedQualities']),
         pronouns: _strings(values['pronouns']),
         sexuality: values['sexuality'] as String? ?? '',
         preferredTalkingHours: _strings(values['preferredTalkingHours']),
         loveLanguages: _strings(values['loveLanguages']),
+        communicationStyle: CommunicationStyle.fromStorageValue(
+          values['communicationStyle'],
+        ),
+        clearCommunicationStyle: values['communicationStyle'] == null,
       ),
     );
   }

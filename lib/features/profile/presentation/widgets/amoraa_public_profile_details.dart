@@ -63,7 +63,7 @@ class AmoraaPublicProfileData {
       gender: ProfileFormOptions.normalizeGender(profile.gender),
       occupation: ProfileFormOptions.displayOccupation(profile.profession),
       company: profile.company.trim(),
-      education: ProfileFormOptions.normalizeEducation(profile.education),
+      education: ProfileFormOptions.displayEducation(profile.education),
       datingIntention: ProfileFormOptions.normalizeDatingIntention(
         profile.datingIntention,
       ),
@@ -181,7 +181,9 @@ class AmoraaPublicProfileData {
           .toList(growable: false),
       languages: languages,
       verification: isAadhaarVerified ? 'Verified profile' : '',
-      lifestyle: lifestyle.map((entry) => entry.value).toList(growable: false),
+      lifestyle: lifestyle
+          .map((entry) => '${entry.key}: ${entry.value}')
+          .toList(growable: false),
       promptAnswers: Map<String, String>.fromEntries(prompts),
       travelPreference: '',
       musicTaste: '',

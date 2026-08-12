@@ -456,7 +456,7 @@ class _AmoraaProfileFormState extends State<AmoraaProfileForm> {
       await widget.onSaved(context, saved);
     } on AuthException catch (error) {
       if (mounted) {
-        _showError(error.message);
+        _showError(error.userMessage);
       }
     } catch (_) {
       if (mounted) {

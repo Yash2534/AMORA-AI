@@ -101,7 +101,7 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
                     children: [
                       Expanded(
                         child: Text(
-                          '${photos.length} of 6 photos',
+                          '${photos.length} of ${LocalProfileRepository.maxProfilePhotos} photos',
                           style: AmoraTextStyles.titleMedium,
                         ),
                       ),
@@ -122,7 +122,8 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
                   _PhotoGrid(
                     key: const ValueKey('profile-photo-grid'),
                     photos: photos,
-                    showAddTile: photos.length < 6,
+                    showAddTile:
+                        photos.length < LocalProfileRepository.maxProfilePhotos,
                     adding: _picking,
                     onAdd: _picking ? null : _addPhoto,
                     onOpen: _openPreview,
@@ -186,7 +187,8 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
 
   Future<void> _addPhoto() async {
     if (_picking) return;
-    if (_repository.profile.photos.length >= 6) {
+    if (_repository.profile.photos.length >=
+        LocalProfileRepository.maxProfilePhotos) {
       return _snack('Maximum 6 photos allowed');
     }
     setState(() => _picking = true);
@@ -343,6 +345,15 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
         profile.photos,
         profile.primaryPhotoIndex,
       );
+    } on AuthException catch (error) {
+      _repository.setPhotoUploadState(
+        localSource,
+        ProfilePhotoUploadState.failed,
+        errorMessage: error.userMessage,
+      );
+      if (mounted) {
+        _snack(error.userMessage);
+      }
     } catch (_) {
       _repository.setPhotoUploadState(
         localSource,
@@ -399,6 +410,12 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
       AmoraSession.completeProfileStep(40);
       _snack('Photo changes saved to your profile');
       Navigator.of(context).pop(true);
+    } on AuthException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _saveError = error.userMessage;
+      });
     } catch (_) {
       if (!mounted) return;
       setState(() {

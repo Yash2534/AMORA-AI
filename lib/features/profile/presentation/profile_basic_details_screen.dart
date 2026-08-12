@@ -1,5 +1,6 @@
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
+import 'package:amora_ai/core/auth/auth_service.dart';
 import 'package:amora_ai/core/widgets/amora_dob_field.dart';
 import 'package:amora_ai/core/widgets/amora_app_bar.dart';
 import 'package:amora_ai/core/widgets/amoraa_select_field.dart';
@@ -26,6 +27,7 @@ class _ProfileBasicDetailsScreenState extends State<ProfileBasicDetailsScreen> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _name;
   late final TextEditingController _profession;
+  late final TextEditingController _customProfession;
   late final TextEditingController _company;
   late final TextEditingController _education;
   late final TextEditingController _customEducation;
@@ -41,7 +43,12 @@ class _ProfileBasicDetailsScreenState extends State<ProfileBasicDetailsScreen> {
     _name = TextEditingController(text: profile.name);
     _birthDate = profile.dateOfBirth;
     _profession = TextEditingController(
-      text: ProfileFormOptions.normalizeOccupation(profile.profession),
+      text: ProfileFormOptions.occupationSelectionFromStored(
+        profile.profession,
+      ),
+    );
+    _customProfession = TextEditingController(
+      text: ProfileFormOptions.customOccupationFromStored(profile.profession),
     );
     _company = TextEditingController(text: profile.company);
     _education = TextEditingController(
@@ -60,6 +67,7 @@ class _ProfileBasicDetailsScreenState extends State<ProfileBasicDetailsScreen> {
   void dispose() {
     _name.dispose();
     _profession.dispose();
+    _customProfession.dispose();
     _company.dispose();
     _education.dispose();
     _customEducation.dispose();
@@ -167,6 +175,33 @@ class _ProfileBasicDetailsScreenState extends State<ProfileBasicDetailsScreen> {
                           }
                         },
                       ),
+                      if (_profession.text == 'Other') ...[
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          key: const ValueKey(
+                            'profile-basic-custom-occupation-field',
+                          ),
+                          controller: _customProfession,
+                          maxLength:
+                              ProfileFormOptions.customOccupationMaxLength,
+                          inputFormatters: [
+                            LengthLimitingTextInputFormatter(
+                              ProfileFormOptions.customOccupationMaxLength,
+                            ),
+                          ],
+                          validator: (value) =>
+                              ProfileFormValidators.customOccupation(
+                                _profession.text,
+                                value,
+                              ),
+                          decoration: const InputDecoration(
+                            labelText: 'Specify occupation',
+                            hintText: 'Enter your occupation',
+                            prefixIcon: Icon(Icons.edit_note_rounded),
+                            counterText: '',
+                          ),
+                        ),
+                      ],
                       if (_education.text == 'Other') ...[
                         const SizedBox(height: 16),
                         TextFormField(
@@ -280,6 +315,17 @@ class _ProfileBasicDetailsScreenState extends State<ProfileBasicDetailsScreen> {
 
   Future<void> _save() async {
     FocusScope.of(context).unfocus();
+    if (_profession.text == 'Other') {
+      final trimmedCustomProfession = _customProfession.text.trim();
+      if (trimmedCustomProfession != _customProfession.text) {
+        _customProfession.value = TextEditingValue(
+          text: trimmedCustomProfession,
+          selection: TextSelection.collapsed(
+            offset: trimmedCustomProfession.length,
+          ),
+        );
+      }
+    }
     if (_education.text == 'Other') {
       final trimmedCustomEducation = _customEducation.text.trim();
       if (trimmedCustomEducation != _customEducation.text) {
@@ -303,13 +349,25 @@ class _ProfileBasicDetailsScreenState extends State<ProfileBasicDetailsScreen> {
           name: _name.text.trim(),
           birthdate: AmoraDateOfBirth.format(_birthDate!),
           gender: ProfileFormOptions.storedGenderValue(_gender),
-          profession: _profession.text.trim(),
+          profession: ProfileFormOptions.storedOccupationValue(
+            _profession.text,
+            customValue: _customProfession.text,
+          ),
           company: _company.text.trim(),
-          education: _education.text.trim(),
+          education: ProfileFormOptions.storedEducationValue(
+            _education.text,
+            customValue: _customEducation.text,
+          ),
           location: _city.text.trim(),
         ),
       );
       if (mounted) Navigator.of(context).pop(true);
+    } on AuthException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.userMessage)));
+      }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

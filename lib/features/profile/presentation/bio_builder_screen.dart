@@ -1,4 +1,5 @@
 import 'package:amora_ai/core/theme/amora_icons.dart';
+import 'package:amora_ai/core/auth/auth_service.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
@@ -168,6 +169,8 @@ class _BioBuilderScreenState extends State<BioBuilderScreen> {
       if (!mounted) return;
       _snack('Bio saved to your profile');
       Navigator.of(context).pop(true);
+    } on AuthException catch (error) {
+      if (mounted) _snack(error.userMessage);
     } catch (_) {
       if (mounted) _snack('Could not save your bio. Please try again.');
     }

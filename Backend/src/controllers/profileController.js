@@ -83,7 +83,10 @@ exports.updateOwnProfile = async (req, res, next) => {
         const normalized = req.body.photos.map((value) => {
           try { return new URL(value).pathname; } catch (_) { return value; }
         });
-        if (normalized.length !== stored.length || normalized.some((value) => !stored.includes(value))) {
+        const normalizedSet = new Set(normalized);
+        if (normalized.length !== stored.length
+          || normalizedSet.size !== normalized.length
+          || stored.some((value) => !normalizedSet.has(value))) {
           const error = new Error('Profile photos must reference the current authenticated upload set.');
           error.status = 400;
           error.code = 'VALIDATION_ERROR';

@@ -131,6 +131,7 @@ test('PUT persists canonical relations and public profile reads the same records
       education: 'Masters',
       interests: ['Coffee', 'Design', 'Travel'],
       prompts: { 'My simple pleasure': 'Fresh filter coffee.' },
+      iceBreaker: 'What is your favorite hidden cafe?',
       lifestyle: {
         Height: '170 cm',
         Languages: 'Hindi & English',
@@ -156,6 +157,7 @@ test('PUT persists canonical relations and public profile reads the same records
   assert.equal(publicProfile.bio, reloaded.body.data.profile.bio);
   assert.deepEqual(publicProfile.promptAnswers, reloaded.body.data.profile.prompts);
   assert.deepEqual(publicProfile.interests, reloaded.body.data.profile.interests);
+  assert.equal(publicProfile.iceBreaker, reloaded.body.data.profile.iceBreaker);
   assert.equal(publicProfile.height, '170 cm');
   assert.deepEqual(publicProfile.languages, ['Hindi', 'English']);
   assert.equal(publicProfile.religion, 'Jain');
@@ -166,6 +168,7 @@ test('PUT persists canonical relations and public profile reads the same records
   assert.equal(storedUser.name, 'Canonical Edited Name');
   assert.equal(storedProfile.bio, reloaded.body.data.profile.bio);
   assert.deepEqual(storedProfile.prompts, reloaded.body.data.profile.prompts);
+  assert.equal(storedProfile.iceBreaker, 'What is your favorite hidden cafe?');
   assert.equal(await models.OnboardingProfile.count({ where: { userId: owner.id } }), 1);
 });
 
@@ -214,4 +217,3 @@ test('transaction rolls back User changes when a related profile update fails', 
   assert.notEqual(afterProfile.bio, 'This must also roll back.');
   assert.deepEqual(afterProfile.photos, ['/uploads/own-one.jpg', '/uploads/own-two.jpg']);
 });
-

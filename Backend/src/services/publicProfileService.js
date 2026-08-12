@@ -81,6 +81,7 @@ function serializePublicProfile(req, user, profile, options = {}) {
     sexuality: profile.sexuality || '',
     preferredTalkingHours: list(profile.preferredTalkingHours),
     loveLanguages: list(profile.loveLanguages),
+    iceBreaker: profile.iceBreaker || '',
     communicationStyle: profile.communicationStyle || null,
     ...(options.relationship ? { relationship: options.relationship } : {}),
   };

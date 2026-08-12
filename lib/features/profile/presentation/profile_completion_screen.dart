@@ -105,7 +105,7 @@ class _ProfileCompletionScreenState extends State<ProfileCompletionScreen> {
       if (!mounted) return;
       setState(() {
         _loadingCanonicalProfile = false;
-        _loadError = error.message;
+        _loadError = error.userMessage;
       });
     } catch (_) {
       if (!mounted) return;
@@ -465,6 +465,12 @@ class _ProfileCompletionScreenState extends State<ProfileCompletionScreen> {
         ..showSnackBar(
           SnackBar(content: Text('${section.title} saved successfully.')),
         );
+    } on AuthException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _savingSection = null;
+        _saveErrors[id] = error.userMessage;
+      });
     } catch (_) {
       if (!mounted) return;
       setState(() {

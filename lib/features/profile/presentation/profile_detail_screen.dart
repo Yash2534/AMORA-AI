@@ -19,6 +19,7 @@ import 'package:amora_ai/features/profile/presentation/controllers/profile_relat
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_rose_gift_sheet.dart';
 import 'package:amora_ai/features/monetization/data/monetization_repository.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_public_profile_view.dart';
+import 'package:amora_ai/features/profile/presentation/widgets/amoraa_public_profile_details.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_preference_display.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_photo_view.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_connection_profile_details.dart';
@@ -66,6 +67,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
   bool _loading = false;
   String? _loadError;
   bool _profileUnavailable = false;
+  bool _viewingOwnProfile = false;
 
   @override
   void initState() {
@@ -126,12 +128,33 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
   }
 
   Future<void> _loadProfile(String userId) async {
+    final currentUser = AuthService.instance.currentUser;
+    final loadingOwnProfile =
+        currentUser != null && currentUser.id.toString() == userId;
     setState(() {
       _loading = true;
       _loadError = null;
       _profileUnavailable = false;
+      _viewingOwnProfile = loadingOwnProfile;
+      if (loadingOwnProfile) _routeProfile = null;
     });
     try {
+      if (loadingOwnProfile) {
+        final repository = LocalProfileRepository.instance;
+        await repository.refreshFromServer();
+        final publicProfile = AmoraaPublicProfileData.fromProfile(
+          repository.profile,
+          repository.currentPhotos,
+          isAadhaarVerified: currentUser.isVerified,
+        );
+        if (!mounted) return;
+        setState(() {
+          _routeProfile = publicProfile.toPublicDisplayProfile();
+          _serverRelationship = const PublicRelationshipState();
+          _viewingOwnProfile = true;
+        });
+        return;
+      }
       final result = await widget.api!.profile(userId);
       if (!mounted) return;
       final relationships = ProfileRelationshipController.instance;
@@ -144,13 +167,14 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
       setState(() {
         _routeProfile = result.profile;
         _serverRelationship = result.relationship;
+        _viewingOwnProfile = false;
       });
     } on AuthException catch (error) {
       if (mounted) {
         setState(() {
           _routeProfile = null;
           _profileUnavailable = true;
-          _loadError = error.message;
+          _loadError = error.userMessage;
         });
       }
     } catch (_) {
@@ -178,6 +202,9 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
 
   @override
   Widget build(BuildContext context) {
+    if (_loading && _viewingOwnProfile) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
     if (_loading && _routeProfile == null && widget.profile == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
@@ -193,9 +220,15 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
     }
     return Scaffold(
       backgroundColor: AppColors.background,
+      appBar: _viewingOwnProfile
+          ? AmoraAppBar(title: 'Profile', onBack: _goBack)
+          : null,
       body: SafeArea(
+        top: !_viewingOwnProfile,
         child: AmoraaPublicProfileView(
-          mode: PublicProfileViewMode.otherUser,
+          mode: _viewingOwnProfile
+              ? PublicProfileViewMode.preview
+              : PublicProfileViewMode.otherUser,
           scrollKey: const ValueKey('profile-detail-scroll'),
           galleryBuilder: (context, height, desktop) => ProfileMediaGallery(
             key: const ValueKey('profile-media-gallery'),
@@ -204,41 +237,49 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
             photos: _photos,
             controller: _galleryController,
             selectedIndex: _photoIndex,
-            mode: PublicProfileViewMode.otherUser,
+            mode: _viewingOwnProfile
+                ? PublicProfileViewMode.preview
+                : PublicProfileViewMode.otherUser,
             saved: _saved,
             onPageChanged: (index) => setState(() => _photoIndex = index),
             onBack: _goBack,
             onSave: _toggleSave,
             onMore: _showReportSheet,
             onOpen: _openFullScreenGallery,
-            onDoubleTap: _toggleLike,
+            onDoubleTap: _viewingOwnProfile ? null : _toggleLike,
           ),
           story: ProfileStory(
             profile: _profile,
-            mode: PublicProfileViewMode.otherUser,
+            mode: _viewingOwnProfile
+                ? PublicProfileViewMode.preview
+                : PublicProfileViewMode.otherUser,
             blocked: _blocked,
-            onPromptReply: _replyToPrompt,
-            onWhyMatched: _openWhyMatched,
-            onReport: _showReportSheet,
-            onBlock: _showBlockDialog,
+            onPromptReply: _viewingOwnProfile ? null : _replyToPrompt,
+            onWhyMatched: _viewingOwnProfile ? null : _openWhyMatched,
+            onReport: _viewingOwnProfile ? null : _showReportSheet,
+            onBlock: _viewingOwnProfile ? null : _showBlockDialog,
           ),
-          interactionBar: ProfileActionBar(
-            profileName: _profile.name,
-            liked: _liked,
-            superLiked: _superLiked,
-            superLikeSending: _superLikeSending,
-            giftSending: _giftSheetOpen,
-            onGift: _showRoseGift,
-            onLike: _toggleLike,
-            onSuperLike: _sendSuperLike,
-            onMessage: _startChat,
-          ),
-          interactionOverlay: IgnorePointer(
-            child: AmoraSuperLikeAnimation(
-              animation: _superLikeAnimation,
-              profileName: _profile.name,
-            ),
-          ),
+          interactionBar: _viewingOwnProfile
+              ? null
+              : ProfileActionBar(
+                  profileName: _profile.name,
+                  liked: _liked,
+                  superLiked: _superLiked,
+                  superLikeSending: _superLikeSending,
+                  giftSending: _giftSheetOpen,
+                  onGift: _showRoseGift,
+                  onLike: _toggleLike,
+                  onSuperLike: _sendSuperLike,
+                  onMessage: _startChat,
+                ),
+          interactionOverlay: _viewingOwnProfile
+              ? null
+              : IgnorePointer(
+                  child: AmoraSuperLikeAnimation(
+                    animation: _superLikeAnimation,
+                    profileName: _profile.name,
+                  ),
+                ),
         ),
       ),
     );

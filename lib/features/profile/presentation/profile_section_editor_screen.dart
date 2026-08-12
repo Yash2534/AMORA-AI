@@ -1,4 +1,5 @@
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
+import 'package:amora_ai/core/auth/auth_service.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/amora_app_bar.dart';
@@ -360,6 +361,12 @@ class _ProfileSectionEditorScreenState
         ),
       );
       if (mounted) Navigator.of(context).pop();
+    } on AuthException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.userMessage)));
+      }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

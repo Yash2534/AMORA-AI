@@ -48,6 +48,7 @@ class _ProfileOnboardingFlowState extends State<ProfileOnboardingFlow> {
   void initState() {
     super.initState();
     _repository.syncError.addListener(_showSyncError);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _showSyncError());
     final stageIndex = _stages.indexOf(_repository.state.stage);
     _page =
         _repository.state.birthDate == null &&

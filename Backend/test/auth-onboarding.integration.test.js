@@ -39,6 +39,8 @@ let accessToken;
 let refreshToken;
 let phoneNumber;
 let email;
+let secondaryUser;
+let secondaryPhoneNumber;
 const uploadedFiles = [];
 
 async function request(pathname, {
@@ -79,6 +81,12 @@ after(async () => {
     await models.OtpToken.destroy({ where: { phoneNumber } });
     await models.OtpToken.destroy({ where: { email } });
     await models.User.destroy({ where: { id: user.id } });
+  }
+  if (models && secondaryUser) {
+    await models.RefreshToken.destroy({ where: { userId: secondaryUser.id } });
+    await models.OnboardingProfile.destroy({ where: { userId: secondaryUser.id } });
+    await models.OtpToken.destroy({ where: { phoneNumber: secondaryPhoneNumber } });
+    await models.User.destroy({ where: { id: secondaryUser.id } });
   }
   try { await getSequelize().close(); } catch (_) {}
 });
@@ -152,6 +160,8 @@ test('fresh account verifies, completes a persisted profile, reloads it, and log
       prompts: { 'A perfect day': 'Coffee and a walk.' },
       lifestyle: { Exercise: 'Often' },
       communicationStyle: 'calls',
+      voicePromptUrl: null,
+      videoPromptUrl: null,
     }],
   ];
   for (const [pathname, body] of steps) {
@@ -186,6 +196,17 @@ test('fresh account verifies, completes a persisted profile, reloads it, and log
   assert.equal(completed.status, 200);
   assert.equal(completed.body.data.onboarding.onboardingCompleted, true);
 
+  const invalidCompletion = await request('/api/onboarding/profile-completion', {
+    method: 'PUT',
+    body: { prompts: [] },
+  });
+  assert.equal(invalidCompletion.status, 400);
+  assert.equal(invalidCompletion.body.message, 'Profile completion failed.');
+  assert.deepEqual(invalidCompletion.body.errors, [{
+    field: 'prompts',
+    message: 'Prompts must be an object.',
+  }]);
+
   const update = await request('/api/me/profile', {
     method: 'PUT',
     body: { bio: 'Updated once and persisted to MySQL.', location: 'Gandhinagar' },
@@ -200,6 +221,46 @@ test('fresh account verifies, completes a persisted profile, reloads it, and log
     photoUrls,
   );
 
+  const fourMore = new FormData();
+  for (let index = 0; index < 4; index++) {
+    fourMore.append('photos', new Blob([png], { type: 'image/png' }), `more-${index}.png`);
+  }
+  const sixPhotos = await request('/api/onboarding/photos', { method: 'POST', form: fourMore });
+  assert.equal(sixPhotos.status, 200, JSON.stringify(sixPhotos.body));
+  assert.equal(sixPhotos.body.data.onboarding.photos.length, 6);
+  uploadedFiles.push(...sixPhotos.body.data.onboarding.photos.slice(2).map((url) => path.basename(url)));
+
+  const seventhForm = new FormData();
+  seventhForm.append('photos', new Blob([png], { type: 'image/png' }), 'seventh.png');
+  const seventh = await request('/api/onboarding/photos', { method: 'POST', form: seventhForm });
+  assert.equal(seventh.status, 400);
+  assert.equal(seventh.body.code, 'PHOTO_LIMIT_REACHED');
+  const afterSeventh = await request('/api/onboarding/status');
+  assert.equal(afterSeventh.body.data.onboarding.photos.length, 6);
+
+  const removed = await request('/api/onboarding/photos/2', { method: 'DELETE' });
+  assert.equal(removed.status, 200);
+  assert.equal(removed.body.data.onboarding.photos.length, 5);
+  const afterDelete = await request('/api/me/profile');
+  assert.equal(afterDelete.body.data.profile.photos.length, 5);
+
+  const reversed = [...afterDelete.body.data.profile.photos].reverse();
+  const reordered = await request('/api/me/profile', {
+    method: 'PUT',
+    body: { photos: reversed, primaryPhotoIndex: 4 },
+  });
+  assert.equal(reordered.status, 200, JSON.stringify(reordered.body));
+  const afterReorder = await request('/api/me/profile');
+  assert.deepEqual(afterReorder.body.data.profile.photos, reversed);
+  assert.equal(afterReorder.body.data.profile.primaryPhotoIndex, 4);
+  const duplicateOrder = await request('/api/me/profile', {
+    method: 'PUT',
+    body: { photos: reversed.map(() => reversed[0]), primaryPhotoIndex: 0 },
+  });
+  assert.equal(duplicateOrder.status, 400);
+  const afterDuplicateOrder = await request('/api/me/profile');
+  assert.deepEqual(afterDuplicateOrder.body.data.profile.photos, reversed);
+
   const logout = await request('/api/auth/logout', {
     method: 'POST',
     body: { refreshToken },
@@ -211,6 +272,48 @@ test('fresh account verifies, completes a persisted profile, reloads it, and log
     body: { refreshToken },
   });
   assert.equal(refreshAfterLogout.status, 401);
+
+  const relogin = await request('/api/auth/login', {
+    method: 'POST',
+    token: null,
+    body: { email, password },
+  });
+  assert.equal(relogin.status, 200);
+  const reloadedSession = await request('/api/onboarding/status', {
+    token: relogin.body.data.accessToken,
+  });
+  assert.equal(reloadedSession.status, 200);
+  assert.equal(reloadedSession.body.data.onboarding.onboardingCompleted, true);
+  assert.equal(reloadedSession.body.data.onboarding.photos.length, 5);
+
+  secondaryPhoneNumber = `+918${suffix.slice(-9)}`;
+  const secondaryEmail = `isolated-${suffix}@auth-flow.test`;
+  const secondarySignup = await request('/api/auth/signup', {
+    method: 'POST',
+    token: null,
+    body: {
+      name: 'Isolated Account',
+      email: secondaryEmail,
+      phoneNumber: secondaryPhoneNumber,
+      password,
+      confirmPassword: password,
+      acceptedTerms: true,
+    },
+  });
+  assert.equal(secondarySignup.status, 200, JSON.stringify(secondarySignup.body));
+  secondaryUser = await models.User.findOne({ where: { email: secondaryEmail } });
+  const secondaryVerification = await request('/api/auth/verify-account', {
+    method: 'POST',
+    token: null,
+    body: { phoneNumber: secondaryPhoneNumber, code: verificationCode },
+  });
+  assert.equal(secondaryVerification.status, 200);
+  const secondaryStatus = await request('/api/onboarding/status', {
+    token: secondaryVerification.body.data.accessToken,
+  });
+  assert.equal(secondaryStatus.status, 200);
+  assert.equal(secondaryStatus.body.data.onboarding.userId, secondaryUser.id);
+  assert.deepEqual(secondaryStatus.body.data.onboarding.photos, []);
 });
 
 test('password recovery is email-based, non-enumerating, and single-use', async () => {

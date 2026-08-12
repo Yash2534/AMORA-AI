@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
 
+const MAX_PROFILE_PHOTOS = 6;
 const uploadDirectory = path.join(__dirname, '../../uploads/onboarding-photos');
 const extensions = new Map([
   ['image/jpeg', '.jpg'],
@@ -14,7 +15,7 @@ fs.mkdirSync(uploadDirectory, { recursive: true });
 const upload = multer({
   storage: multer.memoryStorage(),
   // Keep this in lockstep with DeviceAmoraMediaPicker.maximumImageBytes.
-  limits: { fileSize: 12 * 1024 * 1024, files: 6 },
+  limits: { fileSize: 12 * 1024 * 1024, files: MAX_PROFILE_PHOTOS },
   fileFilter: (_req, file, callback) => extensions.has(file.mimetype)
     ? callback(null, true)
     : callback(Object.assign(
@@ -51,4 +52,11 @@ const remove = (url) => {
   if (target.startsWith(path.resolve(uploadDirectory))) fs.unlink(target, () => {});
 };
 
-module.exports = { upload, store, publicPath, remove, uploadDirectory };
+module.exports = {
+  MAX_PROFILE_PHOTOS,
+  upload,
+  store,
+  publicPath,
+  remove,
+  uploadDirectory,
+};

@@ -4,6 +4,7 @@ import 'package:amora_ai/core/constants/app_images.dart';
 import 'package:amora_ai/core/data/image_repository.dart';
 import 'package:amora_ai/core/theme/amora_theme.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
+import 'package:amora_ai/features/profile/data/public_profile_mapper.dart';
 import 'package:amora_ai/features/profile/presentation/profile_detail_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_preview_screen.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_photo_view.dart';
@@ -63,6 +64,25 @@ void main() {
       Map<String, String>.fromEntries(data.prompts),
     );
   });
+
+  test(
+    'public API mapper preserves male gender, distance, and ice breaker',
+    () {
+      final result = publicProfileFromJson(<String, dynamic>{
+        'id': '42',
+        'gender': 'Male',
+        'name': 'Canonical profile',
+        'distance': 18.6,
+        'lifestyle': <String, String>{'Exercise': 'Daily'},
+        'iceBreaker': 'What made you smile today?',
+      });
+
+      expect(result.profile.gender, Gender.male);
+      expect(result.profile.distance, '19 km');
+      expect(result.profile.lifestyle, <String>['Exercise: Daily']);
+      expect(result.profile.iceBreaker, 'What made you smile today?');
+    },
+  );
 
   testWidgets('existing named Profile Preview route opens correctly', (
     tester,

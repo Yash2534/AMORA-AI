@@ -71,6 +71,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (AuthService.instance.currentUser != null &&
+        !_repository.hasHydratedAuthenticatedProfile) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        bottomNavigationBar: widget.showNavigation
+            ? const FloatingBottomNav(activeTab: AmoraNavTab.profile)
+            : null,
+        body: SafeArea(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: _refreshing
+                  ? const CircularProgressIndicator()
+                  : Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          _repository.lastSyncError ??
+                              'Profile could not be loaded.',
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 16),
+                        AppPrimaryButton(
+                          label: 'Retry',
+                          onPressed: _retryProfile,
+                        ),
+                      ],
+                    ),
+            ),
+          ),
+        ),
+      );
+    }
     final profile = _repository.profile;
     const bottomInset = FloatingBottomNav.contentSpacing;
     return Scaffold(
@@ -187,6 +220,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     setState(() => _refreshing = true);
     try {
       await _repository.refreshFromServer();
+    } catch (_) {
+      // The repository exposes the useful API/network error in the page.
     } finally {
       if (mounted) setState(() => _refreshing = false);
     }

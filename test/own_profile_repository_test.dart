@@ -79,6 +79,12 @@ class _FakeOwnProfileRemote implements OwnProfileRemoteDataSource {
         bio: body?['bio'] as String? ?? profile['bio'] as String,
         completion: 88,
       );
+      if (body?['photos'] case final List<String> photos) {
+        profile['photos'] = photos;
+      }
+      if (body?['primaryPhotoIndex'] case final int primaryPhotoIndex) {
+        profile['primaryPhotoIndex'] = primaryPhotoIndex;
+      }
     }
     return <String, dynamic>{
       'success': true,
@@ -112,6 +118,7 @@ void main() {
       await repository.refreshFromServer();
 
       expect(remote.calls, <String>['GET /api/me/profile']);
+      expect(repository.hasHydratedAuthenticatedProfile, isTrue);
       expect(repository.profile.name, 'Server Profile');
       expect(
         repository.profile.prompts,
@@ -120,6 +127,17 @@ void main() {
       expect(repository.profile.completionPercent, 74);
     },
   );
+
+  test('authenticated defaults are never reported as server hydration', () {
+    final remote = _FakeOwnProfileRemote();
+    final repository = LocalProfileRepository.testing(remote: remote);
+    addTearDown(repository.dispose);
+
+    repository.prepareForAuthenticatedUser();
+
+    expect(repository.hasHydratedAuthenticatedProfile, isFalse);
+    expect(repository.profile.name, 'Authenticated User');
+  });
 
   test('save waits for and applies the canonical backend response', () async {
     final remote = _FakeOwnProfileRemote();
@@ -156,6 +174,43 @@ void main() {
     expect(remote.lastBody, <String, dynamic>{
       'bio': 'Only this section changed.',
     });
+  });
+
+  test(
+    'photo order and primary selection are always written remotely',
+    () async {
+      final remote = _FakeOwnProfileRemote();
+      final repository = LocalProfileRepository.testing(remote: remote);
+      addTearDown(repository.dispose);
+      await repository.refreshFromServer();
+      final reordered = repository.profile.photos.reversed.toList();
+
+      repository.updatePhotosInSession(reordered, 1);
+      await repository.updatePhotosPersisted(reordered, 1);
+
+      expect(remote.calls.last, 'PUT /api/me/profile');
+      expect(remote.lastBody, <String, dynamic>{
+        'photos': reordered,
+        'primaryPhotoIndex': 1,
+      });
+      expect(repository.profile.photos, reordered);
+      expect(repository.profile.primaryPhotoIndex, 1);
+    },
+  );
+
+  test('repository enforces the six-photo limit below the UI layer', () async {
+    final remote = _FakeOwnProfileRemote();
+    final repository = LocalProfileRepository.testing(remote: remote);
+    addTearDown(repository.dispose);
+    await repository.refreshFromServer();
+    repository.updatePhotosInSession(
+      List<String>.generate(6, (index) => 'https://images.test/$index.jpg'),
+      0,
+    );
+
+    repository.addPhotoInSession('data:image/png;base64,AA==');
+
+    expect(repository.profile.photos, hasLength(6));
   });
 
   test(

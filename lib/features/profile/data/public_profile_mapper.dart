@@ -48,12 +48,15 @@ PublicProfileResult publicProfileFromJson(Map<String, dynamic> json) {
   Map<String, String> stringMap(Object? value) => value is Map
       ? value.map((key, item) => MapEntry(key.toString(), item.toString()))
       : const <String, String>{};
-  final gender = (json['gender']?.toString().toLowerCase() ?? '') == 'man'
+  final storedGender = json['gender']?.toString().toLowerCase() ?? '';
+  final gender = (storedGender == 'man' || storedGender == 'male')
       ? Gender.male
       : Gender.female;
   final lifestyleValue = json['lifestyle'];
   final lifestyle = lifestyleValue is Map
-      ? lifestyleValue.values.map((item) => item.toString()).toList()
+      ? lifestyleValue.entries
+            .map((entry) => '${entry.key}: ${entry.value}')
+            .toList()
       : strings(lifestyleValue);
   final imageUrl = json['imageUrl']?.toString() ?? '';
   final gallery = strings(json['gallery']);
@@ -78,7 +81,9 @@ PublicProfileResult publicProfileFromJson(Map<String, dynamic> json) {
     city: json['city']?.toString() ?? '',
     profession: json['profession']?.toString() ?? '',
     education: json['education']?.toString() ?? '',
-    distance: json['distance']?.toString() ?? '',
+    distance: json['distance'] is num
+        ? '${(json['distance'] as num).round()} km'
+        : json['distance']?.toString() ?? '',
     score: (json['score'] as num?)?.round() ?? 0,
     intent: json['intent']?.toString() ?? '',
     personality: json['personality']?.toString() ?? '',
@@ -118,6 +123,7 @@ PublicProfileResult publicProfileFromJson(Map<String, dynamic> json) {
     sexuality: json['sexuality']?.toString() ?? '',
     preferredTalkingHours: strings(json['preferredTalkingHours']),
     loveLanguages: strings(json['loveLanguages']),
+    iceBreaker: json['iceBreaker']?.toString() ?? '',
     communicationStyle: CommunicationStyle.fromStorageValue(
       json['communicationStyle'],
     ),

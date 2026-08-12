@@ -244,6 +244,17 @@ void main() {
       ProfileFormOptions.customEducationFromStored('Nirma University'),
       'Nirma University',
     );
+    expect(
+      ProfileFormOptions.storedEducationValue(
+        'Other',
+        customValue: 'Nirma University',
+      ),
+      'Nirma University',
+    );
+    expect(
+      ProfileFormOptions.displayEducation('Nirma University'),
+      'Nirma University',
+    );
     expect(ProfileFormOptions.normalizeGender('Man'), 'Male');
     expect(ProfileFormOptions.normalizeGender('Women'), 'Female');
     expect(ProfileFormOptions.normalizeGender('Non-binary'), 'Other');

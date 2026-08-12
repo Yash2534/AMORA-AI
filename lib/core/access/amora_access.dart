@@ -96,12 +96,13 @@ class AmoraSession {
   static Future<void> completeAuthentication(BuildContext context) async {
     logIn();
     LocalProfileRepository.instance.prepareForAuthenticatedUser();
+    LocalOnboardingRepository.instance.prepareForAuthenticatedUser();
     ProfileRelationshipController.instance.clearSessionState();
     try {
+      await LocalProfileRepository.instance.refreshFromServer();
+      await LocalOnboardingRepository.instance.syncFromServer();
       await Future.wait<void>([
-        LocalProfileRepository.instance.refreshFromServer(),
         ProfileRelationshipController.instance.refreshRemote(),
-        LocalOnboardingRepository.instance.syncFromServer(),
         ChatRepository.instance.initialize(),
       ]);
     } catch (_) {

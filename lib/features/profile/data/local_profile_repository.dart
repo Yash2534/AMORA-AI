@@ -139,6 +139,7 @@ class UserProfile {
     List<String>? photos,
     int? primaryPhotoIndex,
     String? voicePrompt,
+    bool clearVoicePrompt = false,
     String? videoPrompt,
     bool clearVideoPrompt = false,
     String? hometown,
@@ -149,6 +150,7 @@ class UserProfile {
     List<String>? loveLanguages,
     String? iceBreaker,
     CommunicationStyle? communicationStyle,
+    bool clearCommunicationStyle = false,
     int? serverCompletionPercent,
   }) {
     return UserProfile(
@@ -168,7 +170,7 @@ class UserProfile {
       lifestyle: Map<String, String>.of(lifestyle ?? this.lifestyle),
       photos: List<String>.of(photos ?? this.photos),
       primaryPhotoIndex: primaryPhotoIndex ?? this.primaryPhotoIndex,
-      voicePrompt: voicePrompt ?? this.voicePrompt,
+      voicePrompt: clearVoicePrompt ? null : voicePrompt ?? this.voicePrompt,
       videoPrompt: clearVideoPrompt ? null : videoPrompt ?? this.videoPrompt,
       hometown: hometown ?? this.hometown,
       valuedQualities: List<String>.of(valuedQualities ?? this.valuedQualities),
@@ -179,7 +181,9 @@ class UserProfile {
       ),
       loveLanguages: List<String>.of(loveLanguages ?? this.loveLanguages),
       iceBreaker: iceBreaker ?? this.iceBreaker,
-      communicationStyle: communicationStyle ?? this.communicationStyle,
+      communicationStyle: clearCommunicationStyle
+          ? null
+          : communicationStyle ?? this.communicationStyle,
       serverCompletionPercent:
           serverCompletionPercent ?? this.serverCompletionPercent,
     );
@@ -353,6 +357,7 @@ class LocalProfileRepository extends ChangeNotifier {
     : _remote = remote ?? const AuthOwnProfileRemoteDataSource();
 
   static final instance = LocalProfileRepository._();
+  static const int maxProfilePhotos = 6;
   @visibleForTesting
   factory LocalProfileRepository.testing({
     required OwnProfileRemoteDataSource remote,
@@ -370,6 +375,8 @@ class LocalProfileRepository extends ChangeNotifier {
   final Map<String, String> _photoErrors = {};
   int _nextPhotoId = 0;
   String? lastSyncError;
+  bool _hasHydratedAuthenticatedProfile = false;
+  bool get hasHydratedAuthenticatedProfile => _hasHydratedAuthenticatedProfile;
 
   List<ProfilePhotoViewData> get currentPhotos =>
       List.unmodifiable(<ProfilePhotoViewData>[
@@ -418,6 +425,8 @@ class LocalProfileRepository extends ChangeNotifier {
   void prepareForAuthenticatedUser() {
     final user = AuthService.instance.currentUser;
     if (user == null) return;
+    _hasHydratedAuthenticatedProfile = false;
+    lastSyncError = null;
     _apply(
       UserProfile(
         name: user.name,
@@ -477,14 +486,25 @@ class LocalProfileRepository extends ChangeNotifier {
 
   Future<void> refreshFromServer() async {
     if (AuthService.instance.currentUser == null) return;
-    final response = await _remote.request('GET', '/api/me/profile');
-    final profile = ((response['data'] as Map?)?['profile'] as Map?)
-        ?.cast<String, dynamic>();
-    if (profile == null) {
-      throw const AuthException('Own profile response is invalid.');
+    try {
+      final response = await _remote.request('GET', '/api/me/profile');
+      final profile = ((response['data'] as Map?)?['profile'] as Map?)
+          ?.cast<String, dynamic>();
+      if (profile == null) {
+        throw const AuthException('Own profile response is invalid.');
+      }
+      lastSyncError = null;
+      _hasHydratedAuthenticatedProfile = true;
+      _apply(UserProfile.fromJson(profile.cast<String, Object?>()));
+    } on AuthException catch (error) {
+      lastSyncError = error.userMessage;
+      notifyListeners();
+      rethrow;
+    } catch (_) {
+      lastSyncError = 'Profile could not be loaded. Please try again.';
+      notifyListeners();
+      rethrow;
     }
-    lastSyncError = null;
-    _apply(UserProfile.fromJson(profile.cast<String, Object?>()));
   }
 
   Future<void> _saveRemote(
@@ -557,6 +577,7 @@ class LocalProfileRepository extends ChangeNotifier {
       throw const AuthException('Updated profile response is invalid.');
     }
     lastSyncError = null;
+    _hasHydratedAuthenticatedProfile = true;
     _apply(UserProfile.fromJson(canonical.cast<String, Object?>()));
   }
 
@@ -628,7 +649,11 @@ class LocalProfileRepository extends ChangeNotifier {
     Uint8List? bytes,
     String? mimeType,
   }) {
-    if (source.trim().isEmpty || _profile.photos.contains(source)) return;
+    if (source.trim().isEmpty ||
+        _profile.photos.contains(source) ||
+        _profile.photos.length >= maxProfilePhotos) {
+      return;
+    }
     _photoIds[source] = 'profile-photo-${_nextPhotoId++}';
     _photoStates[source] = uploadState;
     if (bytes != null && bytes.isNotEmpty) _photoBytes[source] = bytes;
@@ -717,15 +742,43 @@ class LocalProfileRepository extends ChangeNotifier {
   Future<void> updatePhotosPersisted(
     List<String> photos,
     int primaryPhotoIndex,
-  ) {
-    return savePersisted(
-      _profile.copyWith(
-        photos: photos,
-        primaryPhotoIndex: photos.isEmpty
-            ? 0
-            : primaryPhotoIndex.clamp(0, photos.length - 1),
-      ),
+  ) async {
+    if (photos.length > maxProfilePhotos) {
+      throw const AuthException('A maximum of 6 photos is allowed.');
+    }
+    final normalizedPrimary = photos.isEmpty
+        ? 0
+        : primaryPhotoIndex.clamp(0, photos.length - 1);
+    final next = _profile.copyWith(
+      photos: photos,
+      primaryPhotoIndex: normalizedPrimary,
     );
+    if (AuthService.instance.currentUser == null) {
+      _apply(next);
+      await _persist();
+      return;
+    }
+    if (photos.any((photo) => !_isRemotePhotoUrl(photo))) {
+      throw const AuthException(
+        'Upload every local photo before saving your profile.',
+      );
+    }
+    final response = await _remote.request(
+      'PUT',
+      '/api/me/profile',
+      body: <String, dynamic>{
+        'photos': photos,
+        if (photos.isNotEmpty) 'primaryPhotoIndex': normalizedPrimary,
+      },
+    );
+    final canonical = ((response['data'] as Map?)?['profile'] as Map?)
+        ?.cast<String, dynamic>();
+    if (canonical == null) {
+      throw const AuthException('Updated profile response is invalid.');
+    }
+    lastSyncError = null;
+    _hasHydratedAuthenticatedProfile = true;
+    _apply(UserProfile.fromJson(canonical.cast<String, Object?>()));
   }
 
   void updateVideoPrompt(String value) {
@@ -828,6 +881,7 @@ class LocalProfileRepository extends ChangeNotifier {
   void clearSessionProfile() {
     _profile = _clearedProfile;
     lastSyncError = null;
+    _hasHydratedAuthenticatedProfile = false;
     _photoIds.clear();
     _photoStates.clear();
     _photoBytes.clear();
@@ -839,6 +893,7 @@ class LocalProfileRepository extends ChangeNotifier {
   @visibleForTesting
   Future<void> resetForTesting([UserProfile? profile]) async {
     _profile = profile ?? _testProfile;
+    _hasHydratedAuthenticatedProfile = true;
     _photoIds.clear();
     _photoStates.clear();
     _photoBytes.clear();

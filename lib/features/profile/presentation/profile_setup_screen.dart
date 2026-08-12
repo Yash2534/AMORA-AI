@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:amora_ai/core/access/amora_access.dart';
+import 'package:amora_ai/core/auth/auth_service.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
@@ -10,6 +11,8 @@ import 'package:amora_ai/core/widgets/amoraa_select_field.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/discover/presentation/browse_grid_screen.dart';
+import 'package:amora_ai/features/onboarding/data/local_onboarding_repository.dart';
+import 'package:amora_ai/features/onboarding/data/onboarding_api_service.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
 import 'package:amora_ai/features/profile/domain/profile_form_options.dart';
 import 'package:flutter/material.dart';
@@ -46,6 +49,15 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   @override
   void initState() {
     super.initState();
+    final profile = LocalProfileRepository.instance.profile;
+    final onboarding = LocalOnboardingRepository.instance.state;
+    _gender = ProfileFormOptions.normalizeGender(profile.gender);
+    if (_gender?.isEmpty == true) _gender = null;
+    _dateOfBirth = profile.dateOfBirth;
+    _cityController.text = ProfileFormOptions.normalizeCity(profile.location);
+    _preferredGender = onboarding.interestedIn.isEmpty
+        ? null
+        : ProfileFormOptions.normalizeGender(onboarding.interestedIn.first);
     _cityController.addListener(_handleFormChanged);
   }
 
@@ -312,20 +324,41 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
 
     setState(() => _loading = true);
     final repository = LocalProfileRepository.instance;
-    await repository.savePersisted(
-      repository.profile.copyWith(
-        birthdate: AmoraDateOfBirth.format(_dateOfBirth!),
-        gender: ProfileFormOptions.storedGenderValue(_gender),
-        location: trimmedCity,
-      ),
-    );
-    await Future<void>.delayed(const Duration(milliseconds: 350));
-    if (!mounted) return;
-
-    AmoraSession.completeProfileStep(60);
-    Navigator.of(
-      context,
-    ).pushNamedAndRemoveUntil(BrowseGridScreen.routeName, (route) => false);
+    try {
+      final preferenceResult = await OnboardingApiService().saveInterestedIn(
+        <String>[_preferredGender!],
+      );
+      if (!preferenceResult.success) {
+        throw AuthException(preferenceResult.message);
+      }
+      await repository.savePersisted(
+        repository.profile.copyWith(
+          birthdate: AmoraDateOfBirth.format(_dateOfBirth!),
+          gender: ProfileFormOptions.storedGenderValue(_gender),
+          location: trimmedCity,
+        ),
+      );
+      await LocalOnboardingRepository.instance.syncFromServer();
+      if (!mounted) return;
+      AmoraSession.completeProfileStep(60);
+      Navigator.of(
+        context,
+      ).pushNamedAndRemoveUntil(BrowseGridScreen.routeName, (route) => false);
+    } on AuthException catch (error) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.userMessage)));
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Profile could not be saved. Please try again.'),
+        ),
+      );
+    }
   }
 
   String? _validateCity(String? value) {
