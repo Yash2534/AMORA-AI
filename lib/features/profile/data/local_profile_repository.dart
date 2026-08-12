@@ -30,8 +30,6 @@ class UserProfile {
     required this.lifestyle,
     required this.photos,
     required this.primaryPhotoIndex,
-    required this.voicePrompt,
-    required this.videoPrompt,
     this.hometown = '',
     this.valuedQualities = const <String>[],
     this.pronouns = const <String>[],
@@ -60,8 +58,6 @@ class UserProfile {
   final Map<String, String> lifestyle;
   final List<String> photos;
   final int primaryPhotoIndex;
-  final String? voicePrompt;
-  final String? videoPrompt;
   final String hometown;
   final List<String> valuedQualities;
   final List<String> pronouns;
@@ -141,10 +137,6 @@ class UserProfile {
     Map<String, String>? lifestyle,
     List<String>? photos,
     int? primaryPhotoIndex,
-    String? voicePrompt,
-    bool clearVoicePrompt = false,
-    String? videoPrompt,
-    bool clearVideoPrompt = false,
     String? hometown,
     List<String>? valuedQualities,
     List<String>? pronouns,
@@ -174,8 +166,6 @@ class UserProfile {
       lifestyle: Map<String, String>.of(lifestyle ?? this.lifestyle),
       photos: List<String>.of(photos ?? this.photos),
       primaryPhotoIndex: primaryPhotoIndex ?? this.primaryPhotoIndex,
-      voicePrompt: clearVoicePrompt ? null : voicePrompt ?? this.voicePrompt,
-      videoPrompt: clearVideoPrompt ? null : videoPrompt ?? this.videoPrompt,
       hometown: hometown ?? this.hometown,
       valuedQualities: List<String>.of(valuedQualities ?? this.valuedQualities),
       pronouns: List<String>.of(pronouns ?? this.pronouns),
@@ -211,8 +201,6 @@ class UserProfile {
     'lifestyle': lifestyle,
     'photos': photos,
     'primaryPhotoIndex': primaryPhotoIndex,
-    'voicePrompt': voicePrompt,
-    'videoPrompt': videoPrompt,
     'hometown': hometown,
     'valuedQualities': valuedQualities,
     'pronouns': pronouns,
@@ -257,8 +245,6 @@ class UserProfile {
       lifestyle: stringMap('lifestyle'),
       photos: strings('photos'),
       primaryPhotoIndex: json['primaryPhotoIndex'] as int? ?? 0,
-      voicePrompt: json['voicePrompt'] as String?,
-      videoPrompt: json['videoPrompt'] as String?,
       hometown: json['hometown'] as String? ?? '',
       valuedQualities: strings('valuedQualities'),
       pronouns: strings('pronouns'),
@@ -451,8 +437,6 @@ class LocalProfileRepository extends ChangeNotifier {
         lifestyle: const <String, String>{},
         photos: const <String>[],
         primaryPhotoIndex: 0,
-        voicePrompt: null,
-        videoPrompt: null,
       ),
     );
   }
@@ -789,10 +773,6 @@ class LocalProfileRepository extends ChangeNotifier {
     _apply(UserProfile.fromJson(canonical.cast<String, Object?>()));
   }
 
-  void updateVideoPrompt(String value) {
-    save(_profile.copyWith(videoPrompt: value));
-  }
-
   void startNewProfile(String name, {String? email, String? phoneNumber}) {
     save(
       UserProfile(
@@ -812,8 +792,6 @@ class LocalProfileRepository extends ChangeNotifier {
         lifestyle: const {},
         photos: const [],
         primaryPhotoIndex: 0,
-        voicePrompt: null,
-        videoPrompt: null,
       ),
     );
   }
@@ -972,8 +950,6 @@ const _testProfile = UserProfile(
     'assets/images/profiles/male/male_08.jpg',
   ],
   primaryPhotoIndex: 0,
-  voicePrompt: 'local://voice/ideal-sunday',
-  videoPrompt: 'local://video/profile-intro',
   hometown: 'Gandhinagar',
   valuedQualities: ['Empathy', 'Loyalty', 'Humour'],
   pronouns: ['he', 'him'],
@@ -999,6 +975,4 @@ const _clearedProfile = UserProfile(
   lifestyle: {},
   photos: [],
   primaryPhotoIndex: 0,
-  voicePrompt: null,
-  videoPrompt: null,
 );

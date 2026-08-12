@@ -115,7 +115,6 @@ class DummyProfile {
     required this.distance,
     required this.score,
     required this.intent,
-    required this.personality,
     required this.status,
     required this.bio,
     required this.interests,
@@ -125,25 +124,12 @@ class DummyProfile {
     required this.verification,
     required this.lifestyle,
     required this.promptAnswers,
-    required this.travelPreference,
-    required this.musicTaste,
-    required this.foodPreference,
-    required this.weekendPlan,
-    required this.petPreference,
-    required this.coffeePreference,
     required this.religion,
     required this.community,
     required this.height,
-    required this.fitnessLevel,
     required this.smoking,
     required this.drinking,
     this.weed = '',
-    required this.children,
-    required this.loveLanguage,
-    required this.greenFlags,
-    required this.redFlags,
-    required this.familyValues,
-    required this.dateIdeas,
     this.hometown = '',
     this.valuedQualities = const <String>[],
     this.pronouns = const <String>[],
@@ -167,7 +153,6 @@ class DummyProfile {
   final String distance;
   final int score;
   final String intent;
-  final String personality;
   final String status;
   final String bio;
   final List<String> interests;
@@ -177,25 +162,12 @@ class DummyProfile {
   final String verification;
   final List<String> lifestyle;
   final Map<String, String> promptAnswers;
-  final String travelPreference;
-  final String musicTaste;
-  final String foodPreference;
-  final String weekendPlan;
-  final String petPreference;
-  final String coffeePreference;
   final String religion;
   final String community;
   final String height;
-  final String fitnessLevel;
   final String smoking;
   final String drinking;
   final String weed;
-  final String children;
-  final String loveLanguage;
-  final List<String> greenFlags;
-  final List<String> redFlags;
-  final String familyValues;
-  final List<String> dateIdeas;
   final String hometown;
   final List<String> valuedQualities;
   final List<String> pronouns;
@@ -296,9 +268,8 @@ DummyProfile _profile(int index, Gender gender) {
       _interests[(interestOffset + i * 4) % _interests.length],
   ];
   final lifestyle = [
-    _fitness[(index + 1) % _fitness.length],
-    _weekendPlans[(index + 3) % _weekendPlans.length],
-    _food[(index + 4) % _food.length],
+    'Smoking: ${_smoking[index % _smoking.length]}',
+    'Drinking: ${_drinking[(index + 1) % _drinking.length]}',
   ];
   final primaryPhoto = AppImages.profileAt(index, male: !female);
   final gallery = AppImages.galleryForIndex(index, male: !female);
@@ -313,7 +284,6 @@ DummyProfile _profile(int index, Gender gender) {
     distance: '${2 + ((index * 11) % 295)} km',
     score: score,
     intent: intent,
-    personality: _personalities[index % _personalities.length],
     status: index % 5 == 0
         ? 'Online now'
         : index % 3 == 0
@@ -330,38 +300,16 @@ DummyProfile _profile(int index, Gender gender) {
         : 'Selfie + ID verified',
     lifestyle: lifestyle,
     promptAnswers: {
-      'My ideal Sunday is': _weekendPlans[index % _weekendPlans.length],
-      'A green flag I value is': _greenFlags[index % _greenFlags.length],
-      'Together we could': _dateIdeas[index % _dateIdeas.length],
+      'A conversation I never tire of': _interests[index % _interests.length],
+      'Something I value': ProfileFormOptions
+          .qualities[index % ProfileFormOptions.qualities.length],
+      'Ask me about': _interests[(index + 4) % _interests.length],
     },
-    travelPreference: _travel[(index * 2) % _travel.length],
-    musicTaste: _music[(index * 3) % _music.length],
-    foodPreference: _food[(index * 5) % _food.length],
-    weekendPlan: _weekendPlans[(index * 7) % _weekendPlans.length],
-    petPreference: _pets[(index * 2) % _pets.length],
-    coffeePreference: _coffee[(index * 3) % _coffee.length],
     religion: _religions[index % _religions.length],
     community: _communities[(index * 2) % _communities.length],
     height: female ? '5\'${2 + (index % 8)}"' : '5\'${7 + (index % 6)}"',
-    fitnessLevel: _fitness[index % _fitness.length],
     smoking: _smoking[index % _smoking.length],
     drinking: _drinking[(index + 1) % _drinking.length],
-    children: _children[(index + 2) % _children.length],
-    loveLanguage: _loveLanguages[index % _loveLanguages.length],
-    greenFlags: [
-      _greenFlags[index % _greenFlags.length],
-      _greenFlags[(index + 4) % _greenFlags.length],
-    ],
-    redFlags: [
-      _redFlags[index % _redFlags.length],
-      _redFlags[(index + 3) % _redFlags.length],
-    ],
-    familyValues: _familyValues[index % _familyValues.length],
-    dateIdeas: [
-      _dateIdeas[index % _dateIdeas.length],
-      _dateIdeas[(index + 5) % _dateIdeas.length],
-      _dateIdeas[(index + 9) % _dateIdeas.length],
-    ],
     hometown: ProfileFormOptions
         .hometowns[(index + 1) % ProfileFormOptions.hometowns.length],
     valuedQualities: [
@@ -556,16 +504,6 @@ const _maleProfessions = [
 ];
 const _education = ProfileFormOptions.education;
 const _intentions = ProfileFormOptions.datingIntentions;
-const _personalities = [
-  'INFJ',
-  'ENFJ',
-  'ISFJ',
-  'ENFP',
-  'INTJ',
-  'ESFJ',
-  'ENTP',
-  'ISTJ',
-];
 final _interests = ProfileFormOptions.interests;
 const _bioOpeners = [
   'I like people who are kind when nobody is watching.',
@@ -589,51 +527,6 @@ const _languageSets = [
   ['Punjabi', 'Hindi', 'English'],
   ['Bengali', 'Hindi', 'English'],
 ];
-const _travel = [
-  'Slow heritage trips',
-  'Weekend treks',
-  'Luxury staycations',
-  'Beach breaks',
-  'Food-led city trips',
-  'Spiritual getaways',
-];
-const _music = [
-  'Indie Hindi',
-  'Old Bollywood',
-  'Sufi nights',
-  'Classical fusion',
-  'Lo-fi playlists',
-  'Live acoustic sets',
-];
-const _food = [
-  'Gujarati thali',
-  'South Indian breakfast',
-  'Sushi and ramen',
-  'Street food walks',
-  'Home-style meals',
-  'Dessert tasting',
-];
-const _weekendPlans = [
-  'Coffee, errands, and a sunset walk',
-  'A museum visit and dinner',
-  'Morning workout and family lunch',
-  'Live music with close friends',
-  'A long drive outside the city',
-  'Cooking something elaborate at home',
-];
-const _pets = [
-  'Dog friendly',
-  'Cat friendly',
-  'Open to pets',
-  'No pets at home',
-];
-const _coffee = [
-  'Iced latte',
-  'Filter coffee',
-  'Masala chai',
-  'Americano',
-  'Cold brew',
-];
 const _religions = [
   'Hindu',
   'Muslim',
@@ -652,55 +545,8 @@ const _communities = [
   'Bengali',
   'Rajasthani',
 ];
-const _fitness = [
-  'Active',
-  'Yoga weekly',
-  'Gym regular',
-  'Weekend sports',
-  'Balanced',
-];
 const _smoking = ProfileFormOptions.smokingOptions;
 const _drinking = ProfileFormOptions.drinkingOptions;
-const _children = [
-  'Open to children',
-  'Wants children',
-  'Undecided',
-  'Does not want children',
-];
-const _loveLanguages = [
-  'Quality time',
-  'Words of affirmation',
-  'Acts of service',
-  'Thoughtful gifts',
-];
-const _greenFlags = [
-  'Clear communication',
-  'Consistency',
-  'Kindness under stress',
-  'Respect for family boundaries',
-  'Emotional accountability',
-];
-const _redFlags = [
-  'Disrespectful humour',
-  'Unclear intentions',
-  'Last-minute chaos',
-  'Dismissive conflict style',
-  'Performative dating',
-];
-const _familyValues = [
-  'Close-knit but independent',
-  'Traditional with modern boundaries',
-  'Warm, respectful, and involved',
-  'Private but supportive',
-];
-const _dateIdeas = [
-  'A quiet cafe followed by a heritage walk',
-  'Garba workshop and dinner',
-  'Bookstore browsing with filter coffee',
-  'Rooftop mocktails and live music',
-  'Museum afternoon with dessert after',
-  'Food walk through the old city',
-];
 
 const _eventNames = [
   'Coffee Meetup at Roastery Culture',

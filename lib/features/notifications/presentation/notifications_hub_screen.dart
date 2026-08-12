@@ -1356,7 +1356,8 @@ String? _notificationRoute(InboxNotification notification) {
   if (requested != null && allowed.contains(requested)) return requested;
   return switch (notification.category) {
     'Likes' || 'Super Likes' || 'Matches' || 'Profile Views' =>
-      notification.data['targetUserId'] == null
+      notification.actor?.userId == null &&
+              notification.data['targetUserId'] == null
           ? null
           : ProfileDetailScreen.routeName,
     'Messages' =>

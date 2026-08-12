@@ -7,13 +7,13 @@ const preferenceField = {
   'super likes': 'newMatches',
   match: 'newMatches',
   message: 'messages',
+  messages: 'messages',
   event: 'eventReminders',
   payment: 'paymentsAndMembership',
   membership: 'paymentsAndMembership',
   offer: 'offers',
   safety: 'safetyUpdates',
   verification: 'safetyUpdates',
-  gift: 'messages',
 };
 
 async function conversationIsMuted(userId, conversationId, transaction = null) {
@@ -58,6 +58,9 @@ async function createNotification({ userId, actorUserId = null, type, category, 
   const [notification, created] = dedupeKey
     ? await Notification.findOrCreate({ where: { userId, dedupeKey }, defaults: { ...values, dedupeKey }, transaction })
     : [await Notification.create(values, { transaction }), true];
+  if (!created && actorUserId && !notification.actorUserId) {
+    await notification.update({ actorUserId }, { transaction });
+  }
   if (created) {
     const push = () => deliverPush(notification, preferences).catch((error) => console.error('[Push]', error.message));
     if (transaction) transaction.afterCommit(push);

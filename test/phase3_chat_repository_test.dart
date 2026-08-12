@@ -64,16 +64,18 @@ Map<String, dynamic> _message({
   String id = '50',
   String text = 'Stored in MySQL',
   bool mine = false,
+  String? senderId,
+  String createdAt = '2026-08-11T10:00:00.000Z',
 }) => {
   'id': id,
   'conversationId': '10',
-  'senderId': mine ? '1' : '2',
+  'senderId': senderId ?? (mine ? '1' : '2'),
   'mine': mine,
   'type': 'text',
   'text': text,
   'deleted': false,
   'status': 'sent',
-  'createdAt': '2026-08-11T10:00:00.000Z',
+  'createdAt': createdAt,
   'media': <Object>[],
 };
 
@@ -87,6 +89,20 @@ Map<String, dynamic> _listResponse(List<Map<String, dynamic>> values) => {
 
 void main() {
   final repository = ChatRepository.instance;
+
+  setUp(() {
+    AuthService.instance.currentUser = const AmoraUser(
+      id: 1,
+      name: 'Current User',
+      email: 'current@chat.test',
+      phoneNumber: '',
+      isVerified: true,
+    );
+  });
+
+  tearDown(() {
+    AuthService.instance.currentUser = null;
+  });
 
   test(
     'conversation list loads real response and supports empty state',
@@ -150,7 +166,15 @@ void main() {
             'canMessage': true,
             'draft': 'server draft',
           },
-          'messages': [_message()],
+          'messages': [
+            _message(
+              id: '49',
+              text: 'Outgoing stored message',
+              mine: true,
+              createdAt: '2026-08-11T09:59:00.000Z',
+            ),
+            _message(),
+          ],
           'pagination': {'limit': 30, 'hasMore': false, 'nextCursor': null},
         },
       };
@@ -171,7 +195,17 @@ void main() {
       await repository.resetForTesting(remote: remote);
       await repository.refreshConversations();
       final loaded = await repository.loadConversation('10');
-      expect(loaded!.messages.single.id, '50');
+      expect(loaded!.messages.map((message) => message.id), ['49', '50']);
+      expect(loaded.messages.first.senderId, '1');
+      expect(loaded.messages.first.conversationId, '10');
+      expect(loaded.messages.first.mine, isTrue);
+      expect(loaded.messages.last.senderId, '2');
+      expect(loaded.messages.last.mine, isFalse);
+      expect(
+        repository.conversation('10')!.messages.map((message) => message.id),
+        ['49', '50'],
+        reason: 'Fetched history must be stored in canonical repository state.',
+      );
       expect(loaded.draft, 'server draft');
       await repository.markRead('10');
       expect(repository.conversation('10')!.unread, 0);
@@ -184,8 +218,12 @@ void main() {
           id: '52',
           text: 'Realtime receive',
           mine: false,
+          conversationId: '10',
+          senderId: '2',
           time: '10:01',
-          createdAtEpochMs: DateTime(2026, 8, 11, 10, 1).millisecondsSinceEpoch,
+          createdAtEpochMs: DateTime.parse(
+            '2026-08-11T10:01:00.000Z',
+          ).millisecondsSinceEpoch,
         ),
       );
       repository.receiveMessage(
@@ -194,8 +232,12 @@ void main() {
           id: '52',
           text: 'Realtime receive',
           mine: false,
+          conversationId: '10',
+          senderId: '2',
           time: '10:01',
-          createdAtEpochMs: DateTime(2026, 8, 11, 10, 1).millisecondsSinceEpoch,
+          createdAtEpochMs: DateTime.parse(
+            '2026-08-11T10:01:00.000Z',
+          ).millisecondsSinceEpoch,
         ),
       );
       expect(
@@ -206,6 +248,14 @@ void main() {
         hasLength(1),
       );
       expect(repository.conversation('10')!.unread, 1);
+
+      await repository.loadConversation('10');
+      expect(
+        repository.conversation('10')!.messages.map((message) => message.id),
+        ['49', '50', '51', '52'],
+        reason:
+            'A history refresh must merge persisted rows without dropping newer realtime/API messages.',
+      );
     },
   );
 

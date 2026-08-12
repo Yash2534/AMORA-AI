@@ -1,6 +1,4 @@
 const assert = require('node:assert/strict');
-const fs = require('node:fs/promises');
-const path = require('node:path');
 const { after, before, test } = require('node:test');
 const jwt = require('jsonwebtoken');
 const { Op } = require('sequelize');
@@ -24,7 +22,6 @@ let server;
 let baseUrl;
 const users = {};
 const userIds = [];
-const evidenceFiles = [];
 
 const tokenFor = (user) => jwt.sign(
   { sub: user.id, ver: user.tokenVersion || 0 },
@@ -88,16 +85,6 @@ async function jsonRequest(url, method, user, body) {
   });
 }
 
-async function evidenceRequest(reportId, user, bytes, filename, type) {
-  const data = new FormData();
-  data.append('evidence', new Blob([bytes], { type }), filename);
-  return request(`/api/reports/${reportId}/evidence`, {
-    method: 'POST',
-    headers: auth(user),
-    body: data,
-  });
-}
-
 before(async () => {
   await migrate({ databaseName: testDatabase, quiet: true });
   await initializeDatabase();
@@ -123,22 +110,15 @@ before(async () => {
 after(async () => {
   if (server) await new Promise((resolve) => server.close(resolve));
   if (models) {
-    const evidence = await models.ReportEvidence.findAll({
-      include: [{ model: models.Report, as: 'report', where: { reporterUserId: userIds } }],
-    });
-    evidenceFiles.push(...evidence.map((row) => path.join(__dirname, '..', 'private-uploads', row.storagePath)));
-    await models.ReportEvidence.destroy({ where: { reportId: { [Op.in]: (await models.Report.findAll({ where: { reporterUserId: userIds }, attributes: ['id'] })).map((row) => row.id) } } });
     await models.Report.destroy({ where: { [Op.or]: [{ reporterUserId: userIds }, { reportedUserId: userIds }] } });
     await models.Block.destroy({ where: { [Op.or]: [{ blockerUserId: userIds }, { blockedUserId: userIds }] } });
     await models.Match.destroy({ where: { [Op.or]: [{ userOneId: userIds }, { userTwoId: userIds }] } });
     await models.DiscoverAction.destroy({ where: { [Op.or]: [{ actorUserId: userIds }, { targetUserId: userIds }] } });
     await models.DiscoverFilterPreference.destroy({ where: { userId: userIds } });
-    await models.Boost.destroy({ where: { userId: userIds } });
     await models.RefreshToken.destroy({ where: { userId: userIds } });
     await models.OnboardingProfile.destroy({ where: { userId: userIds } });
     await models.User.destroy({ where: { id: userIds } });
   }
-  await Promise.all(evidenceFiles.map((file) => fs.rm(file, { force: true })));
   try { await getSequelize().close(); } catch (_) { /* initialization may have failed */ }
 });
 
@@ -214,24 +194,7 @@ test('reports validate reasons, persist optional notes, and deduplicate abuse', 
   assert.equal(content.body.data.report.targetType, 'event');
 });
 
-test('report evidence validates ownership, MIME/signature, size, and stores metadata privately', async () => {
-  const png = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
-  const valid = await evidenceRequest(reportId, users.viewer, png, 'proof.png', 'image/png');
-  assert.equal(valid.status, 201);
-  const evidence = await models.ReportEvidence.findByPk(valid.body.data.evidence.id);
-  assert.equal(evidence.mimeType, 'image/png');
-  assert.match(evidence.storagePath, /^report-evidence[\\/]/);
-  assert.equal(evidence.storagePath.includes('proof.png'), false);
-  const unauthorized = await evidenceRequest(reportId, users.outsider, png, 'proof.png', 'image/png');
-  assert.equal(unauthorized.status, 404);
-  const invalid = await evidenceRequest(reportId, users.viewer, Uint8Array.from([1, 2, 3]), 'payload.exe', 'application/x-msdownload');
-  assert.equal(invalid.status, 400);
-  const oversized = await evidenceRequest(reportId, users.viewer, new Uint8Array(12 * 1024 * 1024 + 1), 'huge.png', 'image/png');
-  assert.equal(oversized.status, 400);
-  assert.equal(oversized.body.code, 'EVIDENCE_TOO_LARGE');
-});
-
-test('account deactivation/reactivation changes SQL visibility without changing onboarding', async () => {
+test('account deactivation hides the account and reactivation API stays removed', async () => {
   const token = tokenFor(users.lifecycle);
   const deactivated = await request('/api/account/deactivate', { method: 'POST', headers: { authorization: `Bearer ${token}` } });
   assert.equal(deactivated.status, 200);
@@ -241,11 +204,10 @@ test('account deactivation/reactivation changes SQL visibility without changing 
   const hiddenFeed = await request('/api/discover/feed?limit=30&minScore=0', { headers: auth(users.viewer) });
   assert.equal(hiddenFeed.body.data.profiles.some((profile) => profile.id === String(users.lifecycle.id)), false);
   const reactivated = await request('/api/account/reactivate', { method: 'POST', headers: { authorization: `Bearer ${token}` } });
-  assert.equal(reactivated.status, 200);
-  assert.equal(reactivated.body.data.user.accountStatus, 'active');
+  assert.equal(reactivated.status, 404);
   const profile = await models.OnboardingProfile.findOne({ where: { userId: users.lifecycle.id } });
   assert.equal(profile.onboardingCompleted, true);
-  assert.equal((await request(`/api/profiles/${users.lifecycle.id}`, { headers: auth(users.viewer) })).status, 200);
+  assert.equal((await request(`/api/profiles/${users.lifecycle.id}`, { headers: auth(users.viewer) })).status, 404);
 });
 
 test('soft deletion revokes old tokens and removes the account from public access', async () => {
@@ -259,7 +221,7 @@ test('soft deletion revokes old tokens and removes the account from public acces
   const row = await models.User.findByPk(users.deleteMe.id);
   assert.equal(row.accountStatus, 'deleted');
   assert.equal(row.tokenVersion, 1);
-  assert.equal((await request('/api/account/reactivate', { method: 'POST', headers: { authorization: `Bearer ${token}` } })).status, 401);
+  assert.equal((await request('/api/account/reactivate', { method: 'POST', headers: { authorization: `Bearer ${token}` } })).status, 404);
   assert.equal((await request(`/api/profiles/${users.deleteMe.id}`, { headers: auth(users.viewer) })).status, 404);
 });
 

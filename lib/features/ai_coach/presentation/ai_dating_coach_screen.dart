@@ -221,10 +221,10 @@ class _DateIdeaCarousel extends StatelessWidget {
       height: textScale > 1.2 ? 280 : 246,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        itemCount: dateIdeas.length,
+        itemCount: dateSuggestions.length,
         separatorBuilder: (_, _) => const SizedBox(width: 12),
         itemBuilder: (context, index) {
-          final idea = dateIdeas[index];
+          final idea = dateSuggestions[index];
           final mood = _dateMoods[index % _dateMoods.length];
           return SizedBox(
             width: 238,

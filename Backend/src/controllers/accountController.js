@@ -17,23 +17,9 @@ exports.deactivate = async (req, res, next) => {
   }
 };
 
-exports.reactivate = async (req, res, next) => {
-  try {
-    const user = req.authUser;
-    if (user.accountStatus === 'deactivated') {
-      user.accountStatus = 'active';
-      user.deactivatedAt = null;
-      await user.save();
-    }
-    return res.json({ success: true, message: 'Account reactivated.', data: { user: ownProfile(user) } });
-  } catch (error) {
-    return next(error);
-  }
-};
-
 exports.remove = async (req, res, next) => {
   try {
-    const { User, RefreshToken, Match, Boost } = getModels();
+    const { User, RefreshToken, Match } = getModels();
     const userId = Number(req.user.sub);
     await User.sequelize.transaction(async (transaction) => {
       const user = await User.findByPk(userId, { transaction, lock: transaction.LOCK.UPDATE });
@@ -47,7 +33,6 @@ exports.remove = async (req, res, next) => {
       await user.save({ transaction });
       await RefreshToken.destroy({ where: { userId }, transaction });
       await Match.destroy({ where: { [Op.or]: [{ userOneId: userId }, { userTwoId: userId }] }, transaction });
-      await Boost.update({ active: false }, { where: { userId }, transaction });
     });
     return res.json({ success: true, message: 'Account deleted.', data: {} });
   } catch (error) {

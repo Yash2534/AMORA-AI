@@ -1,3 +1,4 @@
+import 'package:amora_ai/core/auth/auth_service.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
@@ -59,7 +60,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       if (mounted) {
         setState(() {
           _loading = false;
-          _error = error.toString();
+          _error = userFacingErrorMessage(
+            error,
+            fallback: 'Membership data could not be loaded. Please try again.',
+          );
         });
       }
     }
@@ -79,6 +83,15 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Text('Membership could not be loaded.'),
+                const SizedBox(height: 8),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Text(
+                    _error!,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: AppColors.textSecondary),
+                  ),
+                ),
                 const SizedBox(height: 12),
                 FilledButton(onPressed: _load, child: const Text('Try again')),
               ],
@@ -159,18 +172,13 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                                 () => _selectedProductionPlan = index,
                               ),
                             ),
-                        ],
-                        if (!membershipTestMode && !memberActive) ...[
-                          const SizedBox(height: 12),
-                          const Text(
-                            'Monthly billing is the only duration currently '
-                            'configured for these plans.',
-                            style: TextStyle(
-                              color: AppColors.text,
-                              fontSize: 13,
-                              height: 1.35,
+                          if (_plans.isEmpty) ...[
+                            const SizedBox(height: 12),
+                            const Text(
+                              'No membership plans are currently available.',
+                              textAlign: TextAlign.center,
                             ),
-                          ),
+                          ],
                         ],
                         const SizedBox(height: 18),
                         const _BillingTrustCard(),

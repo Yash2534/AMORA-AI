@@ -87,12 +87,6 @@ const membershipTestPaymentMethods = [
     subtitle: 'Simulated UPI approval',
     icon: Icons.account_balance_wallet_rounded,
   ),
-  MembershipTestPaymentMethod(
-    id: 'test_wallet',
-    label: 'Test Wallet',
-    subtitle: 'Simulated wallet confirmation',
-    icon: Icons.wallet_rounded,
-  ),
 ];
 
 class MembershipTestFlowController extends ChangeNotifier {

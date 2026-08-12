@@ -1,7 +1,7 @@
 const jwt = require('jsonwebtoken');
 const { getModels } = require('../models');
 
-function authenticationMiddleware({ allowDeactivated = false } = {}) {
+function authenticationMiddleware() {
   return async (req, res, next) => {
     const value = req.headers.authorization || '';
     const token = value.startsWith('Bearer ') ? value.slice(7) : null;
@@ -18,8 +18,8 @@ function authenticationMiddleware({ allowDeactivated = false } = {}) {
       if (!user || user.accountStatus === 'deleted' || Number(payload.ver || 0) !== Number(user.tokenVersion || 0)) {
         return res.status(401).json({ success: false, message: 'This session is no longer valid.', code: 'TOKEN_INVALID', errors: [] });
       }
-      if (user.accountStatus === 'deactivated' && !allowDeactivated) {
-        return res.status(403).json({ success: false, message: 'Reactivate your account before continuing.', code: 'ACCOUNT_DEACTIVATED', errors: [] });
+      if (user.accountStatus === 'deactivated') {
+        return res.status(403).json({ success: false, message: 'This account is deactivated.', code: 'ACCOUNT_DEACTIVATED', errors: [] });
       }
       req.user = payload;
       req.authUser = user;
@@ -35,5 +35,4 @@ function authenticationMiddleware({ allowDeactivated = false } = {}) {
 }
 
 const requireAuth = authenticationMiddleware();
-requireAuth.allowDeactivated = authenticationMiddleware({ allowDeactivated: true });
 module.exports = requireAuth;

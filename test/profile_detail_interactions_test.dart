@@ -1,17 +1,19 @@
 import 'dart:async';
 
 import 'package:amora_ai/core/access/amora_access.dart';
+import 'package:amora_ai/core/auth/auth_service.dart';
 import 'package:amora_ai/core/data/image_repository.dart';
 import 'package:amora_ai/features/chat/data/local_chat_repository.dart';
 import 'package:amora_ai/features/chat/presentation/chat_detail_screen.dart';
-import 'package:amora_ai/features/monetization/data/monetization_repository.dart';
+import 'package:amora_ai/features/rose/data/rose_repository.dart';
 import 'package:amora_ai/features/profile/presentation/profile_detail_screen.dart';
-import 'package:amora_ai/features/profile/presentation/widgets/amoraa_rose_gift_sheet.dart';
+import 'package:amora_ai/features/profile/presentation/widgets/amoraa_rose_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-class _GiftRemote implements MonetizationRemoteDataSource {
+class _RoseRemote implements RoseRemoteDataSource {
   int sendCalls = 0;
+  Object? sendError;
 
   @override
   Future<Map<String, dynamic>> request(
@@ -19,7 +21,24 @@ class _GiftRemote implements MonetizationRemoteDataSource {
     String path, {
     Map<String, dynamic>? body,
   }) async {
-    if (method == 'POST' && path == '/api/gifts/send') sendCalls++;
+    if (method == 'POST' && path == '/api/roses/send') {
+      sendCalls++;
+      if (sendError case final error?) throw error;
+      return {
+        'success': true,
+        'data': {
+          'roseTransaction': {
+            'id': '101',
+            'senderId': '1',
+            'recipientId': body?['recipientId'].toString(),
+            'status': 'sent',
+            'note': body?['note'],
+            'createdAt': '2026-08-12T10:00:00.000Z',
+          },
+          'notification': {'id': '12'},
+        },
+      };
+    }
     return {'success': true, 'data': <String, dynamic>{}};
   }
 }
@@ -35,7 +54,6 @@ DummyProfile _withNumericId(DummyProfile source) => DummyProfile(
   distance: source.distance,
   score: source.score,
   intent: source.intent,
-  personality: source.personality,
   status: source.status,
   bio: source.bio,
   interests: source.interests,
@@ -45,25 +63,12 @@ DummyProfile _withNumericId(DummyProfile source) => DummyProfile(
   verification: source.verification,
   lifestyle: source.lifestyle,
   promptAnswers: source.promptAnswers,
-  travelPreference: source.travelPreference,
-  musicTaste: source.musicTaste,
-  foodPreference: source.foodPreference,
-  weekendPlan: source.weekendPlan,
-  petPreference: source.petPreference,
-  coffeePreference: source.coffeePreference,
   religion: source.religion,
   community: source.community,
   height: source.height,
-  fitnessLevel: source.fitnessLevel,
   smoking: source.smoking,
   drinking: source.drinking,
   weed: source.weed,
-  children: source.children,
-  loveLanguage: source.loveLanguage,
-  greenFlags: source.greenFlags,
-  redFlags: source.redFlags,
-  familyValues: source.familyValues,
-  dateIdeas: source.dateIdeas,
   hometown: source.hometown,
   valuedQualities: source.valuedQualities,
   pronouns: source.pronouns,
@@ -77,20 +82,18 @@ DummyProfile _withNumericId(DummyProfile source) => DummyProfile(
 void main() {
   final repository = LocalChatRepository.instance;
   final profile = _withNumericId(ImageRepository.profiles.first);
-  late _GiftRemote giftRemote;
+  late _RoseRemote roseRemote;
 
   setUp(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
     AmoraSession.logIn();
     await repository.resetForTesting();
-    giftRemote = _GiftRemote();
-    MonetizationRepository.debugOverride = MonetizationRepository(
-      remote: giftRemote,
-    );
+    roseRemote = _RoseRemote();
+    RoseRepository.debugOverride = RoseRepository(remote: roseRemote);
   });
 
   tearDown(() {
-    MonetizationRepository.debugOverride = null;
+    RoseRepository.debugOverride = null;
     AmoraSession.logOut();
   });
 
@@ -152,7 +155,7 @@ void main() {
   }
 
   Future<void> openRoseSheet(WidgetTester tester) async {
-    await tester.tap(find.byKey(const ValueKey('profile-gift-button')));
+    await tester.tap(find.byKey(const ValueKey('profile-rose-button')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 420));
   }
@@ -269,12 +272,12 @@ void main() {
     expect(find.text('I would enjoy that too.'), findsOneWidget);
   });
 
-  testWidgets('bottom actions are Gift, Super Like, Message, Like at 320px', (
+  testWidgets('bottom actions are Rose, Super Like, Message, Like at 320px', (
     tester,
   ) async {
     await pumpProfile(tester, size: const Size(320, 760));
     const keys = <String>[
-      'profile-gift-button',
+      'profile-rose-button',
       'profile-super-like-button',
       'profile-message-button',
       'profile-like-button',
@@ -313,8 +316,8 @@ void main() {
                       liked: false,
                       superLiked: false,
                       superLikeSending: false,
-                      giftSending: false,
-                      onGift: () {},
+                      roseSending: false,
+                      onRose: () {},
                       onLike: () {},
                       onSuperLike: () {},
                       onMessage: () {},
@@ -334,7 +337,7 @@ void main() {
     }
   });
 
-  testWidgets('Gift offers only Rose for the real recipient', (tester) async {
+  testWidgets('Rose sheet targets the real recipient', (tester) async {
     await pumpProfile(tester, size: const Size(320, 640));
     await openRoseSheet(tester);
 
@@ -363,7 +366,7 @@ void main() {
     expect(sent.text, 'I would love to get to know you.');
     expect(sent.context?.type, ChatMessageContextType.rose);
     expect(find.byKey(const ValueKey('rose-chat-message')), findsOneWidget);
-    expect(find.text('Rose'), findsOneWidget);
+    expect(find.text('Rose'), findsWidgets);
   });
 
   testWidgets(
@@ -388,19 +391,19 @@ void main() {
         repository.conversation(conversationId)!.messages,
         hasLength(initialMessageCount),
       );
-      expect(giftRemote.sendCalls, 1);
+      expect(roseRemote.sendCalls, 1);
     },
   );
 
   testWidgets('Rose sheet prevents duplicate sends while processing', (
     tester,
   ) async {
-    final completer = Completer<bool>();
+    final completer = Completer<void>();
     var calls = 0;
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
-          body: AmoraaRoseGiftSheet(
+          body: AmoraaRoseSheet(
             recipientName: profile.name,
             onSend: (_) {
               calls++;
@@ -417,7 +420,13 @@ void main() {
     await tester.tap(send);
     await tester.pump();
     expect(calls, 1);
-    completer.complete(false);
+    completer.completeError(
+      const AuthException('Rose sending is temporarily unavailable.'),
+    );
     await tester.pump(const Duration(milliseconds: 200));
+    expect(
+      find.text('Rose sending is temporarily unavailable.'),
+      findsOneWidget,
+    );
   });
 }

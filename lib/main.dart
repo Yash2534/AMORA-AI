@@ -21,11 +21,7 @@ import 'package:amora_ai/features/discover/presentation/advanced_filters_screen.
 import 'package:amora_ai/features/discover/presentation/browse_grid_screen.dart';
 import 'package:amora_ai/features/events/presentation/event_detail_screen.dart';
 import 'package:amora_ai/features/events/presentation/events_screen.dart';
-import 'package:amora_ai/features/events/presentation/event_group_chat_screen.dart';
-import 'package:amora_ai/features/events/presentation/event_waitlist_screen.dart';
 import 'package:amora_ai/features/events/presentation/my_events_screen.dart';
-import 'package:amora_ai/features/events/presentation/post_event_feedback_screen.dart';
-import 'package:amora_ai/features/host/presentation/host_dashboard_screen.dart';
 import 'package:amora_ai/features/insights/presentation/dating_recap_screen.dart';
 import 'package:amora_ai/features/legal/presentation/legal_document_screen.dart';
 import 'package:amora_ai/features/legal/presentation/community_guidelines_screen.dart';
@@ -53,7 +49,6 @@ import 'package:amora_ai/features/profile/presentation/controllers/profile_relat
 import 'package:amora_ai/features/referral/presentation/referral_leaderboard_screen.dart';
 import 'package:amora_ai/features/match/presentation/why_we_matched_screen.dart';
 import 'package:amora_ai/features/monetization/presentation/liked_you_paywall_screen.dart';
-import 'package:amora_ai/features/monetization/presentation/profile_boost_screen.dart';
 import 'package:amora_ai/features/safety/presentation/report_flow_screen.dart';
 import 'package:amora_ai/features/safety/presentation/sos_checkin_screen.dart';
 import 'package:amora_ai/features/settings/presentation/account_action_screens.dart';
@@ -197,13 +192,7 @@ class _MyAppState extends State<MyApp> {
           SosCheckinScreen.routeName: (_) => const SosCheckinScreen(),
           PhotoManagerScreen.routeName: (_) => const PhotoManagerScreen(),
           ProfileEditScreen.routeName: (_) => const ProfileEditScreen(),
-          PostEventFeedbackScreen.routeName: (_) =>
-              const PostEventFeedbackScreen(),
-          EventGroupChatScreen.routeName: (_) => const EventGroupChatScreen(),
-          EventWaitlistScreen.routeName: (_) => const EventWaitlistScreen(),
-          HostDashboardScreen.routeName: (_) => const HostDashboardScreen(),
           WhyWeMatchedScreen.routeName: (_) => const WhyWeMatchedScreen(),
-          ProfileBoostScreen.routeName: (_) => const ProfileBoostScreen(),
           LikedYouPaywallScreen.routeName: (_) => const LikedYouPaywallScreen(),
           LikedYouPaywallScreen.aliasRouteName: (_) =>
               const LikedYouPaywallScreen(),

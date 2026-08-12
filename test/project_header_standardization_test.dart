@@ -2,7 +2,6 @@ import 'package:amora_ai/core/theme/amora_header_tokens.dart';
 import 'package:amora_ai/core/theme/amora_theme.dart';
 import 'package:amora_ai/core/widgets/amora_app_bar.dart';
 import 'package:amora_ai/core/widgets/amora_screen_title.dart';
-import 'package:amora_ai/features/events/presentation/event_waitlist_screen.dart';
 import 'package:amora_ai/features/insights/presentation/dating_recap_screen.dart';
 import 'package:amora_ai/features/monetization/presentation/widgets/monetization_widgets.dart';
 import 'package:amora_ai/features/settings/presentation/notification_preferences_screen.dart';
@@ -40,7 +39,6 @@ void main() {
     addTearDown(() => tester.binding.setSurfaceSize(null));
     final screens = <Widget>[
       const DarkModeSettingsScreen(),
-      const EventWaitlistScreen(),
       const DatingRecapScreen(),
       const NotificationPreferencesScreen(),
     ];

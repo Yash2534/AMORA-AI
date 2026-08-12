@@ -16,8 +16,6 @@ module.exports = (sequelize) => sequelize.define('IdentityVerification', {
   selfieSizeBytes: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false },
   submittedAt: { type: DataTypes.DATE, allowNull: false },
   reviewedAt: { type: DataTypes.DATE, allowNull: true },
-  reviewerUserId: { type: DataTypes.INTEGER, allowNull: true },
-  reviewNote: { type: DataTypes.STRING(500), allowNull: true },
   rejectionReason: { type: DataTypes.STRING(500), allowNull: true },
 }, {
   tableName: 'IdentityVerifications',

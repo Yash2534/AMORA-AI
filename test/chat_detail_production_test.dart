@@ -13,6 +13,74 @@ void main() {
     await repository.resetForTesting();
   });
 
+  testWidgets(
+    'persisted sender ownership aligns incoming left and outgoing right',
+    (tester) async {
+      final profile = ImageRepository.profiles.first;
+      final now = DateTime(2026, 8, 12, 10);
+      await tester.binding.setSurfaceSize(const Size(320, 500));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Column(
+              children: [
+                MessageBubble(
+                  message: ChatMessage(
+                    id: '101',
+                    conversationId: '55',
+                    senderId: '2',
+                    text: 'Incoming persisted',
+                    mine: false,
+                    time: '10:00',
+                    createdAtEpochMs: now.millisecondsSinceEpoch,
+                  ),
+                  profile: profile,
+                ),
+                MessageBubble(
+                  message: ChatMessage(
+                    id: '102',
+                    conversationId: '55',
+                    senderId: '1',
+                    text: 'Outgoing persisted',
+                    mine: true,
+                    time: '10:01',
+                    createdAtEpochMs: now
+                        .add(const Duration(minutes: 1))
+                        .millisecondsSinceEpoch,
+                  ),
+                  profile: profile,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final incomingRow = tester.widget<Row>(
+        find
+            .ancestor(
+              of: find.text('Incoming persisted'),
+              matching: find.byType(Row),
+            )
+            .first,
+      );
+      final outgoingRow = tester.widget<Row>(
+        find
+            .ancestor(
+              of: find.text('Outgoing persisted'),
+              matching: find.byType(Row),
+            )
+            .first,
+      );
+      expect(incomingRow.mainAxisAlignment, MainAxisAlignment.start);
+      expect(outgoingRow.mainAxisAlignment, MainAxisAlignment.end);
+      expect(find.bySemanticsLabel(RegExp('Received message')), findsOneWidget);
+      expect(find.bySemanticsLabel(RegExp('Sent message')), findsOneWidget);
+    },
+  );
+
   Future<void> pumpConversation(
     WidgetTester tester,
     String conversationId, {
@@ -461,7 +529,6 @@ DummyProfile _renamedProfile(DummyProfile source, String name) => DummyProfile(
   distance: source.distance,
   score: source.score,
   intent: source.intent,
-  personality: source.personality,
   status: source.status,
   bio: source.bio,
   interests: source.interests,
@@ -471,22 +538,9 @@ DummyProfile _renamedProfile(DummyProfile source, String name) => DummyProfile(
   verification: source.verification,
   lifestyle: source.lifestyle,
   promptAnswers: source.promptAnswers,
-  travelPreference: source.travelPreference,
-  musicTaste: source.musicTaste,
-  foodPreference: source.foodPreference,
-  weekendPlan: source.weekendPlan,
-  petPreference: source.petPreference,
-  coffeePreference: source.coffeePreference,
   religion: source.religion,
   community: source.community,
   height: source.height,
-  fitnessLevel: source.fitnessLevel,
   smoking: source.smoking,
   drinking: source.drinking,
-  children: source.children,
-  loveLanguage: source.loveLanguage,
-  greenFlags: source.greenFlags,
-  redFlags: source.redFlags,
-  familyValues: source.familyValues,
-  dateIdeas: source.dateIdeas,
 );

@@ -7,7 +7,6 @@ import 'package:amora_ai/features/events/domain/my_event_category.dart';
 import 'package:amora_ai/features/events/presentation/controllers/event_participation_controller.dart';
 import 'package:amora_ai/features/events/presentation/event_detail_screen.dart';
 import 'package:amora_ai/features/events/presentation/events_browse_screen.dart';
-import 'package:amora_ai/features/events/presentation/post_event_feedback_screen.dart';
 import 'package:amora_ai/features/events/presentation/widgets/events_widgets.dart';
 import 'package:flutter/material.dart';
 
@@ -110,7 +109,6 @@ class _MyEventsScreenState extends State<MyEventsScreen>
             category: category,
             entries: _controller.registrationsFor(category),
             onCancel: _confirmCancellation,
-            onLeaveWaitlist: _leaveWaitlist,
           ),
       ],
     );
@@ -178,22 +176,6 @@ class _MyEventsScreenState extends State<MyEventsScreen>
       ),
     );
   }
-
-  Future<void> _leaveWaitlist(UserEventRegistration registration) async {
-    if (widget.controller != null) {
-      _controller.leaveWaitlist(registration.event.id);
-    } else {
-      try {
-        await _controller.leaveWaitlistRemote(registration.event);
-      } catch (error) {
-        if (mounted) showEventSnack(context, error.toString());
-        return;
-      }
-    }
-    if (mounted) {
-      showEventSnack(context, 'You left ${registration.event.title} waitlist');
-    }
-  }
 }
 
 class _CategoryTabs extends StatelessWidget {
@@ -243,13 +225,11 @@ class _MyEventList extends StatelessWidget {
     required this.category,
     required this.entries,
     required this.onCancel,
-    required this.onLeaveWaitlist,
   });
 
   final MyEventCategory category;
   final List<UserEventRegistration> entries;
   final ValueChanged<UserEventRegistration> onCancel;
-  final ValueChanged<UserEventRegistration> onLeaveWaitlist;
 
   @override
   Widget build(BuildContext context) {
@@ -289,7 +269,6 @@ class _MyEventList extends StatelessWidget {
               registration: entries[index],
               category: category,
               onCancel: onCancel,
-              onLeaveWaitlist: onLeaveWaitlist,
             ),
           );
         }
@@ -301,7 +280,6 @@ class _MyEventList extends StatelessWidget {
             registration: entries[index],
             category: category,
             onCancel: onCancel,
-            onLeaveWaitlist: onLeaveWaitlist,
           ),
         );
       },
@@ -314,13 +292,11 @@ class _MyEventCard extends StatelessWidget {
     required this.registration,
     required this.category,
     required this.onCancel,
-    required this.onLeaveWaitlist,
   });
 
   final UserEventRegistration registration;
   final MyEventCategory category;
   final ValueChanged<UserEventRegistration> onCancel;
-  final ValueChanged<UserEventRegistration> onLeaveWaitlist;
 
   @override
   Widget build(BuildContext context) {
@@ -408,21 +384,6 @@ class _MyEventCard extends StatelessWidget {
                     label: 'Cancel booking',
                     onPressed: () => onCancel(registration),
                   ),
-                if (category == MyEventCategory.waitlist)
-                  _CardAction(
-                    icon: Icons.logout_rounded,
-                    label: 'Leave waitlist',
-                    onPressed: () => onLeaveWaitlist(registration),
-                  ),
-                if (category == MyEventCategory.past)
-                  _CardAction(
-                    icon: Icons.rate_review_rounded,
-                    label: 'Share feedback',
-                    onPressed: () => Navigator.of(context).pushNamed(
-                      PostEventFeedbackScreen.routeName,
-                      arguments: registration.event,
-                    ),
-                  ),
               ],
             ),
           ],
@@ -498,7 +459,6 @@ class _MyEventsError extends StatelessWidget {
 String _categoryLabel(MyEventCategory category) => switch (category) {
   MyEventCategory.upcoming => 'Upcoming',
   MyEventCategory.past => 'Past',
-  MyEventCategory.waitlist => 'Waitlist',
   MyEventCategory.cancelled => 'Cancelled',
 };
 
@@ -511,10 +471,6 @@ String _categoryLabel(MyEventCategory category) => switch (category) {
     'No past events',
     'Your completed events will appear here.',
   ),
-  MyEventCategory.waitlist => (
-    'No waitlisted events',
-    'Events you join a waitlist for will appear here.',
-  ),
   MyEventCategory.cancelled => (
     'No cancelled events',
     'Cancelled bookings will appear here.',
@@ -524,6 +480,5 @@ String _categoryLabel(MyEventCategory category) => switch (category) {
 String _statusCopy(MyEventCategory category) => switch (category) {
   MyEventCategory.upcoming => 'Booking confirmed',
   MyEventCategory.past => 'Event completed',
-  MyEventCategory.waitlist => 'You’re on the waitlist',
   MyEventCategory.cancelled => 'Booking cancelled',
 };

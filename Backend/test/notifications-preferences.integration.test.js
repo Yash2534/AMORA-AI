@@ -232,7 +232,7 @@ test('likes persist relational actors and receiver sees each current sender name
   assert.equal(receivedLikes.length, 3);
   assert.deepEqual(new Set(receivedLikes.map((item) => item.actor.name)), new Set(['Priya', 'Ananya', 'Neha']));
   assert.ok(receivedLikes.every((item) => item.actor.photoUrl.endsWith('/uploads/notification.jpg')));
-  assert.ok(receivedLikes.every((item) => String(item.data.targetUserId) === item.actor.userId));
+  assert.ok(receivedLikes.every((item) => String(item.data.targetUserId) === item.actor.userId), JSON.stringify(receivedLikes));
 
   for (const bearer of [candidateToken, otherToken, thirdSenderToken]) {
     const senderList = await request('/api/notifications', { bearer });
@@ -256,8 +256,14 @@ test('likes persist relational actors and receiver sees each current sender name
   assert.equal((await request(`/api/notifications/${ownNotification.id}/read`, { method: 'PUT' })).body.data.notification.actor.name, 'Priya Sharma');
   assert.equal((await request(`/api/notifications/${ownNotification.id}`, { method: 'DELETE', bearer: thirdSenderToken })).status, 404);
   assert.equal((await request(`/api/notifications/${ownNotification.id}`, { method: 'DELETE' })).status, 200);
+  assert.equal((await request('/api/discover/swipe', {
+    method: 'POST',
+    bearer: candidateToken,
+    body: { targetUserId: owner.id, action: 'like' },
+  })).status, 200);
   const afterDelete = await request('/api/notifications?category=Likes');
   assert.equal(afterDelete.body.data.notifications.some((item) => item.id === String(ownNotification.id)), false);
+  assert.equal(await models.Notification.count({ where: { userId: owner.id, actorUserId: candidate.id, type: 'new_like' } }), 1);
 });
 
 test('notification write failure rolls back the like action', async () => {

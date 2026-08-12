@@ -20,7 +20,7 @@ void main() {
       seatsLeft: base.seatsLeft,
       compatibility: base.compatibility,
       image: base.image,
-      host: base.host,
+      organizer: base.organizer,
       venue: base.venue,
       distance: distance,
       dressCode: base.dressCode,

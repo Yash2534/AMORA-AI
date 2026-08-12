@@ -181,7 +181,6 @@ void main() {
     expect(find.text('Priya, 28'), findsOneWidget);
     expect(find.text('Ahmedabad'), findsOneWidget);
     expect(find.text('Long-Term Relationship'), findsOneWidget);
-    expect(find.text('Coffee Dates'), findsOneWidget);
     expect(find.text('Undergraduate'), findsOneWidget);
     expect(find.text('English · Hindi · Gujarati'), findsOneWidget);
     expect(find.text('Yes'), findsOneWidget);
@@ -215,7 +214,7 @@ void main() {
       findsNothing,
     );
     expect(find.byKey(const ValueKey('profile-message-button')), findsNothing);
-    expect(find.byKey(const ValueKey('profile-gift-button')), findsNothing);
+    expect(find.byKey(const ValueKey('profile-rose-button')), findsNothing);
     expect(find.byKey(const ValueKey('profile-save-button')), findsNothing);
     expect(find.byKey(const ValueKey('profile-block-button')), findsNothing);
     expect(find.byKey(const ValueKey('profile-report-button')), findsNothing);
@@ -450,8 +449,6 @@ UserProfile _profileFixture() => const UserProfile(
     'assets/images/profiles/female/female_02.jpg',
   ],
   primaryPhotoIndex: 0,
-  voicePrompt: null,
-  videoPrompt: null,
 );
 
 const _localPhoto =

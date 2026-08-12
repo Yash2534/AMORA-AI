@@ -55,8 +55,10 @@ async function main() {
     const missingIndexes = requiredNotificationIndexes.filter((name) => !indexSet.has(name));
 
     const [foreignKeys] = await connection.query(
-      "SELECT COUNT(*) count_ FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA=DATABASE() AND LOWER(TABLE_NAME)='notifications' AND REFERENCED_TABLE_NAME IS NOT NULL",
+      "SELECT COLUMN_NAME columnName, REFERENCED_TABLE_NAME referencedTable, REFERENCED_COLUMN_NAME referencedColumn FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA=DATABASE() AND LOWER(TABLE_NAME)='notifications' AND REFERENCED_TABLE_NAME IS NOT NULL",
     );
+    const foreignKeySet = new Set(foreignKeys.map((row) => `${row.columnName}->${row.referencedTable}.${row.referencedColumn}`.toLowerCase()));
+    const requiredForeignKeys = new Set(['userid->users.id', 'actoruserid->users.id']);
     const [rows] = await connection.query(
       'SELECT COUNT(*) notificationCount, SUM(CASE WHEN isRead = 0 AND deletedAt IS NULL THEN 1 ELSE 0 END) unreadCount FROM Notifications',
     );
@@ -65,10 +67,11 @@ async function main() {
       missingTables.length ||
       missingColumns.length ||
       missingIndexes.length ||
-      Number(foreignKeys[0].count_) !== 2
+      foreignKeys.length !== 2 ||
+      [...requiredForeignKeys].some((value) => !foreignKeySet.has(value))
     ) {
       throw new Error(
-        `Notification/preferences schema verification failed. Missing tables: ${missingTables.join(', ') || 'none'}; missing columns: ${missingColumns.join(', ') || 'none'}; missing indexes: ${missingIndexes.join(', ') || 'none'}; notification foreign keys: ${foreignKeys[0].count_}.`,
+        `Notification/preferences schema verification failed. Missing tables: ${missingTables.join(', ') || 'none'}; missing columns: ${missingColumns.join(', ') || 'none'}; missing indexes: ${missingIndexes.join(', ') || 'none'}; notification foreign keys: ${[...foreignKeySet].join(', ') || 'none'}.`,
       );
     }
 

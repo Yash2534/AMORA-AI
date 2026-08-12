@@ -51,6 +51,7 @@ class InboxNotification {
     return switch (type) {
       'like' || 'new_like' => '$actorName liked your profile',
       'superLike' || 'new_super_like' => '$actorName Super Liked you',
+      'rose_received' => '$actorName sent you a Rose',
       _ => title,
     };
   }

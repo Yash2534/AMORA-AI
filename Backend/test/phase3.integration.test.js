@@ -100,9 +100,7 @@ async function createConversation(user, target) {
 }
 
 async function realtimeToken(user) {
-  const response = await jsonRequest('/api/realtime/token', 'POST', user);
-  assert.equal(response.status, 200, JSON.stringify(response.body));
-  return response.body.data.token;
+  return tokenFor(user);
 }
 
 async function connectSocket(token, expectSuccess = true) {
@@ -190,6 +188,9 @@ test('conversation creation authenticates, enforces eligibility, and is idempote
   const repeated = await createConversation(users.alice, users.bob);
   assert.equal(repeated.status, 200);
   assert.equal(repeated.body.data.conversation.id, primaryConversationId);
+  const reverseDirection = await createConversation(users.bob, users.alice);
+  assert.equal(reverseDirection.status, 200);
+  assert.equal(reverseDirection.body.data.conversation.id, primaryConversationId);
   assert.equal(await models.Conversation.count({ where: { pairKey: `${Math.min(users.alice.id, users.bob.id)}:${Math.max(users.alice.id, users.bob.id)}` } }), 1);
   assert.equal((await createConversation(users.alice, users.alice)).status, 400);
   assert.equal((await createConversation(users.alice, users.outsider)).status, 403);
@@ -236,6 +237,24 @@ test('message history enforces membership and uses stable chronological cursor p
   assert.equal(older.status, 200);
   assert.equal(older.body.data.messages.some((item) => page.body.data.messages.some((current) => current.id === item.id)), false);
   assert.equal((await request(`/api/conversations/${primaryConversationId}/messages`, { headers: auth(users.outsider) })).status, 404);
+
+  const aliceHistory = await request(`/api/conversations/${primaryConversationId}/messages?limit=100`, { headers: auth(users.alice) });
+  const bobHistory = await request(`/api/conversations/${primaryConversationId}/messages?limit=100`, { headers: auth(users.bob) });
+  assert.equal(aliceHistory.status, 200);
+  assert.equal(bobHistory.status, 200);
+  assert.deepEqual(
+    aliceHistory.body.data.messages.map((message) => [message.id, message.senderId, message.text]),
+    bobHistory.body.data.messages.map((message) => [message.id, message.senderId, message.text]),
+  );
+  assert.ok(aliceHistory.body.data.messages.some((message) => message.senderId === String(users.alice.id) && message.mine === true));
+  assert.ok(aliceHistory.body.data.messages.some((message) => message.senderId === String(users.bob.id) && message.mine === false));
+  assert.ok(bobHistory.body.data.messages.some((message) => message.senderId === String(users.alice.id) && message.mine === false));
+  assert.ok(bobHistory.body.data.messages.some((message) => message.senderId === String(users.bob.id) && message.mine === true));
+  const persistedRows = await models.Message.findAll({ where: { conversationId: primaryConversationId }, order: [['id', 'ASC']] });
+  assert.deepEqual(
+    persistedRows.map((message) => [String(message.id), String(message.senderId), message.text]),
+    aliceHistory.body.data.messages.map((message) => [message.id, message.senderId, message.text]),
+  );
 });
 
 test('two authenticated realtime clients receive only persisted authorized message/read events', async () => {

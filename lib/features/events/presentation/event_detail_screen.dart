@@ -8,9 +8,6 @@ import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/events/data/event_repository.dart';
 import 'package:amora_ai/features/events/domain/event_models.dart';
 import 'package:amora_ai/features/events/presentation/controllers/event_participation_controller.dart';
-import 'package:amora_ai/features/events/presentation/event_group_chat_screen.dart';
-import 'package:amora_ai/features/events/presentation/event_waitlist_screen.dart';
-import 'package:amora_ai/features/events/presentation/post_event_feedback_screen.dart';
 import 'package:amora_ai/features/events/presentation/widgets/events_widgets.dart';
 import 'package:amora_ai/features/safety/presentation/report_flow_screen.dart';
 import 'package:amora_ai/features/settings/presentation/safety_privacy_screen.dart';
@@ -185,7 +182,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                       const SizedBox(height: 20),
                       EventReveal(
                         delay: const Duration(milliseconds: 30),
-                        child: EventHostSection(host: event.host),
+                        child: EventOrganizerSection(
+                          organizer: event.organizer,
+                        ),
                       ),
                       const SizedBox(height: 28),
                       EventDetailSection(
@@ -253,54 +252,6 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                             ],
                           ),
                         ),
-                      if (_status == TicketStatus.upcoming) ...[
-                        const SizedBox(height: 28),
-                        EventDetailSection(
-                          title: 'Joined event tools',
-                          child: Wrap(
-                            spacing: 10,
-                            runSpacing: 10,
-                            children: [
-                              ActionChip(
-                                avatar: const Icon(
-                                  Icons.forum_rounded,
-                                  size: 18,
-                                ),
-                                label: const Text('Group Chat'),
-                                onPressed: () =>
-                                    Navigator.of(context).pushNamed(
-                                      EventGroupChatScreen.routeName,
-                                      arguments: event,
-                                    ),
-                              ),
-                              if (!event.checkedIn)
-                                ActionChip(
-                                  avatar: const Icon(
-                                    Icons.how_to_reg_rounded,
-                                    size: 18,
-                                  ),
-                                  label: const Text('Check in'),
-                                  onPressed: () => _checkIn(event),
-                                ),
-                            ],
-                          ),
-                        ),
-                      ],
-                      if (_status == TicketStatus.attended) ...[
-                        const SizedBox(height: 28),
-                        EventDetailSection(
-                          title: 'Your experience',
-                          child: AppPrimaryButton(
-                            label: 'Share feedback',
-                            icon: Icons.rate_review_rounded,
-                            variant: AppPrimaryButtonVariant.outlined,
-                            onPressed: () => Navigator.of(context).pushNamed(
-                              PostEventFeedbackScreen.routeName,
-                              arguments: event,
-                            ),
-                          ),
-                        ),
-                      ],
                       const SizedBox(height: 28),
                       EventReveal(
                         delay: const Duration(milliseconds: 180),
@@ -364,18 +315,6 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
 
   void _handlePrimaryAction(EventModel event) {
     if (_actionBusy) return;
-    if (_status == TicketStatus.waitlisted) {
-      Navigator.of(
-        context,
-      ).pushNamed(EventWaitlistScreen.routeName, arguments: event);
-      return;
-    }
-    if (_status == TicketStatus.attended) {
-      Navigator.of(
-        context,
-      ).pushNamed(PostEventFeedbackScreen.routeName, arguments: event);
-      return;
-    }
     if (_status == TicketStatus.upcoming) {
       _confirmLeave(event);
       return;
@@ -397,15 +336,10 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
           _actionBusy = true;
         });
         try {
-          if (!event.registrationOpen && event.waitlistEnabled) {
-            await _controller.joinWaitlistRemote(event);
-            if (mounted) showEventSnack(context, 'You joined the waitlist');
-          } else {
-            await _controller.registerRemote(event);
-            if (mounted) {
-              setState(() => _celebrateJoin = true);
-              showEventSnack(context, 'You joined ${event.title}');
-            }
+          await _controller.registerRemote(event);
+          if (mounted) {
+            setState(() => _celebrateJoin = true);
+            showEventSnack(context, 'You joined ${event.title}');
           }
         } catch (error) {
           if (mounted) showEventSnack(context, error.toString());
@@ -414,16 +348,6 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
         }
       },
     );
-  }
-
-  Future<void> _checkIn(EventModel event) async {
-    try {
-      await _controller.checkInRemote(event);
-      if (mounted) showEventSnack(context, 'Check-in confirmed');
-      await _loadDetail(event.id);
-    } catch (error) {
-      if (mounted) showEventSnack(context, error.toString());
-    }
   }
 
   void _startJoinMotion() {
@@ -840,24 +764,17 @@ class _DetailActionBar extends StatelessWidget {
     final isJoined = status == TicketStatus.upcoming;
     final statusLabel = switch (status) {
       TicketStatus.upcoming => 'Leave Event',
-      TicketStatus.attended => 'Share feedback',
-      TicketStatus.waitlisted => 'View Waitlist',
       TicketStatus.cancelled => 'Event Cancelled',
-      null =>
-        !event.registrationOpen && event.waitlistEnabled
-            ? 'Join Waitlist'
-            : 'Join Event',
+      null => event.registrationOpen ? 'Join Event' : 'Event Full',
     };
     final label = busy ? 'Joining…' : statusLabel;
     final icon = switch (status) {
       TicketStatus.upcoming => Icons.logout_rounded,
-      TicketStatus.attended => Icons.rate_review_rounded,
-      TicketStatus.waitlisted => Icons.hourglass_top_rounded,
       TicketStatus.cancelled => Icons.event_busy_rounded,
       null =>
-        !event.registrationOpen && event.waitlistEnabled
-            ? Icons.hourglass_top_rounded
-            : Icons.event_available_rounded,
+        event.registrationOpen
+            ? Icons.event_available_rounded
+            : Icons.event_busy_rounded,
     };
     return SafeArea(
       top: false,

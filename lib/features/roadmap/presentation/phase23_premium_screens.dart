@@ -377,7 +377,7 @@ class EventPlanningDashboardScreen extends StatelessWidget {
       spec: _ModuleSpec(
         title: 'Event Planning',
         subtitle:
-            'Upcoming, interested, joined, host event, AI suggestions, reminders, map, and chat.',
+            'Upcoming, interested, joined, AI suggestions, reminders, and map.',
         icon: Icons.event_available_rounded,
         heroMetric: '9',
         heroLabel: 'AI suggested events',

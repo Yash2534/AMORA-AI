@@ -63,7 +63,7 @@ void main() {
     expect(find.byKey(const ValueKey('profile-quick-facts')), findsOneWidget);
     expect(find.text('About me'), findsOneWidget);
     expect(find.text('Relationship intentions'), findsOneWidget);
-    expect(find.text('Lifestyle & personality'), findsOneWidget);
+    expect(find.text('Lifestyle'), findsOneWidget);
     expect(find.text('Interests'), findsOneWidget);
     expect(find.text('Profile prompts'), findsOneWidget);
     expect(find.text('Compatibility insight'), findsOneWidget);

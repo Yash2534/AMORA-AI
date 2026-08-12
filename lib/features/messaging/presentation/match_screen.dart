@@ -317,7 +317,7 @@ class _AiSummary extends StatelessWidget {
           const SizedBox(width: AmoraSpacing.space12),
           Expanded(
             child: Text(
-              'Because you both enjoy travel, meaningful conversations, family values, and long-term relationships.',
+              'Because you both enjoy meaningful conversations and long-term relationships.',
               style: AmoraTextStyles.bodyLarge.copyWith(
                 color: AppColors.surface,
               ),

@@ -34,10 +34,10 @@ class AmoraaProfilePreferenceDisplay extends StatelessWidget {
         }.where((value) => value.isNotEmpty).toList(),
       ),
     ].where((item) => item.values.isNotEmpty).toList(growable: false);
-    final loveLanguages =
-        profile.loveLanguages.isEmpty && profile.loveLanguage.trim().isNotEmpty
-        ? <String>[profile.loveLanguage.trim()]
-        : _ordered(profile.loveLanguages, ProfileFormOptions.loveLanguages);
+    final loveLanguages = _ordered(
+      profile.loveLanguages,
+      ProfileFormOptions.loveLanguages,
+    );
     final connection = <_PreferenceValue>[
       _PreferenceValue(
         Icons.auto_awesome_rounded,

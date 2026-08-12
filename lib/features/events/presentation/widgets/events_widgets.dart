@@ -744,15 +744,15 @@ class FeaturedEventCard extends StatelessWidget {
                       Row(
                         children: [
                           PremiumAvatar(
-                            imageUrl: event.host.photoAsset,
-                            fallbackAsset: event.host.photoAsset,
-                            initials: event.host.name.characters.first,
+                            imageUrl: event.organizer.photoAsset,
+                            fallbackAsset: event.organizer.photoAsset,
+                            initials: event.organizer.name.characters.first,
                             radius: 18,
                           ),
                           const SizedBox(width: 9),
                           Expanded(
                             child: Text(
-                              'Hosted by ${event.host.name}',
+                              'Organized by ${event.organizer.name}',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
@@ -887,8 +887,6 @@ class AmoraaRecommendedEventCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final statusLabel = switch (status) {
       TicketStatus.upcoming => 'Joined',
-      TicketStatus.attended => 'Attended',
-      TicketStatus.waitlisted => 'Waitlist',
       TicketStatus.cancelled => 'Cancelled',
       null => 'Open to join',
     };
@@ -1148,7 +1146,7 @@ class AmoraCircleCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 7),
                 Text(
-                  'Hosted by ${event.host.name} · ${event.intent}',
+                  'Organized by ${event.organizer.name} · ${event.intent}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -1629,8 +1627,6 @@ class EventJoinButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final (label, icon) = switch (status) {
       TicketStatus.upcoming => ('Joined', Icons.check_circle_rounded),
-      TicketStatus.attended => ('View memories', Icons.history_rounded),
-      TicketStatus.waitlisted => ('View waitlist', Icons.hourglass_top_rounded),
       TicketStatus.cancelled => ('Cancelled', Icons.event_busy_rounded),
       null => ('Join Event', Icons.add_rounded),
     };
@@ -1659,8 +1655,6 @@ class EventStatusBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final label = switch (status) {
       TicketStatus.upcoming => 'Joined',
-      TicketStatus.attended => 'Attended',
-      TicketStatus.waitlisted => 'Waitlist',
       TicketStatus.cancelled => 'Cancelled',
       null => 'Open to join',
     };
@@ -1688,10 +1682,10 @@ class EventStatusBadge extends StatelessWidget {
   }
 }
 
-class EventHostSection extends StatelessWidget {
-  const EventHostSection({super.key, required this.host});
+class EventOrganizerSection extends StatelessWidget {
+  const EventOrganizerSection({super.key, required this.organizer});
 
-  final EventHost host;
+  final EventOrganizer organizer;
 
   @override
   Widget build(BuildContext context) {
@@ -1705,9 +1699,9 @@ class EventHostSection extends StatelessWidget {
       child: Row(
         children: [
           PremiumAvatar(
-            imageUrl: host.photoAsset,
-            fallbackAsset: host.photoAsset,
-            initials: host.name.characters.first,
+            imageUrl: organizer.photoAsset,
+            fallbackAsset: organizer.photoAsset,
+            initials: organizer.name.characters.first,
             radius: 27,
           ),
           const SizedBox(width: 12),
@@ -1716,7 +1710,7 @@ class EventHostSection extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Hosted by',
+                  'Organized by',
                   style: TextStyle(
                     color: AppColors.text,
                     fontSize: 12,
@@ -1725,7 +1719,7 @@ class EventHostSection extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  host.name,
+                  organizer.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -1737,9 +1731,9 @@ class EventHostSection extends StatelessWidget {
               ],
             ),
           ),
-          if (host.rating > 0) ...[
+          if (organizer.rating > 0) ...[
             Text(
-              host.rating.toStringAsFixed(1),
+              organizer.rating.toStringAsFixed(1),
               style: const TextStyle(
                 color: AppColors.primary,
                 fontWeight: FontWeight.w700,

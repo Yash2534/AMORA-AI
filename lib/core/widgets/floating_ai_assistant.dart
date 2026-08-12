@@ -165,7 +165,7 @@ class FloatingAiAssistant extends StatelessWidget {
                           _AssistantAction(
                             width: tileWidth,
                             icon: Icons.self_improvement_rounded,
-                            label: 'Confidence Boost',
+                            label: 'Conversation Encouragement',
                             onTap: () => _openCoach(sheetContext, context),
                           ),
                         ],

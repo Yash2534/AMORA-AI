@@ -1,7 +1,7 @@
-const { Op, literal } = require('sequelize');
+const { literal } = require('sequelize');
 const { getModels } = require('../models');
 
-const ACTIVE_REGISTRATION_STATUSES = ['registered', 'promoted'];
+const ACTIVE_REGISTRATION_STATUSES = ['registered'];
 
 class EventServiceError extends Error {
   constructor(status, code, message) {
@@ -23,7 +23,6 @@ function ageFromBirthDate(value, now = new Date()) {
 }
 
 async function userMeetsEligibility(userId, event, options = {}) {
-  if (Number(event.hostId) === Number(userId)) return true;
   if (event.minAge == null && event.maxAge == null) return true;
   const { OnboardingProfile } = getModels();
   const profile = await OnboardingProfile.findOne({
@@ -41,7 +40,6 @@ function eligibilitySql(userId) {
   const id = Number(userId);
   return literal(`(
     (\`Event\`.\`minAge\` IS NULL AND \`Event\`.\`maxAge\` IS NULL)
-    OR \`Event\`.\`hostId\` = ${id}
     OR EXISTS (
       SELECT 1 FROM \`OnboardingProfiles\` eligibilityProfile
       WHERE eligibilityProfile.userId = ${id}
@@ -53,43 +51,31 @@ function eligibilitySql(userId) {
 }
 
 function participationIncludes(userId) {
-  const { EventRegistration, EventWaitlist, EventCheckIn, User } = getModels();
+  const { EventRegistration, User } = getModels();
   return [
-    { model: User, as: 'host', required: true, where: { accountStatus: 'active' }, attributes: ['id', 'name', 'identityVerifiedAt'] },
+    { model: User, as: 'organizer', required: true, where: { accountStatus: 'active' }, attributes: ['id', 'name', 'identityVerifiedAt'] },
     { model: EventRegistration, as: 'registrations', required: false, where: { userId }, attributes: ['status', 'registeredAt', 'cancelledAt'] },
-    { model: EventWaitlist, as: 'waitlist', required: false, where: { userId }, attributes: ['status', 'joinedAt', 'endedAt'] },
-    { model: EventCheckIn, as: 'checkIns', required: false, where: { userId }, attributes: ['checkedInAt'] },
   ];
 }
 
 function countAttributes() {
   return {
-    include: [
-      [literal(`(SELECT COUNT(*) FROM \`EventRegistrations\` capacityRegistration WHERE capacityRegistration.eventId = \`Event\`.\`id\` AND capacityRegistration.status IN ('registered','promoted'))`), 'registeredCount'],
-      [literal(`(SELECT COUNT(*) FROM \`EventWaitlist\` capacityWaitlist WHERE capacityWaitlist.eventId = \`Event\`.\`id\` AND capacityWaitlist.status = 'waiting')`), 'waitlistCount'],
-      [literal(`(SELECT COUNT(*) FROM \`EventCheckIns\` capacityCheckIn WHERE capacityCheckIn.eventId = \`Event\`.\`id\`)`), 'checkInCount'],
-    ],
+    include: [[literal(`(SELECT COUNT(*) FROM \`EventRegistrations\` capacityRegistration WHERE capacityRegistration.eventId = \`Event\`.\`id\` AND capacityRegistration.status = 'registered')`), 'registeredCount']],
   };
 }
 
 function participationFor(event) {
   const registration = event.registrations?.[0];
-  const waitlist = event.waitlist?.[0];
   return {
-    registered: Boolean(registration && ACTIVE_REGISTRATION_STATUSES.includes(registration.status)),
-    waitlisted: waitlist?.status === 'waiting',
-    checkedIn: Boolean(event.checkIns?.[0]),
+    registered: registration?.status === 'registered',
     registrationStatus: registration?.status || null,
-    waitlistStatus: waitlist?.status || null,
   };
 }
 
-function serializeEvent(event, options = {}) {
+function serializeEvent(event) {
   const plain = event.get({ plain: true });
   const registeredCount = Number(plain.registeredCount || 0);
-  const waitlistCount = Number(plain.waitlistCount || 0);
-  const participation = participationFor(plain);
-  const data = {
+  return {
     id: String(plain.id),
     title: plain.title,
     description: plain.description,
@@ -104,10 +90,7 @@ function serializeEvent(event, options = {}) {
     capacity: Number(plain.capacity),
     registeredCount,
     seatsLeft: Math.max(0, Number(plain.capacity) - registeredCount),
-    waitlistCapacity: Number(plain.waitlistCapacity),
-    waitlistCount,
     available: plain.status === 'published' && plain.registrationOpen && registeredCount < Number(plain.capacity),
-    waitlistAvailable: plain.waitlistEnabled && waitlistCount < Number(plain.waitlistCapacity),
     status: plain.status,
     heroImageUrl: plain.heroImageUrl,
     price: Number(plain.price || 0),
@@ -117,42 +100,9 @@ function serializeEvent(event, options = {}) {
     agenda: Array.isArray(plain.agenda) ? plain.agenda : [],
     facilities: Array.isArray(plain.facilities) ? plain.facilities : [],
     interests: Array.isArray(plain.interests) ? plain.interests : [],
-    host: plain.host ? { id: String(plain.host.id), name: plain.host.name, verified: Boolean(plain.host.identityVerifiedAt) } : null,
-    participation,
+    organizer: plain.organizer ? { id: String(plain.organizer.id), name: plain.organizer.name, verified: Boolean(plain.organizer.identityVerifiedAt) } : null,
+    participation: participationFor(plain),
   };
-  if (options.host) data.hostMetrics = { checkInCount: Number(plain.checkInCount || 0) };
-  return data;
-}
-
-async function visibleEvent(eventId, userId, options = {}) {
-  const { Event } = getModels();
-  const event = await Event.findOne({
-    where: {
-      id: eventId,
-      [Op.or]: [
-        { visibility: 'public', status: { [Op.in]: ['published', 'completed', 'cancelled'] } },
-        { hostId: userId },
-      ],
-      [Op.and]: [eligibilitySql(userId)],
-    },
-    transaction: options.transaction,
-    lock: options.lock,
-  });
-  return event;
-}
-
-async function eventGroupAccess(eventId, userId, options = {}) {
-  const { Event, EventRegistration, User } = getModels();
-  const user = await User.findOne({ where: { id: userId, accountStatus: 'active' }, transaction: options.transaction });
-  if (!user) return null;
-  const event = await Event.findByPk(eventId, { transaction: options.transaction });
-  if (!event) return null;
-  if (Number(event.hostId) === Number(userId)) return { event, role: 'host' };
-  const registration = await EventRegistration.findOne({
-    where: { eventId, userId, status: ACTIVE_REGISTRATION_STATUSES },
-    transaction: options.transaction,
-  });
-  return registration ? { event, role: 'attendee' } : null;
 }
 
 module.exports = {
@@ -160,10 +110,7 @@ module.exports = {
   EventServiceError,
   countAttributes,
   eligibilitySql,
-  eventGroupAccess,
-  participationFor,
   participationIncludes,
   serializeEvent,
   userMeetsEligibility,
-  visibleEvent,
 };

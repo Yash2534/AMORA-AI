@@ -1,9 +1,12 @@
 const { getModels } = require('../models');
 const { publicUrl } = require('../services/publicProfileService');
 
-const allowedDataFields = ['route', 'targetUserId', 'conversationId', 'eventId', 'imageUrl', 'initials'];
+const allowedDataFields = ['route', 'targetUserId', 'conversationId', 'eventId', 'roseTransactionId', 'imageUrl', 'initials'];
 
 function safeData(value) {
+  if (typeof value === 'string') {
+    try { return safeData(JSON.parse(value)); } catch (_) { return {}; }
+  }
   if (!value || Array.isArray(value) || typeof value !== 'object') return {};
   return Object.fromEntries(allowedDataFields
     .filter((key) => value[key] !== undefined && value[key] !== null)

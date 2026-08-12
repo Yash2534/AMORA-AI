@@ -162,8 +162,6 @@ UserProfile _profile() => const UserProfile(
   lifestyle: {'Height': '165', 'Languages': 'English', 'Religion': 'Hindu'},
   photos: [],
   primaryPhotoIndex: 0,
-  voicePrompt: null,
-  videoPrompt: null,
   iceBreaker:
       'Communication matters to me — disappearing during conflict is a dealbreaker.',
   communicationStyle: CommunicationStyle.deepConversations,

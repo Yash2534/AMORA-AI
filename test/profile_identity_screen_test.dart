@@ -272,7 +272,6 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final existingVoicePrompt = original.voicePrompt;
     expect(
       find.textContaining(RegExp('voice introduction', caseSensitive: false)),
       findsNothing,
@@ -288,10 +287,6 @@ void main() {
     expect(
       LocalProfileRepository.instance.profile.name,
       'Updated AMORAA Member',
-    );
-    expect(
-      LocalProfileRepository.instance.profile.voicePrompt,
-      existingVoicePrompt,
     );
     expect(find.text('Profile changes saved'), findsOneWidget);
   });

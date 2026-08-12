@@ -160,8 +160,6 @@ test('fresh account verifies, completes a persisted profile, reloads it, and log
       prompts: { 'A perfect day': 'Coffee and a walk.' },
       lifestyle: { Exercise: 'Often' },
       communicationStyle: 'calls',
-      voicePromptUrl: null,
-      videoPromptUrl: null,
     }],
   ];
   for (const [pathname, body] of steps) {

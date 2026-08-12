@@ -1553,7 +1553,7 @@ class _LegacyProfilePersonalityCard extends StatelessWidget {
       return const _ProfileEmptyCard(
         icon: Icons.psychology_alt_rounded,
         title: 'Keep this private or add a little more',
-        description: 'Only the personality details you choose are shown here.',
+        description: 'Only the profile details you choose are shown here.',
       );
     }
     final icons = <String, IconData>{

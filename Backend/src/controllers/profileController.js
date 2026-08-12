@@ -34,8 +34,6 @@ function ownProfileJson(req, user, profile) {
     lifestyle: profile.lifestyle || {},
     photos: photos.map(publicUrl),
     primaryPhotoIndex: photos.length ? Math.min(Number(profile.primaryPhotoIndex || 0), photos.length - 1) : 0,
-    voicePrompt: publicUrl(profile.voicePromptUrl),
-    videoPrompt: publicUrl(profile.videoPromptUrl),
     hometown: profile.hometown || '',
     valuedQualities: list(profile.valuedQualities),
     pronouns: list(profile.pronouns),

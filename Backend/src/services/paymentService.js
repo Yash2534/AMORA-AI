@@ -2,7 +2,6 @@ const crypto = require('crypto');
 const { getModels } = require('../models');
 const { getPaymentProvider } = require('./razorpayProvider');
 const { activateSubscription, subscriptionJson, currentSubscription } = require('./entitlementService');
-const { postWalletTransaction, reverseWalletCredit } = require('./walletService');
 
 function publicError(message, code, status = 400) { const error = new Error(message); error.code = code; error.status = status; return error; }
 function idempotencyKey(req) {
@@ -12,18 +11,10 @@ function idempotencyKey(req) {
 }
 
 async function productFor(type, referenceId, transaction) {
-  const { SubscriptionPlan, WalletProduct, BoostProduct } = getModels();
-  let product;
-  if (type === 'subscription') {
-    product = await SubscriptionPlan.findOne({ where: { id: referenceId, active: true }, transaction });
-    if (product) return { product, amountMinor: Number(product.priceMinor), currency: product.currency, planId: product.id };
-  } else if (type === 'wallet_top_up') {
-    product = await WalletProduct.findOne({ where: { id: referenceId, type: 'top_up', active: true }, transaction });
-    if (product) return { product, amountMinor: Number(product.priceMinor), currency: product.currency, planId: null };
-  } else if (type === 'boost') {
-    product = await BoostProduct.findOne({ where: { id: referenceId, active: true }, transaction });
-    if (product) return { product, amountMinor: Number(product.priceMinor), currency: product.currency, planId: null };
-  }
+  const { SubscriptionPlan } = getModels();
+  if (type !== 'subscription') throw publicError('Only subscription payments are supported.', 'PRODUCT_NOT_AVAILABLE', 404);
+  const product = await SubscriptionPlan.findOne({ where: { id: referenceId, active: true }, transaction });
+  if (product) return { product, amountMinor: Number(product.priceMinor), currency: product.currency, planId: product.id };
   throw publicError('The selected product is not available.', 'PRODUCT_NOT_AVAILABLE', 404);
 }
 
@@ -51,24 +42,14 @@ function orderJson(payment, providerKey) {
 }
 
 async function fulfillPayment(payment, providerPayment, transaction) {
-  const { Payment, WalletProduct, BoostProduct, BoostEntitlement } = getModels();
+  const { Payment } = getModels();
   const locked = await Payment.findByPk(payment.id, { transaction, lock: transaction.LOCK.UPDATE });
   if (locked.status === 'paid') return locked;
   if (String(providerPayment.order_id) !== String(locked.providerOrderId) || String(providerPayment.id) === '') throw publicError('Provider payment does not match this order.', 'PAYMENT_MISMATCH');
   if (Number(providerPayment.amount) !== Number(locked.amountMinor) || String(providerPayment.currency).toUpperCase() !== locked.currency.toUpperCase()) throw publicError('Provider amount or currency does not match the order.', 'PAYMENT_MISMATCH');
   if (providerPayment.status !== 'captured') throw publicError('Payment has not been captured by the provider.', 'PAYMENT_NOT_CAPTURED', 409);
   await locked.update({ providerPaymentId: providerPayment.id, status: 'paid', verifiedAt: new Date(), failureCode: null, failureMessage: null }, { transaction });
-  if (locked.productType === 'subscription') {
-    await activateSubscription(locked, transaction);
-  } else if (locked.productType === 'wallet_top_up') {
-    const product = await WalletProduct.findByPk(locked.productReferenceId, { transaction });
-    if (!product || product.type !== 'top_up') throw new Error('Wallet top-up product is unavailable during fulfilment.');
-    await postWalletTransaction({ userId: locked.userId, direction: 'credit', amount: Number(product.credits), type: 'top_up', referenceType: 'payment', referenceId: locked.id, idempotencyKey: `payment:${locked.id}`, description: product.name }, transaction);
-  } else if (locked.productType === 'boost') {
-    const product = await BoostProduct.findByPk(locked.productReferenceId, { transaction });
-    if (!product) throw new Error('Boost product is unavailable during fulfilment.');
-    await BoostEntitlement.findOrCreate({ where: { userId: locked.userId, idempotencyKey: `payment:${locked.id}` }, defaults: { userId: locked.userId, productId: product.id, paymentId: locked.id, source: 'payment', quantity: product.quantity, remainingQuantity: product.quantity, durationMinutes: product.durationMinutes, status: 'active', idempotencyKey: `payment:${locked.id}` }, transaction });
-  }
+  await activateSubscription(locked, transaction);
   return locked;
 }
 
@@ -99,7 +80,7 @@ async function processWebhook({ rawBody, signature, eventId }) {
   if (!provider.verifyWebhookSignature(rawBody, signature)) throw publicError('Webhook signature is invalid.', 'WEBHOOK_SIGNATURE_INVALID', 400);
   let body; try { body = JSON.parse(rawBody.toString('utf8')); } catch (_) { throw publicError('Webhook body is invalid.', 'WEBHOOK_INVALID'); }
   const stableEventId = String(eventId || body.id || crypto.createHash('sha256').update(rawBody).digest('hex'));
-  const { Payment, PaymentEvent, Subscription, WalletProduct, BoostEntitlement, Boost } = getModels();
+  const { Payment, PaymentEvent, Subscription } = getModels();
   const duplicate = await PaymentEvent.findOne({ where: { provider: provider.name, providerEventId: stableEventId } });
   if (duplicate) return { duplicate: true, status: duplicate.status };
   const entities = webhookEntities(body); const orderId = entities.payment?.order_id;
@@ -119,15 +100,7 @@ async function processWebhook({ rawBody, signature, eventId }) {
     } else if (payment && ['refund.processed', 'dispute.created'].includes(event)) {
       const reversed = event === 'refund.processed' ? 'refunded' : 'chargeback';
       await Payment.update({ status: reversed }, { where: { id: payment.id }, transaction });
-      if (payment.productType === 'subscription') {
-        await Subscription.update({ status: 'cancelled', autoRenew: false, cancelAtPeriodEnd: false, currentPeriodEnd: new Date(), endedAt: new Date() }, { where: { userId: payment.userId }, transaction });
-      } else if (payment.productType === 'wallet_top_up') {
-        const product = await WalletProduct.findByPk(payment.productReferenceId, { transaction });
-        if (product) await reverseWalletCredit({ userId: payment.userId, amount: Number(product.credits), referenceId: payment.id, idempotencyKey: `reversal:${payment.id}`, description: `Provider reversal: ${product.name}` }, transaction);
-      } else if (payment.productType === 'boost') {
-        await BoostEntitlement.update({ status: 'revoked', remainingQuantity: 0 }, { where: { paymentId: payment.id }, transaction });
-        await Boost.update({ active: false }, { where: { userId: payment.userId, boostEntitlementId: { [require('sequelize').Op.in]: (await BoostEntitlement.findAll({ where: { paymentId: payment.id }, attributes: ['id'], transaction })).map((row) => row.id) } }, transaction });
-      }
+      await Subscription.update({ status: 'cancelled', autoRenew: false, cancelAtPeriodEnd: false, currentPeriodEnd: new Date(), endedAt: new Date() }, { where: { userId: payment.userId }, transaction });
       await record.update({ status: 'processed', processedAt: new Date() }, { transaction });
     } else await record.update({ status: 'ignored', processedAt: new Date() }, { transaction });
   });

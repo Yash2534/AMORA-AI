@@ -28,10 +28,28 @@ class _SuccessfulDiscoverApi extends DiscoverApiService {
   ) async => DiscoverApiResult.success(filters, statusCode: 200);
 }
 
+class _SinglePreferenceDiscoverApi extends DiscoverApiService {
+  @override
+  Future<DiscoverApiResult<Map<String, dynamic>>> getFilters() async =>
+      const DiscoverApiResult.success(<String, dynamic>{
+        'minAge': 18,
+        'maxAge': 45,
+        'maxDistanceKm': 80,
+        'minScore': 0,
+        'verifiedOnly': true,
+      }, statusCode: 200);
+
+  @override
+  Future<DiscoverApiResult<Map<String, dynamic>>> updateFilters(
+    Map<String, dynamic> filters,
+  ) async => DiscoverApiResult.success(filters, statusCode: 200);
+}
+
 void main() {
   Future<void> pumpFilters(
     WidgetTester tester, {
     Size size = const Size(320, 700),
+    DiscoverApiService? apiService,
   }) async {
     await tester.binding.setSurfaceSize(size);
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -40,7 +58,7 @@ void main() {
         theme: AmoraTheme.light(),
         home: AdvancedFiltersScreen(
           key: UniqueKey(),
-          apiService: _SuccessfulDiscoverApi(),
+          apiService: apiService ?? _SuccessfulDiscoverApi(),
         ),
         routes: {
           '/browse': (_) =>
@@ -116,6 +134,45 @@ void main() {
     expect(find.byKey(const ValueKey('filters-bottom-reset')), findsOneWidget);
     expect(find.byKey(const ValueKey('filters-apply-button')), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('preference summary keeps premium alignment at mobile widths', (
+    tester,
+  ) async {
+    for (final width in <double>[320, 390]) {
+      await pumpFilters(
+        tester,
+        size: Size(width, 760),
+        apiService: _SinglePreferenceDiscoverApi(),
+      );
+
+      final card = tester.getRect(
+        find.byKey(const ValueKey('filters-preference-summary')),
+      );
+      final icon = tester.getRect(
+        find.byKey(const ValueKey('filters-preference-summary-icon')),
+      );
+      final title = tester.getRect(
+        find.byKey(const ValueKey('filters-preference-summary-title-1')),
+      );
+      final description = tester.getRect(
+        find.byKey(const ValueKey('filters-preference-summary-description')),
+      );
+      final chip = tester.getRect(
+        find.byKey(const ValueKey('selected-preference-Verified only')),
+      );
+
+      expect(find.text('1 preference selected'), findsOneWidget);
+      expect(icon.size, const Size.square(32));
+      expect(title.left - icon.right, closeTo(10, .01));
+      expect(title.center.dy, closeTo(icon.center.dy, 1));
+      expect(icon.left - card.left, closeTo(17, .01));
+      expect(card.right - title.right, greaterThanOrEqualTo(16));
+      expect(description.top - icon.bottom, closeTo(8, .01));
+      expect(chip.top - description.bottom, closeTo(12, .01));
+      expect(card.bottom - chip.bottom, closeTo(17, .01));
+      expect(tester.takeException(), isNull);
+    }
   });
 
   testWidgets('filter search reveals and highlights matching section', (

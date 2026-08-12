@@ -1,5 +1,27 @@
 const { getModels } = require('../models');
 
+function jsonArray(value) {
+  if (Array.isArray(value)) return value;
+  if (typeof value !== 'string') return [];
+  try {
+    const decoded = JSON.parse(value);
+    return Array.isArray(decoded) ? decoded : [];
+  } catch (_) {
+    return [];
+  }
+}
+
+function jsonObject(value) {
+  if (value && typeof value === 'object' && !Array.isArray(value)) return value;
+  if (typeof value !== 'string') return {};
+  try {
+    const decoded = JSON.parse(value);
+    return decoded && typeof decoded === 'object' && !Array.isArray(decoded) ? decoded : {};
+  } catch (_) {
+    return {};
+  }
+}
+
 function addPeriod(start, unit, interval) {
   const value = new Date(start);
   if (unit === 'day') value.setUTCDate(value.getUTCDate() + interval);
@@ -11,14 +33,15 @@ function addPeriod(start, unit, interval) {
 
 function planJson(plan) {
   if (!plan) return null;
-  return { id: plan.id, name: plan.name, displayName: plan.displayName, description: plan.description, priceMinor: Number(plan.priceMinor), price: Number(plan.priceMinor) / 100, currency: plan.currency, billingPeriod: plan.billingPeriod, billingInterval: Number(plan.billingInterval), features: plan.features || [], entitlements: plan.entitlements || {}, trialDays: Number(plan.trialDays || 0), offerText: plan.offerText, active: Boolean(plan.active), sortOrder: Number(plan.sortOrder || 0) };
+  const priceMinor = Number(plan.priceMinor);
+  return { id: plan.id, name: plan.name, displayName: plan.displayName, description: plan.description, priceMinor, price: priceMinor / 100, currency: plan.currency, billingPeriod: plan.billingPeriod, billingInterval: Number(plan.billingInterval), features: jsonArray(plan.features), entitlements: jsonObject(plan.entitlements), trialDays: Number(plan.trialDays || 0), offerText: plan.offerText, active: Boolean(plan.active), sortOrder: Number(plan.sortOrder || 0) };
 }
 
 function subscriptionJson(subscription) {
-  if (!subscription) return { status: 'none', plan: null, startedAt: null, currentPeriodStart: null, currentPeriodEnd: null, renewalDate: null, autoRenew: false, cancelAtPeriodEnd: false, entitlements: {} };
+  if (!subscription) return { id: null, planId: null, status: 'none', plan: null, startedAt: null, currentPeriodStart: null, currentPeriodEnd: null, renewalDate: null, autoRenew: false, cancelAtPeriodEnd: false, cancelledAt: null, endedAt: null, entitlements: {}, premium: false };
   const plan = subscription.plan || subscription.SubscriptionPlan;
   const accessActive = ['active', 'trialing', 'cancelled'].includes(subscription.status) && new Date(subscription.currentPeriodEnd) > new Date();
-  return { id: String(subscription.id), status: subscription.status, plan: planJson(plan), startedAt: subscription.startedAt, currentPeriodStart: subscription.currentPeriodStart, currentPeriodEnd: subscription.currentPeriodEnd, renewalDate: subscription.autoRenew && !subscription.cancelAtPeriodEnd ? subscription.currentPeriodEnd : null, autoRenew: Boolean(subscription.autoRenew), cancelAtPeriodEnd: Boolean(subscription.cancelAtPeriodEnd), cancelledAt: subscription.cancelledAt, entitlements: accessActive ? (plan?.entitlements || {}) : {}, premium: accessActive };
+  return { id: String(subscription.id), planId: subscription.planId, status: subscription.status, plan: planJson(plan), startedAt: subscription.startedAt, currentPeriodStart: subscription.currentPeriodStart, currentPeriodEnd: subscription.currentPeriodEnd, renewalDate: subscription.autoRenew && !subscription.cancelAtPeriodEnd ? subscription.currentPeriodEnd : null, autoRenew: Boolean(subscription.autoRenew), cancelAtPeriodEnd: Boolean(subscription.cancelAtPeriodEnd), cancelledAt: subscription.cancelledAt, endedAt: subscription.endedAt, entitlements: accessActive ? jsonObject(plan?.entitlements) : {}, premium: accessActive };
 }
 
 async function currentSubscription(userId, options = {}) {

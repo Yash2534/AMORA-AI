@@ -1,4 +1,3 @@
-import 'package:amora_ai/core/media/amora_media_picker.dart';
 import 'package:amora_ai/features/events/data/event_repository.dart';
 import 'package:amora_ai/features/events/domain/event_models.dart';
 
@@ -63,13 +62,6 @@ class FixtureEventRepository extends EventRepository {
   @override
   Future<TicketStatus?> cancelRegistration(String eventId) async =>
       TicketStatus.cancelled;
-  @override
-  Future<TicketStatus?> joinWaitlist(String eventId) async =>
-      TicketStatus.waitlisted;
-  @override
-  Future<TicketStatus?> leaveWaitlist(String eventId) async => null;
-  @override
-  Future<TicketStatus?> checkIn(String eventId) async => TicketStatus.attended;
 }
 
 class _UnusedRemote implements EventRemoteDataSource {
@@ -79,11 +71,4 @@ class _UnusedRemote implements EventRemoteDataSource {
     String path, {
     Map<String, dynamic>? body,
   }) => throw UnimplementedError();
-
-  @override
-  Future<Map<String, dynamic>> uploadFeedback(
-    String path,
-    AmoraPickedMedia media,
-    Map<String, String> fields,
-  ) => throw UnimplementedError();
 }

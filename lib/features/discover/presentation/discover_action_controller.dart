@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:amora_ai/features/discover/data/discover_api_service.dart';
 
-enum DiscoverAction { pass, like, superLike, rewind, boost }
+enum DiscoverAction { pass, like, superLike, rewind }
 
 class DiscoverHistoryEntry {
   const DiscoverHistoryEntry({
@@ -38,29 +38,21 @@ class DiscoverActionController extends ChangeNotifier {
   final Set<String> superLikedProfileIds = {};
 
   bool _isTransitioning = false;
-  bool _boostInFlight = false;
-  bool _boostRequested = false;
   DiscoverAction? _activeAction;
   String? _matchedProfileId;
   String? _lastError;
   String? _matchId;
   Map<String, dynamic>? _matchedProfile;
-  String? _boostIdempotencyKey;
-  Map<String, dynamic>? _boostState;
 
   bool get isTransitioning => _isTransitioning;
-  bool get boostInFlight => _boostInFlight;
   bool get isEmpty => _deck.isEmpty;
   bool get canRewind => _history.isNotEmpty && !_isTransitioning;
-  bool get boostRequested => _boostRequested;
   DiscoverAction? get activeAction => _activeAction;
   String? get currentProfileId => _deck.firstOrNull;
   String? get matchedProfileId => _matchedProfileId;
   String? get matchId => _matchId;
   Map<String, dynamic>? get matchedProfile => _matchedProfile;
   String? get lastError => _lastError;
-  String? get boostIdempotencyKey => _boostIdempotencyKey;
-  Map<String, dynamic>? get boostState => _boostState;
   List<String> get remainingProfileIds => List.unmodifiable(_deck);
   List<DiscoverHistoryEntry> get history => List.unmodifiable(_history);
 
@@ -112,39 +104,6 @@ class DiscoverActionController extends ChangeNotifier {
     _isTransitioning = false;
     notifyListeners();
     return true;
-  }
-
-  Future<bool> boostProfile() async {
-    if (_isTransitioning || _boostInFlight || _boostRequested) return false;
-    _boostInFlight = true;
-    _activeAction = DiscoverAction.boost;
-    _lastError = null;
-    notifyListeners();
-    _boostIdempotencyKey ??= _apiService.newIdempotencyKey('boost-activation');
-    final result = await _apiService.boost(_boostIdempotencyKey!);
-    _boostInFlight = false;
-    if (!result.success) {
-      _activeAction = null;
-      _lastError = result.message;
-      if (!isRetryableDiscoverFailure(result.statusCode)) {
-        _boostIdempotencyKey = null;
-      }
-      notifyListeners();
-      return false;
-    }
-    _boostState = result.data;
-    _boostIdempotencyKey = null;
-    _boostRequested = true;
-    _lastError = null;
-    notifyListeners();
-    return true;
-  }
-
-  void consumeBoostRequest() {
-    if (!_boostRequested) return;
-    _boostRequested = false;
-    _activeAction = null;
-    notifyListeners();
   }
 
   void consumeMatch() {
@@ -199,7 +158,6 @@ class DiscoverActionController extends ChangeNotifier {
         superLikedProfileIds.add(profileId);
         break;
       case DiscoverAction.rewind:
-      case DiscoverAction.boost:
         break;
     }
     _activeAction = null;

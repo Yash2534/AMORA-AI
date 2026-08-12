@@ -72,13 +72,11 @@ void main() {
     );
   }
 
-  testWidgets('deactivation is reversible and never fakes service success', (
-    tester,
-  ) async {
+  testWidgets('deactivation clearly describes account hiding', (tester) async {
     await pumpAction(tester, const DeactivateAccountScreen());
 
     expect(find.text('Deactivate your account?'), findsOneWidget);
-    expect(find.textContaining('reactivate it later'), findsOneWidget);
+    expect(find.textContaining('hidden'), findsWidgets);
     expect(find.text('Keep My Account'), findsOneWidget);
 
     await tester.tap(

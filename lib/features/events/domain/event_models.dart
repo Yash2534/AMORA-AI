@@ -12,7 +12,7 @@ class EventModel {
     required this.seatsLeft,
     required this.compatibility,
     required this.image,
-    required this.host,
+    required this.organizer,
     required this.venue,
     required this.distance,
     required this.dressCode,
@@ -27,13 +27,8 @@ class EventModel {
     this.description = '',
     this.capacity = 0,
     this.registeredCount = 0,
-    this.waitlistCount = 0,
-    this.waitlistCapacity = 0,
     this.eventStatus = 'published',
     this.registrationOpen = true,
-    this.waitlistEnabled = false,
-    this.checkedIn = false,
-    this.checkInCount = 0,
     this.attendees = const <EventAttendee>[],
     this.participationStatus,
   });
@@ -48,7 +43,7 @@ class EventModel {
   final int seatsLeft;
   final int compatibility;
   final EventVisual image;
-  final EventHost host;
+  final EventOrganizer organizer;
   final String venue;
   final String distance;
   final String dressCode;
@@ -63,13 +58,8 @@ class EventModel {
   final String description;
   final int capacity;
   final int registeredCount;
-  final int waitlistCount;
-  final int waitlistCapacity;
   final String eventStatus;
   final bool registrationOpen;
-  final bool waitlistEnabled;
-  final bool checkedIn;
-  final int checkInCount;
   final List<EventAttendee> attendees;
   final TicketStatus? participationStatus;
 
@@ -95,8 +85,8 @@ class EventVisual {
   final String assetPath;
 }
 
-class EventHost {
-  const EventHost({
+class EventOrganizer {
+  const EventOrganizer({
     required this.name,
     required this.photoAsset,
     required this.rating,
@@ -123,18 +113,6 @@ class EventAttendee {
   final bool verified;
 }
 
-class EventReview {
-  const EventReview({
-    required this.name,
-    required this.rating,
-    required this.comment,
-  });
-
-  final String name;
-  final double rating;
-  final String comment;
-}
-
 class UserEventRegistration {
   const UserEventRegistration({
     required this.event,
@@ -149,24 +127,4 @@ class UserEventRegistration {
   final DateTime? cancelledAt;
 }
 
-class EventGroupMessage {
-  const EventGroupMessage({
-    required this.id,
-    required this.eventId,
-    required this.senderId,
-    required this.senderName,
-    required this.text,
-    required this.createdAt,
-    this.verified = false,
-  });
-
-  final String id;
-  final String eventId;
-  final String senderId;
-  final String senderName;
-  final String text;
-  final DateTime createdAt;
-  final bool verified;
-}
-
-enum TicketStatus { upcoming, attended, waitlisted, cancelled }
+enum TicketStatus { upcoming, cancelled }

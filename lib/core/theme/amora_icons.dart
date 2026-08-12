@@ -59,9 +59,6 @@ class AmoraIcons {
   static const IconData policy = Icons.policy_rounded;
   static const IconData star = Icons.star_rounded;
   static const IconData share = Icons.share_rounded;
-  static const IconData gift = Icons.redeem_rounded;
-  static const IconData wallet = Icons.account_balance_wallet_rounded;
-  static const IconData boost = Icons.rocket_launch_rounded;
   static const IconData logout = Icons.logout_rounded;
   static const IconData settings = Icons.settings_rounded;
   static const IconData language = Icons.language_rounded;

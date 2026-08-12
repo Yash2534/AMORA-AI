@@ -209,7 +209,7 @@ test('validation rejects invalid values, underage dates, and mass assignment', a
     assert.equal(response.status, 400, JSON.stringify(response.body));
   }
   await owner.reload();
-  assert.equal(owner.role, 'user');
+  assert.equal('role' in owner.get({ plain: true }), false);
   assert.equal(owner.isVerified, true);
 });
 

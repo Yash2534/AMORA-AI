@@ -206,18 +206,12 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
                 }
                 break;
               case 'Music Lovers':
-                if (!_containsAny(<String>[
-                  profile.musicTaste,
-                  ...profile.interests,
-                ], 'music')) {
+                if (!_containsAny(profile.interests, 'music')) {
                   return false;
                 }
                 break;
               case 'Travel':
-                if (!_containsAny(<String>[
-                  profile.travelPreference,
-                  ...profile.interests,
-                ], 'travel')) {
+                if (!_containsAny(profile.interests, 'travel')) {
                   return false;
                 }
                 break;
@@ -227,10 +221,7 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
                 }
                 break;
               case 'Coffee Dates':
-                if (!_containsAny(<String>[
-                  profile.coffeePreference,
-                  ...profile.interests,
-                ], 'coffee')) {
+                if (!_containsAny(profile.interests, 'coffee')) {
                   return false;
                 }
                 break;

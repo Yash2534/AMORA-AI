@@ -16,8 +16,8 @@ import 'package:amora_ai/features/profile/domain/profile_form_options.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
 import 'package:amora_ai/features/profile/data/public_profile_mapper.dart';
 import 'package:amora_ai/features/profile/presentation/controllers/profile_relationship_controller.dart';
-import 'package:amora_ai/features/profile/presentation/widgets/amoraa_rose_gift_sheet.dart';
-import 'package:amora_ai/features/monetization/data/monetization_repository.dart';
+import 'package:amora_ai/features/profile/presentation/widgets/amoraa_rose_sheet.dart';
+import 'package:amora_ai/features/rose/data/rose_repository.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_public_profile_view.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_public_profile_details.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_preference_display.dart';
@@ -60,7 +60,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
 
   int _photoIndex = 0;
   bool _superLikeSending = false;
-  bool _giftSheetOpen = false;
+  bool _roseSheetOpen = false;
   DummyProfile? _routeProfile;
   bool _argumentsRead = false;
   PublicRelationshipState _serverRelationship = const PublicRelationshipState();
@@ -266,8 +266,8 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
                   liked: _liked,
                   superLiked: _superLiked,
                   superLikeSending: _superLikeSending,
-                  giftSending: _giftSheetOpen,
-                  onGift: _showRoseGift,
+                  roseSending: _roseSheetOpen,
+                  onRose: _showRose,
                   onLike: _toggleLike,
                   onSuperLike: _sendSuperLike,
                   onMessage: _startChat,
@@ -426,10 +426,10 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
     );
   }
 
-  Future<void> _showRoseGift() async {
-    if (_giftSheetOpen) return;
+  Future<void> _showRose() async {
+    if (_roseSheetOpen) return;
     if (AmoraSession.isGuest) {
-      await _requireAuth(_showRoseGift);
+      await _requireAuth(_showRose);
       return;
     }
     final repository = ChatRepository.instance;
@@ -445,42 +445,34 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
       }
     }
     if (!mounted) return;
-    final giftKey = MonetizationRepository.instance.newIdempotencyKey(
-      'rose-gift',
-    );
-    setState(() => _giftSheetOpen = true);
-    final sent = await showAmoraaRoseGiftSheet(
+    final roseKey = RoseRepository.instance.newIdempotencyKey();
+    setState(() => _roseSheetOpen = true);
+    final sent = await showAmoraaRoseSheet(
       context: context,
       recipientName: _profile.name,
       onSend: (note) async {
-        try {
-          await MonetizationRepository.instance.sendGift(
-            recipientId: _profile.id,
-            giftId: 'rose_ritual',
-            idempotencyKey: giftKey,
-            conversationId: conversationId,
-            note: note,
-          );
-          if (conversationId != null) {
-            try {
-              await repository.sendMessage(
-                conversationId,
-                note.isEmpty ? 'Rose' : note,
-                context: const ChatMessageContext.rose(),
-              );
-            } catch (_) {
-              // The server-confirmed Rose remains successful even if the
-              // optional conversation card cannot be created.
-            }
+        await RoseRepository.instance.send(
+          recipientId: _profile.id,
+          idempotencyKey: roseKey,
+          conversationId: conversationId,
+          note: note,
+        );
+        if (conversationId != null) {
+          try {
+            await repository.sendMessage(
+              conversationId,
+              note.isEmpty ? 'Rose' : note,
+              context: const ChatMessageContext.rose(),
+            );
+          } catch (_) {
+            // The server-confirmed Rose remains successful even if the
+            // optional conversation card cannot be created.
           }
-          return true;
-        } catch (_) {
-          return false;
         }
       },
     );
     if (!mounted) return;
-    setState(() => _giftSheetOpen = false);
+    setState(() => _roseSheetOpen = false);
     if (!sent) return;
     if (conversationId == null) {
       _snack('Rose sent to ${_profile.name}');
@@ -1107,22 +1099,12 @@ class ProfileStory extends StatelessWidget {
       profile.drinking,
       profile.weed,
     ].any((value) => value.trim().isNotEmpty);
-    final hasRelationship = <String>[
-      profile.intent,
-      profile.familyValues,
-      ...profile.dateIdeas,
-    ].any((value) => value.trim().isNotEmpty);
+    final hasRelationship = profile.intent.trim().isNotEmpty;
     final hasLifestyle = <String>[
-      profile.fitnessLevel,
-      profile.foodPreference,
       profile.smoking,
       profile.drinking,
       profile.weed,
-      profile.petPreference,
       profile.religion,
-      profile.personality,
-      profile.loveLanguage,
-      profile.weekendPlan,
     ].any((value) => value.trim().isNotEmpty);
     final hasInterests = ProfileInterestPolicy.visible(
       profile.interests,
@@ -1420,13 +1402,6 @@ class RelationshipIntentionsSection extends StatelessWidget {
         'Dating intention',
         profile.intent,
       ),
-      _SymbolicFact(Icons.home_outlined, 'Family values', profile.familyValues),
-      if (profile.dateIdeas.isNotEmpty)
-        _SymbolicFact(
-          Icons.coffee_rounded,
-          'Meaningful dates',
-          profile.dateIdeas.first,
-        ),
     ].where((item) => item.value.trim().isNotEmpty).toList(growable: false);
     if (intentions.isEmpty) return const SizedBox.shrink();
     return _SectionSurface(
@@ -1459,35 +1434,17 @@ class LifestyleGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     final items = <_SymbolicFact>[
       _SymbolicFact(
-        Icons.directions_run_rounded,
-        'Activity',
-        profile.fitnessLevel,
-      ),
-      _SymbolicFact(Icons.restaurant_rounded, 'Food', profile.foodPreference),
-      _SymbolicFact(
         ProfileAttributeIcons.smoking(profile.smoking),
         'Smoking',
         profile.smoking,
       ),
       _SymbolicFact(Icons.local_bar_outlined, 'Drinking', profile.drinking),
       _SymbolicFact(Icons.grass_rounded, 'Weed', profile.weed),
-      _SymbolicFact(Icons.pets_rounded, 'Pets', profile.petPreference),
       _SymbolicFact(
         Icons.self_improvement_rounded,
         'Beliefs',
         profile.religion,
       ),
-      _SymbolicFact(
-        Icons.psychology_alt_rounded,
-        'Personality',
-        profile.personality,
-      ),
-      _SymbolicFact(
-        Icons.favorite_outline_rounded,
-        'Love language',
-        profile.loveLanguage,
-      ),
-      _SymbolicFact(Icons.weekend_outlined, 'Weekend', profile.weekendPlan),
     ].where((item) => item.value.trim().isNotEmpty).toList(growable: false);
     if (items.isEmpty) return const SizedBox.shrink();
     return Column(
@@ -1495,7 +1452,7 @@ class LifestyleGrid extends StatelessWidget {
       children: [
         const _SectionTitle(
           icon: Icons.dashboard_customize_outlined,
-          title: 'Lifestyle & personality',
+          title: 'Lifestyle',
         ),
         const SizedBox(height: AmoraSpacing.space16),
         LayoutBuilder(
@@ -1786,7 +1743,7 @@ class CompatibilitySection extends StatelessWidget {
     if (profile.score <= 0) return const SizedBox.shrink();
     final signals = <String>{
       profile.intent,
-      profile.loveLanguage,
+      ...profile.loveLanguages,
       ...ProfileInterestPolicy.visible(profile.interests).take(3),
     }.where((value) => value.trim().isNotEmpty).toList(growable: false);
     return _SectionSurface(
@@ -2042,8 +1999,8 @@ class ProfileActionBar extends StatelessWidget {
     required this.liked,
     required this.superLiked,
     required this.superLikeSending,
-    required this.giftSending,
-    required this.onGift,
+    required this.roseSending,
+    required this.onRose,
     required this.onLike,
     required this.onSuperLike,
     required this.onMessage,
@@ -2056,8 +2013,8 @@ class ProfileActionBar extends StatelessWidget {
   final String? profileName;
   final bool superLiked;
   final bool superLikeSending;
-  final bool giftSending;
-  final VoidCallback onGift;
+  final bool roseSending;
+  final VoidCallback onRose;
   final VoidCallback onLike;
   final VoidCallback onSuperLike;
   final VoidCallback onMessage;
@@ -2087,12 +2044,12 @@ class ProfileActionBar extends StatelessWidget {
             children: [
               Expanded(
                 child: _ProfileActionButton(
-                  key: const ValueKey('profile-gift-button'),
-                  label: 'Gift',
+                  key: const ValueKey('profile-rose-button'),
+                  label: 'Rose',
                   semanticLabel: 'Send a Rose',
                   icon: Icons.local_florist_rounded,
-                  loading: giftSending,
-                  onTap: onGift,
+                  loading: roseSending,
+                  onTap: onRose,
                 ),
               ),
               Expanded(

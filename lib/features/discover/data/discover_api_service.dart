@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:developer' as developer;
-import 'dart:math';
 
 import 'package:amora_ai/core/config/amora_api_config.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -86,9 +85,6 @@ class DiscoverApiService {
   final http.Client _client;
   final DiscoverAccessTokenProvider _accessTokenProvider;
 
-  String newIdempotencyKey(String operation) =>
-      'flutter:$operation:${DateTime.now().microsecondsSinceEpoch}:${Random.secure().nextInt(1 << 32)}';
-
   Future<DiscoverApiResult<DiscoverFeedPage>> getFeed({
     required int page,
     int limit = 10,
@@ -159,14 +155,6 @@ class DiscoverApiService {
 
   Future<DiscoverApiResult<Map<String, dynamic>>> rewind() =>
       _request('POST', '/api/discover/rewind');
-  Future<DiscoverApiResult<Map<String, dynamic>>> boost(
-    String idempotencyKey,
-  ) => _request(
-    'POST',
-    '/api/discover/boost',
-    headers: {'Idempotency-Key': idempotencyKey},
-  );
-
   Future<DiscoverApiResult<Map<String, dynamic>>> getFilters() async {
     final result = await _request('GET', '/api/me/preferences');
     if (!result.success || result.data == null) {

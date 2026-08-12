@@ -129,7 +129,7 @@ after(async () => {
   try { await getSequelize().close(); } catch (_) { /* initialization may have failed */ }
 });
 
-test('identity submission is private, owner-scoped, reviewed by admins, and backend-authoritative', async () => {
+test('identity submission is private, owner-scoped, and admin APIs are removed', async () => {
   assert.equal((await request('/api/identity-verification/me')).status, 401);
   const initial = await request('/api/identity-verification/me', { headers: auth(users.member) });
   assert.equal(initial.status, 200);
@@ -146,30 +146,23 @@ test('identity submission is private, owner-scoped, reviewed by admins, and back
   assert.equal(users.member.identityVerifiedAt, null);
 
   assert.equal((await submit(users.member)).status, 409);
-  assert.equal((await json(`/api/identity-verification/${row.id}/review`, 'PUT', users.viewer, { status: 'verified' })).status, 403);
+  assert.equal((await json(`/api/identity-verification/${row.id}/review`, 'PUT', users.viewer, { status: 'verified' })).status, 404);
 
   const privateDenied = await request(`/api/identity-verification/${row.id}/documents/aadhaar`, { headers: auth(users.viewer) });
-  assert.equal(privateDenied.status, 403);
+  assert.equal(privateDenied.status, 404);
   const privateAllowed = await request(`/api/identity-verification/${row.id}/documents/aadhaar`, { headers: auth(users.admin) });
-  assert.equal(privateAllowed.status, 200);
-  assert.equal(privateAllowed.contentType, 'image/png');
-
-  const reviewing = await json(`/api/identity-verification/${row.id}/review`, 'PUT', users.admin, { status: 'under_review', reviewNote: 'Documents opened.' });
-  assert.equal(reviewing.status, 200);
-  assert.equal(reviewing.body.data.verification.status, 'under_review');
-  const verified = await json(`/api/identity-verification/${row.id}/review`, 'PUT', users.admin, { status: 'verified', reviewNote: 'Identity matched.' });
-  assert.equal(verified.status, 200);
+  assert.equal(privateAllowed.status, 404);
+  assert.equal((await json(`/api/identity-verification/${row.id}/review`, 'PUT', users.admin, { status: 'verified' })).status, 404);
   await users.member.reload();
-  assert.ok(users.member.identityVerifiedAt instanceof Date);
-  assert.equal(await models.Notification.count({ where: { userId: users.member.id, type: 'identity_verified' } }), 1);
+  assert.equal(users.member.identityVerifiedAt, null);
 
   const publicProfile = await request(`/api/profiles/${users.member.id}`, { headers: auth(users.viewer) });
   assert.equal(publicProfile.status, 200);
-  assert.equal(publicProfile.body.data.profile.verification, 'Verified');
+  assert.notEqual(publicProfile.body.data.profile.verification, 'Verified');
   assert.equal((await submit(users.member)).status, 409);
 });
 
-test('rejected users may resubmit without becoming verified', async () => {
+test('pending submissions cannot be mutated through a removed review API', async () => {
   const submitted = await submit(users.resubmit);
   assert.equal(submitted.status, 202);
   const row = await models.IdentityVerification.findOne({ where: { userId: users.resubmit.id } });
@@ -177,14 +170,13 @@ test('rejected users may resubmit without becoming verified', async () => {
     status: 'rejected',
     rejectionReason: 'Selfie is not clear enough.',
   });
-  assert.equal(rejected.status, 200);
+  assert.equal(rejected.status, 404);
   const status = await request('/api/identity-verification/me', { headers: auth(users.resubmit) });
-  assert.equal(status.body.data.verification.status, 'rejected');
-  assert.equal(status.body.data.verification.rejectionReason, 'Selfie is not clear enough.');
+  assert.equal(status.body.data.verification.status, 'pending');
   await users.resubmit.reload();
   assert.equal(users.resubmit.identityVerifiedAt, null);
 
   const resubmitted = await submit(users.resubmit);
-  assert.equal(resubmitted.status, 202);
+  assert.equal(resubmitted.status, 409);
   assert.equal(await models.IdentityVerification.count({ where: { userId: users.resubmit.id } }), 1);
 });

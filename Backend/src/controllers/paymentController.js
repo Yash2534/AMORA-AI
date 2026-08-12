@@ -2,8 +2,8 @@ const { createPaymentOrder, verifyPayment, processWebhook, idempotencyKey } = re
 
 exports.order = async (req, res, next) => {
   try {
-    const productType = req.body.productType || 'subscription';
-    const productReferenceId = String(req.body.planId || req.body.productId || '');
+    const productType = 'subscription';
+    const productReferenceId = String(req.body.planId || '');
     const order = await createPaymentOrder({ userId: req.user.sub, productType, productReferenceId, key: idempotencyKey(req) });
     return res.status(201).json({ success: true, message: 'Payment order created.', data: { order } });
   } catch (error) { return next(error); }

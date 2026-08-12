@@ -104,11 +104,7 @@ class _EventsMemberExperienceState extends State<EventsMemberExperience> {
   }
 
   List<EventModel> get _joinedEvents => _controller.registrations
-      .where(
-        (registration) =>
-            registration.status == TicketStatus.upcoming ||
-            registration.status == TicketStatus.waitlisted,
-      )
+      .where((registration) => registration.status == TicketStatus.upcoming)
       .map((registration) => registration.event)
       .toList(growable: false);
 
@@ -513,10 +509,6 @@ class _EventsMemberExperienceState extends State<EventsMemberExperience> {
 
   void _handleParticipation(EventModel event) {
     final status = _participation[event.id];
-    if (status == TicketStatus.waitlisted) {
-      _openDetail(event);
-      return;
-    }
     if (status != null) {
       _openDetail(event);
       return;

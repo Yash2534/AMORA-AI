@@ -1,2 +1,0 @@
-const { DataTypes } = require('sequelize');
-module.exports = (sequelize) => sequelize.define('Boost', { id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true }, userId: { type: DataTypes.INTEGER, allowNull: false }, boostEntitlementId: DataTypes.BIGINT.UNSIGNED, idempotencyKey: DataTypes.STRING(100), startedAt: { type: DataTypes.DATE, allowNull: false }, expiresAt: { type: DataTypes.DATE, allowNull: false }, active: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true } }, { tableName: 'Boosts' });

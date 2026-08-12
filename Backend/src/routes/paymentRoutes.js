@@ -7,14 +7,8 @@ const { paymentOrderLimiter, paymentVerifyLimiter, paymentWebhookLimiter } = req
 const router = express.Router();
 router.post('/webhook', paymentWebhookLimiter, controller.webhook);
 router.post('/orders', requireAuth, paymentOrderLimiter, [
-  body('productType').optional().isIn(['subscription', 'wallet_top_up', 'boost']),
-  body('planId').optional().isString().trim().notEmpty(),
-  body('productId').optional().isString().trim().notEmpty(),
-  body().custom((value) => {
-    const type = value.productType || 'subscription';
-    if (type === 'subscription' ? !value.planId : !value.productId) throw new Error(type === 'subscription' ? 'planId is required.' : 'productId is required.');
-    return true;
-  }),
+  body('productType').optional().equals('subscription').withMessage('Only subscription payments are supported.'),
+  body('planId').isString().trim().notEmpty(),
   body('idempotencyKey').optional().isString().isLength({ min: 8, max: 100 }),
 ], validateRequest, controller.order);
 router.post('/verify', requireAuth, paymentVerifyLimiter, [

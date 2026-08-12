@@ -1,7 +1,6 @@
 import 'package:amora_ai/core/api/phase_two_api_service.dart';
 import 'package:amora_ai/core/auth/auth_service.dart';
 import 'package:amora_ai/core/data/image_repository.dart';
-import 'package:amora_ai/core/media/amora_media_picker.dart';
 import 'package:amora_ai/core/theme/amora_icons.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
@@ -15,16 +14,10 @@ import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:flutter/material.dart';
 
 class ReportFlowScreen extends StatefulWidget {
-  const ReportFlowScreen({
-    super.key,
-    this.mediaPicker = const DeviceAmoraMediaPicker(),
-    this.api,
-    this.arguments,
-  });
+  const ReportFlowScreen({super.key, this.api, this.arguments});
 
   static const routeName = '/report-flow';
 
-  final AmoraMediaPicker mediaPicker;
   final PhaseTwoApiService? api;
   final ReportFlowArgs? arguments;
 
@@ -59,8 +52,6 @@ class ReportFlowArgs {
 class _ReportFlowScreenState extends State<ReportFlowScreen> {
   final _notes = TextEditingController();
   String _reason = 'Fake profile';
-  AmoraPickedMedia? _screenshot;
-  bool _pickingScreenshot = false;
   bool _submitted = false;
   bool _submitting = false;
   String? _error;
@@ -160,37 +151,6 @@ class _ReportFlowScreenState extends State<ReportFlowScreen> {
                                 prefixIcon: Icon(Icons.edit_note_rounded),
                               ),
                             ),
-                            const SizedBox(height: 12),
-                            ListTile(
-                              contentPadding: EdgeInsets.zero,
-                              leading: const Icon(Icons.image_outlined),
-                              title: const Text('Attach a screenshot'),
-                              subtitle: Text(
-                                _screenshot == null
-                                    ? 'Optional · JPEG, PNG, or WebP · up to 12 MB'
-                                    : '${_screenshot!.name} attached',
-                              ),
-                              trailing: _pickingScreenshot
-                                  ? const SizedBox.square(
-                                      dimension: 24,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                      ),
-                                    )
-                                  : _screenshot == null
-                                  ? const Icon(Icons.chevron_right_rounded)
-                                  : IconButton(
-                                      tooltip: 'Remove screenshot',
-                                      onPressed: () =>
-                                          setState(() => _screenshot = null),
-                                      icon: const Icon(
-                                        Icons.delete_outline_rounded,
-                                      ),
-                                    ),
-                              onTap: _pickingScreenshot
-                                  ? null
-                                  : _pickScreenshot,
-                            ),
                           ],
                         ),
                       ),
@@ -233,14 +193,13 @@ class _ReportFlowScreenState extends State<ReportFlowScreen> {
       _error = null;
     });
     try {
-      final reportId = await api.report(
+      await api.report(
         targetType: target.targetType,
         targetUserId: target.targetType == 'profile' ? target.targetId : null,
         targetId: target.targetType == 'profile' ? null : target.targetId,
         reason: _reasonCodes[_reason]!,
         notes: _notes.text,
       );
-      if (_screenshot != null) await api.uploadEvidence(reportId, _screenshot!);
       if (!mounted) return;
       setState(() => _submitted = true);
       showAmoraDialog<void>(
@@ -258,25 +217,6 @@ class _ReportFlowScreenState extends State<ReportFlowScreen> {
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
-  }
-
-  Future<void> _pickScreenshot() async {
-    setState(() => _pickingScreenshot = true);
-    final result = await widget.mediaPicker.pickImage(
-      source: AmoraMediaSource.gallery,
-    );
-    if (!mounted) return;
-    setState(() => _pickingScreenshot = false);
-    if (!result.succeeded) {
-      showAmoraMediaResult(
-        context,
-        result: result,
-        picker: widget.mediaPicker,
-        onRetry: _pickScreenshot,
-      );
-      return;
-    }
-    setState(() => _screenshot = result.media);
   }
 }
 

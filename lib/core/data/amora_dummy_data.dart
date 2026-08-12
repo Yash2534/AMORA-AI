@@ -50,7 +50,7 @@ class AmoraDummyData {
       name: 'AMORAA Platinum',
       price: 'Rs 1,799',
       period: 'quarterly',
-      benefits: ['Advanced filters', 'Profile boost', 'Read receipts'],
+      benefits: ['Advanced filters', 'Priority profiles', 'Read receipts'],
     ),
     DummySubscriptionPlan(
       id: 'concierge',
@@ -60,40 +60,6 @@ class AmoraDummyData {
       benefits: ['Curated matches', 'Date planning', 'Profile review'],
     ),
   ];
-
-  static const walletTransactions = [
-    DummyWalletTransaction('Gold renewal', '-Rs 699', 'Success'),
-    DummyWalletTransaction('Event ticket refund', '+Rs 899', 'Refunded'),
-    DummyWalletTransaction('Profile boost', '-Rs 199', 'Success'),
-    DummyWalletTransaction('Gift credits', '-Rs 349', 'Success'),
-  ];
-
-  static final adminQueue = users
-      .skip(4)
-      .take(8)
-      .map(
-        (user) => DummyAdminQueueItem(
-          name: user.name,
-          city: user.city,
-          imageUrl: user.imageUrl,
-          fallbackAsset: user.fallbackAsset,
-          status: user.score >= 90 ? 'Pending' : 'Review',
-        ),
-      )
-      .toList(growable: false);
-
-  static final hostEvents = events
-      .take(6)
-      .map(
-        (event) => DummyHostEvent(
-          title: event.title,
-          city: event.city,
-          imageUrl: event.imageUrl,
-          fallbackAsset: event.fallbackAsset,
-          attendees: users.skip(event.title.length % 10).take(4).toList(),
-        ),
-      )
-      .toList(growable: false);
 }
 
 class DummyNotification {
@@ -152,46 +118,6 @@ class DummySubscriptionPlan {
   final List<String> benefits;
 }
 
-class DummyWalletTransaction {
-  const DummyWalletTransaction(this.title, this.amount, this.status);
-
-  final String title;
-  final String amount;
-  final String status;
-}
-
-class DummyAdminQueueItem {
-  const DummyAdminQueueItem({
-    required this.name,
-    required this.city,
-    required this.imageUrl,
-    required this.fallbackAsset,
-    required this.status,
-  });
-
-  final String name;
-  final String city;
-  final String imageUrl;
-  final String fallbackAsset;
-  final String status;
-}
-
-class DummyHostEvent {
-  const DummyHostEvent({
-    required this.title,
-    required this.city,
-    required this.imageUrl,
-    required this.fallbackAsset,
-    required this.attendees,
-  });
-
-  final String title;
-  final String city;
-  final String imageUrl;
-  final String fallbackAsset;
-  final List<DummyProfile> attendees;
-}
-
 const _notificationCategories = [
   'Matches',
   'Messages',
@@ -227,7 +153,7 @@ const _notificationCtas = ['View', 'Open', 'Review', 'Reply', 'Manage'];
 const _chatMessages = [
   'That coffee place looks perfect for Saturday.',
   'Your AI opener was actually thoughtful.',
-  'I liked your answer about family values.',
-  'Want to compare weekend plans?',
+  'I liked your answer about communication.',
+  'Want to compare favorite interests?',
   'This event looks calmer than most mixers.',
 ];

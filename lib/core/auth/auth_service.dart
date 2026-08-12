@@ -38,6 +38,23 @@ class AuthException implements Exception {
     if (errors.isEmpty) return message;
     return '$message ${errors.values.join(' ')}';
   }
+
+  @override
+  String toString() => userMessage;
+}
+
+String userFacingErrorMessage(
+  Object error, {
+  String fallback = 'Something went wrong. Please try again.',
+}) {
+  if (error is! AuthException) return fallback;
+  if (error.statusCode == 401 ||
+      error.code == 'TOKEN_INVALID' ||
+      error.code == 'TOKEN_EXPIRED') {
+    return 'Your session has expired. Please log in again.';
+  }
+  final message = error.userMessage.trim();
+  return message.isEmpty ? fallback : message;
 }
 
 class AmoraUser {
@@ -131,7 +148,7 @@ class AuthService {
       'email': email,
       'password': password,
     });
-    return _saveAuthentication(response, reactivateIfRequired: true);
+    return _saveAuthentication(response);
   }
 
   Future<AmoraUser> googleSignIn() async {
@@ -147,7 +164,7 @@ class AuthService {
       );
     }
     final response = await _post('/api/auth/google', {'idToken': idToken});
-    return _saveAuthentication(response, reactivateIfRequired: true);
+    return _saveAuthentication(response);
   }
 
   Future<void> forgotPassword(String email) async =>
@@ -176,6 +193,11 @@ class AuthService {
     return AmoraUser.fromJson(_data(response)['user'] as Map<String, dynamic>);
   }
 
+  Future<String?> realtimeAccessToken() async {
+    await _request('GET', '/api/auth/me', authenticated: true);
+    return _accessToken;
+  }
+
   Future<void> logout() async {
     try {
       if (_accessToken != null && _refreshToken != null) {
@@ -202,30 +224,13 @@ class AuthService {
     }
   }
 
-  Future<AmoraUser> _saveAuthentication(
-    Map<String, dynamic> response, {
-    bool reactivateIfRequired = false,
-  }) async {
+  Future<AmoraUser> _saveAuthentication(Map<String, dynamic> response) async {
     final data = _data(response);
     _accessToken = data['accessToken'] as String;
     _refreshToken = data['refreshToken'] as String;
     await _storage.write(key: _accessKey, value: _accessToken);
     await _storage.write(key: _refreshKey, value: _refreshToken);
     currentUser = AmoraUser.fromJson(data['user'] as Map<String, dynamic>);
-    if (reactivateIfRequired && data['requiresReactivation'] == true) {
-      try {
-        final reactivated = await authenticatedRequest(
-          'POST',
-          '/api/account/reactivate',
-        );
-        currentUser = AmoraUser.fromJson(
-          _data(reactivated)['user'] as Map<String, dynamic>,
-        );
-      } catch (_) {
-        await clearSession();
-        rethrow;
-      }
-    }
     return currentUser!;
   }
 

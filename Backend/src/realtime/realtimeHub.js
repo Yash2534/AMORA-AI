@@ -4,14 +4,12 @@ const { getModels } = require('../models');
 const { conversationAccess } = require('../services/conversationAccessService');
 const { areUsersBlocked } = require('../services/accessControlService');
 const { activeMatch } = require('../services/conversationAccessService');
-const { eventGroupAccess } = require('../services/eventService');
 
 let io;
 const connections = new Map();
 
 const userRoom = (userId) => `user:${Number(userId)}`;
 const conversationRoom = (conversationId) => `conversation:${Number(conversationId)}`;
-const eventRoom = (eventId) => `event:${Number(eventId)}`;
 const isUserOnline = (userId) => (connections.get(Number(userId)) || 0) > 0;
 
 async function conversationUserIds(conversationId) {
@@ -47,11 +45,6 @@ async function emitConversationEvent(conversationId, event, payload) {
   for (const userId of userIds) io.to(userRoom(userId)).emit(event, payload);
 }
 
-async function emitEventGroupMessage(eventId, event, payload) {
-  if (!io) return;
-  io.to(eventRoom(eventId)).emit(event, payload);
-}
-
 async function emitPresence(userId, online) {
   if (!io) return;
   const { ConversationParticipant } = getModels();
@@ -73,7 +66,6 @@ function attachRealtimeServer(httpServer) {
     try {
       const token = socket.handshake.auth?.token;
       const payload = jwt.verify(token, process.env.JWT_SECRET);
-      if (payload.purpose !== 'realtime') throw new Error('Invalid realtime purpose.');
       const { User } = getModels();
       const user = await User.findByPk(payload.sub, { attributes: ['id', 'accountStatus', 'tokenVersion'] });
       if (!user || user.accountStatus !== 'active' || Number(payload.ver || 0) !== Number(user.tokenVersion || 0)) throw new Error('Realtime session is unavailable.');
@@ -100,16 +92,6 @@ function attachRealtimeServer(httpServer) {
         if (typeof acknowledge === 'function') acknowledge({ success: false, code: 'CONVERSATION_NOT_AVAILABLE' });
       }
     });
-    socket.on('event.subscribe', async (value, acknowledge) => {
-      try {
-        const eventId = Number(value?.eventId);
-        if (!eventId || !(await eventGroupAccess(eventId, userId))) throw new Error('Event chat unavailable.');
-        socket.join(eventRoom(eventId));
-        if (typeof acknowledge === 'function') acknowledge({ success: true });
-      } catch (_) {
-        if (typeof acknowledge === 'function') acknowledge({ success: false, code: 'EVENT_CHAT_NOT_ALLOWED' });
-      }
-    });
     socket.on('disconnect', async () => {
       const remaining = Math.max(0, (connections.get(userId) || 1) - 1);
       if (remaining) connections.set(userId, remaining); else connections.delete(userId);
@@ -128,4 +110,4 @@ function closeRealtimeServer() {
   return new Promise((resolve) => current.close(resolve));
 }
 
-module.exports = { attachRealtimeServer, closeRealtimeServer, emitConversationEvent, emitEventGroupMessage, isUserOnline };
+module.exports = { attachRealtimeServer, closeRealtimeServer, emitConversationEvent, isUserOnline };

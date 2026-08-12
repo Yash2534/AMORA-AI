@@ -72,19 +72,6 @@ const eventFacilities = [
   (Icons.verified_rounded, 'Verified Venue'),
 ];
 
-const eventReviews = [
-  EventReview(
-    name: 'Nisha',
-    rating: 4.9,
-    comment: 'Beautifully hosted, warm crowd, and no awkward energy.',
-  ),
-  EventReview(
-    name: 'Dev',
-    rating: 4.8,
-    comment: 'The compatibility curation made every conversation easier.',
-  ),
-];
-
 const _dates = [
   'Sat, 18 Jul',
   'Sun, 19 Jul',
@@ -153,7 +140,7 @@ EventModel _eventFromRepository(int index, EventImageData visual) {
       imageUrl: localAsset,
       assetPath: localAsset,
     ),
-    host: EventHost(
+    organizer: EventOrganizer(
       name: visual.organizer,
       photoAsset: hostProfile.fallbackAsset,
       rating: 4.6 + ((index % 4) * .1),

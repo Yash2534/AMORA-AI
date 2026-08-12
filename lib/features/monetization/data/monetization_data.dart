@@ -60,23 +60,6 @@ class CoachScore {
   final int value;
 }
 
-class WalletPackage {
-  const WalletPackage(this.coins, this.price, this.badge);
-
-  final int coins;
-  final int price;
-  final String badge;
-}
-
-class WalletTransaction {
-  const WalletTransaction(this.title, this.amount, this.date, this.positive);
-
-  final String title;
-  final int amount;
-  final String date;
-  final bool positive;
-}
-
 class ReferralStat {
   const ReferralStat(this.label, this.value, this.icon);
 
@@ -131,7 +114,7 @@ const coachScores = [
   CoachScore('Respect', 94),
 ];
 
-const dateIdeas = [
+const dateSuggestions = [
   'Coffee date with a quiet corner and easy exits',
   'Museum visit with conversation-friendly pacing',
   'Bookstore browsing followed by dessert',

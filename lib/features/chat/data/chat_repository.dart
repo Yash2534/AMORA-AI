@@ -58,6 +58,8 @@ class ChatMessage {
     required this.mine,
     required this.time,
     required this.createdAtEpochMs,
+    this.conversationId = '',
+    this.senderId = '',
     this.status = ChatMessageStatus.sent,
     this.context,
     this.type = 'text',
@@ -70,6 +72,8 @@ class ChatMessage {
   final bool mine;
   final String time;
   final int createdAtEpochMs;
+  final String conversationId;
+  final String senderId;
   final ChatMessageStatus status;
   final ChatMessageContext? context;
   final String type;
@@ -85,6 +89,8 @@ class ChatMessage {
         mine: mine,
         time: time,
         createdAtEpochMs: createdAtEpochMs,
+        conversationId: conversationId,
+        senderId: senderId,
         status: status ?? this.status,
         context: context,
         type: type,
@@ -315,7 +321,11 @@ class ChatRepository extends ChangeNotifier {
     final json = (_data(response)['conversation'] as Map)
         .cast<String, dynamic>();
     final value = _conversationFromJson(json);
-    _upsertConversation(value, moveToFront: true);
+    _upsertConversation(
+      value,
+      moveToFront: true,
+      preserveExistingMessages: true,
+    );
     return value.id;
   }
 
@@ -357,17 +367,21 @@ class ChatRepository extends ChangeNotifier {
       (conversationJson['participant'] as Map).cast<String, dynamic>(),
     ).profile;
     final messages = _messageList(data['messages']);
+    final latestCurrent = conversation(conversationId);
+    final canonicalMessages = older
+        ? _mergeMessages(messages, latestCurrent?.messages ?? const [])
+        : _mergeMessages(latestCurrent?.messages ?? const [], messages);
     final pagination = (data['pagination'] as Map).cast<String, dynamic>();
     final next = ChatConversation(
       id: conversationId,
       user: participant,
-      messages: older
-          ? _mergeMessages(messages, current?.messages ?? const [])
-          : messages,
-      lastMessage: messages.isEmpty
+      messages: canonicalMessages,
+      lastMessage: canonicalMessages.isEmpty
           ? current?.lastMessage ?? ''
-          : _preview(messages.last),
-      time: messages.isEmpty ? current?.time ?? '' : messages.last.time,
+          : _preview(canonicalMessages.last),
+      time: canonicalMessages.isEmpty
+          ? current?.time ?? ''
+          : canonicalMessages.last.time,
       unread: current?.unread ?? 0,
       online:
           conversationJson['participant'] is Map &&
@@ -565,8 +579,7 @@ class ChatRepository extends ChangeNotifier {
     if (_socket != null && !force) return;
     _connectingRealtime = true;
     try {
-      final response = await _remote.request('POST', '/api/realtime/token');
-      final token = _data(response)['token']?.toString();
+      final token = await AuthService.instance.realtimeAccessToken();
       if (token == null || token.isEmpty) return;
       _socket?.dispose();
       final socket = io.io(
@@ -787,6 +800,8 @@ class ChatRepository extends ChangeNotifier {
           : json['senderId']?.toString() == currentUserId,
       time: _displayTime(created.toLocal()),
       createdAtEpochMs: created.millisecondsSinceEpoch,
+      conversationId: json['conversationId']?.toString() ?? '',
+      senderId: json['senderId']?.toString() ?? '',
       status: switch (json['status']) {
         'read' => ChatMessageStatus.read,
         'delivered' => ChatMessageStatus.delivered,
@@ -806,7 +821,16 @@ class ChatRepository extends ChangeNotifier {
     final values = {
       for (final item in [...first, ...second]) item.id: item,
     }.values.toList();
-    values.sort((a, b) => a.createdAtEpochMs.compareTo(b.createdAtEpochMs));
+    values.sort((a, b) {
+      final created = a.createdAtEpochMs.compareTo(b.createdAtEpochMs);
+      if (created != 0) return created;
+      final firstId = int.tryParse(a.id);
+      final secondId = int.tryParse(b.id);
+      if (firstId != null && secondId != null) {
+        return firstId.compareTo(secondId);
+      }
+      return a.id.compareTo(b.id);
+    });
     return values;
   }
 
@@ -841,9 +865,13 @@ class ChatRepository extends ChangeNotifier {
     _emit(value);
   }
 
-  void _upsertConversation(ChatConversation value, {bool moveToFront = false}) {
+  void _upsertConversation(
+    ChatConversation value, {
+    bool moveToFront = false,
+    bool preserveExistingMessages = false,
+  }) {
     final current = conversation(value.id);
-    final merged = current == null
+    final merged = current == null || !preserveExistingMessages
         ? value
         : value.copyWith(messages: current.messages);
     _conversations = [

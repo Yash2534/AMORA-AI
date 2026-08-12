@@ -11,7 +11,6 @@ enum AmoraCardVariant {
   info,
   settings,
   event,
-  wallet,
   revenue,
 }
 
@@ -63,7 +62,7 @@ class AmoraCard extends StatelessWidget {
   (Color, Color) _colorsFor(AmoraCardVariant value) => switch (value) {
     AmoraCardVariant.premium => (AppColors.premiumContainer, AppColors.premium),
     AmoraCardVariant.info => (AppColors.infoContainer, AppColors.info),
-    AmoraCardVariant.wallet || AmoraCardVariant.revenue => (
+    AmoraCardVariant.revenue => (
       AppColors.surfaceContainerLow,
       AppColors.premium,
     ),

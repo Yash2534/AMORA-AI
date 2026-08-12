@@ -125,12 +125,6 @@ function compatibilityScoreSql(sequelize, viewer) {
   return `LEAST(100, GREATEST(0, ROUND(55 + LEAST((${interests}) * 6, 24) + LEAST((${goals}) * 10, 10) + LEAST((${languages}) * 4, 6) + LEAST((${qualities}) * 3, 5))))`;
 }
 
-function activeBoostSql(sequelize) {
-  const quote = (value) => sequelize.getQueryInterface().queryGenerator.quoteIdentifier(value);
-  const boosts = quote(getModels().Boost.getTableName());
-  return `EXISTS (SELECT 1 FROM ${boosts} AS ${quote('activeBoost')} WHERE ${quote('activeBoost')}.${quote('userId')} = ${quote('User')}.${quote('id')} AND ${quote('activeBoost')}.${quote('active')} = 1 AND ${quote('activeBoost')}.${quote('expiresAt')} > CURRENT_TIMESTAMP)`;
-}
-
 exports.getFeed = async (req, res, next) => {
   try {
     const viewer = await requireCompleted(res, req.user.sub);
@@ -147,7 +141,6 @@ exports.getFeed = async (req, res, next) => {
 
     const sequelize = User.sequelize;
     const scoreSql = compatibilityScoreSql(sequelize, viewer);
-    const boostSql = activeBoostSql(sequelize);
     const excludedTargets = literal(`(SELECT ${sequelize.getQueryInterface().queryGenerator.quoteIdentifier('targetUserId')} FROM ${sequelize.getQueryInterface().queryGenerator.quoteIdentifier(DiscoverAction.getTableName())} WHERE ${sequelize.getQueryInterface().queryGenerator.quoteIdentifier('actorUserId')} = ${sequelize.escape(Number(req.user.sub))})`);
     const userWhere = {
       id: { [Op.ne]: Number(req.user.sub), [Op.notIn]: excludedTargets },
@@ -162,9 +155,8 @@ exports.getFeed = async (req, res, next) => {
     if (filters.hasEventInterest) {
       const quote = (value) => sequelize.getQueryInterface().queryGenerator.quoteIdentifier(value);
       const registrations = quote(getModels().EventRegistration.getTableName());
-      const waitlist = quote(getModels().EventWaitlist.getTableName());
       const candidate = `${quote('User')}.${quote('id')}`;
-      userWhere[Op.and].push(literal(`(EXISTS (SELECT 1 FROM ${registrations} AS ${quote('eventInterestRegistration')} WHERE ${quote('eventInterestRegistration')}.${quote('userId')} = ${candidate} AND ${quote('eventInterestRegistration')}.${quote('status')} IN ('registered', 'promoted')) OR EXISTS (SELECT 1 FROM ${waitlist} AS ${quote('eventInterestWaitlist')} WHERE ${quote('eventInterestWaitlist')}.${quote('userId')} = ${candidate} AND ${quote('eventInterestWaitlist')}.${quote('status')} IN ('waiting', 'promoted')))`));
+      userWhere[Op.and].push(literal(`EXISTS (SELECT 1 FROM ${registrations} AS ${quote('eventInterestRegistration')} WHERE ${quote('eventInterestRegistration')}.${quote('userId')} = ${candidate} AND ${quote('eventInterestRegistration')}.${quote('status')} = 'registered')`));
     }
 
     const profileWhere = buildProfileWhere(filters);
@@ -183,7 +175,6 @@ exports.getFeed = async (req, res, next) => {
         attributes: { include: [[literal(scoreSql), 'compatibilityScore']] },
       }, { model: Subscription, as: 'subscription', required: false, attributes: ['status', 'currentPeriodEnd'] }],
       order: [
-        [literal(boostSql), 'DESC'],
         [literal(scoreSql), 'DESC'],
         ['id', 'ASC'],
       ],
@@ -304,56 +295,6 @@ exports.rewind = async (req, res, next) => {
     return success(res, 'Last swipe rewound.', {
       targetUserId: String(action.targetUserId),
       action: action.action,
-    });
-  } catch (error) {
-    return next(error);
-  }
-};
-
-exports.boost = async (req, res, next) => {
-  try {
-    const viewer = await requireCompleted(res, req.user.sub);
-    if (!viewer) return;
-    const key = String(req.get('Idempotency-Key') || req.body?.idempotencyKey || '').trim();
-    if (!/^[A-Za-z0-9._:-]{8,100}$/.test(key)) return fail(res, 400, 'A valid Idempotency-Key is required.', 'IDEMPOTENCY_KEY_REQUIRED');
-    const { Boost, BoostEntitlement, User } = getModels();
-    const now = new Date(Math.floor(Date.now() / 1000) * 1000);
-    const active = await Boost.findOne({
-      where: { userId: req.user.sub, active: true, expiresAt: { [Op.gt]: now } },
-      order: [['expiresAt', 'DESC']],
-    });
-    if (active) {
-      return success(res, 'Boost is already active.', {
-        active: true,
-        startedAt: active.startedAt,
-        expiresAt: active.expiresAt,
-        remainingSeconds: Math.max(0, Math.ceil((new Date(active.expiresAt).getTime() - now.getTime()) / 1000)),
-      });
-    }
-    let boost;
-    await Boost.sequelize.transaction(async (transaction) => {
-      await User.findByPk(req.user.sub, { attributes: ['id'], transaction, lock: transaction.LOCK.UPDATE });
-      const retried = await Boost.findOne({ where: { userId: req.user.sub, idempotencyKey: key }, transaction, lock: transaction.LOCK.UPDATE });
-      if (retried) { boost = retried; return; }
-      const concurrentlyActive = await Boost.findOne({ where: { userId: req.user.sub, active: true, expiresAt: { [Op.gt]: now } }, order: [['expiresAt', 'DESC']], transaction, lock: transaction.LOCK.UPDATE });
-      if (concurrentlyActive) { boost = concurrentlyActive; return; }
-      const entitlement = await BoostEntitlement.findOne({
-        where: { userId: req.user.sub, status: 'active', remainingQuantity: { [Op.gt]: 0 }, [Op.or]: [{ expiresAt: null }, { expiresAt: { [Op.gt]: now } }] },
-        order: [['expiresAt', 'ASC'], ['id', 'ASC']], transaction, lock: transaction.LOCK.UPDATE,
-      });
-      if (!entitlement) return;
-      await Boost.update({ active: false }, { where: { userId: req.user.sub, active: true }, transaction });
-      const expiresAt = new Date(now.getTime() + Number(entitlement.durationMinutes) * 60 * 1000);
-      boost = await Boost.create({ userId: req.user.sub, boostEntitlementId: entitlement.id, idempotencyKey: key, startedAt: now, expiresAt, active: true }, { transaction });
-      const remainingQuantity = Number(entitlement.remainingQuantity) - 1;
-      await entitlement.update({ remainingQuantity, status: remainingQuantity === 0 ? 'consumed' : 'active' }, { transaction });
-    });
-    if (!boost) return fail(res, 402, 'A boost entitlement is required.', 'BOOST_ENTITLEMENT_REQUIRED');
-    return success(res, 'Boost activated.', {
-      active: true,
-      startedAt: boost.startedAt,
-      expiresAt: boost.expiresAt,
-      remainingSeconds: Math.max(0, Math.ceil((new Date(boost.expiresAt).getTime() - now.getTime()) / 1000)),
     });
   } catch (error) {
     return next(error);

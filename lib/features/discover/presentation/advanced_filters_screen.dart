@@ -1622,60 +1622,81 @@ class _SelectedFiltersSummary extends StatelessWidget {
     final remainingCount = count > visiblePreferenceChipLimit
         ? count - visiblePreferenceChipLimit
         : 0;
-    return DecoratedBox(
+    return Container(
+      key: const ValueKey('filters-preference-summary'),
       decoration: BoxDecoration(
         color: AppColors.tertiary.withValues(alpha: .28),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: AppColors.tertiary),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AmoraSpacing.space16,
+          vertical: AmoraSpacing.space16,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Container(
-                  width: 34,
-                  height: 34,
+                  key: const ValueKey('filters-preference-summary-icon'),
+                  width: 32,
+                  height: 32,
+                  alignment: Alignment.center,
                   decoration: BoxDecoration(
                     color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Icon(
                     Icons.auto_awesome_rounded,
                     color: AppColors.secondary,
-                    size: 19,
+                    size: 18,
                   ),
                 ),
-                const SizedBox(width: AmoraSpacing.space8),
+                const SizedBox(width: 10),
                 Expanded(
-                  child: AnimatedSwitcher(
-                    duration: AmoraMotion.fast,
-                    child: Text(
-                      '$count ${count == 1 ? 'preference' : 'preferences'} selected',
-                      key: ValueKey(count),
-                      style: AmoraTextStyles.titleMedium.copyWith(
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.w700,
+                  child: SizedBox(
+                    height: 32,
+                    child: AnimatedSwitcher(
+                      duration: AmoraMotion.fast,
+                      layoutBuilder: (currentChild, previousChildren) => Stack(
+                        alignment: Alignment.centerLeft,
+                        children: [...previousChildren, ?currentChild],
+                      ),
+                      child: Text(
+                        '$count ${count == 1 ? 'preference' : 'preferences'} selected',
+                        key: ValueKey(
+                          'filters-preference-summary-title-$count',
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AmoraTextStyles.titleMedium.copyWith(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w700,
+                          height: 1.25,
+                        ),
                       ),
                     ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 5),
+            const SizedBox(height: AmoraSpacing.space8),
             Text(
               'Your Discover feed will prioritize profiles that match these choices.',
+              key: const ValueKey('filters-preference-summary-description'),
               style: AmoraTextStyles.bodySmall.copyWith(
                 color: AppColors.text.withValues(alpha: .72),
+                height: 1.45,
               ),
             ),
             if (visible.isNotEmpty) ...[
-              const SizedBox(height: 12),
+              const SizedBox(height: AmoraSpacing.space12),
               Wrap(
-                spacing: 7,
-                runSpacing: 7,
+                spacing: AmoraSpacing.space8,
+                runSpacing: AmoraSpacing.space8,
                 children: [
                   for (final preview in visible)
                     _SelectedPreview(
@@ -1733,10 +1754,6 @@ class _SelectedPreview extends StatelessWidget {
         ),
       ),
     );
-    final content = ConstrainedBox(
-      constraints: const BoxConstraints(minHeight: 48),
-      child: Center(widthFactor: 1, child: chip),
-    );
     if (onTap case final callback?) {
       return Semantics(
         button: true,
@@ -1746,12 +1763,12 @@ class _SelectedPreview extends StatelessWidget {
           child: InkWell(
             onTap: callback,
             borderRadius: BorderRadius.circular(18),
-            child: content,
+            child: chip,
           ),
         ),
       );
     }
-    return content;
+    return chip;
   }
 }
 

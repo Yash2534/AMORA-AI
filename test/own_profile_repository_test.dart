@@ -37,8 +37,6 @@ Map<String, dynamic> _canonicalProfile({
     'https://images.test/two.jpg',
   ],
   'primaryPhotoIndex': 0,
-  'voicePrompt': null,
-  'videoPrompt': null,
   'hometown': 'Ahmedabad',
   'valuedQualities': <String>['Kindness'],
   'pronouns': <String>['she'],

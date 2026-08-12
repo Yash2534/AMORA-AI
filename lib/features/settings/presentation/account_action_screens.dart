@@ -104,8 +104,7 @@ class _DeactivateAccountScreenState extends State<DeactivateAccountScreen> {
       title: 'Deactivate Account',
       icon: Icons.pause_circle_outline_rounded,
       heading: 'Deactivate your account?',
-      description:
-          'Your profile will be hidden and your account will be paused. You can reactivate it later by signing in again.',
+      description: 'Your profile will be hidden and you will be signed out.',
       supporting: const [
         'Your account data remains stored.',
         'Matches, chats, profile information, and membership data are not permanently deleted.',

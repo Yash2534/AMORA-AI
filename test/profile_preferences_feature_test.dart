@@ -494,8 +494,6 @@ UserProfile _fixture() => const UserProfile(
   lifestyle: {'Exercise': 'Daily'},
   photos: [],
   primaryPhotoIndex: 0,
-  voicePrompt: null,
-  videoPrompt: null,
   hometown: 'Ahmedabad',
   valuedQualities: ['Empathy', 'Loyalty'],
   pronouns: ['she', 'her'],

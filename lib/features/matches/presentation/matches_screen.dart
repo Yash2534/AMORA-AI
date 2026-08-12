@@ -1530,7 +1530,7 @@ class AiMatchReason extends StatelessWidget {
                     ),
                     const SizedBox(height: AmoraSpacing.space4),
                     Text(
-                      '$firstName is looking for ${profile.intent.toLowerCase()} and describes their style as ${profile.personality.toLowerCase()}.',
+                      '$firstName is looking for ${profile.intent.toLowerCase()}.',
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: AmoraTextStyles.bodySmall.copyWith(

@@ -7,7 +7,7 @@ import 'package:amora_ai/core/data/image_repository.dart';
 import 'package:amora_ai/core/widgets/premium_editorial_panel.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/profile/domain/profile_form_options.dart';
-import 'package:amora_ai/features/admin_shared/presentation/admin_dashboard_widgets.dart';
+import 'package:amora_ai/features/date_spots/presentation/widgets/date_spot_widgets.dart';
 import 'package:flutter/material.dart';
 
 class DateSpotsMapScreen extends StatefulWidget {

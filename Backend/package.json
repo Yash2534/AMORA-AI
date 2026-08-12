@@ -7,7 +7,7 @@
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "test": "node --test --test-concurrency=1",
-    "test:integration": "node --test --test-concurrency=1 test/discover.integration.test.js test/phase2.integration.test.js test/phase3.integration.test.js test/phase4.integration.test.js test/phase5.integration.test.js test/partial-integrations.integration.test.js test/relationships.integration.test.js test/own-profile.integration.test.js test/notifications-preferences.integration.test.js",
+    "test:integration": "node --test --test-concurrency=1 test/discover.integration.test.js test/phase2.integration.test.js test/phase3.integration.test.js test/phase4.integration.test.js test/phase5.integration.test.js test/partial-integrations.integration.test.js test/relationships.integration.test.js test/own-profile.integration.test.js test/notifications-preferences.integration.test.js test/send-rose.integration.test.js",
     "test:relationships": "node --test --test-concurrency=1 test/relationships.integration.test.js",
     "test:profile": "node --test --test-concurrency=1 test/own-profile.integration.test.js",
     "test:notifications-preferences": "node --test --test-concurrency=1 test/notifications-preferences.integration.test.js",
@@ -18,13 +18,14 @@
     "db:migrate:undo": "node src/migrations/run.js down",
     "db:verify:chat": "node scripts/verify-chat-schema.js",
     "db:verify:events": "node scripts/verify-events-schema.js",
-    "db:verify:monetization": "node scripts/verify-monetization-schema.js",
+    "verify:membership-plans": "node scripts/verify-membership-plans-flow.js --confirm-development-db",
+    "verify:send-rose": "node scripts/verify-send-rose-flow.js --confirm-development-db",
+    "db:verify:subscriptions": "node scripts/verify-subscription-schema.js",
     "db:verify:notifications-preferences": "node scripts/verify-notifications-preferences-schema.js",
     "db:seed:events": "node scripts/seed-events-development.js",
-    "db:seed:monetization": "node scripts/seed-monetization-catalog.js",
-    "seed:e2e": "node scripts/seed-e2e-test-data.js --confirm-development-db",
-    "verify:e2e": "node scripts/verify-e2e-test-environment.js --confirm-development-db",
-    "test:phase5": "node --test --test-concurrency=1 test/phase5.integration.test.js"
+    "db:seed:subscriptions": "node scripts/seed-subscription-plans.js",
+    "test:phase5": "node --test --test-concurrency=1 test/phase5.integration.test.js",
+    "test:send-rose": "node --test --test-concurrency=1 test/send-rose.integration.test.js"
   },
   "engines": {
     "node": ">=18"

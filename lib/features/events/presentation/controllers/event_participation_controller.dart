@@ -49,16 +49,6 @@ class EventParticipationController extends ChangeNotifier {
     );
   }
 
-  void joinWaitlist(EventModel event, {DateTime? registeredAt}) {
-    _setRegistration(
-      UserEventRegistration(
-        event: event,
-        status: TicketStatus.waitlisted,
-        registeredAt: registeredAt ?? DateTime.now(),
-      ),
-    );
-  }
-
   void cancelEvent(EventModel event, {DateTime? cancelledAt}) {
     final existing = _registrations[event.id];
     if (existing == null || existing.status == TicketStatus.cancelled) return;
@@ -68,23 +58,6 @@ class EventParticipationController extends ChangeNotifier {
         status: TicketStatus.cancelled,
         registeredAt: existing.registeredAt,
         cancelledAt: cancelledAt ?? DateTime.now(),
-      ),
-    );
-  }
-
-  void leaveWaitlist(String eventId) {
-    final existing = _registrations[eventId];
-    if (existing?.status != TicketStatus.waitlisted) return;
-    _registrations.remove(eventId);
-    notifyListeners();
-  }
-
-  void markAttended(EventModel event, {DateTime? registeredAt}) {
-    _setRegistration(
-      UserEventRegistration(
-        event: event,
-        status: TicketStatus.attended,
-        registeredAt: registeredAt ?? DateTime.now(),
       ),
     );
   }
@@ -153,28 +126,8 @@ class EventParticipationController extends ChangeNotifier {
     _applyRemoteStatus(event, status);
   }
 
-  Future<void> joinWaitlistRemote(EventModel event) async {
-    final status = await _remote.joinWaitlist(event.id);
-    _applyRemoteStatus(event, status);
-  }
-
   Future<void> cancelRemote(EventModel event) async {
     final status = await _remote.cancelRegistration(event.id);
-    _applyRemoteStatus(event, status);
-  }
-
-  Future<void> leaveWaitlistRemote(EventModel event) async {
-    final status = await _remote.leaveWaitlist(event.id);
-    if (status == null) {
-      _registrations.remove(event.id);
-      notifyListeners();
-    } else {
-      _applyRemoteStatus(event, status);
-    }
-  }
-
-  Future<void> checkInRemote(EventModel event) async {
-    final status = await _remote.checkIn(event.id);
     _applyRemoteStatus(event, status);
   }
 

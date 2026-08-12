@@ -457,7 +457,7 @@ const _questions = [
   _QuizQuestion(
     category: 'Personality',
     title: 'What kind of energy feels most like you?',
-    helper: 'This helps AMORAA understand your everyday personality rhythm.',
+    helper: 'This helps AMORAA understand your communication preferences.',
     icon: Icons.self_improvement_rounded,
     options: [
       'Quiet routines and meaningful one-on-one time',

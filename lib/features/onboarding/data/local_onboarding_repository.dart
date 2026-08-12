@@ -555,10 +555,6 @@ class LocalOnboardingRepository extends ChangeNotifier
           'loveLanguages': profile.loveLanguages,
           'preferredTalkingHours': profile.preferredTalkingHours,
           'communicationStyle': profile.communicationStyle?.storageValue,
-          if (profile.voicePrompt != null)
-            'voicePromptUrl': profile.voicePrompt,
-          if (profile.videoPrompt != null)
-            'videoPromptUrl': profile.videoPrompt,
         }),
       )) {
         return false;
@@ -690,10 +686,6 @@ class LocalOnboardingRepository extends ChangeNotifier
         photos: photos.map(_absolutePhotoUrl).toList(growable: false),
         primaryPhotoIndex:
             values['primaryPhotoIndex'] as int? ?? profile.primaryPhotoIndex,
-        voicePrompt: values['voicePromptUrl'] as String?,
-        clearVoicePrompt: values['voicePromptUrl'] == null,
-        videoPrompt: values['videoPromptUrl'] as String?,
-        clearVideoPrompt: values['videoPromptUrl'] == null,
         hometown: values['hometown'] as String? ?? profile.hometown,
         valuedQualities: _strings(values['valuedQualities']),
         pronouns: _strings(values['pronouns']),

@@ -1,5 +1,4 @@
 import 'package:amora_ai/core/auth/auth_service.dart';
-import 'package:amora_ai/core/media/amora_media_picker.dart';
 import 'package:amora_ai/features/profile/data/public_profile_mapper.dart';
 
 class MatchApiItem {
@@ -95,20 +94,8 @@ class PhaseTwoApiService {
     return ((_data(response)['report'] as Map)['id']).toString();
   }
 
-  Future<void> uploadEvidence(String reportId, AmoraPickedMedia media) async {
-    await _auth.authenticatedMultipart(
-      '/api/reports/$reportId/evidence',
-      field: 'evidence',
-      bytes: media.bytes,
-      filename: media.name,
-      mimeType: media.mimeType,
-    );
-  }
-
   Future<void> deactivate() async =>
       _auth.authenticatedRequest('POST', '/api/account/deactivate');
-  Future<void> reactivate() async =>
-      _auth.authenticatedRequest('POST', '/api/account/reactivate');
   Future<void> deleteAccount({required String reason, String? details}) async {
     await _auth.authenticatedRequest(
       'DELETE',

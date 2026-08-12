@@ -206,6 +206,24 @@ void main() {
     expect(record.displayTitle, 'You received a like');
   });
 
+  test('Rose notification derives persisted sender copy and reference', () {
+    final record = InboxNotification.fromJson({
+      'id': '3',
+      'type': 'rose_received',
+      'category': 'Messages',
+      'title': 'You received a Rose',
+      'message': 'Priya sent you a Rose.',
+      'isRead': false,
+      'createdAt': '2026-08-12T00:00:00.000Z',
+      'data': {'roseTransactionId': '101', 'targetUserId': '42'},
+      'actor': {'userId': '42', 'name': 'Priya'},
+    });
+
+    expect(record.displayTitle, 'Priya sent you a Rose');
+    expect(record.data['roseTransactionId'], '101');
+    expect(record.actor?.userId, '42');
+  });
+
   Future<void> pumpNotifications(
     WidgetTester tester, {
     ValueChanged<RouteSettings>? onRoute,
