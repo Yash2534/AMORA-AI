@@ -8,7 +8,6 @@ import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/chat/presentation/chat_detail_screen.dart';
 import 'package:amora_ai/features/chat/data/chat_repository.dart';
-import 'package:amora_ai/features/monetization/data/monetization_data.dart';
 import 'package:amora_ai/features/monetization/presentation/widgets/monetization_widgets.dart';
 import 'package:flutter/material.dart';
 
@@ -22,25 +21,42 @@ class AiIcebreakersScreen extends StatefulWidget {
 }
 
 class _AiIcebreakersScreenState extends State<AiIcebreakersScreen> {
-  var _tone = icebreakerTones.first;
-  late final List<String> _suggestions = List<String>.from(icebreakers);
+  static const _tones = <String>['Thoughtful', 'Warm', 'Curious', 'Playful'];
+
+  var _tone = _tones.first;
+  final List<String> _suggestions = <String>[];
+  _IcebreakerProfile? _profile;
+  var _nextSeed = 0;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_profile != null) return;
+    _profile = _IcebreakerProfile.fromArgs(
+      ModalRoute.of(context)?.settings.arguments,
+    );
+    final profile = _profile;
+    if (profile != null) {
+      _suggestions.addAll(
+        List<String>.generate(3, (_) => _nextSuggestion(profile)),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final profile = _IcebreakerProfile.fromArgs(
-      ModalRoute.of(context)?.settings.arguments,
-    );
+    final profile = _profile;
     if (profile == null) {
       return Scaffold(
         appBar: AmoraAppBar(
-          title: 'AI Icebreakers',
+          title: 'Conversation Starters',
           onBack: () => Navigator.of(context).maybePop(),
         ),
         body: const Center(
           child: Padding(
             padding: EdgeInsets.all(24),
             child: Text(
-              'Open AI Icebreakers from an available match.',
+              'Open conversation starters from an available match.',
               textAlign: TextAlign.center,
             ),
           ),
@@ -49,8 +65,8 @@ class _AiIcebreakersScreenState extends State<AiIcebreakersScreen> {
     }
     return Scaffold(
       appBar: AmoraAppBar(
-        title: 'AI Icebreakers',
-        subtitle: 'Send something specific, warm, and respectful.',
+        title: 'Conversation Starters',
+        subtitle: 'Created on-device from visible profile details.',
         onBack: () => Navigator.of(context).maybePop(),
       ),
       body: DecoratedBox(
@@ -83,7 +99,7 @@ class _AiIcebreakersScreenState extends State<AiIcebreakersScreen> {
                     value: _tone,
                     prefixIcon: Icons.tune_rounded,
                     options: [
-                      for (final tone in icebreakerTones)
+                      for (final tone in _tones)
                         AmoraaSelectOption(value: tone, label: tone),
                     ],
                     onChanged: (tone) {
@@ -91,7 +107,7 @@ class _AiIcebreakersScreenState extends State<AiIcebreakersScreen> {
                     },
                   ),
                   const SizedBox(height: AmoraSpacing.x4),
-                  SectionTitle(title: 'Generated icebreakers', subtitle: _tone),
+                  SectionTitle(title: 'On-device suggestions', subtitle: _tone),
                   const SizedBox(height: 12),
                   for (final suggestion in _suggestions)
                     Padding(
@@ -104,9 +120,9 @@ class _AiIcebreakersScreenState extends State<AiIcebreakersScreen> {
                     ),
                   const SizedBox(height: 8),
                   AppPrimaryButton(
-                    label: 'Generate More',
-                    icon: Icons.auto_awesome_rounded,
-                    onPressed: _generateMore,
+                    label: 'Create Another',
+                    icon: Icons.add_comment_rounded,
+                    onPressed: () => _createAnother(profile),
                   ),
                 ],
               ),
@@ -117,14 +133,33 @@ class _AiIcebreakersScreenState extends State<AiIcebreakersScreen> {
     );
   }
 
-  void _generateMore() {
+  void _createAnother(_IcebreakerProfile profile) {
     setState(() {
-      _suggestions.insert(
-        0,
-        'Since you both enjoy thoughtful dates, what is one place in Ahmedabad you never get tired of revisiting?',
-      );
+      _suggestions.insert(0, _nextSuggestion(profile));
     });
-    showPremiumSnack(context, 'New icebreaker generated');
+    showPremiumSnack(context, 'Created another on-device suggestion');
+  }
+
+  String _nextSuggestion(_IcebreakerProfile profile) {
+    final seed = _nextSeed++;
+    final interest = profile.interests.isEmpty
+        ? null
+        : profile.interests[seed % profile.interests.length];
+    final firstName = profile.firstName;
+    final candidates = <String>[
+      if (interest != null)
+        '$firstName, I noticed you enjoy $interest. What first got you interested in it?',
+      '$firstName, what is something small that made your week better?',
+      '$firstName, what kind of first conversation feels most natural to you?',
+      '$firstName, what is one place you would happily revisit and why?',
+    ];
+    final base = candidates[seed % candidates.length];
+    return switch (_tone) {
+      'Warm' => 'Hi $base',
+      'Curious' => '$base I would love to hear the story behind it.',
+      'Playful' => '$base Bonus points for an unexpected answer.',
+      _ => base,
+    };
   }
 
   void _customize(String text) {
@@ -167,11 +202,17 @@ class _AiIcebreakersScreenState extends State<AiIcebreakersScreen> {
                   label: 'Save Custom Text',
                   icon: Icons.check_rounded,
                   onPressed: () {
+                    final customized = controller.text.trim();
+                    if (customized.isEmpty) {
+                      showPremiumSnack(
+                        context,
+                        'Write a message before saving it.',
+                      );
+                      return;
+                    }
                     final index = _suggestions.indexOf(text);
                     if (index >= 0) {
-                      setState(
-                        () => _suggestions[index] = controller.text.trim(),
-                      );
+                      setState(() => _suggestions[index] = customized);
                     }
                     Navigator.pop(context);
                     showPremiumSnack(context, 'Icebreaker customized');
@@ -186,9 +227,7 @@ class _AiIcebreakersScreenState extends State<AiIcebreakersScreen> {
   }
 
   Future<void> _send(String text) async {
-    final profile = _IcebreakerProfile.fromArgs(
-      ModalRoute.of(context)?.settings.arguments,
-    );
+    final profile = _profile;
     if (profile == null) return;
     try {
       final conversationId = await ChatRepository.instance
@@ -215,6 +254,8 @@ class _IcebreakerProfile {
     required this.imageUrl,
     required this.fallbackAsset,
     required this.initials,
+    required this.score,
+    required this.interests,
   });
 
   final String id;
@@ -223,6 +264,8 @@ class _IcebreakerProfile {
   final String imageUrl;
   final String fallbackAsset;
   final String initials;
+  final int score;
+  final List<String> interests;
 
   String get firstName => name.split(',').first.split(' ').first;
 
@@ -243,6 +286,11 @@ class _IcebreakerProfile {
           imageUrl: args['imageUrl']?.toString() ?? '',
           fallbackAsset: args['fallbackAsset']?.toString() ?? '',
           initials: args['initials']?.toString() ?? 'AM',
+          score: (args['score'] as num?)?.round().clamp(0, 100) ?? 0,
+          interests: ((args['interests'] as List?) ?? const <dynamic>[])
+              .map((value) => value.toString().trim())
+              .where((value) => value.isNotEmpty)
+              .toList(growable: false),
         );
       }
     }
@@ -292,21 +340,22 @@ class _MatchMiniCard extends StatelessWidget {
               ],
             ),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-            decoration: BoxDecoration(
-              color: AppColors.premiumGold.withValues(alpha: .18),
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: AppColors.premiumGold),
-            ),
-            child: const Text(
-              '92%',
-              style: TextStyle(
-                color: AppColors.deepWine,
-                fontWeight: FontWeight.w900,
+          if (profile.score > 0)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+              decoration: BoxDecoration(
+                color: AppColors.premiumGold.withValues(alpha: .18),
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: AppColors.premiumGold),
+              ),
+              child: Text(
+                '${profile.score}%',
+                style: const TextStyle(
+                  color: AppColors.deepWine,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
             ),
-          ),
         ],
       ),
     );

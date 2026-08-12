@@ -166,8 +166,10 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                         492.0,
                       ),
                       onBack: () => Navigator.of(context).maybePop(),
-                      onShare: () =>
-                          showEventSnack(context, 'Share link prepared'),
+                      onShare: () => showEventSnack(
+                        context,
+                        'Event sharing is not connected yet. Nothing was shared.',
+                      ),
                     );
                   },
                 ),

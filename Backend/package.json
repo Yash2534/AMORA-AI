@@ -20,6 +20,7 @@
     "db:verify:events": "node scripts/verify-events-schema.js",
     "verify:membership-plans": "node scripts/verify-membership-plans-flow.js --confirm-development-db",
     "verify:send-rose": "node scripts/verify-send-rose-flow.js --confirm-development-db",
+    "verify:full-development-flow": "node scripts/verify-full-application-flow.js --confirm-development-db",
     "db:verify:subscriptions": "node scripts/verify-subscription-schema.js",
     "db:verify:notifications-preferences": "node scripts/verify-notifications-preferences-schema.js",
     "db:seed:events": "node scripts/seed-events-development.js",

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:amora_ai/core/config/amora_api_config.dart';
@@ -97,6 +98,8 @@ class AuthService {
   final http.Client _client = http.Client();
   String? _accessToken;
   String? _refreshToken;
+  Future<bool>? _refreshInFlight;
+  int _sessionGeneration = 0;
   AmoraUser? currentUser;
 
   Future<void> initialize() async {
@@ -213,6 +216,8 @@ class AuthService {
   }
 
   Future<void> clearSession() async {
+    _sessionGeneration++;
+    _refreshInFlight = null;
     _accessToken = null;
     _refreshToken = null;
     currentUser = null;
@@ -226,6 +231,8 @@ class AuthService {
 
   Future<AmoraUser> _saveAuthentication(Map<String, dynamic> response) async {
     final data = _data(response);
+    _sessionGeneration++;
+    _refreshInFlight = null;
     _accessToken = data['accessToken'] as String;
     _refreshToken = data['refreshToken'] as String;
     await _storage.write(key: _accessKey, value: _accessToken);
@@ -426,15 +433,37 @@ class AuthService {
     }
   }
 
-  Future<bool> _refresh() async {
-    if (_refreshToken == null) return false;
+  Future<bool> _refresh() {
+    final activeRefresh = _refreshInFlight;
+    if (activeRefresh != null) return activeRefresh;
+
+    final operation = _performRefresh();
+    _refreshInFlight = operation;
+    unawaited(
+      operation.whenComplete(() {
+        if (identical(_refreshInFlight, operation)) {
+          _refreshInFlight = null;
+        }
+      }),
+    );
+    return operation;
+  }
+
+  Future<bool> _performRefresh() async {
+    final refreshToken = _refreshToken;
+    if (refreshToken == null) return false;
+    final sessionGeneration = _sessionGeneration;
     try {
       final response = await _request(
         'POST',
         '/api/auth/refresh-token',
-        body: {'refreshToken': _refreshToken},
+        body: {'refreshToken': refreshToken},
         retried: true,
       );
+      if (_sessionGeneration != sessionGeneration ||
+          _refreshToken != refreshToken) {
+        return false;
+      }
       final data = _data(response);
       _accessToken = data['accessToken'] as String;
       _refreshToken = data['refreshToken'] as String;
@@ -442,6 +471,8 @@ class AuthService {
       await _storage.write(key: _refreshKey, value: _refreshToken);
       return true;
     } on AuthException {
+      return false;
+    } catch (_) {
       return false;
     }
   }

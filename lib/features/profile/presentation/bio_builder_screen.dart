@@ -141,7 +141,7 @@ class _BioBuilderScreenState extends State<BioBuilderScreen> {
             Text('Local writing preview', style: AmoraTextStyles.titleLarge),
             const SizedBox(height: 8),
             const Text(
-              'This deterministic suggestion is created on-device for the frontend demo. It is not AI-generated.',
+              'This deterministic suggestion is created on-device from your profile details. It is not AI-generated.',
             ),
             const SizedBox(height: 16),
             AppPrimaryButton(

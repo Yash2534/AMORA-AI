@@ -145,14 +145,21 @@ class EventParticipationController extends ChangeNotifier {
     notifyListeners();
   }
 
-  @visibleForTesting
-  void clear() {
+  /// Removes all account-scoped event state when the authenticated user changes.
+  ///
+  /// Registrations are server-owned. Keeping them in this singleton across a
+  /// logout can otherwise expose the previous account's event state until the
+  /// next refresh completes.
+  void clearSessionState() {
     final changed = _registrations.isNotEmpty || _isLoading || _hasLoadError;
     _registrations.clear();
     _isLoading = false;
     _hasLoadError = false;
     if (changed) notifyListeners();
   }
+
+  @visibleForTesting
+  void clear() => clearSessionState();
 
   void _setRegistration(UserEventRegistration registration) {
     final existing = _registrations[registration.event.id];

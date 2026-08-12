@@ -31,6 +31,18 @@ void main() {
       );
     },
   );
+
+  test('account change clears every cached event registration', () {
+    final controller = EventParticipationController();
+    controller.registerEvent(_event('private-user-a-event', now));
+
+    controller.clearSessionState();
+
+    expect(controller.registrations, isEmpty);
+    expect(controller.statusFor('private-user-a-event'), isNull);
+    expect(controller.isLoading, isFalse);
+    expect(controller.hasLoadError, isFalse);
+  });
 }
 
 EventModel _event(String id, DateTime startAt) {

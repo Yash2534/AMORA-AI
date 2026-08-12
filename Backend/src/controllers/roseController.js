@@ -56,6 +56,7 @@ exports.send = async (req, res, next) => {
 
     let row;
     let notification;
+    let created = false;
     await RoseTransaction.sequelize.transaction(async (transaction) => {
       row = await RoseTransaction.findOne({
         where: { senderId, idempotencyKey: key },
@@ -73,6 +74,7 @@ exports.send = async (req, res, next) => {
           status: 'sent',
           note,
         }, { transaction });
+        created = true;
       }
       notification = await createNotification({
         userId: recipientId,
@@ -93,9 +95,9 @@ exports.send = async (req, res, next) => {
       });
     });
 
-    return res.status(201).json({
+    return res.status(created ? 201 : 200).json({
       success: true,
-      message: 'Rose sent successfully.',
+      message: created ? 'Rose sent successfully.' : 'Rose was already sent.',
       data: {
         roseTransaction: roseJson(row),
         notification: notification ? { id: String(notification.id) } : null,

@@ -1,6 +1,7 @@
 const assert = require('node:assert/strict');
 const { after, before, test } = require('node:test');
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
 const { Op } = require('sequelize');
 
 require('../src/config/bootstrapEnv');
@@ -22,6 +23,7 @@ let server;
 let baseUrl;
 const users = {};
 const userIds = [];
+const lifecyclePassword = 'LifecyclePass1!';
 
 const tokenFor = (user) => jwt.sign(
   { sub: user.id, ver: user.tokenVersion || 0 },
@@ -37,6 +39,7 @@ async function createUser(key, state = 'active') {
     email: `${suffix}@phase2.test`,
     phoneNumber: '',
     authProvider: 'local',
+    passwordHash: key === 'lifecycle' ? await bcrypt.hash(lifecyclePassword, 12) : null,
     isVerified: true,
     termsAcceptedAt: new Date(),
     accountStatus: state,
@@ -194,20 +197,41 @@ test('reports validate reasons, persist optional notes, and deduplicate abuse', 
   assert.equal(content.body.data.report.targetType, 'event');
 });
 
-test('account deactivation hides the account and reactivation API stays removed', async () => {
-  const token = tokenFor(users.lifecycle);
+test('account deactivation revokes every session and valid login reactivates the account', async () => {
+  const initialLogin = await request('/api/auth/login', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ email: users.lifecycle.email, password: lifecyclePassword }),
+  });
+  assert.equal(initialLogin.status, 200, JSON.stringify(initialLogin.body));
+  const token = initialLogin.body.data.accessToken;
+  const refreshToken = initialLogin.body.data.refreshToken;
   const deactivated = await request('/api/account/deactivate', { method: 'POST', headers: { authorization: `Bearer ${token}` } });
   assert.equal(deactivated.status, 200);
   assert.equal(deactivated.body.data.user.accountStatus, 'deactivated');
-  assert.equal((await request('/api/matches', { headers: { authorization: `Bearer ${token}` } })).status, 403);
+  assert.equal((await request('/api/matches', { headers: { authorization: `Bearer ${token}` } })).status, 401);
+  const rejectedRefresh = await request('/api/auth/refresh-token', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ refreshToken }),
+  });
+  assert.equal(rejectedRefresh.status, 401);
   assert.equal((await request(`/api/profiles/${users.lifecycle.id}`, { headers: auth(users.viewer) })).status, 404);
   const hiddenFeed = await request('/api/discover/feed?limit=30&minScore=0', { headers: auth(users.viewer) });
   assert.equal(hiddenFeed.body.data.profiles.some((profile) => profile.id === String(users.lifecycle.id)), false);
-  const reactivated = await request('/api/account/reactivate', { method: 'POST', headers: { authorization: `Bearer ${token}` } });
-  assert.equal(reactivated.status, 404);
+  const loginAgain = await request('/api/auth/login', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ email: users.lifecycle.email, password: lifecyclePassword }),
+  });
+  assert.equal(loginAgain.status, 200, JSON.stringify(loginAgain.body));
+  assert.equal(loginAgain.body.data.reactivated, true);
+  assert.equal(loginAgain.body.data.user.accountStatus, 'active');
+  assert.equal((await request('/api/auth/me', { headers: { authorization: `Bearer ${loginAgain.body.data.accessToken}` } })).status, 200);
+  assert.equal((await request('/api/auth/me', { headers: { authorization: `Bearer ${token}` } })).status, 401);
   const profile = await models.OnboardingProfile.findOne({ where: { userId: users.lifecycle.id } });
   assert.equal(profile.onboardingCompleted, true);
-  assert.equal((await request(`/api/profiles/${users.lifecycle.id}`, { headers: auth(users.viewer) })).status, 404);
+  assert.equal((await request(`/api/profiles/${users.lifecycle.id}`, { headers: auth(users.viewer) })).status, 200);
 });
 
 test('soft deletion revokes old tokens and removes the account from public access', async () => {
@@ -221,6 +245,10 @@ test('soft deletion revokes old tokens and removes the account from public acces
   const row = await models.User.findByPk(users.deleteMe.id);
   assert.equal(row.accountStatus, 'deleted');
   assert.equal(row.tokenVersion, 1);
+  assert.equal(row.name, 'Deleted Member');
+  assert.match(row.email, /^deleted-\d+-\d+@deleted\.amora\.invalid$/);
+  assert.equal(row.passwordHash, null);
+  assert.equal(row.isVerified, false);
   assert.equal((await request('/api/account/reactivate', { method: 'POST', headers: { authorization: `Bearer ${token}` } })).status, 404);
   assert.equal((await request(`/api/profiles/${users.deleteMe.id}`, { headers: auth(users.viewer) })).status, 404);
 });

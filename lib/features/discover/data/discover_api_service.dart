@@ -3,10 +3,17 @@ import 'dart:convert';
 import 'dart:developer' as developer;
 
 import 'package:amora_ai/core/config/amora_api_config.dart';
+import 'package:amora_ai/core/auth/auth_service.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
 typedef DiscoverAccessTokenProvider = Future<String?> Function();
+typedef DiscoverAuthenticatedRequester =
+    Future<Map<String, dynamic>> Function(
+      String method,
+      String path, {
+      Map<String, dynamic>? body,
+    });
 
 bool isRetryableDiscoverFailure(int statusCode) =>
     statusCode == 0 ||
@@ -75,15 +82,22 @@ class DiscoverApiService {
   DiscoverApiService({
     http.Client? client,
     DiscoverAccessTokenProvider? accessTokenProvider,
+    DiscoverAuthenticatedRequester? authenticatedRequester,
   }) : _client = client ?? http.Client(),
        _accessTokenProvider =
-           accessTokenProvider ?? (() => _storage.read(key: _accessTokenKey));
+           accessTokenProvider ?? (() => _storage.read(key: _accessTokenKey)),
+       _authenticatedRequester =
+           authenticatedRequester ??
+           (client == null && accessTokenProvider == null
+               ? AuthService.instance.authenticatedRequest
+               : null);
 
   static const _accessTokenKey = 'amora_access_token';
   static const _timeout = Duration(seconds: 10);
   static const _storage = FlutterSecureStorage();
   final http.Client _client;
   final DiscoverAccessTokenProvider _accessTokenProvider;
+  final DiscoverAuthenticatedRequester? _authenticatedRequester;
 
   Future<DiscoverApiResult<DiscoverFeedPage>> getFeed({
     required int page,
@@ -196,6 +210,41 @@ class DiscoverApiService {
     Map<String, dynamic>? body,
     Map<String, String>? headers,
   }) async {
+    final authenticatedRequester = _authenticatedRequester;
+    if (authenticatedRequester != null) {
+      final requestPath = Uri(
+        path: path,
+        queryParameters: query?.isEmpty == false ? query : null,
+      ).toString();
+      try {
+        final response = await authenticatedRequester(
+          method,
+          requestPath,
+          body: body,
+        );
+        return DiscoverApiResult.success(
+          ((response['data'] as Map?) ?? const <String, dynamic>{})
+              .cast<String, dynamic>(),
+          statusCode: 200,
+          message: response['message']?.toString() ?? '',
+        );
+      } on AuthException catch (error) {
+        developer.log(
+          '$method $path failed with ${error.statusCode ?? 0}: ${error.message}',
+          name: 'AmoraDiscover',
+        );
+        return DiscoverApiResult.failure(
+          error.userMessage,
+          statusCode: error.statusCode ?? 0,
+        );
+      } catch (error) {
+        developer.log('$method $path failed: $error', name: 'AmoraDiscover');
+        return const DiscoverApiResult.failure(
+          'Unable to reach Discover right now.',
+          statusCode: 0,
+        );
+      }
+    }
     final setup = await _setup(path, query);
     if (setup == null) {
       developer.log(

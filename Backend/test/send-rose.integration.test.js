@@ -82,7 +82,8 @@ test('Rose is authenticated, persisted, notified, and idempotent without commerc
   assert.equal(persisted.note, 'Hello');
   assert.equal(await models.Notification.count({ where: { userId: users[1].id, actorUserId: users[0].id, type: 'rose_received', dedupeKey: `rose:${persisted.id}` } }), 1);
   const replay = await request('/api/roses/send', { user: users[0], body: { recipientId: users[1].id, note: 'Hello', idempotencyKey } });
-  assert.equal(replay.status, 201);
+  assert.equal(replay.status, 200);
+  assert.equal(replay.body.message, 'Rose was already sent.');
   assert.equal(replay.body.data.roseTransaction.id, String(persisted.id));
   assert.equal(await models.RoseTransaction.count({ where: { senderId: users[0].id, idempotencyKey } }), 1);
 });

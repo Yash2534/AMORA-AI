@@ -1,11 +1,56 @@
 import 'dart:convert';
 
+import 'package:amora_ai/core/auth/auth_service.dart';
 import 'package:amora_ai/features/discover/data/discover_api_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 void main() {
+  test(
+    'production Discover path uses the refresh-capable authenticated client',
+    () async {
+      String? capturedMethod;
+      String? capturedPath;
+      Map<String, dynamic>? capturedBody;
+      final service = DiscoverApiService(
+        authenticatedRequester: (method, path, {body}) async {
+          capturedMethod = method;
+          capturedPath = path;
+          capturedBody = body;
+          return {
+            'success': true,
+            'message': 'Saved.',
+            'data': {'preferences': body},
+          };
+        },
+      );
+
+      final result = await service.updateFilters({'minAge': 25, 'maxAge': 35});
+
+      expect(result.success, isTrue);
+      expect(capturedMethod, 'PUT');
+      expect(capturedPath, '/api/me/preferences');
+      expect(capturedBody, {'minAge': 25, 'maxAge': 35});
+    },
+  );
+
+  test('authenticated Discover errors remain real failures', () async {
+    final service = DiscoverApiService(
+      authenticatedRequester: (_, _, {body}) async => throw const AuthException(
+        'Your session has expired.',
+        code: 'TOKEN_EXPIRED',
+        statusCode: 401,
+      ),
+    );
+
+    final result = await service.getFeed(page: 1);
+
+    expect(result.success, isFalse);
+    expect(result.statusCode, 401);
+    expect(result.data, isNull);
+  });
+
   test('loads account preferences with bearer authentication', () async {
     late http.Request captured;
     final service = DiscoverApiService(

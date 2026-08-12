@@ -146,6 +146,10 @@ test('fresh account verifies, completes a persisted profile, reloads it, and log
   refreshToken = verification.body.data.refreshToken;
   assert.ok(accessToken);
   assert.ok(refreshToken);
+  assert.match(refreshToken, /^[a-f0-9]{32}\.[a-f0-9]{128}$/);
+  const storedRefresh = await models.RefreshToken.findOne({ where: { userId: user.id } });
+  assert.equal(storedRefresh.tokenSelector, refreshToken.split('.')[0]);
+  assert.equal(storedRefresh.tokenHash.includes(refreshToken), false);
 
   const steps = [
     ['/api/onboarding/age', { birthDate: '1998-02-14' }],
@@ -283,6 +287,23 @@ test('fresh account verifies, completes a persisted profile, reloads it, and log
   assert.equal(reloadedSession.status, 200);
   assert.equal(reloadedSession.body.data.onboarding.onboardingCompleted, true);
   assert.equal(reloadedSession.body.data.onboarding.photos.length, 5);
+
+  const concurrentRefreshes = await Promise.all([
+    request('/api/auth/refresh-token', {
+      method: 'POST',
+      token: null,
+      body: { refreshToken: relogin.body.data.refreshToken },
+    }),
+    request('/api/auth/refresh-token', {
+      method: 'POST',
+      token: null,
+      body: { refreshToken: relogin.body.data.refreshToken },
+    }),
+  ]);
+  assert.deepEqual(
+    concurrentRefreshes.map((response) => response.status).sort(),
+    [200, 401],
+  );
 
   secondaryPhoneNumber = `+918${suffix.slice(-9)}`;
   const secondaryEmail = `isolated-${suffix}@auth-flow.test`;

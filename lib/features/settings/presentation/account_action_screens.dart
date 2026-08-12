@@ -108,7 +108,7 @@ class _DeactivateAccountScreenState extends State<DeactivateAccountScreen> {
       supporting: const [
         'Your account data remains stored.',
         'Matches, chats, profile information, and membership data are not permanently deleted.',
-        'Reactivation requires a connected account-status service.',
+        'Signing in again with the same account reactivates your profile.',
       ],
       action: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

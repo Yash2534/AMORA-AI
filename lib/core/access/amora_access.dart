@@ -9,6 +9,7 @@ import 'package:amora_ai/features/auth/presentation/account_verification_screen.
 import 'package:amora_ai/features/onboarding/data/local_onboarding_repository.dart';
 import 'package:amora_ai/features/onboarding/presentation/profile_onboarding_flow.dart';
 import 'package:amora_ai/features/chat/data/chat_repository.dart';
+import 'package:amora_ai/features/events/presentation/controllers/event_participation_controller.dart';
 import 'package:amora_ai/features/monetization/data/monetization_repository.dart';
 import 'package:amora_ai/features/notifications/data/notification_inbox_repository.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
@@ -56,6 +57,7 @@ class AmoraSession {
     LocalProfileRepository.instance.clearSessionProfile();
     ProfileRelationshipController.instance.clearSessionState();
     NotificationInboxRepository.instance.clearSessionState();
+    EventParticipationController.instance.clearSessionState();
     unawaited(ChatRepository.instance.clearForAccountDeletion());
     unawaited(LocalOnboardingRepository.instance.clearForAccountDeletion());
     unawaited(AuthService.instance.logout());
@@ -98,6 +100,7 @@ class AmoraSession {
     LocalProfileRepository.instance.prepareForAuthenticatedUser();
     LocalOnboardingRepository.instance.prepareForAuthenticatedUser();
     ProfileRelationshipController.instance.clearSessionState();
+    EventParticipationController.instance.clearSessionState();
     try {
       await LocalProfileRepository.instance.refreshFromServer();
       await LocalOnboardingRepository.instance.syncFromServer();

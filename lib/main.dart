@@ -22,11 +22,9 @@ import 'package:amora_ai/features/discover/presentation/browse_grid_screen.dart'
 import 'package:amora_ai/features/events/presentation/event_detail_screen.dart';
 import 'package:amora_ai/features/events/presentation/events_screen.dart';
 import 'package:amora_ai/features/events/presentation/my_events_screen.dart';
-import 'package:amora_ai/features/insights/presentation/dating_recap_screen.dart';
 import 'package:amora_ai/features/legal/presentation/legal_document_screen.dart';
 import 'package:amora_ai/features/legal/presentation/community_guidelines_screen.dart';
 import 'package:amora_ai/features/matches/presentation/matches_screen.dart';
-import 'package:amora_ai/features/messaging/presentation/match_screen.dart';
 import 'package:amora_ai/features/notifications/presentation/notifications_hub_screen.dart';
 import 'package:amora_ai/features/onboarding/presentation/onboarding_screen.dart';
 import 'package:amora_ai/features/onboarding/presentation/profile_onboarding_flow.dart';
@@ -46,11 +44,9 @@ import 'package:amora_ai/features/profile/presentation/profile_setup_screen.dart
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
 import 'package:amora_ai/features/profile/data/identity_verification_repository.dart';
 import 'package:amora_ai/features/profile/presentation/controllers/profile_relationship_controller.dart';
-import 'package:amora_ai/features/referral/presentation/referral_leaderboard_screen.dart';
 import 'package:amora_ai/features/match/presentation/why_we_matched_screen.dart';
 import 'package:amora_ai/features/monetization/presentation/liked_you_paywall_screen.dart';
 import 'package:amora_ai/features/safety/presentation/report_flow_screen.dart';
-import 'package:amora_ai/features/safety/presentation/sos_checkin_screen.dart';
 import 'package:amora_ai/features/settings/presentation/account_action_screens.dart';
 import 'package:amora_ai/features/settings/presentation/notification_preferences_screen.dart';
 import 'package:amora_ai/features/settings/presentation/managed_profiles_screen.dart';
@@ -58,7 +54,6 @@ import 'package:amora_ai/features/settings/presentation/likes_super_likes_screen
 import 'package:amora_ai/features/settings/presentation/profile_settings_screen.dart';
 import 'package:amora_ai/features/settings/presentation/safety_privacy_screen.dart';
 import 'package:amora_ai/features/settings/presentation/settings_screen.dart';
-import 'package:amora_ai/features/social_proof/presentation/success_stories_screen.dart';
 import 'package:amora_ai/features/splash/presentation/amora_splash_screen.dart';
 import 'package:amora_ai/features/subscription/presentation/subscription_screen.dart';
 import 'package:amora_ai/features/support/presentation/faq_support_screen.dart';
@@ -161,7 +156,6 @@ class _MyAppState extends State<MyApp> {
               ProfileDetailScreen(api: PhaseTwoApiService.instance),
           MatchesScreen.routeName: (_) =>
               const MainShell(initialTab: AmoraNavTab.matches),
-          MatchScreen.routeName: (_) => const MatchScreen(),
           ChatListScreen.routeName: (_) =>
               const MainShell(initialTab: AmoraNavTab.chats),
           ChatDetailScreen.routeName: (_) => const ChatDetailScreen(),
@@ -189,7 +183,6 @@ class _MyAppState extends State<MyApp> {
           SettingsScreen.routeName: (_) => const SettingsScreen(),
           ReportFlowScreen.routeName: (_) =>
               ReportFlowScreen(api: PhaseTwoApiService.instance),
-          SosCheckinScreen.routeName: (_) => const SosCheckinScreen(),
           PhotoManagerScreen.routeName: (_) => const PhotoManagerScreen(),
           ProfileEditScreen.routeName: (_) => const ProfileEditScreen(),
           WhyWeMatchedScreen.routeName: (_) => const WhyWeMatchedScreen(),
@@ -198,14 +191,10 @@ class _MyAppState extends State<MyApp> {
               const LikedYouPaywallScreen(),
           BioBuilderScreen.routeName: (_) => const BioBuilderScreen(),
           DealbreakersScreen.routeName: (_) => const DealbreakersScreen(),
-          DatingRecapScreen.routeName: (_) => const DatingRecapScreen(),
           NotificationPreferencesScreen.routeName: (_) =>
               const NotificationPreferencesScreen(),
-          SuccessStoriesScreen.routeName: (_) => const SuccessStoriesScreen(),
           DarkModeSettingsScreen.routeName: (_) =>
               const DarkModeSettingsScreen(),
-          ReferralLeaderboardScreen.routeName: (_) =>
-              const ReferralLeaderboardScreen(),
           TermsConditionsScreen.routeName: (_) => const TermsConditionsScreen(),
           TermsConditionsScreen.legacyRouteName: (_) =>
               const TermsConditionsScreen(),

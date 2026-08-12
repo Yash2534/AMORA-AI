@@ -7,6 +7,10 @@ const OTP_RESEND_COOLDOWN_MS = 45 * 1000;
 const profile = (user) => ({ id: user.id, name: user.name, email: user.email, phoneNumber: user.phoneNumber, isVerified: user.isVerified, accountStatus: user.accountStatus });
 const emailOf = (value) => String(value || '').trim().toLowerCase();
 const phoneOf = (value) => { const digits = String(value || '').replace(/\D/g, ''); const national = digits.length === 12 && digits.startsWith('91') ? digits.slice(2) : digits; return /^\d{10}$/.test(national) ? `+91${national}` : ''; };
+const refreshSelectorOf = (value) => {
+  const selector = String(value || '').split('.', 1)[0];
+  return /^[a-f0-9]{32}$/.test(selector) && String(value).includes('.') ? selector : null;
+};
 async function deliverOtp(phoneNumber, purpose, code, expiresAt) {
   await sendSms(phoneNumber, `Your Amora AI verification code is ${code}. It expires in 10 minutes.`, { code, purpose, expiresAt });
 }
@@ -151,8 +155,8 @@ exports.resendVerification = async (req, res) => {
     deliveredCode,
   );
 };
-exports.login = async (req, res) => { const { User } = getModels(); const user = await User.findOne({ where: { email: emailOf(req.body.email) } }); if (!user || user.authProvider !== 'local' || !(await bcrypt.compare(req.body.password, user.passwordHash || '')) || user.accountStatus === 'deleted') { const provider = user && user.authProvider === 'google'; return res.status(401).json({ success: false, message: provider ? 'This account uses Google Sign-In. Please sign in with Google.' : 'Invalid email or password.', code: 'INVALID_CREDENTIALS', errors: [] }); } if (user.accountStatus === 'deactivated') return res.status(403).json({ success: false, message: 'This account is deactivated.', code: 'ACCOUNT_DEACTIVATED', errors: [] }); if (!user.isVerified) return res.status(403).json({ success: false, message: 'Please verify your account before logging in.', code: 'ACCOUNT_NOT_VERIFIED', errors: [] }); return success(res, 'Logged in.', { ...(await issueTokens(user, req.ip)), user: profile(user) }); };
-exports.google = async (req, res) => { if (!googleClient) return res.status(503).json({ success: false, message: 'Google Sign-In is not configured on this server yet.', code: 'GOOGLE_AUTH_NOT_CONFIGURED', errors: [] }); let payload; try { payload = (await googleClient.verifyIdToken({ idToken: req.body.idToken, audience: googleIds })).getPayload(); } catch (_) { return res.status(401).json({ success: false, message: 'Invalid Google ID token.', code: 'TOKEN_INVALID', errors: [] }); } if (!payload.email || !payload.sub) return res.status(401).json({ success: false, message: 'Google token is missing required profile information.', code: 'TOKEN_INVALID', errors: [] }); const { User } = getModels(); const email = emailOf(payload.email); let user = await User.findOne({ where: { email } }); let isNewUser = false; if (user?.accountStatus === 'deleted') return res.status(401).json({ success: false, message: 'This account is unavailable.', code: 'INVALID_CREDENTIALS', errors: [] }); if (user?.accountStatus === 'deactivated') return res.status(403).json({ success: false, message: 'This account is deactivated.', code: 'ACCOUNT_DEACTIVATED', errors: [] }); if (user && user.authProvider === 'local') return res.status(409).json({ success: false, message: 'An account with this email uses password login. Please log in with your password first.', code: 'INVALID_CREDENTIALS', errors: [] }); if (!user) { user = await User.create({ name: payload.name || email.split('@')[0], email, googleId: payload.sub, phoneNumber: '', authProvider: 'google', isVerified: true }); isNewUser = true; } return success(res, 'Google Sign-In successful.', { ...(await issueTokens(user, req.ip)), user: profile(user), isNewUser }); };
+exports.login = async (req, res) => { const { User } = getModels(); const user = await User.findOne({ where: { email: emailOf(req.body.email) } }); if (!user || user.authProvider !== 'local' || !(await bcrypt.compare(req.body.password, user.passwordHash || '')) || user.accountStatus === 'deleted') { const provider = user && user.authProvider === 'google'; return res.status(401).json({ success: false, message: provider ? 'This account uses Google Sign-In. Please sign in with Google.' : 'Invalid email or password.', code: 'INVALID_CREDENTIALS', errors: [] }); } if (!user.isVerified) return res.status(403).json({ success: false, message: 'Please verify your account before logging in.', code: 'ACCOUNT_NOT_VERIFIED', errors: [] }); const reactivated = user.accountStatus === 'deactivated'; if (reactivated) { user.accountStatus = 'active'; user.deactivatedAt = null; await user.save(); } return success(res, reactivated ? 'Account reactivated and logged in.' : 'Logged in.', { ...(await issueTokens(user, req.ip)), user: profile(user), reactivated }); };
+exports.google = async (req, res) => { if (!googleClient) return res.status(503).json({ success: false, message: 'Google Sign-In is not configured on this server yet.', code: 'GOOGLE_AUTH_NOT_CONFIGURED', errors: [] }); let payload; try { payload = (await googleClient.verifyIdToken({ idToken: req.body.idToken, audience: googleIds })).getPayload(); } catch (_) { return res.status(401).json({ success: false, message: 'Invalid Google ID token.', code: 'TOKEN_INVALID', errors: [] }); } if (!payload.email || !payload.sub) return res.status(401).json({ success: false, message: 'Google token is missing required profile information.', code: 'TOKEN_INVALID', errors: [] }); const { User } = getModels(); const email = emailOf(payload.email); let user = await User.findOne({ where: { email } }); let isNewUser = false; if (user?.accountStatus === 'deleted') return res.status(401).json({ success: false, message: 'This account is unavailable.', code: 'INVALID_CREDENTIALS', errors: [] }); if (user && user.authProvider === 'local') return res.status(409).json({ success: false, message: 'An account with this email uses password login. Please log in with your password first.', code: 'INVALID_CREDENTIALS', errors: [] }); if (!user) { user = await User.create({ name: payload.name || email.split('@')[0], email, googleId: payload.sub, phoneNumber: '', authProvider: 'google', isVerified: true }); isNewUser = true; } const reactivated = user.accountStatus === 'deactivated'; if (reactivated) { user.accountStatus = 'active'; user.deactivatedAt = null; await user.save(); } return success(res, reactivated ? 'Account reactivated and signed in.' : 'Google Sign-In successful.', { ...(await issueTokens(user, req.ip)), user: profile(user), isNewUser, reactivated }); };
 exports.forgotPassword = async (req, res) => {
   const email = emailOf(req.body.email);
   const { User, OtpToken } = getModels();
@@ -216,7 +220,42 @@ exports.resetPassword = async (req, res) => {
   if (!result) return res.status(401).json({ success: false, message: 'Invalid or already used recovery token.', code: 'TOKEN_INVALID', errors: [] });
   return success(res, 'Password updated. Please log in again.', {});
 };
-exports.refreshToken = async (req, res) => { const { RefreshToken, User } = getModels(); const token = req.body.refreshToken; const candidates = await RefreshToken.findAll({ where: { expiresAt: { [Op.gt]: new Date() } }, include: [User] }); let match; for (const item of candidates) if (await bcrypt.compare(token, item.tokenHash)) { match = item; break; } if (!match || !match.User || match.User.accountStatus === 'deleted') return res.status(401).json({ success: false, message: 'Invalid or expired refresh token.', code: 'TOKEN_INVALID', errors: [] }); const user = match.User; await match.destroy(); return success(res, 'Token refreshed.', await issueTokens(user, req.ip)); };
-exports.logout = async (req, res) => { const { RefreshToken } = getModels(); const candidates = await RefreshToken.findAll({ where: { userId: req.user.sub } }); for (const item of candidates) if (await bcrypt.compare(req.body.refreshToken, item.tokenHash)) { await item.destroy(); break; } return success(res, 'Logged out', {}); };
+exports.refreshToken = async (req, res) => {
+  const { RefreshToken, User } = getModels();
+  const token = req.body.refreshToken;
+  const selector = refreshSelectorOf(token);
+  const candidates = await RefreshToken.findAll({
+    where: {
+      expiresAt: { [Op.gt]: new Date() },
+      ...(selector ? { tokenSelector: selector } : { tokenSelector: null }),
+    },
+  });
+  let candidateId;
+  for (const item of candidates) {
+    if (await bcrypt.compare(token, item.tokenHash)) {
+      candidateId = item.id;
+      break;
+    }
+  }
+  if (!candidateId) {
+    return res.status(401).json({ success: false, message: 'Invalid or expired refresh token.', code: 'TOKEN_INVALID', errors: [] });
+  }
+  const tokens = await User.sequelize.transaction(async (transaction) => {
+    const match = await RefreshToken.findByPk(candidateId, {
+      include: [User],
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+    });
+    if (!match || !match.User || match.expiresAt <= new Date() || match.User.accountStatus !== 'active') return null;
+    const user = match.User;
+    await match.destroy({ transaction });
+    return issueTokens(user, req.ip, { transaction });
+  });
+  if (!tokens) {
+    return res.status(401).json({ success: false, message: 'Invalid or expired refresh token.', code: 'TOKEN_INVALID', errors: [] });
+  }
+  return success(res, 'Token refreshed.', tokens);
+};
+exports.logout = async (req, res) => { const { RefreshToken } = getModels(); const selector = refreshSelectorOf(req.body.refreshToken); const candidates = await RefreshToken.findAll({ where: { userId: req.user.sub, ...(selector ? { tokenSelector: selector } : { tokenSelector: null }) } }); for (const item of candidates) if (await bcrypt.compare(req.body.refreshToken, item.tokenHash)) { await item.destroy(); break; } return success(res, 'Logged out', {}); };
 exports.me = async (req, res) => { const { User } = getModels(); const user = await User.findByPk(req.user.sub); if (!user) return res.status(404).json({ success: false, message: 'User not found.', code: 'TOKEN_INVALID', errors: [] }); return success(res, 'Profile retrieved.', { user: profile(user) }); };
 exports.logGoogleStatus = () => console.log(googleClient ? '[Google Auth] Active' : '[Google Auth] Disabled — set GOOGLE_CLIENT_IDS in .env to enable');

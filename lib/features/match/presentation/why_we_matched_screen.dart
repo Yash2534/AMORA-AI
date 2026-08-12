@@ -125,6 +125,11 @@ class WhyWeMatchedScreen extends StatelessWidget {
                           arguments: <String, Object?>{
                             'id': profile.id,
                             'name': profile.name,
+                            'subtitle': [profile.profession, profile.city]
+                                .where((value) => value.trim().isNotEmpty)
+                                .join(' · '),
+                            'score': profile.score,
+                            'interests': profile.interests,
                             'imageUrl': profile.imageUrl,
                             'fallbackAsset': profile.fallbackAsset,
                           },
