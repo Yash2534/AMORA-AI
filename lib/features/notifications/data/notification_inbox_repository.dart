@@ -1,6 +1,25 @@
 import 'package:amora_ai/core/auth/auth_service.dart';
 import 'package:flutter/foundation.dart';
 
+class InboxNotificationActor {
+  const InboxNotificationActor({
+    required this.userId,
+    required this.name,
+    this.photoUrl,
+  });
+
+  final String userId;
+  final String name;
+  final String? photoUrl;
+
+  factory InboxNotificationActor.fromJson(Map<String, dynamic> json) =>
+      InboxNotificationActor(
+        userId: json['userId']?.toString() ?? '',
+        name: json['name']?.toString().trim() ?? '',
+        photoUrl: json['photoUrl']?.toString(),
+      );
+}
+
 class InboxNotification {
   const InboxNotification({
     required this.id,
@@ -12,6 +31,7 @@ class InboxNotification {
     required this.createdAt,
     required this.data,
     this.readAt,
+    this.actor,
   });
 
   final String id;
@@ -23,6 +43,17 @@ class InboxNotification {
   final DateTime? readAt;
   final DateTime createdAt;
   final Map<String, dynamic> data;
+  final InboxNotificationActor? actor;
+
+  String get displayTitle {
+    final actorName = actor?.name.trim() ?? '';
+    if (actorName.isEmpty) return title;
+    return switch (type) {
+      'like' || 'new_like' => '$actorName liked your profile',
+      'superLike' || 'new_super_like' => '$actorName Super Liked you',
+      _ => title,
+    };
+  }
 
   factory InboxNotification.fromJson(Map<String, dynamic> json) =>
       InboxNotification(
@@ -38,6 +69,11 @@ class InboxNotification {
             DateTime.fromMillisecondsSinceEpoch(0),
         data: ((json['data'] as Map?) ?? const <String, dynamic>{})
             .cast<String, dynamic>(),
+        actor: json['actor'] is Map
+            ? InboxNotificationActor.fromJson(
+                (json['actor'] as Map).cast<String, dynamic>(),
+              )
+            : null,
       );
 }
 
@@ -185,6 +221,7 @@ class NotificationInboxRepository extends ChangeNotifier {
         readAt: item.readAt ?? DateTime.now(),
         createdAt: item.createdAt,
         data: item.data,
+        actor: item.actor,
       );
     }
     if (_filter == 'Unread') {

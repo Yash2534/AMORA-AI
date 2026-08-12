@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:amora_ai/core/auth/auth_service.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
+import 'package:amora_ai/features/profile/domain/profile_form_options.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_form.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -16,6 +17,7 @@ Map<String, dynamic> _canonicalProfile({
   'phoneNumber': '+910000000000',
   'birthdate': '03/04/1997',
   'gender': 'Female',
+  'customGender': '',
   'bio': bio,
   'profession': 'Engineer',
   'company': 'AMORAA',
@@ -174,6 +176,22 @@ void main() {
     expect(remote.lastBody, <String, dynamic>{
       'bio': 'Only this section changed.',
     });
+  });
+
+  test('gender edits send the backend enum instead of legacy labels', () async {
+    final remote = _FakeOwnProfileRemote();
+    final repository = LocalProfileRepository.testing(remote: remote);
+    addTearDown(repository.dispose);
+    await repository.refreshFromServer();
+
+    await repository.savePersisted(
+      repository.profile.copyWith(
+        gender: ProfileFormOptions.storedGenderValue('Male'),
+      ),
+    );
+
+    expect(remote.lastBody, containsPair('gender', 'Male'));
+    expect(remote.lastBody?['gender'], isNot('Man'));
   });
 
   test(

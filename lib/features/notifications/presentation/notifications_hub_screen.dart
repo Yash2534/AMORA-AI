@@ -1290,7 +1290,8 @@ class _NotificationItem {
 
   factory _NotificationItem.fromRecord(InboxNotification record) {
     final route = _notificationRoute(record);
-    final targetUserId = record.data['targetUserId']?.toString();
+    final targetUserId =
+        record.actor?.userId ?? record.data['targetUserId']?.toString();
     final conversationId = record.data['conversationId']?.toString();
     final arguments = switch (route) {
       ProfileDetailScreen.routeName => targetUserId,
@@ -1302,15 +1303,18 @@ class _NotificationItem {
     };
     return _NotificationItem(
       id: record.id,
-      title: record.title,
+      title: record.displayTitle,
       description: record.message,
       relativeTime: _relativeTime(record.createdAt),
       group: _notificationGroup(record.createdAt),
       category: record.category,
       icon: _notificationFilterIcon(record.category),
-      imageUrl: record.data['imageUrl']?.toString() ?? '',
+      imageUrl:
+          record.actor?.photoUrl ?? record.data['imageUrl']?.toString() ?? '',
       fallbackAsset: AppImages.fallbackProfile,
-      initials: record.data['initials']?.toString() ?? _initials(record.title),
+      initials:
+          record.data['initials']?.toString() ??
+          _initials(record.actor?.name ?? record.displayTitle),
       route: route,
       arguments: arguments,
       unread: !record.isRead,

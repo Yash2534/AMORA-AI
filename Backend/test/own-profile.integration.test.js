@@ -108,6 +108,7 @@ test('GET returns the complete editable canonical profile without private fields
   assert.equal(profile.name, 'Own Profile User');
   assert.equal(profile.email, owner.email);
   assert.equal(profile.birthdate, '03/04/1997');
+  assert.equal(profile.customGender, '');
   assert.deepEqual(profile.photos, [
     `${baseUrl}/uploads/own-one.jpg`,
     `${baseUrl}/uploads/own-two.jpg`,
@@ -179,6 +180,20 @@ test('partial update preserves omitted editable fields', async () => {
   assert.equal(response.body.data.profile.company, before.body.data.profile.company);
   assert.deepEqual(response.body.data.profile.interests, before.body.data.profile.interests);
   assert.deepEqual(response.body.data.profile.prompts, before.body.data.profile.prompts);
+});
+
+test('gender uses the canonical enum and clears an obsolete custom label', async () => {
+  await models.OnboardingProfile.update(
+    { gender: 'Other', customGender: 'Non-binary' },
+    { where: { userId: owner.id } },
+  );
+  const response = await request('/api/me/profile', {
+    method: 'PUT',
+    body: { gender: 'Male' },
+  });
+  assert.equal(response.status, 200, JSON.stringify(response.body));
+  assert.equal(response.body.data.profile.gender, 'Male');
+  assert.equal(response.body.data.profile.customGender, '');
 });
 
 test('validation rejects invalid values, underage dates, and mass assignment', async () => {

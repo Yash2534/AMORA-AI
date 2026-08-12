@@ -3,6 +3,8 @@ const pushProvider = require('./firebasePushProvider');
 
 const preferenceField = {
   like: 'newMatches',
+  likes: 'newMatches',
+  'super likes': 'newMatches',
   match: 'newMatches',
   message: 'messages',
   event: 'eventReminders',
@@ -14,10 +16,10 @@ const preferenceField = {
   gift: 'messages',
 };
 
-async function conversationIsMuted(userId, conversationId) {
+async function conversationIsMuted(userId, conversationId, transaction = null) {
   if (!conversationId) return false;
   const { ConversationParticipant } = getModels();
-  const row = await ConversationParticipant.findOne({ where: { userId, conversationId }, attributes: ['mutedAt', 'mutedUntil'] });
+  const row = await ConversationParticipant.findOne({ where: { userId, conversationId }, attributes: ['mutedAt', 'mutedUntil'], transaction });
   return Boolean(row?.mutedAt) && (!row.mutedUntil || new Date(row.mutedUntil) > new Date());
 }
 
@@ -45,17 +47,22 @@ async function deliverPush(notification, preferences) {
   }
 }
 
-async function createNotification({ userId, type, category, title, message, data = {}, conversationId = null, dedupeKey = null }) {
+async function createNotification({ userId, actorUserId = null, type, category, title, message, data = {}, conversationId = null, dedupeKey = null, transaction = null }) {
   const { Notification, NotificationPreference, User } = getModels();
-  const user = await User.findOne({ where: { id: userId, accountStatus: 'active' }, attributes: ['id'] });
-  if (!user || await conversationIsMuted(userId, conversationId)) return null;
-  const [preferences] = await NotificationPreference.findOrCreate({ where: { userId }, defaults: { userId } });
-  const field = preferenceField[category];
+  const user = await User.findOne({ where: { id: userId, accountStatus: 'active' }, attributes: ['id'], transaction });
+  if (!user || await conversationIsMuted(userId, conversationId, transaction)) return null;
+  const [preferences] = await NotificationPreference.findOrCreate({ where: { userId }, defaults: { userId }, transaction });
+  const field = preferenceField[String(category).trim().toLowerCase()];
   if (field && preferences[field] === false) return null;
-  const [notification] = dedupeKey
-    ? await Notification.findOrCreate({ where: { userId, dedupeKey }, defaults: { userId, type, category, title, message, data, dedupeKey, isRead: false } })
-    : [await Notification.create({ userId, type, category, title, message, data, isRead: false })];
-  await deliverPush(notification, preferences).catch((error) => console.error('[Push]', error.message));
+  const values = { userId, actorUserId, type, category, title, message, data, isRead: false };
+  const [notification, created] = dedupeKey
+    ? await Notification.findOrCreate({ where: { userId, dedupeKey }, defaults: { ...values, dedupeKey }, transaction })
+    : [await Notification.create(values, { transaction }), true];
+  if (created) {
+    const push = () => deliverPush(notification, preferences).catch((error) => console.error('[Push]', error.message));
+    if (transaction) transaction.afterCommit(push);
+    else await push();
+  }
   return notification;
 }
 

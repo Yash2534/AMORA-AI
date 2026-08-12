@@ -22,8 +22,13 @@ let models;
 let owner;
 let other;
 let candidate;
+let thirdSender;
+let rollbackSender;
 let token;
 let otherToken;
+let candidateToken;
+let thirdSenderToken;
+let rollbackSenderToken;
 const userIds = [];
 
 async function createUser(name, birthDate = '1997-04-03') {
@@ -71,10 +76,15 @@ before(async () => {
   await initializeDatabase();
   models = getModels();
   owner = await createUser('Notification Owner');
-  other = await createUser('Other Owner');
-  candidate = await createUser('Discover Candidate', '1998-05-04');
+  other = await createUser('Ananya');
+  candidate = await createUser('Priya', '1998-05-04');
+  thirdSender = await createUser('Neha', '1996-06-05');
+  rollbackSender = await createUser('Rollback Sender', '1995-07-06');
   token = jwt.sign({ sub: owner.id, ver: 0 }, process.env.JWT_SECRET, { expiresIn: '15m' });
   otherToken = jwt.sign({ sub: other.id, ver: 0 }, process.env.JWT_SECRET, { expiresIn: '15m' });
+  candidateToken = jwt.sign({ sub: candidate.id, ver: 0 }, process.env.JWT_SECRET, { expiresIn: '15m' });
+  thirdSenderToken = jwt.sign({ sub: thirdSender.id, ver: 0 }, process.env.JWT_SECRET, { expiresIn: '15m' });
+  rollbackSenderToken = jwt.sign({ sub: rollbackSender.id, ver: 0 }, process.env.JWT_SECRET, { expiresIn: '15m' });
   const now = Date.now();
   await models.Notification.bulkCreate([
     { userId: owner.id, type: 'like', category: 'Likes', title: 'Old like', message: 'Old notification', isRead: false, data: { targetUserId: candidate.id }, createdAt: new Date(now - 3000), updatedAt: new Date(now - 3000) },
@@ -192,4 +202,79 @@ test('account preferences persist, reject unsupported values, and enforce Discov
   const otherPreferences = await request('/api/me/preferences', { bearer: otherToken });
   assert.equal(otherPreferences.body.data.preferences.minAge, 18);
   assert.equal((await request('/api/me/preferences')).body.data.preferences.minAge, 18);
+});
+
+test('likes persist relational actors and receiver sees each current sender name and photo', async () => {
+  await request('/api/notification-preferences', { method: 'PUT', body: { newMatches: true } });
+
+  for (const [sender, bearer] of [[candidate, candidateToken], [other, otherToken], [thirdSender, thirdSenderToken]]) {
+    const response = await request('/api/discover/swipe', {
+      method: 'POST',
+      bearer,
+      body: { targetUserId: owner.id, action: 'like' },
+    });
+    assert.equal(response.status, 200, JSON.stringify(response.body));
+    const action = await models.DiscoverAction.findOne({ where: { actorUserId: sender.id, targetUserId: owner.id } });
+    assert.equal(action.action, 'like');
+  }
+
+  const rows = await models.Notification.findAll({
+    where: { userId: owner.id, type: 'new_like' },
+    order: [['actorUserId', 'ASC']],
+  });
+  assert.equal(rows.length, 3);
+  assert.deepEqual(new Set(rows.map((row) => Number(row.actorUserId))), new Set([candidate.id, other.id, thirdSender.id]));
+  assert.ok(rows.every((row) => row.category === 'Likes'));
+
+  const receiverList = await request('/api/notifications?category=Likes');
+  assert.equal(receiverList.status, 200);
+  const receivedLikes = receiverList.body.data.notifications.filter((item) => item.type === 'new_like');
+  assert.equal(receivedLikes.length, 3);
+  assert.deepEqual(new Set(receivedLikes.map((item) => item.actor.name)), new Set(['Priya', 'Ananya', 'Neha']));
+  assert.ok(receivedLikes.every((item) => item.actor.photoUrl.endsWith('/uploads/notification.jpg')));
+  assert.ok(receivedLikes.every((item) => String(item.data.targetUserId) === item.actor.userId));
+
+  for (const bearer of [candidateToken, otherToken, thirdSenderToken]) {
+    const senderList = await request('/api/notifications', { bearer });
+    assert.equal(senderList.body.data.notifications.some((item) => item.type === 'new_like' && item.actor?.userId === String(candidate.id)), false);
+  }
+
+  await candidate.update({ name: 'Priya Sharma' });
+  const refreshed = await request('/api/notifications?category=Likes');
+  const renamed = refreshed.body.data.notifications.find((item) => item.actor?.userId === String(candidate.id));
+  assert.equal(renamed.actor.name, 'Priya Sharma');
+
+  const retry = await request('/api/discover/swipe', {
+    method: 'POST',
+    bearer: candidateToken,
+    body: { targetUserId: owner.id, action: 'like' },
+  });
+  assert.equal(retry.status, 200);
+  assert.equal(await models.Notification.count({ where: { userId: owner.id, actorUserId: candidate.id, type: 'new_like' } }), 1);
+
+  const ownNotification = await models.Notification.findOne({ where: { userId: owner.id, actorUserId: candidate.id, type: 'new_like' } });
+  assert.equal((await request(`/api/notifications/${ownNotification.id}/read`, { method: 'PUT' })).body.data.notification.actor.name, 'Priya Sharma');
+  assert.equal((await request(`/api/notifications/${ownNotification.id}`, { method: 'DELETE', bearer: thirdSenderToken })).status, 404);
+  assert.equal((await request(`/api/notifications/${ownNotification.id}`, { method: 'DELETE' })).status, 200);
+  const afterDelete = await request('/api/notifications?category=Likes');
+  assert.equal(afterDelete.body.data.notifications.some((item) => item.id === String(ownNotification.id)), false);
+});
+
+test('notification write failure rolls back the like action', async () => {
+  await request('/api/notification-preferences', { method: 'PUT', body: { newMatches: true } });
+  models.Notification.addHook('beforeCreate', 'force-like-notification-failure', () => {
+    throw new Error('forced notification failure');
+  });
+  try {
+    const response = await request('/api/discover/swipe', {
+      method: 'POST',
+      bearer: rollbackSenderToken,
+      body: { targetUserId: owner.id, action: 'like' },
+    });
+    assert.equal(response.status, 500);
+  } finally {
+    models.Notification.removeHook('beforeCreate', 'force-like-notification-failure');
+  }
+  assert.equal(await models.DiscoverAction.count({ where: { actorUserId: rollbackSender.id, targetUserId: owner.id } }), 0);
+  assert.equal(await models.Notification.count({ where: { userId: owner.id, actorUserId: rollbackSender.id } }), 0);
 });

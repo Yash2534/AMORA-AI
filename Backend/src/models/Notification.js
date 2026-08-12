@@ -3,6 +3,7 @@ const { DataTypes } = require('sequelize');
 module.exports = (sequelize) => sequelize.define('Notification', {
   id: { type: DataTypes.BIGINT.UNSIGNED, autoIncrement: true, primaryKey: true },
   userId: { type: DataTypes.INTEGER, allowNull: false },
+  actorUserId: { type: DataTypes.INTEGER, allowNull: true },
   type: { type: DataTypes.STRING(50), allowNull: false },
   category: { type: DataTypes.STRING(50), allowNull: false },
   dedupeKey: { type: DataTypes.STRING(180), allowNull: true },

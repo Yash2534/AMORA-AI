@@ -675,6 +675,7 @@ class LocalOnboardingRepository extends ChangeNotifier
                 customValue: values['customGender'] as String? ?? '',
               )
             : null,
+        customGender: values['customGender'] as String? ?? '',
         bio: values['bio'] as String? ?? '',
         profession: values['profession'] as String? ?? '',
         company: values['company'] as String? ?? '',
@@ -745,6 +746,7 @@ class LocalOnboardingRepository extends ChangeNotifier
             ? null
             : AmoraDateOfBirth.format(_state.birthDate!),
         gender: selectedGender.isEmpty ? null : selectedGender,
+        customGender: _state.customGender.trim(),
         location: _state.city?.trim().isEmpty ?? true
             ? null
             : _state.city!.trim(),

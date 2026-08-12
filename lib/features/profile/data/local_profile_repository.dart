@@ -18,6 +18,7 @@ class UserProfile {
     required this.phoneNumber,
     required this.birthdate,
     required this.gender,
+    this.customGender = '',
     required this.bio,
     required this.profession,
     required this.company,
@@ -47,6 +48,7 @@ class UserProfile {
   final String phoneNumber;
   final String birthdate;
   final String gender;
+  final String customGender;
   final String bio;
   final String profession;
   final String company;
@@ -127,6 +129,7 @@ class UserProfile {
     String? phoneNumber,
     String? birthdate,
     String? gender,
+    String? customGender,
     String? bio,
     String? profession,
     String? company,
@@ -159,6 +162,7 @@ class UserProfile {
       phoneNumber: phoneNumber ?? this.phoneNumber,
       birthdate: birthdate ?? this.birthdate,
       gender: gender ?? this.gender,
+      customGender: customGender ?? this.customGender,
       bio: bio ?? this.bio,
       profession: profession ?? this.profession,
       company: company ?? this.company,
@@ -195,6 +199,7 @@ class UserProfile {
     'phoneNumber': phoneNumber,
     'birthdate': birthdate,
     'gender': gender,
+    'customGender': customGender,
     'bio': bio,
     'profession': profession,
     'company': company,
@@ -240,6 +245,7 @@ class UserProfile {
       phoneNumber: json['phoneNumber'] as String? ?? '',
       birthdate: json['birthdate'] as String? ?? '',
       gender: json['gender'] as String? ?? '',
+      customGender: json['customGender'] as String? ?? '',
       bio: json['bio'] as String? ?? '',
       profession: json['profession'] as String? ?? '',
       company: json['company'] as String? ?? '',
@@ -520,6 +526,8 @@ class LocalProfileRepository extends ChangeNotifier {
         'birthdate':
             '${birthDate.year.toString().padLeft(4, '0')}-${birthDate.month.toString().padLeft(2, '0')}-${birthDate.day.toString().padLeft(2, '0')}',
       if (profile.gender != baseline.gender) 'gender': profile.gender,
+      if (profile.customGender != baseline.customGender)
+        'customGender': profile.customGender,
       if (profile.bio != baseline.bio) 'bio': profile.bio,
       if (profile.profession != baseline.profession)
         'profession': profile.profession,

@@ -1,4 +1,5 @@
 const { getModels } = require('../models');
+const { publicUrl } = require('../services/publicProfileService');
 
 const allowedDataFields = ['route', 'targetUserId', 'conversationId', 'eventId', 'imageUrl', 'initials'];
 
@@ -9,7 +10,30 @@ function safeData(value) {
     .map((key) => [key, value[key]]));
 }
 
-function payload(row) {
+function actorInclude() {
+  const { User, OnboardingProfile } = getModels();
+  return [{
+    model: User,
+    as: 'actor',
+    required: false,
+    attributes: ['id', 'name', 'accountStatus'],
+    include: [{ model: OnboardingProfile, required: false, attributes: ['photos', 'primaryPhotoIndex'] }],
+  }];
+}
+
+function actorPayload(req, actor) {
+  if (!actor || actor.accountStatus === 'deleted') return null;
+  const profile = actor.OnboardingProfile;
+  const photos = Array.isArray(profile?.photos) ? profile.photos : [];
+  const primary = photos[Number(profile?.primaryPhotoIndex || 0)] || photos[0] || null;
+  return {
+    userId: String(actor.id),
+    name: actor.name,
+    photoUrl: publicUrl(req, primary),
+  };
+}
+
+function payload(req, row) {
   return {
     id: String(row.id),
     type: row.type,
@@ -20,6 +44,7 @@ function payload(row) {
     readAt: row.readAt,
     createdAt: row.createdAt,
     data: safeData(row.data),
+    actor: actorPayload(req, row.actor),
   };
 }
 
@@ -44,6 +69,7 @@ exports.list = async (req, res, next) => {
         order: [['createdAt', 'DESC'], ['id', 'DESC']],
         offset: (page - 1) * limit,
         limit: limit + 1,
+        include: actorInclude(),
       }),
       Notification.count({ where: { userId: req.user.sub, deletedAt: null, isRead: false } }),
     ]);
@@ -52,7 +78,7 @@ exports.list = async (req, res, next) => {
       success: true,
       message: rows.length ? 'Notifications retrieved.' : 'No notifications found.',
       data: {
-        notifications: rows.slice(0, limit).map(payload),
+        notifications: rows.slice(0, limit).map((row) => payload(req, row)),
         unreadCount,
         pagination: { page, limit, hasMore, nextPage: hasMore ? page + 1 : null },
       },
@@ -65,14 +91,15 @@ exports.read = async (req, res, next) => {
     const { Notification } = getModels();
     const row = await Notification.findOne({
       where: { id: req.params.notificationId, userId: req.user.sub, deletedAt: null },
+      include: actorInclude(),
     });
     if (!row) return unavailable(res);
     if (!row.isRead) {
       await row.update({ isRead: true, readAt: new Date() });
-      await row.reload();
+      await row.reload({ include: actorInclude() });
     }
     const unreadCount = await Notification.count({ where: { userId: req.user.sub, deletedAt: null, isRead: false } });
-    return res.json({ success: true, message: 'Notification marked as read.', data: { notification: payload(row), unreadCount } });
+    return res.json({ success: true, message: 'Notification marked as read.', data: { notification: payload(req, row), unreadCount } });
   } catch (error) { return next(error); }
 };
 
@@ -101,4 +128,4 @@ exports.remove = async (req, res, next) => {
   } catch (error) { return next(error); }
 };
 
-exports._test = { payload, safeData };
+exports._test = { payload, safeData, actorPayload };

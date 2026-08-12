@@ -2,7 +2,7 @@ const { body } = require('express-validator');
 const { COMMUNICATION_STYLE_VALUES } = require('../constants/communicationStyles');
 
 const allowed = new Set([
-  'name', 'birthdate', 'gender', 'bio', 'profession', 'company', 'education',
+  'name', 'birthdate', 'gender', 'customGender', 'bio', 'profession', 'company', 'education',
   'location', 'datingIntention', 'interests', 'prompts', 'lifestyle',
   'hometown', 'valuedQualities', 'pronouns', 'sexuality',
   'preferredTalkingHours', 'loveLanguages', 'iceBreaker',
@@ -41,6 +41,7 @@ const profileUpdateValidation = [
     return true;
   }),
   body('gender').optional().isIn(['Male', 'Female', 'Other']).withMessage('gender must be Male, Female, or Other.'),
+  string('customGender', 100),
   string('bio', 2000),
   string('profession', 255),
   string('company', 255),

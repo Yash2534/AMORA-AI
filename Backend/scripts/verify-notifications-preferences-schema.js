@@ -9,6 +9,7 @@ const requiredTables = [
 const requiredNotificationColumns = [
   'id',
   'userId',
+  'actorUserId',
   'type',
   'category',
   'title',
@@ -23,6 +24,7 @@ const requiredNotificationColumns = [
 const requiredNotificationIndexes = [
   'notifications_inbox_order',
   'notifications_unread_lookup',
+  'notifications_actor_user_id',
 ];
 
 async function main() {
@@ -63,7 +65,7 @@ async function main() {
       missingTables.length ||
       missingColumns.length ||
       missingIndexes.length ||
-      Number(foreignKeys[0].count_) !== 1
+      Number(foreignKeys[0].count_) !== 2
     ) {
       throw new Error(
         `Notification/preferences schema verification failed. Missing tables: ${missingTables.join(', ') || 'none'}; missing columns: ${missingColumns.join(', ') || 'none'}; missing indexes: ${missingIndexes.join(', ') || 'none'}; notification foreign keys: ${foreignKeys[0].count_}.`,
@@ -71,7 +73,7 @@ async function main() {
     }
 
     console.log(
-      `[Schema] Notifications/preferences verified: ${requiredTables.length} tables, ${requiredNotificationColumns.length} notification columns, ${requiredNotificationIndexes.length} inbox indexes, 1 foreign key. Persisted notifications: ${rows[0].notificationCount}; unread active: ${rows[0].unreadCount || 0}.`,
+      `[Schema] Notifications/preferences verified: ${requiredTables.length} tables, ${requiredNotificationColumns.length} notification columns, ${requiredNotificationIndexes.length} indexes, 2 foreign keys. Persisted notifications: ${rows[0].notificationCount}; unread active: ${rows[0].unreadCount || 0}.`,
     );
   } finally {
     await connection.end();

@@ -258,11 +258,11 @@ void main() {
     expect(ProfileFormOptions.normalizeGender('Man'), 'Male');
     expect(ProfileFormOptions.normalizeGender('Women'), 'Female');
     expect(ProfileFormOptions.normalizeGender('Non-binary'), 'Other');
-    expect(ProfileFormOptions.storedGenderValue('Male'), 'Man');
-    expect(ProfileFormOptions.storedGenderValue('Female'), 'Woman');
+    expect(ProfileFormOptions.storedGenderValue('Male'), 'Male');
+    expect(ProfileFormOptions.storedGenderValue('Female'), 'Female');
     expect(
       ProfileFormOptions.storedGenderValue('Other', customValue: 'Non-binary'),
-      'Non-binary',
+      'Other',
     );
     expect(ProfileFormOptions.normalizeCity('Ahemdabad'), 'Ahmedabad');
     expect(

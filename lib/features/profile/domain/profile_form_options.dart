@@ -607,9 +607,8 @@ abstract final class ProfileFormOptions {
     String customValue = '',
   }) {
     return switch (normalizeGender(frontendValue)) {
-      'Male' => 'Man',
-      'Female' => 'Woman',
-      'Other' when customValue.trim().isNotEmpty => customValue.trim(),
+      'Male' => 'Male',
+      'Female' => 'Female',
       'Other' => 'Other',
       _ => '',
     };

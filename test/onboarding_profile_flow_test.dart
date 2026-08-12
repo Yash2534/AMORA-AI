@@ -196,7 +196,8 @@ void main() {
 
     expect(find.text('Discover reached'), findsOneWidget);
     expect(onboarding.state.onboardingCompleted, isTrue);
-    expect(profiles.profile.gender, 'Non-binary');
+    expect(profiles.profile.gender, 'Other');
+    expect(profiles.profile.customGender, 'Non-binary');
     expect(profiles.profile.location, 'Ahmedabad');
     expect(profiles.profile.datingIntention, 'Long-Term Relationship');
   });
@@ -398,12 +399,12 @@ void main() {
     }
   });
 
-  test('gender card values retain the existing stored mapping', () {
-    expect(ProfileFormOptions.storedGenderValue('Male'), 'Man');
-    expect(ProfileFormOptions.storedGenderValue('Female'), 'Woman');
+  test('gender card values use the canonical backend enum', () {
+    expect(ProfileFormOptions.storedGenderValue('Male'), 'Male');
+    expect(ProfileFormOptions.storedGenderValue('Female'), 'Female');
     expect(
       ProfileFormOptions.storedGenderValue('Other', customValue: 'Non-binary'),
-      'Non-binary',
+      'Other',
     );
   });
 

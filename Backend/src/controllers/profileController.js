@@ -22,6 +22,7 @@ function ownProfileJson(req, user, profile) {
     phoneNumber: user.phoneNumber,
     birthdate,
     gender: profile.gender || '',
+    customGender: profile.customGender || '',
     bio: profile.bio || '',
     profession: profile.profession || '',
     company: profile.company || '',
@@ -65,7 +66,7 @@ exports.updateOwnProfile = async (req, res, next) => {
       const [profile] = await OnboardingProfile.findOrCreate({ where: { userId: req.user.sub }, defaults: { userId: req.user.sub }, transaction });
       if (Object.prototype.hasOwnProperty.call(req.body, 'name')) await user.update({ name: req.body.name.trim() }, { transaction });
       const mapping = {
-        birthdate: 'birthDate', gender: 'gender', bio: 'bio', profession: 'profession', company: 'company', education: 'education',
+        birthdate: 'birthDate', gender: 'gender', customGender: 'customGender', bio: 'bio', profession: 'profession', company: 'company', education: 'education',
         location: 'city', interests: 'interests', prompts: 'prompts', lifestyle: 'lifestyle', hometown: 'hometown',
         valuedQualities: 'valuedQualities', pronouns: 'pronouns', sexuality: 'sexuality', preferredTalkingHours: 'preferredTalkingHours',
         loveLanguages: 'loveLanguages', iceBreaker: 'iceBreaker', communicationStyle: 'communicationStyle',
@@ -77,6 +78,11 @@ exports.updateOwnProfile = async (req, res, next) => {
       }
       if (Object.prototype.hasOwnProperty.call(req.body, 'datingIntention')) {
         values.relationshipGoals = req.body.datingIntention.trim() ? [req.body.datingIntention.trim()] : [];
+      }
+      if (Object.prototype.hasOwnProperty.call(req.body, 'gender')
+        && req.body.gender !== 'Other'
+        && !Object.prototype.hasOwnProperty.call(req.body, 'customGender')) {
+        values.customGender = '';
       }
       if (Object.prototype.hasOwnProperty.call(req.body, 'photos')) {
         const stored = list(profile.photos);

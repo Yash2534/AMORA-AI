@@ -119,7 +119,7 @@ void main() {
     );
 
     expect(profiles.profile.birthdate, '07/03/1998');
-    expect(profiles.profile.gender, 'Woman');
+    expect(profiles.profile.gender, 'Female');
     expect(profiles.profile.location, 'Surat');
     expect(profiles.profile.datingIntention, 'Long-term relationship');
   });

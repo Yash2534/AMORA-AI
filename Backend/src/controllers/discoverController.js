@@ -245,7 +245,20 @@ exports.swipe = async (req, res, next) => {
           },
           transaction,
         });
-        if (!reciprocal) return;
+        if (!reciprocal) {
+          await createNotification({
+            userId: targetUserId,
+            actorUserId: Number(req.user.sub),
+            type: req.body.action === 'superLike' ? 'new_super_like' : 'new_like',
+            category: req.body.action === 'superLike' ? 'Super Likes' : 'Likes',
+            title: req.body.action === 'superLike' ? 'You received a Super Like' : 'You received a like',
+            message: 'Someone is interested in your profile.',
+            data: { targetUserId: String(req.user.sub) },
+            dedupeKey: `reaction:${req.user.sub}:${targetUserId}`,
+            transaction,
+          });
+          return;
+        }
         const userOneId = Math.min(Number(req.user.sub), targetUserId);
         const userTwoId = Math.max(Number(req.user.sub), targetUserId);
         const [row] = await Match.findOrCreate({
@@ -267,7 +280,6 @@ exports.swipe = async (req, res, next) => {
           createNotification({ userId: targetUserId, type: 'new_match', category: 'match', title: 'It\'s a match', message: 'You have a new match.', data: { matchId: String(matchedRow.id), userId: String(req.user.sub) }, dedupeKey: `match:${matchedRow.id}:${targetUserId}` }),
         ]);
     }
-    if (['like', 'superLike'].includes(req.body.action) && !match) await createNotification({ userId: targetUserId, type: req.body.action === 'superLike' ? 'new_super_like' : 'new_like', category: 'like', title: req.body.action === 'superLike' ? 'You received a Super Like' : 'You received a like', message: 'Someone is interested in your profile.', data: { userId: String(req.user.sub) }, dedupeKey: `reaction:${req.user.sub}:${targetUserId}` });
     return success(res, 'Swipe saved.', {
       action: req.body.action,
       targetUserId: String(targetUserId),

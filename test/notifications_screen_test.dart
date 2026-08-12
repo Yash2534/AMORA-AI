@@ -19,12 +19,14 @@ class _NotificationRemote implements NotificationInboxRemoteDataSource {
       String id,
       String category,
       String title, {
+      String? type,
       bool read = false,
       int minutes = 1,
       Map<String, dynamic> data = const <String, dynamic>{},
+      Map<String, dynamic>? actor,
     }) => <String, dynamic>{
       'id': id,
-      'type': category.toLowerCase().replaceAll(' ', '_'),
+      'type': type ?? category.toLowerCase().replaceAll(' ', '_'),
       'category': category,
       'title': title,
       'message': '$title details',
@@ -32,13 +34,20 @@ class _NotificationRemote implements NotificationInboxRemoteDataSource {
       'readAt': read ? now.toIso8601String() : null,
       'createdAt': now.subtract(Duration(minutes: minutes)).toIso8601String(),
       'data': data,
+      'actor': actor,
     };
     return <Map<String, dynamic>>[
       item(
         'like-kavya',
         'Likes',
-        'Kavya liked your profile',
-        data: {'targetUserId': '7'},
+        'You received a like',
+        type: 'new_like',
+        data: const <String, dynamic>{},
+        actor: {
+          'userId': '7',
+          'name': 'Kavya',
+          'photoUrl': 'https://cdn.example.test/kavya.jpg',
+        },
       ),
       item(
         'message-riya',
@@ -159,6 +168,44 @@ class _NotificationRemote implements NotificationInboxRemoteDataSource {
 }
 
 void main() {
+  test('notification model derives like copy from relational actor data', () {
+    final record = InboxNotification.fromJson({
+      'id': '1',
+      'type': 'new_like',
+      'category': 'Likes',
+      'title': 'You received a like',
+      'message': 'Someone is interested in your profile.',
+      'isRead': false,
+      'createdAt': '2026-08-12T00:00:00.000Z',
+      'data': <String, dynamic>{},
+      'actor': {
+        'userId': '42',
+        'name': 'Priya',
+        'photoUrl': 'https://cdn.example.test/priya.jpg',
+      },
+    });
+
+    expect(record.actor?.userId, '42');
+    expect(record.actor?.photoUrl, 'https://cdn.example.test/priya.jpg');
+    expect(record.displayTitle, 'Priya liked your profile');
+  });
+
+  test('historical like without actor keeps safe stored title', () {
+    final record = InboxNotification.fromJson({
+      'id': '2',
+      'type': 'new_like',
+      'category': 'Likes',
+      'title': 'You received a like',
+      'message': 'Someone is interested in your profile.',
+      'isRead': false,
+      'createdAt': '2026-08-12T00:00:00.000Z',
+      'data': <String, dynamic>{},
+    });
+
+    expect(record.actor, isNull);
+    expect(record.displayTitle, 'You received a like');
+  });
+
   Future<void> pumpNotifications(
     WidgetTester tester, {
     ValueChanged<RouteSettings>? onRoute,

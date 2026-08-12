@@ -36,6 +36,7 @@ function serializePublicProfile(req, user, profile, options = {}) {
   return {
     id: String(user.id),
     gender: profile.gender || '',
+    customGender: profile.customGender || '',
     name: user.name,
     age: ageFor(profile.birthDate),
     city: profile.city || '',
@@ -87,4 +88,4 @@ function serializePublicProfile(req, user, profile, options = {}) {
   };
 }
 
-module.exports = { ageFor, serializePublicProfile };
+module.exports = { ageFor, publicUrl, serializePublicProfile };
