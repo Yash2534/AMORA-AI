@@ -89,6 +89,7 @@ class PhaseTwoApiService {
     String? targetId,
     required String reason,
     String? notes,
+    String? conversationId,
   }) async {
     final response = await _auth.authenticatedRequest(
       'POST',
@@ -101,6 +102,7 @@ class PhaseTwoApiService {
             : {'targetId': targetId},
         'reason': reason,
         if (notes != null && notes.trim().isNotEmpty) 'notes': notes.trim(),
+        if (conversationId != null) 'conversationId': int.parse(conversationId),
       },
     );
     return ((_data(response)['report'] as Map)['id']).toString();

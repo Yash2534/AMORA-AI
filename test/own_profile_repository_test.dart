@@ -313,6 +313,28 @@ void main() {
     },
   );
 
+  test('background save sanitizes unexpected internal failures', () async {
+    final remote = _FakeOwnProfileRemote();
+    final repository = LocalProfileRepository.testing(remote: remote);
+    addTearDown(repository.dispose);
+    await repository.refreshFromServer();
+    final before = repository.profile;
+    remote.failure = StateError('internal profile failure');
+
+    repository.save(before.copyWith(bio: 'Must roll back'));
+    await Future<void>.delayed(Duration.zero);
+
+    expect(
+      repository.lastSyncError,
+      'Profile changes could not be saved. Please try again.',
+    );
+    expect(
+      repository.lastSyncError,
+      isNot(contains('internal profile failure')),
+    );
+    expect(repository.profile.bio, before.bio);
+  });
+
   test('a fresh repository reloads the persisted server profile', () async {
     final remote = _FakeOwnProfileRemote();
     final first = LocalProfileRepository.testing(remote: remote);

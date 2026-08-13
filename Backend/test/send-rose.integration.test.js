@@ -128,6 +128,19 @@ test('Rose rejects invalid recipient relationships and conflicting retries', asy
   assert.equal(independent.body.data.roseTransaction.recipientId, String(users[2].id));
 });
 
+test('concurrent Rose retries persist one transaction and one notification', async () => {
+  const idempotencyKey = key('concurrent');
+  const payload = { recipientId: users[1].id, note: 'Once only', idempotencyKey };
+  const responses = await Promise.all([
+    request('/api/roses/send', { user: users[0], body: payload }),
+    request('/api/roses/send', { user: users[0], body: payload }),
+  ]);
+  assert.deepEqual(responses.map((response) => response.status).sort(), [200, 201]);
+  const rows = await models.RoseTransaction.findAll({ where: { senderId: users[0].id, idempotencyKey } });
+  assert.equal(rows.length, 1);
+  assert.equal(await models.Notification.count({ where: { dedupeKey: `rose:${rows[0].id}` } }), 1);
+});
+
 test('retired commerce APIs return 404', async () => {
   for (const path of ['/api/wallet', '/api/boosts', '/api/gifts', '/api/realtime/token']) {
     const response = await fetch(`${baseUrl}${path}`, { headers: { authorization: `Bearer ${tokenFor(users[0])}` } });

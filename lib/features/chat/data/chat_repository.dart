@@ -111,6 +111,7 @@ class ChatConversation {
     required this.online,
     this.muted = false,
     this.canMessage = true,
+    this.availabilityReasonCode,
     this.unavailableReason,
     this.draft = '',
     this.hasMoreMessages = false,
@@ -126,6 +127,7 @@ class ChatConversation {
   final bool online;
   final bool muted;
   final bool canMessage;
+  final String? availabilityReasonCode;
   final String? unavailableReason;
   final String draft;
   final bool hasMoreMessages;
@@ -139,6 +141,7 @@ class ChatConversation {
     bool? online,
     bool? muted,
     bool? canMessage,
+    String? availabilityReasonCode,
     String? unavailableReason,
     String? draft,
     bool? hasMoreMessages,
@@ -153,6 +156,8 @@ class ChatConversation {
     online: online ?? this.online,
     muted: muted ?? this.muted,
     canMessage: canMessage ?? this.canMessage,
+    availabilityReasonCode:
+        availabilityReasonCode ?? this.availabilityReasonCode,
     unavailableReason: unavailableReason ?? this.unavailableReason,
     draft: draft ?? this.draft,
     hasMoreMessages: hasMoreMessages ?? this.hasMoreMessages,
@@ -260,6 +265,8 @@ class ChatRepository extends ChangeNotifier {
     }
   }
 
+  Future<void> refreshAvailability() => _refreshQuietly();
+
   Future<void> loadMoreConversations() async {
     if (_testingMode || !_hasMore || _loadingMore) return;
     _loadingMore = true;
@@ -355,6 +362,7 @@ class ChatRepository extends ChangeNotifier {
   }) async {
     if (_testingMode) return conversation(conversationId);
     final current = conversation(conversationId);
+    if (current?.canMessage == false) return current;
     final cursor = older ? current?.nextMessageCursor : null;
     final response = await _remote.request(
       'GET',
@@ -388,6 +396,11 @@ class ChatRepository extends ChangeNotifier {
           (conversationJson['participant'] as Map)['online'] == true,
       muted: conversationJson['muted'] == true,
       canMessage: conversationJson['canMessage'] != false,
+      availabilityReasonCode: conversationJson['availabilityReason']
+          ?.toString(),
+      unavailableReason: _unavailableMessage(
+        conversationJson['availabilityReason']?.toString(),
+      ),
       draft: conversationJson['draft']?.toString() ?? '',
       hasMoreMessages: pagination['hasMore'] == true,
       nextMessageCursor: pagination['nextCursor']?.toString(),
@@ -769,8 +782,24 @@ class ChatRepository extends ChangeNotifier {
       unread: (json['unreadCount'] as num?)?.toInt() ?? 0,
       online: participantJson['online'] == true,
       muted: json['muted'] == true,
+      canMessage: json['canMessage'] != false,
+      availabilityReasonCode: json['availabilityReason']?.toString(),
+      unavailableReason: _unavailableMessage(
+        json['availabilityReason']?.toString(),
+      ),
     );
   }
+
+  String? _unavailableMessage(String? reason) => switch (reason) {
+    'you_blocked_profile' => 'You blocked this profile. Messaging is disabled.',
+    'profile_blocked_you' =>
+      'This conversation is unavailable because of a privacy restriction.',
+    'account_unavailable' =>
+      'This account is unavailable or has been deactivated.',
+    'match_unavailable' =>
+      'This conversation is unavailable because the match has ended.',
+    _ => null,
+  };
 
   List<ChatMessage> _messageList(dynamic values) =>
       (values as List? ?? const [])

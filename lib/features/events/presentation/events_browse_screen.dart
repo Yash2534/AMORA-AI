@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:amora_ai/core/access/amora_access.dart';
+import 'package:amora_ai/core/auth/auth_service.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/floating_bottom_nav.dart';
 import 'package:amora_ai/core/widgets/amoraa_main_page_header.dart';
@@ -138,7 +139,14 @@ class _EventsMemberExperienceState extends State<EventsMemberExperience> {
   }
 
   void _handleParticipationChanged() {
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    final updatedById = {
+      for (final registration in _controller.registrations)
+        registration.event.id: registration.event,
+    };
+    setState(() {
+      _events = [for (final event in _events) updatedById[event.id] ?? event];
+    });
   }
 
   @override
@@ -529,7 +537,15 @@ class _EventsMemberExperienceState extends State<EventsMemberExperience> {
           await _controller.registerRemote(event);
           if (mounted) showEventSnack(context, 'You joined ${event.title}');
         } catch (error) {
-          if (mounted) showEventSnack(context, error.toString());
+          if (mounted) {
+            showEventSnack(
+              context,
+              userFacingErrorMessage(
+                error,
+                fallback: 'Could not join this event. Please try again.',
+              ),
+            );
+          }
         }
       },
     );

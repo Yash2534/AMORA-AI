@@ -608,55 +608,21 @@ class EventDetailSection extends StatelessWidget {
   }
 }
 
-class ExpandableEventDescription extends StatefulWidget {
+class ExpandableEventDescription extends StatelessWidget {
   const ExpandableEventDescription({super.key, required this.description});
 
   final String description;
 
   @override
-  State<ExpandableEventDescription> createState() =>
-      _ExpandableEventDescriptionState();
-}
-
-class _ExpandableEventDescriptionState
-    extends State<ExpandableEventDescription> {
-  var _expanded = false;
-
-  @override
   Widget build(BuildContext context) {
-    final duration = MediaQuery.disableAnimationsOf(context)
-        ? Duration.zero
-        : AmoraMotion.page;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        AnimatedSize(
-          duration: duration,
-          curve: AmoraMotion.curve,
-          alignment: Alignment.topCenter,
-          child: Text(
-            widget.description,
-            maxLines: _expanded ? null : 4,
-            overflow: _expanded ? TextOverflow.visible : TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: AppColors.text,
-              fontSize: 16,
-              height: 1.55,
-              fontWeight: FontWeight.w400,
-            ),
-          ),
-        ),
-        const SizedBox(height: 4),
-        TextButton.icon(
-          onPressed: () => setState(() => _expanded = !_expanded),
-          icon: Icon(
-            _expanded
-                ? Icons.keyboard_arrow_up_rounded
-                : Icons.keyboard_arrow_down_rounded,
-          ),
-          label: Text(_expanded ? 'Show less' : 'Read more'),
-        ),
-      ],
+    return Text(
+      description,
+      style: const TextStyle(
+        color: AppColors.text,
+        fontSize: 16,
+        height: 1.55,
+        fontWeight: FontWeight.w400,
+      ),
     );
   }
 }
@@ -800,7 +766,10 @@ class FeaturedEventCard extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 12),
-                      EventAttendeePreview(attendees: attendees),
+                      EventAttendeePreview(
+                        attendees: attendees,
+                        totalCount: event.registeredCount,
+                      ),
                       const SizedBox(height: 16),
                       LayoutBuilder(
                         builder: (context, constraints) {
@@ -1240,6 +1209,7 @@ class AmoraCircleCard extends StatelessWidget {
                     Expanded(
                       child: EventAttendeePreview(
                         attendees: attendees.take(3).toList(growable: false),
+                        totalCount: event.registeredCount,
                         maxVisible: 3,
                         compact: true,
                       ),
@@ -1831,19 +1801,22 @@ class EventAttendeePreview extends StatelessWidget {
   const EventAttendeePreview({
     super.key,
     required this.attendees,
+    this.totalCount,
     this.maxVisible = 4,
     this.compact = false,
   });
 
   final List<EventAttendee> attendees;
+  final int? totalCount;
   final int maxVisible;
   final bool compact;
 
   @override
   Widget build(BuildContext context) {
     final visible = attendees.take(maxVisible).toList();
+    final attendingCount = totalCount ?? attendees.length;
     return Semantics(
-      label: '${attendees.length} attendees visible',
+      label: '$attendingCount members attending',
       child: Row(
         children: [
           SizedBox(
@@ -1873,7 +1846,7 @@ class EventAttendeePreview extends StatelessWidget {
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                '${attendees.length} members attending',
+                '$attendingCount members attending',
                 style: const TextStyle(
                   color: AppColors.text,
                   fontSize: 13,

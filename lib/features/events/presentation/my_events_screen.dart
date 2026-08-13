@@ -1,3 +1,4 @@
+import 'package:amora_ai/core/auth/auth_service.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/amora_app_bar.dart';
@@ -153,7 +154,17 @@ class _MyEventsScreenState extends State<MyEventsScreen>
                   try {
                     await _controller.cancelRemote(registration.event);
                   } catch (error) {
-                    messenger.showSnackBar(SnackBar(content: Text('$error')));
+                    messenger.showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          userFacingErrorMessage(
+                            error,
+                            fallback:
+                                'Could not cancel this booking. Please try again.',
+                          ),
+                        ),
+                      ),
+                    );
                     return;
                   }
                 }
@@ -185,7 +196,15 @@ class _MyEventsScreenState extends State<MyEventsScreen>
       try {
         await _controller.leaveWaitlistRemote(registration.event);
       } catch (error) {
-        if (mounted) showEventSnack(context, error.toString());
+        if (mounted) {
+          showEventSnack(
+            context,
+            userFacingErrorMessage(
+              error,
+              fallback: 'Could not leave the waitlist. Please try again.',
+            ),
+          );
+        }
         return;
       }
     }
@@ -203,36 +222,18 @@ class _CategoryTabs extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.tertiary.withValues(alpha: .68)),
-      ),
-      child: TabBar(
-        controller: controller,
-        isScrollable: true,
-        tabAlignment: TabAlignment.start,
-        dividerColor: AppColors.surface.withValues(alpha: 0),
-        labelColor: AppColors.surface,
-        unselectedLabelColor: AppColors.text,
-        indicatorSize: TabBarIndicatorSize.tab,
-        indicator: BoxDecoration(
-          color: AppColors.primary,
-          borderRadius: BorderRadius.circular(14),
-        ),
-        indicatorPadding: const EdgeInsets.all(4),
-        labelPadding: const EdgeInsets.symmetric(horizontal: 14),
-        tabs: [
-          for (final category in MyEventCategory.values)
-            Tab(
-              key: ValueKey('my-events-tab-${category.name}'),
-              height: 48,
-              text:
-                  '${_categoryLabel(category)} (${participation.countFor(category)})',
-            ),
-        ],
-      ),
+    return TabBar(
+      controller: controller,
+      isScrollable: true,
+      tabAlignment: TabAlignment.start,
+      tabs: [
+        for (final category in MyEventCategory.values)
+          Tab(
+            key: ValueKey('my-events-tab-${category.name}'),
+            text:
+                '${_categoryLabel(category)} (${participation.countFor(category)})',
+          ),
+      ],
     );
   }
 }

@@ -1,4 +1,5 @@
 const { getModels } = require('../models');
+const { UniqueConstraintError } = require('sequelize');
 const { areUsersBlocked } = require('../services/accessControlService');
 const { idempotencyKey, publicError } = require('../services/paymentService');
 const { createNotification } = require('../services/notificationService');
@@ -60,43 +61,51 @@ exports.send = async (req, res, next) => {
     let row;
     let notification;
     let created = false;
-    await RoseTransaction.sequelize.transaction(async (transaction) => {
-      row = await RoseTransaction.findOne({
-        where: { senderId, idempotencyKey: key },
-        transaction,
-        lock: transaction.LOCK.UPDATE,
-      });
-      if (row) {
-        assertRetryMatches(row, { recipientId, conversationId, note });
-      } else {
-        row = await RoseTransaction.create({
-          senderId,
-          recipientId,
+    try {
+      await RoseTransaction.sequelize.transaction(async (transaction) => {
+        row = await RoseTransaction.findOne({
+          where: { senderId, idempotencyKey: key },
+          transaction,
+          lock: transaction.LOCK.UPDATE,
+        });
+        if (row) {
+          assertRetryMatches(row, { recipientId, conversationId, note });
+        } else {
+          row = await RoseTransaction.create({
+            senderId,
+            recipientId,
+            conversationId,
+            idempotencyKey: key,
+            status: 'sent',
+            note,
+          }, { transaction });
+          created = true;
+        }
+        notification = await createNotification({
+          userId: recipientId,
+          actorUserId: senderId,
+          type: 'rose_received',
+          category: 'Messages',
+          title: 'You received a Rose',
+          message: `${req.authUser.name} sent you a Rose.`,
+          data: {
+            route: conversationId ? '/chat-detail' : '/profile-detail',
+            targetUserId: String(senderId),
+            roseTransactionId: String(row.id),
+            ...(conversationId ? { conversationId: String(conversationId) } : {}),
+          },
           conversationId,
-          idempotencyKey: key,
-          status: 'sent',
-          note,
-        }, { transaction });
-        created = true;
-      }
-      notification = await createNotification({
-        userId: recipientId,
-        actorUserId: senderId,
-        type: 'rose_received',
-        category: 'Messages',
-        title: 'You received a Rose',
-        message: `${req.authUser.name} sent you a Rose.`,
-        data: {
-          route: conversationId ? '/chat-detail' : '/profile-detail',
-          targetUserId: String(senderId),
-          roseTransactionId: String(row.id),
-          ...(conversationId ? { conversationId: String(conversationId) } : {}),
-        },
-        conversationId,
-        dedupeKey: `rose:${row.id}`,
-        transaction,
+          dedupeKey: `rose:${row.id}`,
+          transaction,
+        });
       });
-    });
+    } catch (error) {
+      if (!(error instanceof UniqueConstraintError)) throw error;
+      row = await RoseTransaction.findOne({ where: { senderId, idempotencyKey: key } });
+      if (!row) throw error;
+      assertRetryMatches(row, { recipientId, conversationId, note });
+      created = false;
+    }
 
     return res.status(created ? 201 : 200).json({
       success: true,

@@ -447,9 +447,10 @@ class LocalProfileRepository extends ChangeNotifier {
       _apply(profile);
       unawaited(
         _saveRemote(profile, baseline: previous).catchError((Object error) {
-          lastSyncError = error is AuthException
-              ? error.message
-              : error.toString();
+          lastSyncError = userFacingErrorMessage(
+            error,
+            fallback: 'Profile changes could not be saved. Please try again.',
+          );
           _apply(previous);
         }),
       );

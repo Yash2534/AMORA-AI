@@ -59,6 +59,7 @@ test('events require authentication and return canonical organizer data', async 
   assert.equal(listed.status, 200);
   const value = listed.body.data.events.find((item) => item.id === String(event.id));
   assert.equal(value.organizer.name, organizer.name);
+  assert.match(value.organizer.imageUrl, /\/uploads\/event\.jpg$/);
   assert.equal(value.seatsLeft, 1);
 });
 
@@ -66,6 +67,8 @@ test('registration persists, prevents overbooking, lists My Events, and cancels'
   assert.equal((await request(`/api/events/${event.id}/registration`, 'POST', attendee)).status, 201);
   assert.equal(await models.EventRegistration.count({ where: { eventId: event.id, userId: attendee.id, status: 'registered' } }), 1);
   assert.equal((await request(`/api/events/${event.id}/registration`, 'POST', attendee)).status, 201);
+  const detail = await request(`/api/events/${event.id}`, 'GET', attendee);
+  assert.equal(detail.body.data.event.registeredCount, 1);
   assert.equal((await request(`/api/events/${event.id}/registration`, 'POST', other)).status, 409);
   const mine = await request('/api/events/me?category=upcoming', 'GET', attendee);
   assert.equal(mine.body.data.events.some((item) => item.id === String(event.id)), true);

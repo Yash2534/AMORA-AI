@@ -236,7 +236,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         resolvedConversationId,
       );
       if (conversation == null) throw StateError('Conversation not found');
-      await _repository.markRead(resolvedConversationId);
+      if (conversation.canMessage) {
+        await _repository.markRead(resolvedConversationId);
+      }
       if (!mounted) return;
       setState(() {
         _conversation = _repository.conversation(resolvedConversationId);
@@ -434,7 +436,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             title: 'View Profile',
             onTap: () {
               Navigator.pop(context);
-              Navigator.of(context).pushNamed(ProfileDetailScreen.routeName);
+              Navigator.of(
+                context,
+              ).pushNamed(ProfileDetailScreen.routeName, arguments: _profile);
             },
           ),
           _SheetAction(
@@ -463,7 +467,13 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             danger: true,
             onTap: () {
               Navigator.pop(context);
-              Navigator.of(context).pushNamed(ReportFlowScreen.routeName);
+              Navigator.of(context).pushNamed(
+                ReportFlowScreen.routeName,
+                arguments: ReportFlowArgs.chat(
+                  _profile,
+                  conversationId: _conversationId!,
+                ),
+              );
             },
           ),
           _SheetAction(
@@ -512,6 +522,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       context: context,
       userName: _profile.name,
       onConfirm: () async {
+        await PhaseTwoApiService.instance.block(_profile.id);
         final conversationId = _conversationId;
         if (conversationId != null) {
           await _repository.setMessagingAvailability(
@@ -520,7 +531,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             reason: 'You blocked this member. Messaging is disabled.',
           );
         }
-        await PhaseTwoApiService.instance.block(_profile.id);
         ProfileRelationshipController.instance.blockProfile(_profile);
       },
     );

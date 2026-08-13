@@ -802,6 +802,33 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('event action failures never expose raw exception text', (
+    tester,
+  ) async {
+    addTearDown(AmoraSession.logOut);
+    AmoraSession.logIn();
+    EventRepository.debugOverride = _FailingEventRepository(events);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AmoraTheme.light(),
+        home: EventDetailScreen(
+          event: events.first,
+          controller: EventParticipationController(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Join Event'));
+    await tester.pump();
+
+    expect(
+      find.text('Could not update this event. Please try again.'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('internal event failure'), findsNothing);
+  });
+
   testWidgets('event detail transitions from skeleton to immersive sections', (
     tester,
   ) async {
@@ -821,14 +848,24 @@ void main() {
     await tester.pump();
     expect(find.byType(EventDetailHero), findsOneWidget);
     expect(find.text('About this gathering'), findsOneWidget);
-    expect(find.text('Read more'), findsOneWidget);
-    final readMore = tester.widget<TextButton>(
-      find.widgetWithText(TextButton, 'Read more'),
-    );
-    readMore.onPressed!();
-    await tester.pumpAndSettle();
-    expect(find.text('Show less'), findsOneWidget);
+    expect(find.text('Read more'), findsNothing);
+    expect(find.text(events[4].description), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('attendee preview uses the persisted registration count', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: EventAttendeePreview(attendees: [], totalCount: 3),
+        ),
+      ),
+    );
+
+    expect(find.text('3 members attending'), findsOneWidget);
+    expect(find.text('0 members attending'), findsNothing);
   });
 
   testWidgets('member feed stays centred and responsive on desktop', (
@@ -891,6 +928,14 @@ void main() {
     expect(find.byType(FloatingBottomNav), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+}
+
+class _FailingEventRepository extends FixtureEventRepository {
+  _FailingEventRepository(super.fixtures);
+
+  @override
+  Future<TicketStatus?> register(String eventId) =>
+      throw StateError('internal event failure');
 }
 
 EventModel _eventWithText(

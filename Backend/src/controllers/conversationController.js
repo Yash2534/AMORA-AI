@@ -14,6 +14,14 @@ async function summaryRows(userId, options = {}) {
     SELECT c.id, c.createdAt, c.updatedAt, c.lastMessageAt,
       me.mutedAt, me.mutedUntil,
       other.userId AS participantUserId,
+      otherUser.accountStatus AS participantAccountStatus,
+      matchRow.id AS activeMatchId,
+      (SELECT ownBlock.id FROM Blocks ownBlock
+        WHERE ownBlock.blockerUserId = :userId AND ownBlock.blockedUserId = other.userId
+        LIMIT 1) AS ownBlockId,
+      (SELECT otherBlock.id FROM Blocks otherBlock
+        WHERE otherBlock.blockedUserId = :userId AND otherBlock.blockerUserId = other.userId
+        LIMIT 1) AS otherBlockId,
       lm.id AS lastMessageId, lm.type AS lastMessageType, lm.text AS lastMessageText,
       lm.createdAt AS lastMessageCreatedAt, lm.deletedAt AS lastMessageDeletedAt,
       (SELECT COUNT(*) FROM Messages unread
@@ -24,17 +32,12 @@ async function summaryRows(userId, options = {}) {
     FROM Conversations c
     INNER JOIN ConversationParticipants me ON me.conversationId = c.id AND me.userId = :userId
     INNER JOIN ConversationParticipants other ON other.conversationId = c.id AND other.userId <> :userId
-    INNER JOIN Users otherUser ON otherUser.id = other.userId AND otherUser.accountStatus = 'active'
+    INNER JOIN Users otherUser ON otherUser.id = other.userId
     INNER JOIN OnboardingProfiles otherProfile ON otherProfile.userId = other.userId AND otherProfile.onboardingCompleted = 1
-    INNER JOIN Matches matchRow ON
+    LEFT JOIN Matches matchRow ON
       (matchRow.userOneId = LEAST(:userId, other.userId) AND matchRow.userTwoId = GREATEST(:userId, other.userId))
     LEFT JOIN Messages lm ON lm.id = c.lastMessageId
-    WHERE NOT EXISTS (
-      SELECT 1 FROM Blocks visibilityBlock
-      WHERE (visibilityBlock.blockerUserId = :userId AND visibilityBlock.blockedUserId = other.userId)
-         OR (visibilityBlock.blockedUserId = :userId AND visibilityBlock.blockerUserId = other.userId)
-    )
-    AND (SELECT COUNT(*) FROM ConversationParticipants exactPair WHERE exactPair.conversationId = c.id) = 2
+    WHERE (SELECT COUNT(*) FROM ConversationParticipants exactPair WHERE exactPair.conversationId = c.id) = 2
     ${options.conversationId ? 'AND c.id = :conversationId' : ''}
     ORDER BY COALESCE(c.lastMessageAt, c.createdAt) DESC, c.id DESC
     LIMIT :limit OFFSET :offset
@@ -65,6 +68,15 @@ async function serializeRows(req, rows) {
       deleted: Boolean(row.lastMessageDeletedAt),
       createdAt: row.lastMessageCreatedAt,
     } : null;
+    const availabilityReason = row.ownBlockId
+      ? 'you_blocked_profile'
+      : row.otherBlockId
+        ? 'profile_blocked_you'
+        : row.participantAccountStatus !== 'active'
+          ? 'account_unavailable'
+          : !row.activeMatchId
+            ? 'match_unavailable'
+            : null;
     return {
       id: String(row.id),
       participant,
@@ -73,6 +85,8 @@ async function serializeRows(req, rows) {
       muted: Boolean(row.mutedAt) && (!row.mutedUntil || new Date(row.mutedUntil) > new Date()),
       mutedUntil: row.mutedUntil,
       updatedAt: row.lastMessageAt || row.updatedAt || row.createdAt,
+      canMessage: availabilityReason == null,
+      availabilityReason,
     };
   });
 }

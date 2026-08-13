@@ -65,7 +65,10 @@ class RoseRepository {
     final data = ((response['data'] as Map?) ?? const <String, dynamic>{})
         .cast<String, dynamic>();
     final result = RoseSendResult.fromJson(data);
-    if (result.transaction.recipientId != '$targetUserId' ||
+    final authenticatedUserId = AuthService.instance.currentUser?.id.toString();
+    if ((authenticatedUserId != null &&
+            result.transaction.senderId != authenticatedUserId) ||
+        result.transaction.recipientId != '$targetUserId' ||
         result.transaction.status != 'sent') {
       throw const AuthException('The Rose could not be confirmed.');
     }

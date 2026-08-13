@@ -1,5 +1,6 @@
 const { literal } = require('sequelize');
 const { getModels } = require('../models');
+const { publicUrl } = require('./publicProfileService');
 
 const ACTIVE_REGISTRATION_STATUSES = ['registered', 'promoted'];
 
@@ -51,9 +52,16 @@ function eligibilitySql(userId) {
 }
 
 function participationIncludes(userId) {
-  const { EventRegistration, EventWaitlist, User } = getModels();
+  const { EventRegistration, EventWaitlist, User, OnboardingProfile } = getModels();
   return [
-    { model: User, as: 'organizer', required: true, where: { accountStatus: 'active' }, attributes: ['id', 'name', 'identityVerifiedAt'] },
+    {
+      model: User,
+      as: 'organizer',
+      required: true,
+      where: { accountStatus: 'active' },
+      attributes: ['id', 'name', 'identityVerifiedAt'],
+      include: [{ model: OnboardingProfile, required: false, attributes: ['photos', 'primaryPhotoIndex'] }],
+    },
     { model: EventRegistration, as: 'registrations', required: false, where: { userId }, attributes: ['status', 'registeredAt', 'cancelledAt'] },
     { model: EventWaitlist, as: 'waitlist', required: false, where: { userId }, attributes: ['status', 'joinedAt', 'endedAt'] },
   ];
@@ -79,7 +87,7 @@ function participationFor(event) {
   };
 }
 
-function serializeEvent(event) {
+function serializeEvent(req, event) {
   const plain = event.get({ plain: true });
   const registeredCount = Number(plain.registeredCount || 0);
   const waitlistCount = Number(plain.waitlistCount || 0);
@@ -120,7 +128,18 @@ function serializeEvent(event) {
     agenda: Array.isArray(plain.agenda) ? plain.agenda : [],
     facilities: Array.isArray(plain.facilities) ? plain.facilities : [],
     interests: Array.isArray(plain.interests) ? plain.interests : [],
-    organizer: plain.organizer ? { id: String(plain.organizer.id), name: plain.organizer.name, verified: Boolean(plain.organizer.identityVerifiedAt) } : null,
+    organizer: plain.organizer ? {
+      id: String(plain.organizer.id),
+      name: plain.organizer.name,
+      verified: Boolean(plain.organizer.identityVerifiedAt),
+      imageUrl: (() => {
+        const photos = Array.isArray(plain.organizer.OnboardingProfile?.photos)
+          ? plain.organizer.OnboardingProfile.photos
+          : [];
+        const primaryPhotoIndex = Number(plain.organizer.OnboardingProfile?.primaryPhotoIndex || 0);
+        return publicUrl(req, photos[primaryPhotoIndex] || photos[0] || null);
+      })(),
+    } : null,
     participation,
   };
 }

@@ -236,9 +236,11 @@ async function main() {
   assert.equal((await api('/api/me/received-likes', { bearer: c.accessToken })).body.data.profiles.length, 0);
   assert.equal((await api('/api/matches', { bearer: c.accessToken })).body.data.matches.length, 0);
 
-  const conversation = requireStatus(await api('/api/conversations', {
+  const conversationResponse = await api('/api/conversations', {
     method: 'POST', bearer: a.accessToken, body: { targetUserId: b.id },
-  }), 201, 'conversation creation');
+  });
+  assert.ok([200, 201].includes(conversationResponse.status), `conversation creation: ${JSON.stringify(conversationResponse.body)}`);
+  const conversation = conversationResponse.body;
   conversationId = conversation.data.conversation.id;
   const sent = requireStatus(await api(`/api/conversations/${conversationId}/messages`, {
     method: 'POST', bearer: a.accessToken, body: { text: 'Persisted hello from Alice.' },
@@ -265,6 +267,9 @@ async function main() {
     capacity: 2, status: 'published', visibility: 'public', registrationOpen: true, organizerId: c.id,
   })).id;
   requireStatus(await api(`/api/events/${createdEventId}/registration`, { method: 'POST', bearer: a.accessToken }), 201, 'event registration');
+  const eventDetail = requireStatus(await api(`/api/events/${createdEventId}`, { bearer: a.accessToken }), 200, 'event detail after registration');
+  assert.equal(eventDetail.data.event.registeredCount, 1);
+  assert.ok(eventDetail.data.event.organizer.imageUrl);
   assert.ok((await api('/api/events/me?category=upcoming', { bearer: a.accessToken })).body.data.events.some((event) => event.id === String(createdEventId)));
   assert.equal((await api('/api/events/me?category=upcoming', { bearer: b.accessToken })).body.data.events.some((event) => event.id === String(createdEventId)), false);
 
@@ -277,7 +282,32 @@ async function main() {
   assert.equal((await api(`/api/profiles/${c.id}`, { bearer: a.accessToken })).status, 404);
   assert.equal((await api(`/api/profiles/${c.id}`, { bearer: b.accessToken })).status, 200);
   requireStatus(await api(`/api/blocks/${c.id}`, { method: 'DELETE', bearer: a.accessToken }), 200, 'unblock Charlie');
-  requireStatus(await api('/api/reports', { method: 'POST', bearer: a.accessToken, body: { targetUserId: c.id, reason: 'other', notes: 'Temporary end-to-end audit report.' } }), 201, 'report creation');
+  requireStatus(await api(`/api/profiles/${c.id}`, { bearer: a.accessToken }), 200, 'Charlie profile after unblock');
+
+  requireStatus(await api(`/api/blocks/${b.id}`, { method: 'POST', bearer: a.accessToken }), 200, 'Alice blocks Bob');
+  const blockedConversation = (await api('/api/conversations?limit=20', { bearer: a.accessToken })).body.data.conversations.find((item) => item.id === String(conversationId));
+  assert.equal(blockedConversation.canMessage, false);
+  assert.equal(blockedConversation.availabilityReason, 'you_blocked_profile');
+  requireStatus(await api(`/api/blocks/${b.id}`, { method: 'DELETE', bearer: a.accessToken }), 200, 'Alice unblocks Bob');
+  const restoredConversation = (await api('/api/conversations?limit=20', { bearer: a.accessToken })).body.data.conversations.find((item) => item.id === String(conversationId));
+  assert.equal(restoredConversation.canMessage, true);
+  assert.equal(restoredConversation.availabilityReason, null);
+  requireStatus(await api(`/api/profiles/${b.id}`, { bearer: a.accessToken }), 200, 'Bob profile after unblock');
+
+  requireStatus(await api(`/api/blocks/${a.id}`, { method: 'POST', bearer: b.accessToken }), 200, 'Bob blocks Alice');
+  const reverseBlockedConversation = (await api('/api/conversations?limit=20', { bearer: a.accessToken })).body.data.conversations.find((item) => item.id === String(conversationId));
+  assert.equal(reverseBlockedConversation.availabilityReason, 'profile_blocked_you');
+  requireStatus(await api(`/api/blocks/${a.id}`, { method: 'DELETE', bearer: b.accessToken }), 200, 'Bob unblocks Alice');
+
+  requireStatus(await api('/api/reports', {
+    method: 'POST', bearer: a.accessToken, body: { targetType: 'profile', targetUserId: b.id, conversationId: Number(conversationId), reason: 'other', notes: 'Temporary chat audit report.' },
+  }), 201, 'Alice chat report creation');
+  assert.equal((await api('/api/reports', {
+    method: 'POST', bearer: a.accessToken, body: { targetType: 'profile', targetUserId: c.id, conversationId: Number(conversationId), reason: 'other' },
+  })).status, 403);
+  requireStatus(await api('/api/reports', {
+    method: 'POST', bearer: b.accessToken, body: { targetType: 'profile', targetUserId: a.id, conversationId: Number(conversationId), reason: 'spam' },
+  }), 201, 'Bob reverse chat report creation');
 
   const plans = requireStatus(await api('/api/subscriptions/plans'), 200, 'plans');
   assert.ok(plans.data.plans.length > 0);

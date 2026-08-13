@@ -7,13 +7,25 @@ exports.create = async (req, res, next) => {
     const targetType = req.body.targetType || 'profile';
     const reportedUserId = targetType === 'profile' ? Number(req.body.targetUserId) : null;
     const targetId = targetType === 'profile' ? String(reportedUserId) : String(req.body.targetId);
-    const { User, Report } = getModels();
+    const { User, Report, ConversationParticipant } = getModels();
     if (reportedUserId === reporterUserId) {
       return res.status(400).json({ success: false, message: 'You cannot report your own account.', code: 'SELF_REPORT_NOT_ALLOWED', errors: [] });
     }
     if (targetType === 'profile') {
       const target = await User.findOne({ where: { id: reportedUserId, accountStatus: { [Op.ne]: 'deleted' } }, attributes: ['id'] });
       if (!target) return res.status(404).json({ success: false, message: 'The reported profile is not available.', code: 'PROFILE_NOT_AVAILABLE', errors: [] });
+      if (req.body.conversationId) {
+        const participants = await ConversationParticipant.findAll({
+          where: { conversationId: Number(req.body.conversationId) },
+          attributes: ['userId'],
+        });
+        const participantIds = participants.map((participant) => Number(participant.userId));
+        if (participantIds.length !== 2
+          || !participantIds.includes(reporterUserId)
+          || !participantIds.includes(reportedUserId)) {
+          return res.status(403).json({ success: false, message: 'The reported profile does not match this conversation.', code: 'REPORT_TARGET_MISMATCH', errors: [] });
+        }
+      }
     }
     const recent = await Report.findOne({
       where: {

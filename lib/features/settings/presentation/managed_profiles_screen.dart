@@ -13,6 +13,7 @@ import 'package:amora_ai/core/widgets/amoraa_confirm_action_sheet.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/discover/presentation/discover_screen.dart';
+import 'package:amora_ai/features/chat/data/chat_repository.dart';
 import 'package:amora_ai/features/profile/presentation/controllers/profile_relationship_controller.dart';
 import 'package:amora_ai/features/profile/presentation/profile_detail_screen.dart';
 import 'package:flutter/material.dart';
@@ -160,6 +161,8 @@ class _BlockedProfilesScreenState extends State<BlockedProfilesScreen> {
     }
     try {
       await widget.api!.unblock(profile.id);
+      ProfileRelationshipController.instance.unblockProfile(profile.id);
+      await ChatRepository.instance.refreshAvailability();
       if (mounted) {
         setState(() => _profiles.removeWhere((item) => item.id == profile.id));
       }

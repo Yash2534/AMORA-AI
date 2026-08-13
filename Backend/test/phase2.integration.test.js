@@ -146,6 +146,7 @@ test('blocks are idempotent, forbid self-blocking, enforce both directions, Disc
   const duplicate = await jsonRequest(`/api/blocks/${users.target.id}`, 'POST', users.viewer);
   assert.equal(created.status, 200);
   assert.equal(created.body.data.created, true);
+  assert.equal(created.body.data.unmatched, false);
   assert.equal(duplicate.status, 200);
   assert.equal(duplicate.body.data.created, false);
   assert.equal(await models.Block.count({ where: { blockerUserId: users.viewer.id, blockedUserId: users.target.id } }), 1);
@@ -157,14 +158,14 @@ test('blocks are idempotent, forbid self-blocking, enforce both directions, Disc
   const feed = await request('/api/discover/feed?limit=30&minScore=0', { headers: auth(users.viewer) });
   assert.equal(feed.status, 200, JSON.stringify(feed.body));
   assert.equal(feed.body.data.profiles.some((profile) => profile.id === String(users.target.id)), false);
-  await models.Match.create({
+  assert.equal(await models.Match.count({ where: {
     userOneId: Math.min(users.viewer.id, users.target.id),
     userTwoId: Math.max(users.viewer.id, users.target.id),
-    matchedAt: new Date(),
-  });
+  } }), 1);
   assert.equal((await request('/api/matches', { headers: auth(users.viewer) })).body.data.matches.length, 0);
-  await models.Match.destroy({ where: { [Op.or]: [{ userOneId: users.viewer.id, userTwoId: users.target.id }, { userOneId: users.target.id, userTwoId: users.viewer.id }] } });
   assert.equal((await jsonRequest(`/api/blocks/${users.target.id}`, 'DELETE', users.viewer)).status, 200);
+  assert.equal((await request(`/api/profiles/${users.target.id}`, { headers: auth(users.viewer) })).status, 200);
+  assert.equal((await request('/api/matches', { headers: auth(users.viewer) })).body.data.matches.length, 1);
   const repeated = await jsonRequest(`/api/blocks/${users.target.id}`, 'DELETE', users.viewer);
   assert.equal(repeated.status, 200);
   assert.equal(repeated.body.data.removed, false);

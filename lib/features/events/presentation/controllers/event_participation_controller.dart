@@ -137,9 +137,13 @@ class EventParticipationController extends ChangeNotifier {
     }
   }
 
-  Future<void> registerRemote(EventModel event) async {
+  Future<EventModel> registerRemote(EventModel event) async {
     final status = await _remote.register(event.id);
-    _applyRemoteStatus(event, status);
+    final refreshed = status == TicketStatus.upcoming
+        ? await _remote.detail(event.id)
+        : event;
+    _applyRemoteStatus(refreshed, status);
+    return refreshed;
   }
 
   Future<void> joinWaitlistRemote(EventModel event) async {

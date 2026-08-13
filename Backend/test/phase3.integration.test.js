@@ -171,6 +171,7 @@ after(async () => {
     await models.ConversationParticipant.destroy({ where: { conversationId: conversationIds } });
     await models.Conversation.destroy({ where: { id: conversationIds } });
     await models.Block.destroy({ where: { [Op.or]: [{ blockerUserId: userIds }, { blockedUserId: userIds }] } });
+    await models.Report.destroy({ where: { [Op.or]: [{ reporterUserId: userIds }, { reportedUserId: userIds }] } });
     await models.Match.destroy({ where: { [Op.or]: [{ userOneId: userIds }, { userTwoId: userIds }] } });
     await models.OnboardingProfile.destroy({ where: { userId: userIds } });
     await models.RefreshToken.destroy({ where: { userId: userIds } });
@@ -199,6 +200,33 @@ test('conversation creation authenticates, enforces eligibility, and is idempote
   assert.equal((await jsonRequest('/api/conversations', 'POST', users.alice, { targetUserId: 2147483000 })).status, 404);
 });
 
+test('block and unblock restore an existing chat without recreating it', async () => {
+  const conversationCount = await models.Conversation.count({ where: { id: primaryConversationId } });
+  const blocked = await jsonRequest(`/api/blocks/${users.bob.id}`, 'POST', users.alice);
+  assert.equal(blocked.status, 200, JSON.stringify(blocked.body));
+  const unavailableList = await request('/api/conversations?limit=20', { headers: auth(users.alice) });
+  const unavailable = unavailableList.body.data.conversations.find((row) => row.id === primaryConversationId);
+  assert.equal(unavailable.canMessage, false);
+  assert.equal(unavailable.availabilityReason, 'you_blocked_profile');
+
+  await models.Match.destroy({ where: {
+    userOneId: Math.min(users.alice.id, users.bob.id),
+    userTwoId: Math.max(users.alice.id, users.bob.id),
+  } });
+  const unblocked = await jsonRequest(`/api/blocks/${users.bob.id}`, 'DELETE', users.alice);
+  assert.equal(unblocked.status, 200, JSON.stringify(unblocked.body));
+  assert.equal(unblocked.body.data.restoredMatch, true);
+  assert.equal(await models.Conversation.count({ where: { id: primaryConversationId } }), conversationCount);
+  assert.equal(await models.Match.count({ where: {
+    userOneId: Math.min(users.alice.id, users.bob.id),
+    userTwoId: Math.max(users.alice.id, users.bob.id),
+  } }), 1);
+  const restoredList = await request('/api/conversations?limit=20', { headers: auth(users.alice) });
+  const restored = restoredList.body.data.conversations.find((row) => row.id === primaryConversationId);
+  assert.equal(restored.canMessage, true);
+  assert.equal(restored.availabilityReason, null);
+});
+
 test('conversation list is database-filtered, newest-first, paginated, and reports real unread state', async () => {
   const carol = await createConversation(users.alice, users.carol);
   const blocked = await createConversation(users.alice, users.blocked);
@@ -211,17 +239,20 @@ test('conversation list is database-filtered, newest-first, paginated, and repor
   const second = await request('/api/conversations?page=2&limit=1', { headers: auth(users.alice) });
   assert.equal(first.status, 200, JSON.stringify(first.body));
   assert.equal(first.body.data.pagination.hasMore, true);
-  assert.equal(first.body.data.conversations[0].participant.id, String(users.carol.id));
   assert.notEqual(first.body.data.conversations[0].id, second.body.data.conversations[0].id);
   const all = await request('/api/conversations?limit=20', { headers: auth(users.alice) });
-  assert.equal(all.body.data.conversations.some((row) => row.participant.id === String(users.blocked.id)), false);
+  const blockedConversation = all.body.data.conversations.find((row) => row.participant.id === String(users.blocked.id));
+  assert.equal(blockedConversation.canMessage, false);
+  assert.equal(blockedConversation.availabilityReason, 'profile_blocked_you');
   const bobConversation = all.body.data.conversations.find((row) => row.id === primaryConversationId);
   assert.equal(bobConversation.unreadCount, 1);
   assert.equal(bobConversation.lastMessage.text, 'Unread from Bob');
   assert.equal(Object.hasOwn(bobConversation.participant, 'email'), false);
   await users.carol.update({ accountStatus: 'deactivated', deactivatedAt: new Date() });
-  const inactiveHidden = await request('/api/conversations?limit=20', { headers: auth(users.alice) });
-  assert.equal(inactiveHidden.body.data.conversations.some((row) => row.participant.id === String(users.carol.id)), false);
+  const inactiveList = await request('/api/conversations?limit=20', { headers: auth(users.alice) });
+  const inactiveConversation = inactiveList.body.data.conversations.find((row) => row.participant.id === String(users.carol.id));
+  assert.equal(inactiveConversation.canMessage, false);
+  assert.equal(inactiveConversation.availabilityReason, 'account_unavailable');
   await users.carol.update({ accountStatus: 'active', deactivatedAt: null });
 });
 
@@ -307,13 +338,51 @@ test('text validation, inactive accounts, and bidirectional blocks prevent messa
   const listener = () => { leaked = true; };
   bobSocket.on('message.created', listener);
   await models.Block.create({ blockerUserId: users.bob.id, blockedUserId: users.alice.id });
+  const unavailableList = await request('/api/conversations?limit=20', { headers: auth(users.alice) });
+  const unavailableConversation = unavailableList.body.data.conversations.find((row) => row.id === primaryConversationId);
+  assert.equal(unavailableConversation.canMessage, false);
+  assert.equal(unavailableConversation.availabilityReason, 'profile_blocked_you');
+  const unavailableHistory = await request(`/api/conversations/${primaryConversationId}/messages`, { headers: auth(users.alice) });
+  assert.equal(unavailableHistory.status, 200);
+  assert.equal(unavailableHistory.body.data.conversation.availabilityReason, 'profile_blocked_you');
   const denied = await jsonRequest(`/api/conversations/${primaryConversationId}/messages`, 'POST', users.alice, { text: 'blocked' });
   assert.equal(denied.status, 404);
   await new Promise((resolve) => setTimeout(resolve, 150));
   bobSocket.off('message.created', listener);
   assert.equal(leaked, false);
-  assert.equal((await request(`/api/conversations/${primaryConversationId}/messages`, { headers: auth(users.bob) })).status, 404);
+  const blockerHistory = await request(`/api/conversations/${primaryConversationId}/messages`, { headers: auth(users.bob) });
+  assert.equal(blockerHistory.status, 200);
+  assert.equal(blockerHistory.body.data.conversation.availabilityReason, 'you_blocked_profile');
   await models.Block.destroy({ where: { blockerUserId: users.bob.id, blockedUserId: users.alice.id } });
+  const restoredList = await request('/api/conversations?limit=20', { headers: auth(users.alice) });
+  const restoredConversation = restoredList.body.data.conversations.find((row) => row.id === primaryConversationId);
+  assert.equal(restoredConversation.canMessage, true);
+  assert.equal(restoredConversation.availabilityReason, null);
+});
+
+test('chat-origin reports bind the authenticated reporter to the other participant', async () => {
+  const valid = await jsonRequest('/api/reports', 'POST', users.alice, {
+    targetType: 'profile',
+    targetUserId: users.bob.id,
+    conversationId: Number(primaryConversationId),
+    reason: 'spam',
+  });
+  assert.equal(valid.status, 201, JSON.stringify(valid.body));
+  const invalid = await jsonRequest('/api/reports', 'POST', users.alice, {
+    targetType: 'profile',
+    targetUserId: users.carol.id,
+    conversationId: Number(primaryConversationId),
+    reason: 'spam',
+  });
+  assert.equal(invalid.status, 403);
+  assert.equal(invalid.body.code, 'REPORT_TARGET_MISMATCH');
+  const reverse = await jsonRequest('/api/reports', 'POST', users.bob, {
+    targetType: 'profile',
+    targetUserId: users.alice.id,
+    conversationId: Number(primaryConversationId),
+    reason: 'other',
+  });
+  assert.equal(reverse.status, 201, JSON.stringify(reverse.body));
 });
 
 test('image media is signature-validated, private, persisted, and accessible only to participants', async () => {

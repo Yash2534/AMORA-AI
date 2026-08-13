@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:amora_ai/core/access/amora_access.dart';
+import 'package:amora_ai/core/auth/auth_service.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/premium_avatar.dart';
@@ -13,6 +14,7 @@ import 'package:amora_ai/features/safety/presentation/report_flow_screen.dart';
 import 'package:amora_ai/features/settings/presentation/safety_privacy_screen.dart';
 import 'package:amora_ai/features/subscription/presentation/testing/membership_test_flow.dart';
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 
 class EventDetailScreen extends StatefulWidget {
   const EventDetailScreen({
@@ -166,10 +168,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                         492.0,
                       ),
                       onBack: () => Navigator.of(context).maybePop(),
-                      onShare: () => showEventSnack(
-                        context,
-                        'Event sharing is not connected yet. Nothing was shared.',
-                      ),
+                      onShare: () => _shareEvent(event, context),
                     );
                   },
                 ),
@@ -223,7 +222,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                         ),
                         const SizedBox(height: 28),
                       ],
-                      if (event.attendees.isNotEmpty)
+                      if (event.registeredCount > 0 ||
+                          event.attendees.isNotEmpty)
                         EventDetailSection(
                           title: 'Who’s joining',
                           subtitle:
@@ -232,25 +232,32 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              EventAttendeePreview(attendees: event.attendees),
-                              const SizedBox(height: 18),
-                              SizedBox(
-                                height: 116 + attendeeTextAllowance,
-                                child: ListView.separated(
-                                  key: const ValueKey('event-detail-attendees'),
-                                  scrollDirection: Axis.horizontal,
-                                  itemCount: event.attendees.length,
-                                  separatorBuilder: (_, _) =>
-                                      const SizedBox(width: 10),
-                                  itemBuilder: (_, index) => EventReveal(
-                                    delay: Duration(milliseconds: 25 * index),
-                                    offset: 6,
-                                    child: _AttendeeCard(
-                                      attendee: event.attendees[index],
+                              EventAttendeePreview(
+                                attendees: event.attendees,
+                                totalCount: event.registeredCount,
+                              ),
+                              if (event.attendees.isNotEmpty) ...[
+                                const SizedBox(height: 18),
+                                SizedBox(
+                                  height: 116 + attendeeTextAllowance,
+                                  child: ListView.separated(
+                                    key: const ValueKey(
+                                      'event-detail-attendees',
+                                    ),
+                                    scrollDirection: Axis.horizontal,
+                                    itemCount: event.attendees.length,
+                                    separatorBuilder: (_, _) =>
+                                        const SizedBox(width: 10),
+                                    itemBuilder: (_, index) => EventReveal(
+                                      delay: Duration(milliseconds: 25 * index),
+                                      offset: 6,
+                                      child: _AttendeeCard(
+                                        attendee: event.attendees[index],
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
+                              ],
                             ],
                           ),
                         ),
@@ -344,19 +351,64 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
             await _controller.joinWaitlistRemote(event);
             if (mounted) showEventSnack(context, 'You joined the waitlist');
           } else {
-            await _controller.registerRemote(event);
+            final refreshed = await _controller.registerRemote(event);
             if (mounted) {
-              setState(() => _celebrateJoin = true);
+              setState(() {
+                _event = refreshed;
+                _status = refreshed.participationStatus;
+                _celebrateJoin = true;
+              });
               showEventSnack(context, 'You joined ${event.title}');
             }
           }
         } catch (error) {
-          if (mounted) showEventSnack(context, error.toString());
+          if (mounted) {
+            showEventSnack(
+              context,
+              userFacingErrorMessage(
+                error,
+                fallback: 'Could not update this event. Please try again.',
+              ),
+            );
+          }
         } finally {
           _scheduleJoinMotionEnd();
         }
       },
     );
+  }
+
+  Future<void> _shareEvent(EventModel event, BuildContext anchorContext) async {
+    final renderBox = anchorContext.findRenderObject() as RenderBox?;
+    final origin = renderBox == null
+        ? null
+        : renderBox.localToGlobal(Offset.zero) & renderBox.size;
+    final details = <String>[
+      event.title,
+      '${event.date} at ${event.time}',
+      '${event.venue}, ${event.city}',
+      if (event.description.trim().isNotEmpty) event.description.trim(),
+    ].join('\n');
+    try {
+      final result = await SharePlus.instance.share(
+        ShareParams(
+          subject: event.title,
+          title: event.title,
+          text: details,
+          sharePositionOrigin: origin,
+        ),
+      );
+      if (!mounted || result.status == ShareResultStatus.dismissed) return;
+      if (result.status == ShareResultStatus.success) {
+        showEventSnack(context, 'Event shared');
+        return;
+      }
+      showEventSnack(context, 'Event sharing is unavailable on this device.');
+    } catch (_) {
+      if (mounted) {
+        showEventSnack(context, 'Event sharing is unavailable on this device.');
+      }
+    }
   }
 
   void _startJoinMotion() {
@@ -417,7 +469,17 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                 try {
                   await _controller.cancelRemote(event);
                 } catch (error) {
-                  messenger.showSnackBar(SnackBar(content: Text('$error')));
+                  messenger.showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        userFacingErrorMessage(
+                          error,
+                          fallback:
+                              'Could not leave this event. Please try again.',
+                        ),
+                      ),
+                    ),
+                  );
                   return;
                 }
                 if (!mounted) return;

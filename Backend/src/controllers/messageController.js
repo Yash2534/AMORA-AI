@@ -2,6 +2,7 @@ const fs = require('fs');
 const { Op } = require('sequelize');
 const { getModels } = require('../models');
 const { conversationAccess } = require('../services/conversationAccessService');
+const { _summaryFor: conversationSummaryFor } = require('./conversationController');
 const { serializePublicProfile } = require('../services/publicProfileService');
 const { emitConversationEvent, isUserOnline } = require('../realtime/realtimeHub');
 const { createNotification } = require('../services/notificationService');
@@ -48,7 +49,19 @@ exports.history = async (req, res, next) => {
     const userId = Number(req.user.sub);
     const conversationId = Number(req.params.conversationId);
     const access = await conversationAccess(conversationId, userId);
-    if (!access) return unavailable(res);
+    if (!access) {
+      const conversation = await conversationSummaryFor(req, conversationId, userId);
+      if (!conversation || conversation.canMessage) return unavailable(res);
+      return res.json({
+        success: true,
+        message: 'Conversation availability retrieved.',
+        data: {
+          conversation,
+          messages: [],
+          pagination: { hasMore: false, nextCursor: null },
+        },
+      });
+    }
     const { Message, MessageMedia } = getModels();
     const deliveredAt = new Date();
     const [deliveredCount] = await Message.update(

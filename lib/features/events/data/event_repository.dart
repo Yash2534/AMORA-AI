@@ -156,7 +156,9 @@ class EventRepository {
       ),
       organizer: EventOrganizer(
         name: organizer['name']?.toString() ?? 'AMORAA Events',
-        photoAsset: AppImages.defaultAvatar,
+        photoAsset: organizer['imageUrl']?.toString().trim().isNotEmpty == true
+            ? organizer['imageUrl'].toString()
+            : AppImages.defaultAvatar,
         rating: 0,
         followers: '',
       ),

@@ -64,7 +64,10 @@ Map<String, dynamic> _eventJson() => {
   'agenda': [],
   'facilities': [],
   'interests': [],
-  'organizer': {'name': 'AMORAA Events'},
+  'organizer': {
+    'name': 'AMORAA Events',
+    'imageUrl': 'http://localhost:5000/uploads/organizer.jpg',
+  },
   'participation': {'registered': false, 'registrationStatus': null},
 };
 
@@ -73,6 +76,10 @@ void main() {
     final repository = EventRepository(remote: _Remote());
     final event = (await repository.browse()).events.single;
     expect(event.organizer.name, 'AMORAA Events');
+    expect(
+      event.organizer.photoAsset,
+      'http://localhost:5000/uploads/organizer.jpg',
+    );
     expect(event.seatsLeft, 18);
   });
 

@@ -62,7 +62,7 @@ exports.list = async (req, res, next) => {
       distinct: true,
     });
     const total = Number(result.count);
-    return ok(res, 'Events loaded.', { events: result.rows.map(serializeEvent), pagination: { page, limit, total, hasMore: page * limit < total, nextPage: page * limit < total ? page + 1 : null } });
+    return ok(res, 'Events loaded.', { events: result.rows.map((event) => serializeEvent(req, event)), pagination: { page, limit, total, hasMore: page * limit < total, nextPage: page * limit < total ? page + 1 : null } });
   } catch (error) { return next(error); }
 };
 
@@ -76,7 +76,7 @@ exports.detail = async (req, res, next) => {
       include: participationIncludes(userId),
     });
     if (!event) return fail(res, 404, 'Event not found.', 'EVENT_NOT_FOUND');
-    return ok(res, 'Event loaded.', { event: serializeEvent(event) });
+    return ok(res, 'Event loaded.', { event: serializeEvent(req, event) });
   } catch (error) { return next(error); }
 };
 
@@ -230,6 +230,6 @@ exports.myEvents = async (req, res, next) => {
       distinct: true,
     });
     const total = Number(result.count);
-    return ok(res, 'Your events loaded.', { category, events: result.rows.map(serializeEvent), pagination: { page, limit, total, hasMore: page * limit < total, nextPage: page * limit < total ? page + 1 : null } });
+    return ok(res, 'Your events loaded.', { category, events: result.rows.map((event) => serializeEvent(req, event)), pagination: { page, limit, total, hasMore: page * limit < total, nextPage: page * limit < total ? page + 1 : null } });
   } catch (error) { return next(error); }
 };

@@ -32,6 +32,7 @@ class ReportFlowArgs {
     required this.title,
     this.imageUrl = '',
     this.fallbackAsset = '',
+    this.conversationId,
   });
 
   factory ReportFlowArgs.profile(DummyProfile profile) => ReportFlowArgs(
@@ -42,11 +43,24 @@ class ReportFlowArgs {
     fallbackAsset: profile.fallbackAsset,
   );
 
+  factory ReportFlowArgs.chat(
+    DummyProfile profile, {
+    required String conversationId,
+  }) => ReportFlowArgs(
+    targetType: 'profile',
+    targetId: profile.id,
+    title: '${profile.name}, ${profile.age}',
+    imageUrl: profile.imageUrl,
+    fallbackAsset: profile.fallbackAsset,
+    conversationId: conversationId,
+  );
+
   final String targetType;
   final String targetId;
   final String title;
   final String imageUrl;
   final String fallbackAsset;
+  final String? conversationId;
 }
 
 class _ReportFlowScreenState extends State<ReportFlowScreen> {
@@ -199,6 +213,7 @@ class _ReportFlowScreenState extends State<ReportFlowScreen> {
         targetId: target.targetType == 'profile' ? null : target.targetId,
         reason: _reasonCodes[_reason]!,
         notes: _notes.text,
+        conversationId: target.conversationId,
       );
       if (!mounted) return;
       setState(() => _submitted = true);
