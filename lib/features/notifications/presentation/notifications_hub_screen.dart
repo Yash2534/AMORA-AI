@@ -7,7 +7,7 @@ import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/amora_app_bar.dart';
 import 'package:amora_ai/core/widgets/amora_filter_chip.dart';
-import 'package:amora_ai/core/widgets/premium_asset_image.dart';
+import 'package:amora_ai/core/widgets/premium_image.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/chat/presentation/chat_detail_screen.dart';
 import 'package:amora_ai/features/events/presentation/events_screen.dart';
@@ -871,7 +871,7 @@ class _NotificationAvatar extends StatelessWidget {
               child: Icon(item.icon, color: AppColors.primary, size: 24),
             )
           else
-            PremiumAssetImage(
+            PremiumImage(
               imageUrl: item.imageUrl,
               fallbackAsset: item.fallbackAsset,
               initials: item.initials,
@@ -1309,8 +1309,9 @@ class _NotificationItem {
       group: _notificationGroup(record.createdAt),
       category: record.category,
       icon: _notificationFilterIcon(record.category),
-      imageUrl:
-          record.actor?.photoUrl ?? record.data['imageUrl']?.toString() ?? '',
+      imageUrl: record.actor == null
+          ? record.data['imageUrl']?.toString() ?? ''
+          : record.actor?.photoUrl ?? '',
       fallbackAsset: AppImages.fallbackProfile,
       initials:
           record.data['initials']?.toString() ??

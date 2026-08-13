@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:amora_ai/core/auth/auth_service.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
+import 'package:amora_ai/features/profile/domain/communication_style.dart';
 import 'package:amora_ai/features/profile/domain/profile_form_options.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_form.dart';
 import 'package:flutter/material.dart';
@@ -10,6 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 Map<String, dynamic> _canonicalProfile({
   String name = 'Server Profile',
   String bio = 'A canonical profile biography returned by the backend.',
+  String education = 'Graduate',
   int completion = 74,
 }) => <String, dynamic>{
   'name': name,
@@ -21,7 +23,7 @@ Map<String, dynamic> _canonicalProfile({
   'bio': bio,
   'profession': 'Engineer',
   'company': 'AMORAA',
-  'education': 'Graduate',
+  'education': education,
   'location': 'Ahmedabad',
   'datingIntention': 'Meaningful Dating',
   'interests': <String>['Coffee', 'Travel', 'Music', 'Reading', 'Fitness'],
@@ -77,6 +79,8 @@ class _FakeOwnProfileRemote implements OwnProfileRemoteDataSource {
       profile = _canonicalProfile(
         name: 'Server Normalized Name',
         bio: body?['bio'] as String? ?? profile['bio'] as String,
+        education:
+            body?['education'] as String? ?? profile['education'] as String,
         completion: 88,
       );
       if (body?['photos'] case final List<String> photos) {
@@ -175,6 +179,62 @@ void main() {
       'bio': 'Only this section changed.',
     });
   });
+
+  test('height-only save submits only the changed lifestyle field', () async {
+    final remote = _FakeOwnProfileRemote();
+    final repository = LocalProfileRepository.testing(remote: remote);
+    addTearDown(repository.dispose);
+    await repository.refreshFromServer();
+    final lifestyle = Map<String, String>.of(repository.profile.lifestyle)
+      ..['Height'] = '172 cm';
+
+    await repository.savePersisted(
+      repository.profile.copyWith(lifestyle: lifestyle),
+    );
+
+    expect(remote.lastBody, <String, dynamic>{'lifestyle': lifestyle});
+  });
+
+  test('communication-style-only save submits no unrelated fields', () async {
+    final remote = _FakeOwnProfileRemote();
+    final repository = LocalProfileRepository.testing(remote: remote);
+    addTearDown(repository.dispose);
+    await repository.refreshFromServer();
+
+    await repository.savePersisted(
+      repository.profile.copyWith(
+        communicationStyle: CommunicationStyle.voiceNotes,
+      ),
+    );
+
+    expect(remote.lastBody, <String, dynamic>{
+      'communicationStyle': 'voice_notes',
+    });
+  });
+
+  test(
+    'custom education survives the API response and a fresh reload',
+    () async {
+      final remote = _FakeOwnProfileRemote();
+      final repository = LocalProfileRepository.testing(remote: remote);
+      await repository.refreshFromServer();
+
+      await repository.savePersisted(
+        repository.profile.copyWith(education: 'Diploma in Fashion Design'),
+      );
+
+      expect(remote.lastBody, <String, dynamic>{
+        'education': 'Diploma in Fashion Design',
+      });
+      expect(repository.profile.education, 'Diploma in Fashion Design');
+      repository.dispose();
+
+      final reopened = LocalProfileRepository.testing(remote: remote);
+      addTearDown(reopened.dispose);
+      await reopened.refreshFromServer();
+      expect(reopened.profile.education, 'Diploma in Fashion Design');
+    },
+  );
 
   test('gender edits send the backend enum instead of legacy labels', () async {
     final remote = _FakeOwnProfileRemote();

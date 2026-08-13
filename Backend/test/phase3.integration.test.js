@@ -376,6 +376,11 @@ test('conversation mute persists per participant and suppresses message notifica
   assert.equal(sent.status, 201);
   const notification = await models.Notification.findOne({ where: { userId: users.bob.id, dedupeKey: `message:${sent.body.data.message.id}` } });
   assert.ok(notification);
+  assert.equal(Number(notification.actorUserId), users.alice.id);
+  const inbox = await request('/api/notifications', { headers: auth(users.bob) });
+  const messageNotification = inbox.body.data.notifications.find((item) => item.id === String(notification.id));
+  assert.equal(messageNotification.actor.userId, String(users.alice.id));
+  assert.ok(messageNotification.actor.photoUrl);
   const delivery = await models.NotificationDelivery.findOne({ where: { notificationId: notification.id } });
   assert.equal(delivery.status, 'credentials_required');
   assert.equal((await jsonRequest(`/api/conversations/${primaryConversationId}/mute`, 'PUT', users.outsider, {})).status, 404);

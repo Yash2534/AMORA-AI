@@ -152,6 +152,11 @@ test('sent likes persist, paginate, preserve reciprocal matching, and enforce vi
     assert.equal((await json('/api/discover/swipe', 'POST', users.viewer, { targetUserId: target.id, action: 'like' })).status, 200);
   }
   assert.equal(await models.DiscoverAction.count({ where: { actorUserId: users.viewer.id, action: 'like' } }), 3);
+  const persistedLikes = await models.DiscoverAction.findAll({
+    where: { actorUserId: users.viewer.id, targetUserId: [users.targetA.id, users.targetB.id, users.targetC.id] },
+  });
+  assert.ok(persistedLikes.every((row) => row.action === 'like'));
+  assert.ok(persistedLikes.every((row) => row.createdAt && row.updatedAt));
 
   const pageOne = await request('/api/me/likes?page=1&limit=2', { headers: auth(users.viewer) });
   const pageTwo = await request('/api/me/likes?page=2&limit=2', { headers: auth(users.viewer) });
@@ -174,6 +179,14 @@ test('sent likes persist, paginate, preserve reciprocal matching, and enforce vi
   await json('/api/discover/swipe', 'POST', users.targetA, { targetUserId: users.viewer.id, action: 'like' });
   const matched = await json('/api/discover/swipe', 'POST', users.viewer, { targetUserId: users.targetA.id, action: 'like' });
   assert.equal(matched.body.data.matched, true);
+  const viewerMatchNotification = await models.Notification.findOne({
+    where: { userId: users.viewer.id, type: 'new_match' },
+  });
+  const targetMatchNotification = await models.Notification.findOne({
+    where: { userId: users.targetA.id, type: 'new_match' },
+  });
+  assert.equal(Number(viewerMatchNotification.actorUserId), users.targetA.id);
+  assert.equal(Number(targetMatchNotification.actorUserId), users.viewer.id);
   await json('/api/discover/swipe', 'POST', users.viewer, { targetUserId: users.targetA.id, action: 'like' });
   const first = Math.min(users.viewer.id, users.targetA.id); const second = Math.max(users.viewer.id, users.targetA.id);
   assert.equal(await models.Match.count({ where: { userOneId: first, userTwoId: second } }), 1);
@@ -208,11 +221,31 @@ test('received likes are database-backed, owner-scoped, and visibility-filtered'
 
 test('Super Likes use DiscoverActions, paginate, deduplicate, and enforce visibility', async () => {
   await models.DiscoverAction.destroy({ where: { actorUserId: users.viewer.id } });
+  await models.Notification.destroy({
+    where: {
+      actorUserId: users.viewer.id,
+      type: { [Op.in]: ['new_like', 'new_super_like'] },
+    },
+    force: true,
+  });
+  await json('/api/discover/swipe', 'POST', users.otherOwner, { targetUserId: users.outsider.id, action: 'superLike' });
   for (const target of [users.targetA, users.targetB, users.targetC]) {
     assert.equal((await json('/api/discover/swipe', 'POST', users.viewer, { targetUserId: target.id, action: 'superLike' })).status, 200);
   }
-  await json('/api/discover/swipe', 'POST', users.viewer, { targetUserId: users.targetA.id, action: 'superLike' });
-  assert.equal(await models.DiscoverAction.count({ where: { actorUserId: users.viewer.id, targetUserId: users.targetA.id, action: 'superLike' } }), 1);
+  const persisted = await models.DiscoverAction.findAll({ where: { actorUserId: users.viewer.id, action: 'superLike' } });
+  assert.equal(persisted.length, 3);
+  assert.deepEqual(new Set(persisted.map((row) => Number(row.targetUserId))), new Set([users.targetA.id, users.targetB.id, users.targetC.id]));
+  assert.ok(persisted.every((row) => row.createdAt && row.updatedAt));
+  assert.equal(await models.Notification.count({
+    where: {
+      userId: [users.targetA.id, users.targetB.id, users.targetC.id],
+      actorUserId: users.viewer.id,
+      type: 'new_super_like',
+    },
+  }), 2);
+  await json('/api/discover/swipe', 'POST', users.viewer, { targetUserId: users.targetB.id, action: 'superLike' });
+  assert.equal(await models.DiscoverAction.count({ where: { actorUserId: users.viewer.id, targetUserId: users.targetB.id, action: 'superLike' } }), 1);
+  assert.equal(await models.Notification.count({ where: { userId: users.targetB.id, actorUserId: users.viewer.id, type: 'new_super_like' } }), 1);
 
   const pageOne = await request('/api/me/super-likes?page=1&limit=2', { headers: auth(users.viewer) });
   const pageTwo = await request('/api/me/super-likes?page=2&limit=2', { headers: auth(users.viewer) });
@@ -229,8 +262,17 @@ test('Super Likes use DiscoverActions, paginate, deduplicate, and enforce visibi
   assert.equal(inactiveList.body.data.profiles.some((profile) => profile.id === String(users.targetC.id)), false);
   await users.targetC.update({ accountStatus: 'active', deactivatedAt: null });
 
+  await models.OnboardingProfile.update({ onboardingCompleted: false }, { where: { userId: users.outsider.id } });
+  const incomplete = await json('/api/discover/swipe', 'POST', users.viewer, { targetUserId: users.outsider.id, action: 'superLike' });
+  assert.equal(incomplete.status, 404);
+  assert.equal(incomplete.body.code, 'PROFILE_NOT_DISCOVERABLE');
+  assert.equal(await models.DiscoverAction.count({ where: { actorUserId: users.viewer.id, targetUserId: users.outsider.id } }), 0);
+  await models.OnboardingProfile.update({ onboardingCompleted: true }, { where: { userId: users.outsider.id } });
+
   await models.Block.create({ blockerUserId: users.outsider.id, blockedUserId: users.viewer.id });
-  assert.equal((await json('/api/discover/swipe', 'POST', users.viewer, { targetUserId: users.outsider.id, action: 'superLike' })).status, 404);
+  const blocked = await json('/api/discover/swipe', 'POST', users.viewer, { targetUserId: users.outsider.id, action: 'superLike' });
+  assert.equal(blocked.status, 404);
+  assert.equal(blocked.body.code, 'PROFILE_NOT_DISCOVERABLE');
   assert.equal(await models.DiscoverAction.count({ where: { actorUserId: users.viewer.id, targetUserId: users.outsider.id } }), 0);
   await models.Block.destroy({ where: { blockerUserId: users.outsider.id, blockedUserId: users.viewer.id } });
 });

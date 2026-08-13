@@ -23,7 +23,9 @@ class ProfileFormController extends ChangeNotifier {
     );
     company = TextEditingController(text: _baseProfile.company);
     education = TextEditingController(
-      text: ProfileFormOptions.normalizeEducation(_baseProfile.education),
+      text: ProfileFormOptions.educationSelectionFromStored(
+        _baseProfile.education,
+      ),
     );
     customEducation = TextEditingController(
       text: ProfileFormOptions.customEducationFromStored(

@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:amora_ai/core/access/amora_access.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/floating_bottom_nav.dart';
@@ -709,36 +711,55 @@ class _EventRail extends StatelessWidget {
   Widget build(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
     final itemWidth = width >= 700 ? 330.0 : (width - 64).clamp(260.0, 328.0);
-    final textScale = MediaQuery.textScalerOf(context).scale(1);
-    final recommendedHeight =
-        AmoraaRecommendedEventCard.baseHeight +
-        ((textScale - 1).clamp(0.0, .3) * 120);
-    return SizedBox(
-      height: showDistance ? 174 : recommendedHeight,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: events.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 12),
-        itemBuilder: (_, index) {
-          final event = events[index];
-          return SizedBox(
+    if (!showDistance) {
+      final railHeight = events
+          .map(
+            (event) => AmoraaRecommendedEventCard.requiredHeight(
+              context,
+              event,
+              itemWidth,
+            ),
+          )
+          .reduce(math.max);
+      return SizedBox(
+        height: railHeight,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          itemCount: events.length,
+          separatorBuilder: (_, _) => const SizedBox(width: 12),
+          itemBuilder: (_, index) => SizedBox(
             width: itemWidth,
-            child: showDistance
-                ? CompactEventCard(
-                    event: event,
-                    status: participation[event.id],
-                    onOpen: () => onOpen(event),
-                    onJoin: () => onJoin(event),
-                    showDistance: true,
-                  )
-                : AmoraaRecommendedEventCard(
-                    event: event,
-                    status: participation[event.id],
-                    onOpen: () => onOpen(event),
-                    onJoin: () => onJoin(event),
-                  ),
-          );
-        },
+            child: AmoraaRecommendedEventCard(
+              event: events[index],
+              status: participation[events[index].id],
+              onOpen: () => onOpen(events[index]),
+              onJoin: () => onJoin(events[index]),
+            ),
+          ),
+        ),
+      );
+    }
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (var index = 0; index < events.length; index++) ...[
+              if (index > 0) const SizedBox(width: 12),
+              SizedBox(
+                width: itemWidth,
+                child: CompactEventCard(
+                  event: events[index],
+                  status: participation[events[index].id],
+                  onOpen: () => onOpen(events[index]),
+                  onJoin: () => onJoin(events[index]),
+                  showDistance: true,
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -761,26 +782,28 @@ class _CircleRail extends StatelessWidget {
   Widget build(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
     final itemWidth = width >= 700 ? 348.0 : (width - 58).clamp(276.0, 340.0);
-    return SizedBox(
-      height: 356,
-      child: ListView.separated(
-        key: const ValueKey('amora-circles-rail'),
-        scrollDirection: Axis.horizontal,
-        itemCount: events.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 12),
-        itemBuilder: (_, index) {
-          final event = events[index];
-          return SizedBox(
-            width: itemWidth,
-            child: AmoraCircleCard(
-              event: event,
-              attendees: event.attendees,
-              status: participation[event.id],
-              onOpen: () => onOpen(event),
-              onJoin: () => onJoin(event),
-            ),
-          );
-        },
+    return SingleChildScrollView(
+      key: const ValueKey('amora-circles-rail'),
+      scrollDirection: Axis.horizontal,
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (var index = 0; index < events.length; index++) ...[
+              if (index > 0) const SizedBox(width: 12),
+              SizedBox(
+                width: itemWidth,
+                child: AmoraCircleCard(
+                  event: events[index],
+                  attendees: events[index].attendees,
+                  status: participation[events[index].id],
+                  onOpen: () => onOpen(events[index]),
+                  onJoin: () => onJoin(events[index]),
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }

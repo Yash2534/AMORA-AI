@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:amora_ai/core/access/amora_access.dart';
 import 'package:amora_ai/core/theme/amora_theme.dart';
 import 'package:amora_ai/core/navigation/main_shell.dart';
@@ -350,7 +352,7 @@ void main() {
   });
 
   testWidgets('recommended long titles wrap without overflow', (tester) async {
-    await tester.binding.setSurfaceSize(const Size(280, 560));
+    await tester.binding.setSurfaceSize(const Size(280, 1000));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     final longTitleEvent = events.firstWhere(
       (event) => event.title == 'Startup Networking Mixer',
@@ -359,14 +361,20 @@ void main() {
       MaterialApp(
         theme: AmoraTheme.light(),
         home: Scaffold(
-          body: SizedBox(
-            width: 260,
-            height: AmoraaRecommendedEventCard.baseHeight,
-            child: AmoraaRecommendedEventCard(
-              event: longTitleEvent,
-              status: null,
-              onOpen: () {},
-              onJoin: () {},
+          body: Builder(
+            builder: (context) => SizedBox(
+              width: 260,
+              height: AmoraaRecommendedEventCard.requiredHeight(
+                context,
+                longTitleEvent,
+                260,
+              ),
+              child: AmoraaRecommendedEventCard(
+                event: longTitleEvent,
+                status: null,
+                onOpen: () {},
+                onJoin: () {},
+              ),
             ),
           ),
         ),
@@ -379,6 +387,100 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('important horizontal event text wraps without ellipsis', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(360, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final event = _eventWithText(
+      events.first,
+      title: 'AMORAA QA Coffee and Conversation for Intentional Connections',
+      venue: 'The Courtyard, Ahmedabad Heritage District',
+      category: 'Culture and Meaningful Conversation',
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AmoraTheme.light(),
+        home: Scaffold(
+          body: Align(
+            alignment: Alignment.topLeft,
+            child: SizedBox(
+              width: 340,
+              child: CompactEventCard(
+                event: event,
+                status: null,
+                onOpen: () {},
+                onJoin: () {},
+                showDistance: true,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final title = tester.widget<Text>(
+      find.byKey(ValueKey('event-title-${event.id}')),
+    );
+    final venue = tester.widget<Text>(
+      find.descendant(
+        of: find.byKey(ValueKey('event-venue-${event.id}')),
+        matching: find.text(event.venue),
+      ),
+    );
+    final category = tester.widget<Text>(
+      find.byKey(ValueKey('event-category-${event.id}')),
+    );
+    expect(title.maxLines, isNull);
+    expect(title.overflow, isNull);
+    expect(venue.maxLines, isNull);
+    expect(venue.overflow, isNull);
+    expect(category.maxLines, isNull);
+    expect(category.overflow, isNull);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('event detail hero grows for complete long text', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(320, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final event = _eventWithText(
+      events.first,
+      title:
+          'AMORAA QA Coffee and Conversation for Intentional Connections Across Ahmedabad',
+      category: 'Culture and Meaningful Conversation',
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AmoraTheme.light(),
+        home: Scaffold(
+          body: EventDetailHero(
+            event: event,
+            status: null,
+            height: 260,
+            onBack: () {},
+            onShare: () {},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final title = tester.widget<Text>(find.text(event.title));
+    final category = tester.widget<Text>(find.text(event.category));
+    expect(title.maxLines, isNull);
+    expect(title.overflow, isNull);
+    expect(category.maxLines, isNull);
+    expect(category.overflow, isNull);
+    expect(
+      tester.getSize(find.byType(EventDetailHero)).height,
+      greaterThan(260),
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('all recommended cards share dimensions and alignment rules', (
     tester,
   ) async {
@@ -387,7 +489,6 @@ void main() {
     final recommended = events.sublist(1, 4);
     String? joinedId;
     const itemWidth = 260.0;
-    const cardHeight = AmoraaRecommendedEventCard.baseHeight + 36;
 
     await tester.pumpWidget(
       MaterialApp(
@@ -398,25 +499,32 @@ void main() {
               size: Size(1024, 700),
               textScaler: TextScaler.linear(1.3),
             ),
-            child: SizedBox(
-              height: cardHeight,
-              child: ListView.separated(
-                key: const ValueKey('recommended-alignment-test-rail'),
-                scrollDirection: Axis.horizontal,
-                itemCount: recommended.length,
-                separatorBuilder: (_, _) => const SizedBox(width: 12),
-                itemBuilder: (_, index) {
-                  final event = recommended[index];
-                  return SizedBox(
+            child: Builder(
+              builder: (context) => SizedBox(
+                height: recommended
+                    .map(
+                      (event) => AmoraaRecommendedEventCard.requiredHeight(
+                        context,
+                        event,
+                        itemWidth,
+                      ),
+                    )
+                    .reduce(math.max),
+                child: ListView.separated(
+                  key: const ValueKey('recommended-alignment-test-rail'),
+                  scrollDirection: Axis.horizontal,
+                  itemCount: recommended.length,
+                  separatorBuilder: (_, _) => const SizedBox(width: 12),
+                  itemBuilder: (_, index) => SizedBox(
                     width: itemWidth,
                     child: AmoraaRecommendedEventCard(
-                      event: event,
+                      event: recommended[index],
                       status: null,
                       onOpen: () {},
-                      onJoin: () => joinedId = event.id,
+                      onJoin: () => joinedId = recommended[index].id,
                     ),
-                  );
-                },
+                  ),
+                ),
               ),
             ),
           ),
@@ -492,21 +600,27 @@ void main() {
   testWidgets('recommended long venue wraps without card overflow', (
     tester,
   ) async {
-    await tester.binding.setSurfaceSize(const Size(320, 620));
+    await tester.binding.setSurfaceSize(const Size(320, 1000));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     final event = events[4];
     await tester.pumpWidget(
       MaterialApp(
         theme: AmoraTheme.light(),
         home: Scaffold(
-          body: SizedBox(
-            width: 260,
-            height: AmoraaRecommendedEventCard.baseHeight,
-            child: AmoraaRecommendedEventCard(
-              event: event,
-              status: null,
-              onOpen: () {},
-              onJoin: () {},
+          body: Builder(
+            builder: (context) => SizedBox(
+              width: 260,
+              height: AmoraaRecommendedEventCard.requiredHeight(
+                context,
+                event,
+                260,
+              ),
+              child: AmoraaRecommendedEventCard(
+                event: event,
+                status: null,
+                onOpen: () {},
+                onJoin: () {},
+              ),
             ),
           ),
         ),
@@ -537,39 +651,42 @@ void main() {
       768,
       1024,
     ]) {
-      await tester.binding.setSurfaceSize(Size(width, 700));
+      await tester.binding.setSurfaceSize(Size(width, 1200));
       for (final textScale in const [1.0, 1.15, 1.3]) {
         final itemWidth = width >= 700
             ? 330.0
             : (width - 64).clamp(260.0, 328.0).toDouble();
-        final cardHeight =
-            AmoraaRecommendedEventCard.baseHeight +
-            ((textScale - 1).clamp(0.0, .3) * 120);
         await tester.pumpWidget(
           MaterialApp(
             theme: AmoraTheme.light(),
             home: Scaffold(
               body: MediaQuery(
                 data: MediaQueryData(
-                  size: Size(width, 700),
+                  size: Size(width, 1200),
                   textScaler: TextScaler.linear(textScale),
                 ),
-                child: SizedBox(
-                  height: cardHeight,
-                  child: ListView(
-                    key: const ValueKey('responsive-recommended-rail'),
-                    scrollDirection: Axis.horizontal,
-                    children: [
-                      SizedBox(
-                        width: itemWidth,
-                        child: AmoraaRecommendedEventCard(
-                          event: event,
-                          status: null,
-                          onOpen: () {},
-                          onJoin: () {},
+                child: Builder(
+                  builder: (context) => SizedBox(
+                    height: AmoraaRecommendedEventCard.requiredHeight(
+                      context,
+                      event,
+                      itemWidth,
+                    ),
+                    child: ListView(
+                      key: const ValueKey('responsive-recommended-rail'),
+                      scrollDirection: Axis.horizontal,
+                      children: [
+                        SizedBox(
+                          width: itemWidth,
+                          child: AmoraaRecommendedEventCard(
+                            event: event,
+                            status: null,
+                            onOpen: () {},
+                            onJoin: () {},
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -774,4 +891,43 @@ void main() {
     expect(find.byType(FloatingBottomNav), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+}
+
+EventModel _eventWithText(
+  EventModel source, {
+  String? title,
+  String? venue,
+  String? category,
+}) {
+  return EventModel(
+    id: '${source.id}-long-text',
+    title: title ?? source.title,
+    category: category ?? source.category,
+    city: source.city,
+    date: source.date,
+    time: source.time,
+    price: source.price,
+    seatsLeft: source.seatsLeft,
+    compatibility: source.compatibility,
+    image: source.image,
+    organizer: source.organizer,
+    venue: venue ?? source.venue,
+    distance: source.distance,
+    dressCode: source.dressCode,
+    ageRange: source.ageRange,
+    language: source.language,
+    palette: source.palette,
+    intent: source.intent,
+    interests: source.interests,
+    agenda: source.agenda,
+    startAt: source.startAt,
+    endAt: source.endAt,
+    description: source.description,
+    capacity: source.capacity,
+    registeredCount: source.registeredCount,
+    eventStatus: source.eventStatus,
+    registrationOpen: source.registrationOpen,
+    attendees: source.attendees,
+    participationStatus: source.participationStatus,
+  );
 }

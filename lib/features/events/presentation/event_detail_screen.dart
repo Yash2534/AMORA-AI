@@ -321,9 +321,11 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       _confirmLeave(event);
       return;
     }
+    if (_status == TicketStatus.waitlisted) return;
     if (_status == TicketStatus.cancelled) return;
 
-    if (membershipTestMode) {
+    final joiningWaitlist = event.waitlistEnabled;
+    if (membershipTestMode && !joiningWaitlist) {
       _startJoinMotion();
       MembershipTestFlowController.instance.joinEvent(event.id);
       _controller.registerEvent(event);
@@ -338,10 +340,15 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
           _actionBusy = true;
         });
         try {
-          await _controller.registerRemote(event);
-          if (mounted) {
-            setState(() => _celebrateJoin = true);
-            showEventSnack(context, 'You joined ${event.title}');
+          if (joiningWaitlist) {
+            await _controller.joinWaitlistRemote(event);
+            if (mounted) showEventSnack(context, 'You joined the waitlist');
+          } else {
+            await _controller.registerRemote(event);
+            if (mounted) {
+              setState(() => _celebrateJoin = true);
+              showEventSnack(context, 'You joined ${event.title}');
+            }
           }
         } catch (error) {
           if (mounted) showEventSnack(context, error.toString());
@@ -763,18 +770,27 @@ class _DetailActionBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isJoined = status == TicketStatus.upcoming;
+    final hasParticipation = status != null;
     final statusLabel = switch (status) {
       TicketStatus.upcoming => 'Leave Event',
+      TicketStatus.waitlisted => 'Waitlisted',
       TicketStatus.cancelled => 'Event Cancelled',
-      null => event.registrationOpen ? 'Join Event' : 'Event Full',
+      null =>
+        event.waitlistEnabled
+            ? 'Join Waitlist'
+            : event.registrationOpen
+            ? 'Join Event'
+            : 'Event Full',
     };
     final label = busy ? 'Joining…' : statusLabel;
     final icon = switch (status) {
       TicketStatus.upcoming => Icons.logout_rounded,
+      TicketStatus.waitlisted => Icons.hourglass_top_rounded,
       TicketStatus.cancelled => Icons.event_busy_rounded,
       null =>
-        event.registrationOpen
+        event.waitlistEnabled
+            ? Icons.hourglass_top_rounded
+            : event.registrationOpen
             ? Icons.event_available_rounded
             : Icons.event_busy_rounded,
     };
@@ -829,10 +845,16 @@ class _DetailActionBar extends StatelessWidget {
                 label: label,
                 icon: busy ? Icons.hourglass_top_rounded : icon,
                 isLoading: busy,
-                variant: isJoined
+                variant: hasParticipation
                     ? AppPrimaryButtonVariant.outlined
                     : AppPrimaryButtonVariant.primary,
-                onPressed: status == TicketStatus.cancelled || busy
+                onPressed:
+                    status == TicketStatus.cancelled ||
+                        status == TicketStatus.waitlisted ||
+                        busy ||
+                        (status == null &&
+                            !event.registrationOpen &&
+                            !event.waitlistEnabled)
                     ? null
                     : onPressed,
               ),

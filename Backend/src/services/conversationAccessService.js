@@ -54,4 +54,38 @@ async function eligibleTarget(targetUserId, transaction) {
   });
 }
 
-module.exports = { pairKeyFor, activeMatch, conversationAccess, eligibleTarget };
+async function ensureDirectConversation(firstUserId, secondUserId, options = {}) {
+  const userIds = [Number(firstUserId), Number(secondUserId)].sort((a, b) => a - b);
+  if (!userIds[0] || userIds[0] === userIds[1]) {
+    throw new Error('A direct conversation requires two different users.');
+  }
+  const { Conversation, ConversationParticipant } = getModels();
+  const pairKey = pairKeyFor(userIds[0], userIds[1]);
+  const [conversation, created] = await Conversation.findOrCreate({
+    where: { pairKey },
+    defaults: { pairKey, type: 'direct' },
+    transaction: options.transaction,
+  });
+  await ConversationParticipant.bulkCreate([
+    { conversationId: conversation.id, userId: userIds[0], joinedAt: new Date() },
+    { conversationId: conversation.id, userId: userIds[1], joinedAt: new Date() },
+  ], { ignoreDuplicates: true, transaction: options.transaction });
+  const participants = await ConversationParticipant.findAll({
+    where: { conversationId: conversation.id },
+    attributes: ['userId'],
+    transaction: options.transaction,
+  });
+  const participantIds = participants.map((item) => Number(item.userId)).sort((a, b) => a - b);
+  if (participantIds.length !== 2 || participantIds[0] !== userIds[0] || participantIds[1] !== userIds[1]) {
+    throw new Error('The direct conversation participant mapping is invalid.');
+  }
+  return { conversation, created };
+}
+
+module.exports = {
+  pairKeyFor,
+  activeMatch,
+  conversationAccess,
+  eligibleTarget,
+  ensureDirectConversation,
+};

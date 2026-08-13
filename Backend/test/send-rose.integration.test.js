@@ -53,6 +53,11 @@ before(async () => {
   await createUser('Rose Sender');
   await createUser('Rose Recipient');
   await createUser('Other User');
+  await createUser('Incomplete User');
+  await models.OnboardingProfile.update(
+    { onboardingCompleted: false, stage: 'photos' },
+    { where: { userId: users[3].id } },
+  );
   server = app.listen(0);
   await new Promise((resolve) => server.once('listening', resolve));
   baseUrl = `http://127.0.0.1:${server.address().port}`;
@@ -79,7 +84,12 @@ test('Rose is authenticated, persisted, notified, and idempotent without commerc
   assert.equal(sent.body.data.roseTransaction.senderId, String(users[0].id));
   assert.equal(sent.body.data.roseTransaction.recipientId, String(users[1].id));
   const persisted = await models.RoseTransaction.findByPk(sent.body.data.roseTransaction.id);
+  assert.equal(Number(persisted.senderId), users[0].id);
+  assert.equal(Number(persisted.recipientId), users[1].id);
+  assert.equal(persisted.status, 'sent');
   assert.equal(persisted.note, 'Hello');
+  assert.ok(persisted.createdAt);
+  assert.ok(persisted.updatedAt);
   assert.equal(await models.Notification.count({ where: { userId: users[1].id, actorUserId: users[0].id, type: 'rose_received', dedupeKey: `rose:${persisted.id}` } }), 1);
   const replay = await request('/api/roses/send', { user: users[0], body: { recipientId: users[1].id, note: 'Hello', idempotencyKey } });
   assert.equal(replay.status, 200);
@@ -89,14 +99,33 @@ test('Rose is authenticated, persisted, notified, and idempotent without commerc
 });
 
 test('Rose rejects invalid recipient relationships and conflicting retries', async () => {
-  assert.equal((await request('/api/roses/send', { user: users[0], body: { recipientId: users[0].id, idempotencyKey: key('self') } })).status, 400);
-  assert.equal((await request('/api/roses/send', { user: users[0], body: { recipientId: 2147483647, idempotencyKey: key('missing') } })).status, 404);
+  const self = await request('/api/roses/send', { user: users[0], body: { recipientId: users[0].id, idempotencyKey: key('self') } });
+  assert.equal(self.status, 400);
+  assert.equal(self.body.code, 'SELF_ROSE_NOT_ALLOWED');
+  const missing = await request('/api/roses/send', { user: users[0], body: { recipientId: 2147483647, idempotencyKey: key('missing') } });
+  assert.equal(missing.status, 404);
+  assert.equal(missing.body.code, 'RECIPIENT_NOT_AVAILABLE');
+  const incomplete = await request('/api/roses/send', { user: users[0], body: { recipientId: users[3].id, idempotencyKey: key('incomplete') } });
+  assert.equal(incomplete.status, 404);
+  assert.equal(incomplete.body.code, 'RECIPIENT_NOT_AVAILABLE');
+  assert.equal(await models.RoseTransaction.count({ where: { senderId: users[0].id, recipientId: users[3].id } }), 0);
   await models.Block.create({ blockerUserId: users[1].id, blockedUserId: users[0].id });
-  assert.equal((await request('/api/roses/send', { user: users[0], body: { recipientId: users[1].id, idempotencyKey: key('blocked') } })).status, 403);
+  const blockedKey = key('blocked');
+  const notificationCountBefore = await models.Notification.count({ where: { userId: users[1].id, actorUserId: users[0].id } });
+  const blocked = await request('/api/roses/send', { user: users[0], body: { recipientId: users[1].id, idempotencyKey: blockedKey } });
+  assert.equal(blocked.status, 403);
+  assert.equal(blocked.body.code, 'ROSE_NOT_ALLOWED');
+  assert.equal(await models.RoseTransaction.count({ where: { senderId: users[0].id, idempotencyKey: blockedKey } }), 0);
+  assert.equal(await models.Notification.count({ where: { userId: users[1].id, actorUserId: users[0].id } }), notificationCountBefore);
   await models.Block.destroy({ where: { blockerUserId: users[1].id, blockedUserId: users[0].id } });
   const idempotencyKey = key('conflict');
   assert.equal((await request('/api/roses/send', { user: users[0], body: { recipientId: users[1].id, idempotencyKey } })).status, 201);
-  assert.equal((await request('/api/roses/send', { user: users[0], body: { recipientId: users[2].id, idempotencyKey } })).status, 409);
+  const conflict = await request('/api/roses/send', { user: users[0], body: { recipientId: users[2].id, idempotencyKey } });
+  assert.equal(conflict.status, 409);
+  assert.equal(conflict.body.code, 'IDEMPOTENCY_CONFLICT');
+  const independent = await request('/api/roses/send', { user: users[0], body: { recipientId: users[2].id, idempotencyKey: key('independent-target') } });
+  assert.equal(independent.status, 201);
+  assert.equal(independent.body.data.roseTransaction.recipientId, String(users[2].id));
 });
 
 test('retired commerce APIs return 404', async () => {

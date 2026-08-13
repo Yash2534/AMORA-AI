@@ -1,5 +1,8 @@
 import 'package:flutter/foundation.dart';
+import 'package:amora_ai/features/chat/data/chat_repository.dart';
 import 'package:amora_ai/features/discover/data/discover_api_service.dart';
+
+typedef MutualMatchChatRefresher = Future<void> Function();
 
 enum DiscoverAction { pass, like, superLike, rewind }
 
@@ -24,12 +27,16 @@ class DiscoverActionController extends ChangeNotifier {
     required Iterable<String> profileIds,
     Iterable<String> mutualLikeProfileIds = const <String>[],
     DiscoverApiService? apiService,
+    MutualMatchChatRefresher? refreshChats,
     this.transitionDuration = const Duration(milliseconds: 240),
   }) : _deck = List<String>.of(profileIds),
-       _apiService = apiService ?? DiscoverApiService();
+       _apiService = apiService ?? DiscoverApiService(),
+       _refreshChats =
+           refreshChats ?? ChatRepository.instance.refreshConversations;
 
   final Duration transitionDuration;
   final DiscoverApiService _apiService;
+  final MutualMatchChatRefresher _refreshChats;
   final List<String> _deck;
   final List<DiscoverHistoryEntry> _history = [];
   final Map<String, int> _imageIndices = {};
@@ -164,6 +171,13 @@ class DiscoverActionController extends ChangeNotifier {
     _isTransitioning = false;
     notifyListeners();
     if (result.data!.matched) {
+      if (result.data!.conversationId != null) {
+        try {
+          await _refreshChats();
+        } catch (_) {
+          // The persisted conversation remains available on Chat refresh/login.
+        }
+      }
       _matchedProfileId = profileId;
       _matchId = result.data!.matchId;
       _matchedProfile = result.data!.matchedProfile;

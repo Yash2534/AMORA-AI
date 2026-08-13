@@ -65,6 +65,20 @@ void main() {
     );
   });
 
+  test('profile preview projects the persisted custom education text', () {
+    final data = AmoraaPublicProfileData.fromProfile(
+      repository.profile.copyWith(education: 'Diploma in Fashion Design'),
+      repository.currentPhotos,
+    );
+
+    expect(data.education, 'Diploma in Fashion Design');
+    expect(data.education, isNot('Other'));
+    expect(
+      data.toPublicDisplayProfile().education,
+      'Diploma in Fashion Design',
+    );
+  });
+
   test(
     'public API mapper preserves male gender, distance, and ice breaker',
     () {
@@ -232,7 +246,7 @@ void main() {
     repository.save(
       current.copyWith(
         location: 'Surat',
-        education: 'Master\'s Degree',
+        education: 'Diploma in Fashion Design',
         gender: 'Man',
         datingIntention: 'Marriage',
         bio: 'A newly saved public biography.',
@@ -257,7 +271,8 @@ void main() {
 
     expect(find.text('Priya, 28'), findsOneWidget);
     expect(find.text('Surat'), findsOneWidget);
-    expect(find.text('Postgraduate'), findsOneWidget);
+    expect(find.text('Diploma in Fashion Design'), findsOneWidget);
+    expect(find.text('Other'), findsNothing);
     expect(find.text('Marriage Minded'), findsOneWidget);
     expect(find.text('A newly saved public biography.'), findsOneWidget);
     expect(
@@ -426,7 +441,7 @@ UserProfile _profileFixture() => const UserProfile(
   bio: 'Warm, curious, and happiest over a long conversation.',
   profession: 'Flutter Engineer',
   company: 'AMORAA Studio',
-  education: 'B.Tech',
+  education: 'Undergraduate',
   location: 'Ahemdabad',
   datingIntention: 'Serious',
   interests: ['Coffee Dates', 'Heritage Walks', 'Technology'],

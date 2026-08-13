@@ -12,6 +12,7 @@
     "test:profile": "node --test --test-concurrency=1 test/own-profile.integration.test.js",
     "test:notifications-preferences": "node --test --test-concurrency=1 test/notifications-preferences.integration.test.js",
     "test:phase3": "node --test --test-concurrency=1 test/phase3.integration.test.js",
+    "test:mutual-like-chat": "node --test --test-concurrency=1 test/mutual-like-chat.integration.test.js",
     "test:phase4": "node --test --test-concurrency=1 test/phase4.integration.test.js",
     "db:migrate": "node src/migrations/run.js up",
     "db:migrate:status": "node src/migrations/run.js status",

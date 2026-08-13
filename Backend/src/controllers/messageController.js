@@ -143,7 +143,7 @@ exports.send = async (req, res, next) => {
     const payload = messageJson(message, userId, access.other.lastReadMessageId);
     await emitConversationEvent(conversationId, 'message.created', { conversationId: String(conversationId), message: payload });
     await emitConversationEvent(conversationId, 'conversation.updated', { conversationId: String(conversationId), message: payload });
-    await createNotification({ userId: Number(access.other.userId), type: 'new_message', category: 'message', title: req.authUser.name, message: text.slice(0, 160), data: { conversationId: String(conversationId), messageId: String(message.id) }, conversationId, dedupeKey: `message:${message.id}` });
+    await createNotification({ userId: Number(access.other.userId), actorUserId: userId, type: 'new_message', category: 'message', title: req.authUser.name, message: text.slice(0, 160), data: { conversationId: String(conversationId), messageId: String(message.id) }, conversationId, dedupeKey: `message:${message.id}` });
     return res.status(201).json({ success: true, message: 'Message sent.', data: { message: payload } });
   } catch (error) {
     return next(error);
@@ -209,7 +209,7 @@ exports.media = async (req, res, next) => {
     const payload = messageJson(message, userId, access.other.lastReadMessageId);
     await emitConversationEvent(conversationId, 'message.created', { conversationId: String(conversationId), message: payload });
     await emitConversationEvent(conversationId, 'conversation.updated', { conversationId: String(conversationId), message: payload });
-    await createNotification({ userId: Number(access.other.userId), type: 'new_message', category: 'message', title: req.authUser.name, message: 'Sent you a photo.', data: { conversationId: String(conversationId), messageId: String(message.id) }, conversationId, dedupeKey: `message:${message.id}` });
+    await createNotification({ userId: Number(access.other.userId), actorUserId: userId, type: 'new_message', category: 'message', title: req.authUser.name, message: 'Sent you a photo.', data: { conversationId: String(conversationId), messageId: String(message.id) }, conversationId, dedupeKey: `message:${message.id}` });
     return res.status(201).json({ success: true, message: 'Image message sent.', data: { message: payload } });
   } catch (error) {
     if (stored?.absolutePath) await removeStoredMedia(stored.absolutePath);

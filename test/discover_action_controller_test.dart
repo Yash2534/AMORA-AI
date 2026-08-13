@@ -8,7 +8,10 @@ class _FakeDiscoverApi extends DiscoverApiService {
     required String targetUserId,
     required String action,
   }) async => DiscoverApiResult.success(
-    DiscoverSwipeResult(matched: targetUserId == 'profile-2'),
+    DiscoverSwipeResult(
+      matched: targetUserId == 'profile-2',
+      conversationId: targetUserId == 'profile-2' ? 'conversation-2' : null,
+    ),
     statusCode: 200,
   );
 
@@ -19,14 +22,17 @@ class _FakeDiscoverApi extends DiscoverApiService {
 
 void main() {
   late DiscoverActionController controller;
-  setUp(
-    () => controller = DiscoverActionController(
+  late int chatRefreshes;
+  setUp(() {
+    chatRefreshes = 0;
+    controller = DiscoverActionController(
       profileIds: const ['profile-1', 'profile-2', 'profile-3'],
       mutualLikeProfileIds: const ['profile-2'],
       transitionDuration: Duration.zero,
       apiService: _FakeDiscoverApi(),
-    ),
-  );
+      refreshChats: () async => chatRefreshes++,
+    );
+  });
   tearDown(() => controller.dispose());
 
   test('pass advances and rewind restores profile and image index', () async {
@@ -44,6 +50,7 @@ void main() {
     await controller.likeProfile();
     expect(controller.likedProfileIds, contains('profile-2'));
     expect(controller.matchedProfileId, 'profile-2');
+    expect(chatRefreshes, 1);
   });
 
   test('deck exposes empty state', () async {

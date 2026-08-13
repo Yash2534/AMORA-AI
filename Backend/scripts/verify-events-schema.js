@@ -1,8 +1,8 @@
 require('../src/config/bootstrapEnv');
 const mysql = require('mysql2/promise');
 
-const requiredTables = ['events', 'eventregistrations'];
-const retiredTables = ['eventwaitlist', 'eventfeedback', 'eventcheckins', 'eventgroupmessages'];
+const requiredTables = ['events', 'eventregistrations', 'eventwaitlist'];
+const retiredTables = ['eventfeedback', 'eventcheckins', 'eventgroupmessages'];
 
 async function main() {
   const connection = await mysql.createConnection({ host: process.env.DB_HOST, port: Number(process.env.DB_PORT), user: process.env.DB_USER, password: process.env.DB_PASS || '', database: process.env.DB_NAME });
@@ -13,10 +13,10 @@ async function main() {
     const remaining = retiredTables.filter((name) => names.has(name));
     const [columns] = await connection.query("SELECT COLUMN_NAME name FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND LOWER(TABLE_NAME)='events'");
     const columnNames = new Set(columns.map((row) => row.name));
-    if (missing.length || remaining.length || !columnNames.has('organizerId') || columnNames.has('hostId')) {
+    if (missing.length || remaining.length || !columnNames.has('organizerId') || columnNames.has('hostId') || !columnNames.has('waitlistCapacity') || !columnNames.has('waitlistEnabled')) {
       throw new Error(`Event schema failed. Missing: ${missing.join(', ') || 'none'}; retired remaining: ${remaining.join(', ') || 'none'}; organizerId: ${columnNames.has('organizerId')}.`);
     }
-    console.log('[Schema] Retained event browsing and registration schema verified.');
+    console.log('[Schema] Event browsing, registration, and waitlist schema verified.');
   } finally { await connection.end(); }
 }
 

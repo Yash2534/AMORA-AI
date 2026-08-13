@@ -20,6 +20,17 @@ async function main() {
   for (const name of ['Rose Verification Sender', 'Rose Verification Recipient']) {
     const user = await models.User.create({ name, email: `${Date.now()}_${ids.length}@rose-verification.test`, phoneNumber: '', authProvider: 'local', isVerified: true, termsAcceptedAt: new Date() });
     ids.push(user.id);
+    await models.OnboardingProfile.create({
+      userId: user.id,
+      birthDate: '1997-05-12',
+      gender: 'Woman',
+      interestedIn: ['Men'],
+      relationshipGoals: ['long_term'],
+      city: 'Ahmedabad',
+      photos: ['/uploads/rose-verification.jpg'],
+      stage: 'complete',
+      onboardingCompleted: true,
+    });
   }
   server = app.listen(0);
   await new Promise((resolve) => server.once('listening', resolve));
@@ -41,6 +52,7 @@ main().catch((error) => { console.error(error); process.exitCode = 1; }).finally
   if (models && ids.length) {
     await models.Notification.destroy({ where: { [Op.or]: [{ userId: ids }, { actorUserId: ids }] }, force: true });
     await models.RoseTransaction.destroy({ where: { [Op.or]: [{ senderId: ids }, { recipientId: ids }] } });
+    await models.OnboardingProfile.destroy({ where: { userId: ids } });
     await models.User.destroy({ where: { id: ids } });
   }
   try { await getSequelize().close(); } catch (_) {}

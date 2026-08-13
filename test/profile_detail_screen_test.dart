@@ -1,9 +1,33 @@
 import 'package:amora_ai/core/access/amora_access.dart';
+import 'package:amora_ai/core/api/phase_two_api_service.dart';
+import 'package:amora_ai/core/auth/auth_service.dart';
 import 'package:amora_ai/core/data/image_repository.dart';
 import 'package:amora_ai/features/chat/data/chat_repository.dart';
+import 'package:amora_ai/features/profile/data/public_profile_mapper.dart';
 import 'package:amora_ai/features/profile/presentation/profile_detail_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+class _ProfileActionApi extends PhaseTwoApiService {
+  _ProfileActionApi(this.profileValue);
+
+  final DummyProfile profileValue;
+  final List<String> superLikeTargets = <String>[];
+  Object? superLikeError;
+
+  @override
+  Future<PublicProfileResult> profile(String userId) async =>
+      PublicProfileResult(
+        profile: profileValue,
+        relationship: const PublicRelationshipState(),
+      );
+
+  @override
+  Future<void> superLikeProfile(String userId) async {
+    if (superLikeError case final error?) throw error;
+    superLikeTargets.add(userId);
+  }
+}
 
 void main() {
   Future<void> pumpProfile(
@@ -11,6 +35,7 @@ void main() {
     DummyProfile? profile,
     ValueChanged<RouteSettings>? onRoute,
     Future<bool> Function()? onSuperLike,
+    PhaseTwoApiService? api,
   }) async {
     await tester.pumpWidget(
       MaterialApp(
@@ -20,7 +45,8 @@ void main() {
           if (settings.name == ProfileDetailScreen.routeName) {
             return MaterialPageRoute<void>(
               settings: settings,
-              builder: (_) => ProfileDetailScreen(onSuperLike: onSuperLike),
+              builder: (_) =>
+                  ProfileDetailScreen(onSuperLike: onSuperLike, api: api),
             );
           }
           return MaterialPageRoute<void>(
@@ -175,6 +201,48 @@ void main() {
       expect(find.text('Super Like sent'), findsWidgets);
     },
   );
+
+  testWidgets('Super Like uses the existing API when no callback is supplied', (
+    tester,
+  ) async {
+    final profile = publicProfileFromJson({
+      'id': '27',
+      'name': 'Backend Profile',
+    }).profile;
+    final api = _ProfileActionApi(profile);
+    await pumpProfile(tester, profile: profile, api: api);
+
+    await tester.tap(find.byKey(const ValueKey('profile-super-like-button')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 900));
+
+    expect(api.superLikeTargets, <String>['27']);
+    expect(find.text('Super Like sent'), findsWidgets);
+  });
+
+  testWidgets('Super Like displays the backend failure without local success', (
+    tester,
+  ) async {
+    final profile = publicProfileFromJson({
+      'id': '31',
+      'name': 'Blocked Profile',
+    }).profile;
+    final api = _ProfileActionApi(profile)
+      ..superLikeError = const AuthException(
+        'Profile is not available for Discover.',
+        code: 'PROFILE_NOT_DISCOVERABLE',
+        statusCode: 404,
+      );
+    await pumpProfile(tester, profile: profile, api: api);
+
+    await tester.tap(find.byKey(const ValueKey('profile-super-like-button')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(api.superLikeTargets, isEmpty);
+    expect(find.text('Profile is not available for Discover.'), findsOneWidget);
+    expect(find.text('Super Like sent'), findsNothing);
+  });
 
   testWidgets('more control exposes existing report and block actions', (
     tester,

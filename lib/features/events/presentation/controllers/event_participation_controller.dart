@@ -49,6 +49,16 @@ class EventParticipationController extends ChangeNotifier {
     );
   }
 
+  void joinWaitlist(EventModel event, {DateTime? joinedAt}) {
+    _setRegistration(
+      UserEventRegistration(
+        event: event,
+        status: TicketStatus.waitlisted,
+        registeredAt: joinedAt ?? DateTime.now(),
+      ),
+    );
+  }
+
   void cancelEvent(EventModel event, {DateTime? cancelledAt}) {
     final existing = _registrations[event.id];
     if (existing == null || existing.status == TicketStatus.cancelled) return;
@@ -60,6 +70,12 @@ class EventParticipationController extends ChangeNotifier {
         cancelledAt: cancelledAt ?? DateTime.now(),
       ),
     );
+  }
+
+  void leaveWaitlist(String eventId) {
+    if (_registrations[eventId]?.status != TicketStatus.waitlisted) return;
+    _registrations.remove(eventId);
+    notifyListeners();
   }
 
   void startLoading() {
@@ -126,8 +142,23 @@ class EventParticipationController extends ChangeNotifier {
     _applyRemoteStatus(event, status);
   }
 
+  Future<void> joinWaitlistRemote(EventModel event) async {
+    final status = await _remote.joinWaitlist(event.id);
+    _applyRemoteStatus(event, status);
+  }
+
   Future<void> cancelRemote(EventModel event) async {
     final status = await _remote.cancelRegistration(event.id);
+    _applyRemoteStatus(event, status);
+  }
+
+  Future<void> leaveWaitlistRemote(EventModel event) async {
+    final status = await _remote.leaveWaitlist(event.id);
+    if (status == null) {
+      _registrations.remove(event.id);
+      notifyListeners();
+      return;
+    }
     _applyRemoteStatus(event, status);
   }
 

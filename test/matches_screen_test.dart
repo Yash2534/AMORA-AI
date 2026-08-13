@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:amora_ai/core/api/phase_two_api_service.dart';
 import 'package:amora_ai/core/data/image_repository.dart';
 import 'package:amora_ai/core/widgets/amora_filter_chip.dart';
 import 'package:amora_ai/core/widgets/amoraa_main_page_header.dart';
@@ -7,6 +8,7 @@ import 'package:amora_ai/core/widgets/amoraa_select_field.dart';
 import 'package:amora_ai/features/chat/data/chat_repository.dart';
 import 'package:amora_ai/features/matches/presentation/matches_screen.dart';
 import 'package:amora_ai/features/matches/presentation/widgets/amoraa_inline_compatibility_filter.dart';
+import 'package:amora_ai/features/profile/presentation/profile_completion_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -242,6 +244,56 @@ void main() {
     expect(lowered, isTrue);
   });
 
+  testWidgets(
+    'successful zero-result response shows profile completion empty state',
+    (tester) async {
+      openedRoute = null;
+      await tester.binding.setSurfaceSize(const Size(320, 760));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(
+        MaterialApp(
+          onGenerateRoute: (settings) {
+            openedRoute = settings;
+            return MaterialPageRoute<void>(
+              settings: settings,
+              builder: (_) => _RouteMarker(settings.name ?? 'unknown'),
+            );
+          },
+          home: MatchesScreen(showNavigation: false, api: _EmptyMatchesApi()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Complete your profile first'), findsOneWidget);
+      expect(find.text('Complete Profile'), findsOneWidget);
+      expect(find.byType(AiMatchFilterBar), findsNothing);
+      expect(find.byType(FeaturedAiMatchCard), findsNothing);
+      expect(find.text('Best Matches'), findsNothing);
+      expect(find.text('Try again'), findsNothing);
+
+      await tester.tap(find.text('Complete Profile'));
+      await tester.pumpAndSettle();
+      expect(openedRoute?.name, ProfileCompletionScreen.routeName);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('API errors do not render the zero-result empty state', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MatchesScreen(showNavigation: false, api: _FailingMatchesApi()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text("Couldn't load matches."), findsOneWidget);
+    expect(find.text('Try again'), findsOneWidget);
+    expect(find.text('Complete your profile first'), findsNothing);
+    expect(find.text('Complete Profile'), findsNothing);
+  });
+
   testWidgets('keyboard arrows adjust the compatibility threshold', (
     tester,
   ) async {
@@ -444,4 +496,14 @@ class _RouteMarker extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(body: Center(child: Text(label)));
   }
+}
+
+class _EmptyMatchesApi extends PhaseTwoApiService {
+  @override
+  Future<List<MatchApiItem>> matches() async => const [];
+}
+
+class _FailingMatchesApi extends PhaseTwoApiService {
+  @override
+  Future<List<MatchApiItem>> matches() async => throw Exception('offline');
 }

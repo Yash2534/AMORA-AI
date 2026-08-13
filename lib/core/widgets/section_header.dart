@@ -26,8 +26,6 @@ class SectionHeader extends StatelessWidget {
             children: [
               Text(
                 title,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
                 style: AmoraTextStyles.title.copyWith(
                   color: AppColors.deepWine,
                   height: 1.12,
@@ -37,8 +35,6 @@ class SectionHeader extends StatelessWidget {
               const SizedBox(height: AmoraSpacing.x1),
               Text(
                 subtitle,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
                 style: AmoraTextStyles.caption.copyWith(
                   color: AppColors.textGray,
                   height: 1.35,

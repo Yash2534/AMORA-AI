@@ -13,13 +13,16 @@ async function main() {
   if (!organizer) throw new Error('EVENT_SEED_ORGANIZER_ID must reference an active user.');
   const now = Date.now();
   const definitions = [
-    ['AMORAA Dev Coffee Meetup', 48, 51, 30, 'published'],
-    ['AMORAA Dev Full Event', 72, 75, 1, 'published'],
-    ['AMORAA Dev Past Gathering', -72, -69, 20, 'completed'],
+    ['AMORAA Dev Coffee Meetup', 48, 51, 30, 10, 'published'],
+    ['AMORAA Dev Full Event', 72, 75, 1, 10, 'published'],
+    ['AMORAA Dev Past Gathering', -72, -69, 20, 0, 'completed'],
   ];
-  for (const [title, startHours, endHours, capacity, status] of definitions) {
+  for (const [title, startHours, endHours, capacity, waitlistCapacity, status] of definitions) {
     const existing = await Event.findOne({ where: { title, organizerId } });
-    if (existing) continue;
+    if (existing) {
+      await existing.update({ waitlistCapacity, waitlistEnabled: waitlistCapacity > 0 });
+      continue;
+    }
     await Event.create({
       title,
       description: `${title} is controlled development data stored in MySQL.`,
@@ -29,9 +32,11 @@ async function main() {
       startDateTime: new Date(now + startHours * 60 * 60 * 1000),
       endDateTime: new Date(now + endHours * 60 * 60 * 1000),
       capacity,
+      waitlistCapacity,
       status,
       visibility: 'public',
       registrationOpen: status === 'published',
+      waitlistEnabled: waitlistCapacity > 0,
       organizerId,
       price: 0,
       language: 'English, Gujarati',

@@ -241,6 +241,16 @@ void main() {
     expect(ProfileFormOptions.normalizeEducation('CFA'), 'Professional');
     expect(ProfileFormOptions.normalizeEducation('Nirma University'), 'Other');
     expect(
+      ProfileFormOptions.educationSelectionFromStored(
+        'Diploma in Fashion Design',
+      ),
+      'Other',
+    );
+    expect(
+      ProfileFormOptions.customEducationFromStored('Diploma in Fashion Design'),
+      'Diploma in Fashion Design',
+    );
+    expect(
       ProfileFormOptions.customEducationFromStored('Nirma University'),
       'Nirma University',
     );
@@ -255,6 +265,15 @@ void main() {
       ProfileFormOptions.displayEducation('Nirma University'),
       'Nirma University',
     );
+    expect(
+      ProfileFormOptions.displayEducation('Diploma in Fashion Design'),
+      'Diploma in Fashion Design',
+    );
+    expect(
+      ProfileFormOptions.educationSelectionFromStored('Postgraduate'),
+      'Postgraduate',
+    );
+    expect(ProfileFormOptions.displayEducation('Postgraduate'), 'Postgraduate');
     expect(ProfileFormOptions.normalizeGender('Man'), 'Male');
     expect(ProfileFormOptions.normalizeGender('Women'), 'Female');
     expect(ProfileFormOptions.normalizeGender('Non-binary'), 'Other');

@@ -63,12 +63,6 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  Future<void> tapSaveAndWaitForValidation(WidgetTester tester) async {
-    await tester.tap(find.text('Save changes'));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 420));
-  }
-
   group('profile requirement counts', () {
     test('counts only unique usable active photos', () {
       final onePhoto = validProfile(photos: const [AppImages.profileYash]);
@@ -168,30 +162,58 @@ void main() {
     });
   });
 
-  testWidgets('zero photos block save and highlight Photos first', (
+  testWidgets('empty optional fields do not block a bio-only save', (
     tester,
   ) async {
     var saveCompletions = 0;
-    final semantics = tester.ensureSemantics();
+    final profile = originalProfile.copyWith(
+      name: '',
+      birthdate: '',
+      gender: '',
+      profession: '',
+      education: '',
+      location: '',
+      datingIntention: '',
+      bio: '',
+      photos: const [],
+      interests: const [],
+      lifestyle: const {},
+      prompts: const {},
+    );
     await pumpEditForm(
       tester,
-      profile: validProfile(photos: const []),
+      profile: profile,
       onSaved: () => saveCompletions++,
     );
+    await tester.enterText(
+      find.byKey(const ValueKey('profile-bio-field')),
+      'A short bio is still a valid optional profile edit.',
+    );
 
-    await tapSaveAndWaitForValidation(tester);
+    await tester.tap(find.text('Save changes'));
+    await tester.pumpAndSettle();
 
-    expect(saveCompletions, 0);
+    expect(saveCompletions, 1);
+    expect(
+      repository.profile.bio,
+      'A short bio is still a valid optional profile edit.',
+    );
+    expect(repository.profile.photos, isEmpty);
+    expect(repository.profile.interests, isEmpty);
+    expect(find.text('Required'), findsNothing);
     expect(
       find.text('Add at least 2 profile photos before saving.'),
-      findsWidgets,
+      findsNothing,
     );
-    expect(_highlightedTarget('Profile Photos'), findsOneWidget);
-    expect(find.text('Profile changes saved'), findsNothing);
-    semantics.dispose();
+    expect(
+      find.text('Select at least 5 interests before saving.'),
+      findsNothing,
+    );
   });
 
-  testWidgets('one photo blocks save before persistence', (tester) async {
+  testWidgets('single-field edit saves and preserves every unrelated value', (
+    tester,
+  ) async {
     var saveCompletions = 0;
     final profile = validProfile(photos: const [AppImages.profileYash]);
     await pumpEditForm(
@@ -201,52 +223,79 @@ void main() {
     );
     await tester.enterText(
       find.byKey(const ValueKey('profile-name-field')),
-      'This name must not persist',
+      'Only Name Changed',
     );
 
-    await tapSaveAndWaitForValidation(tester);
+    await tester.tap(find.text('Save changes'));
+    await tester.pumpAndSettle();
 
-    expect(saveCompletions, 0);
-    expect(repository.profile.name, profile.name);
+    expect(saveCompletions, 1);
+    expect(repository.profile.name, 'Only Name Changed');
+    expect(repository.profile.bio, profile.bio);
+    expect(repository.profile.photos, profile.photos);
+    expect(repository.profile.interests, profile.interests);
+    expect(repository.profile.lifestyle, profile.lifestyle);
   });
 
-  testWidgets('four interests block save and highlight Interests', (
-    tester,
-  ) async {
+  testWidgets('multiple changed fields save together', (tester) async {
     var saveCompletions = 0;
-    final semantics = tester.ensureSemantics();
+    final profile = validProfile(
+      interests: const ['Coffee', 'Cooking', 'Road trips', 'Yoga'],
+    );
     await pumpEditForm(
       tester,
-      profile: validProfile(
-        interests: const ['Coffee', 'Cooking', 'Road trips', 'Yoga'],
-      ),
+      profile: profile,
       onSaved: () => saveCompletions++,
     );
+    await tester.enterText(
+      find.byKey(const ValueKey('profile-name-field')),
+      'Multiple Fields Changed',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('profile-bio-field')),
+      'The biography changed together with the name and company.',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Company (optional)'),
+      'Updated Company',
+    );
 
-    await tapSaveAndWaitForValidation(tester);
+    await tester.tap(find.text('Save changes'));
+    await tester.pumpAndSettle();
 
-    expect(saveCompletions, 0);
+    expect(saveCompletions, 1);
+    expect(repository.profile.name, 'Multiple Fields Changed');
+    expect(
+      repository.profile.bio,
+      'The biography changed together with the name and company.',
+    );
+    expect(repository.profile.company, 'Updated Company');
+    expect(repository.profile.interests, profile.interests);
     expect(
       find.text('Select at least 5 interests before saving.'),
-      findsWidgets,
+      findsNothing,
     );
-    expect(_highlightedTarget('Interests'), findsOneWidget);
-    expect(find.text('Profile changes saved'), findsNothing);
-    semantics.dispose();
   });
 
-  testWidgets('zero interests block save', (tester) async {
+  testWidgets('zero interests do not block another field save', (tester) async {
     var saveCompletions = 0;
+    final profile = validProfile(interests: const []);
     await pumpEditForm(
       tester,
-      profile: validProfile(interests: const []),
+      profile: profile,
       onSaved: () => saveCompletions++,
     );
+    await tester.enterText(
+      find.byKey(const ValueKey('profile-bio-field')),
+      'Only this optional biography value was changed.',
+    );
 
-    await tapSaveAndWaitForValidation(tester);
+    await tester.tap(find.text('Save changes'));
+    await tester.pumpAndSettle();
 
-    expect(saveCompletions, 0);
+    expect(saveCompletions, 1);
     expect(repository.profile.interests, isEmpty);
+    expect(repository.profile.name, profile.name);
   });
 
   testWidgets('valid requirements complete save exactly once', (tester) async {
@@ -271,9 +320,3 @@ void main() {
     );
   });
 }
-
-Finder _highlightedTarget(String label) => find.byWidgetPredicate(
-  (widget) =>
-      widget is Semantics &&
-      widget.properties.label == '$label, ready for editing',
-);

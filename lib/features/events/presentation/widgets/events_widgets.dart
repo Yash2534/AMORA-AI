@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
@@ -14,6 +16,20 @@ import 'package:flutter/material.dart';
 
 void showEventSnack(BuildContext context, String message) {
   showAmoraSnackBar(context, message: message);
+}
+
+double _eventTextHeight(
+  BuildContext context,
+  String text,
+  TextStyle style,
+  double maxWidth,
+) {
+  final painter = TextPainter(
+    text: TextSpan(text: text, style: style),
+    textDirection: Directionality.of(context),
+    textScaler: MediaQuery.textScalerOf(context),
+  )..layout(maxWidth: maxWidth);
+  return painter.height;
 }
 
 Route<T> premiumEventRoute<T>(Widget screen) {
@@ -420,74 +436,87 @@ class EventDetailHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return EventImage(
-      event: event,
-      height: height,
-      hero: true,
-      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(34)),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 22),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+    const titleStyle = TextStyle(
+      color: AppColors.surface,
+      fontSize: 29,
+      height: 1.08,
+      fontWeight: FontWeight.w700,
+    );
+    const categoryStyle = TextStyle(
+      color: AppColors.surface,
+      fontSize: 14,
+      fontWeight: FontWeight.w600,
+    );
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final contentWidth = (constraints.maxWidth - 32).clamp(
+          1.0,
+          double.infinity,
+        );
+        final titleHeight = _eventTextHeight(
+          context,
+          event.title,
+          titleStyle,
+          contentWidth,
+        );
+        final categoryHeight = _eventTextHeight(
+          context,
+          event.category,
+          categoryStyle,
+          (contentWidth - 25).clamp(1.0, double.infinity),
+        );
+        final requiredHeight = 155 + titleHeight + categoryHeight;
+        return EventImage(
+          event: event,
+          height: math.max(height, requiredHeight),
+          hero: true,
+          borderRadius: const BorderRadius.vertical(
+            bottom: Radius.circular(34),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 22),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _EventHeroButton(
-                  tooltip: 'Back',
-                  icon: Icons.arrow_back_rounded,
-                  onPressed: onBack,
+                Row(
+                  children: [
+                    _EventHeroButton(
+                      tooltip: 'Back',
+                      icon: Icons.arrow_back_rounded,
+                      onPressed: onBack,
+                    ),
+                    const Spacer(),
+                    _EventHeroButton(
+                      tooltip: 'Share event',
+                      icon: Icons.ios_share_rounded,
+                      onPressed: onShare,
+                    ),
+                  ],
                 ),
                 const Spacer(),
-                _EventHeroButton(
-                  tooltip: 'Share event',
-                  icon: Icons.ios_share_rounded,
-                  onPressed: onShare,
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    EventStatusBadge(status: status),
+                    const EventsMemberBadge(compact: true),
+                  ],
+                ),
+                const SizedBox(height: 11),
+                Text(event.title, style: titleStyle),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(event.image.icon, color: AppColors.surface, size: 18),
+                    const SizedBox(width: 7),
+                    Expanded(child: Text(event.category, style: categoryStyle)),
+                  ],
                 ),
               ],
             ),
-            const Spacer(),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                EventStatusBadge(status: status),
-                const EventsMemberBadge(compact: true),
-              ],
-            ),
-            const SizedBox(height: 11),
-            Text(
-              event.title,
-              maxLines: 3,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: AppColors.surface,
-                fontSize: 29,
-                height: 1.08,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Icon(event.image.icon, color: AppColors.surface, size: 18),
-                const SizedBox(width: 7),
-                Expanded(
-                  child: Text(
-                    event.category,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: AppColors.surface,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }
@@ -670,49 +699,59 @@ class FeaturedEventCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 LayoutBuilder(
-                  builder: (context, constraints) => EventImagePanel(
-                    event: event,
-                    height: (constraints.maxWidth * 9 / 16).clamp(230, 520),
-                    radius: 30,
-                    child: Padding(
-                      padding: const EdgeInsets.all(18),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            alignment: WrapAlignment.spaceBetween,
-                            children: [
-                              const EventsMemberBadge(compact: true),
-                              EventDateBadge(date: event.date),
-                            ],
-                          ),
-                          const Spacer(),
-                          Text(
-                            event.category,
-                            style: const TextStyle(
-                              color: AppColors.surface,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
+                  builder: (context, constraints) {
+                    const titleStyle = TextStyle(
+                      color: AppColors.surface,
+                      fontSize: 26,
+                      height: 1.08,
+                      fontWeight: FontWeight.w700,
+                    );
+                    final titleHeight = _eventTextHeight(
+                      context,
+                      event.title,
+                      titleStyle,
+                      (constraints.maxWidth - 36).clamp(1.0, double.infinity),
+                    );
+                    final panelHeight = math.max(
+                      (constraints.maxWidth * 9 / 16)
+                          .clamp(230.0, 520.0)
+                          .toDouble(),
+                      98.0 + titleHeight,
+                    );
+                    return EventImagePanel(
+                      event: event,
+                      height: panelHeight,
+                      radius: 30,
+                      child: Padding(
+                        padding: const EdgeInsets.all(18),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              alignment: WrapAlignment.spaceBetween,
+                              children: [
+                                const EventsMemberBadge(compact: true),
+                                EventDateBadge(date: event.date),
+                              ],
                             ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            event.title,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: AppColors.surface,
-                              fontSize: 26,
-                              height: 1.08,
-                              fontWeight: FontWeight.w700,
+                            const Spacer(),
+                            Text(
+                              event.category,
+                              style: const TextStyle(
+                                color: AppColors.surface,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
-                          ),
-                        ],
+                            const SizedBox(height: 6),
+                            Text(event.title, style: titleStyle),
+                          ],
+                        ),
                       ),
-                    ),
-                  ),
+                    );
+                  },
                 ),
                 Padding(
                   padding: const EdgeInsets.all(18),
@@ -731,8 +770,6 @@ class FeaturedEventCard extends StatelessWidget {
                       const SizedBox(height: 12),
                       Text(
                         '${event.intent}. ${event.interests.join(', ')}.',
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           color: AppColors.text,
                           fontSize: 14,
@@ -753,8 +790,6 @@ class FeaturedEventCard extends StatelessWidget {
                           Expanded(
                             child: Text(
                               'Organized by ${event.organizer.name}',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
                                 color: AppColors.primary,
                                 fontSize: 13,
@@ -876,7 +911,57 @@ class AmoraaRecommendedEventCard extends StatelessWidget {
   static const double dateBadgeHeight = 62;
   static const double contentPadding = AmoraSpacing.space16;
   static const double titleGap = AmoraSpacing.space12;
-  static const double baseHeight = 456;
+
+  static double requiredHeight(
+    BuildContext context,
+    EventModel event,
+    double width,
+  ) {
+    final contentWidth = (width - (contentPadding * 2)).clamp(
+      1.0,
+      double.infinity,
+    );
+    final detailsWidth = (contentWidth - dateBadgeWidth - titleGap).clamp(
+      1.0,
+      double.infinity,
+    );
+    final metadataWidth = (detailsWidth - 26).clamp(1.0, double.infinity);
+    final detailsHeight =
+        _eventTextHeight(
+          context,
+          event.title,
+          AmoraTextStyles.cardTitle.copyWith(height: 1.3),
+          detailsWidth,
+        ) +
+        14 +
+        _eventTextHeight(
+          context,
+          event.time,
+          AmoraTextStyles.metadata,
+          metadataWidth,
+        ) +
+        10 +
+        _eventTextHeight(
+          context,
+          event.venue,
+          AmoraTextStyles.metadata,
+          metadataWidth,
+        ) +
+        10 +
+        _eventTextHeight(
+          context,
+          event.category,
+          AmoraTextStyles.accentText,
+          detailsWidth,
+        );
+    return (contentPadding * 2) +
+        imageHeight +
+        AmoraSpacing.space16 +
+        math.max(dateBadgeHeight, detailsHeight) +
+        14 +
+        AmoraSpacing.compactControlHeight +
+        4;
+  }
 
   final EventModel event;
   final TicketStatus? status;
@@ -887,6 +972,7 @@ class AmoraaRecommendedEventCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final statusLabel = switch (status) {
       TicketStatus.upcoming => 'Joined',
+      TicketStatus.waitlisted => 'Waitlisted',
       TicketStatus.cancelled => 'Cancelled',
       null => 'Open to join',
     };
@@ -911,81 +997,82 @@ class AmoraaRecommendedEventCard extends StatelessWidget {
               padding: const EdgeInsets.all(contentPadding),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  EventImagePanel(
-                    key: ValueKey('recommended-event-image-${event.id}'),
-                    event: event,
-                    height: imageHeight,
-                    radius: 19,
-                    child: Padding(
-                      padding: const EdgeInsets.all(AmoraSpacing.space12),
-                      child: Align(
-                        alignment: Alignment.topLeft,
-                        child: EventStatusBadge(status: status),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: AmoraSpacing.space16),
-                  Expanded(
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        EventDateBadge(
-                          key: ValueKey('event-date-${event.id}'),
-                          date: event.date,
-                          width: dateBadgeWidth,
-                          height: dateBadgeHeight,
-                        ),
-                        const SizedBox(width: titleGap),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                event.title,
-                                key: ValueKey('event-title-${event.id}'),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                textAlign: TextAlign.left,
-                                style: AmoraTextStyles.cardTitle.copyWith(
-                                  height: 1.3,
-                                ),
-                              ),
-                              const SizedBox(height: 14),
-                              _RecommendedEventMetadataRow(
-                                key: ValueKey('event-time-${event.id}'),
-                                icon: Icons.schedule_rounded,
-                                text: event.time,
-                              ),
-                              const SizedBox(height: 10),
-                              _RecommendedEventMetadataRow(
-                                key: ValueKey('event-venue-${event.id}'),
-                                icon: Icons.place_rounded,
-                                text: event.venue,
-                                maxLines: 2,
-                              ),
-                              const SizedBox(height: 10),
-                              Text(
-                                event.category,
-                                key: ValueKey('event-category-${event.id}'),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                textAlign: TextAlign.left,
-                                style: AmoraTextStyles.accentText,
-                              ),
-                            ],
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      EventImagePanel(
+                        key: ValueKey('recommended-event-image-${event.id}'),
+                        event: event,
+                        height: imageHeight,
+                        radius: 19,
+                        child: Padding(
+                          padding: const EdgeInsets.all(AmoraSpacing.space12),
+                          child: Align(
+                            alignment: Alignment.topLeft,
+                            child: EventStatusBadge(status: status),
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(height: AmoraSpacing.space16),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          EventDateBadge(
+                            key: ValueKey('event-date-${event.id}'),
+                            date: event.date,
+                            width: dateBadgeWidth,
+                            height: dateBadgeHeight,
+                          ),
+                          const SizedBox(width: titleGap),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  event.title,
+                                  key: ValueKey('event-title-${event.id}'),
+                                  textAlign: TextAlign.left,
+                                  style: AmoraTextStyles.cardTitle.copyWith(
+                                    height: 1.3,
+                                  ),
+                                ),
+                                const SizedBox(height: 14),
+                                _RecommendedEventMetadataRow(
+                                  key: ValueKey('event-time-${event.id}'),
+                                  icon: Icons.schedule_rounded,
+                                  text: event.time,
+                                ),
+                                const SizedBox(height: 10),
+                                _RecommendedEventMetadataRow(
+                                  key: ValueKey('event-venue-${event.id}'),
+                                  icon: Icons.place_rounded,
+                                  text: event.venue,
+                                ),
+                                const SizedBox(height: 10),
+                                Text(
+                                  event.category,
+                                  key: ValueKey('event-category-${event.id}'),
+                                  textAlign: TextAlign.left,
+                                  style: AmoraTextStyles.accentText,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 14),
-                  EventJoinButton(
-                    key: ValueKey('recommended-event-action-${event.id}'),
-                    eventTitle: event.title,
-                    status: status,
-                    onPressed: onJoin,
-                    compact: true,
+                  Padding(
+                    padding: const EdgeInsets.only(top: 14),
+                    child: EventJoinButton(
+                      key: ValueKey('recommended-event-action-${event.id}'),
+                      eventTitle: event.title,
+                      status: status,
+                      onPressed: onJoin,
+                      compact: true,
+                    ),
                   ),
                 ],
               ),
@@ -1002,12 +1089,10 @@ class _RecommendedEventMetadataRow extends StatelessWidget {
     super.key,
     required this.icon,
     required this.text,
-    this.maxLines = 1,
   });
 
   final IconData icon;
   final String text;
-  final int maxLines;
 
   @override
   Widget build(BuildContext context) {
@@ -1019,8 +1104,6 @@ class _RecommendedEventMetadataRow extends StatelessWidget {
         Expanded(
           child: Text(
             text,
-            maxLines: maxLines,
-            overflow: TextOverflow.ellipsis,
             style: AmoraTextStyles.metadata.copyWith(
               color: AppColors.text,
               fontWeight: FontWeight.w500,
@@ -1124,8 +1207,6 @@ class AmoraCircleCard extends StatelessWidget {
                 const SizedBox(height: 11),
                 Text(
                   event.title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: AppColors.primary,
                     fontSize: 17,
@@ -1147,15 +1228,13 @@ class AmoraCircleCard extends StatelessWidget {
                 const SizedBox(height: 7),
                 Text(
                   'Organized by ${event.organizer.name} · ${event.intent}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: AppColors.text,
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                const Spacer(),
+                const SizedBox(height: 12),
                 Row(
                   children: [
                     Expanded(
@@ -1239,8 +1318,6 @@ class MyEventsPreview extends StatelessWidget {
                             const SizedBox(height: 8),
                             Text(
                               event.title,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
                                 color: AppColors.primary,
                                 fontSize: 17,
@@ -1459,8 +1536,6 @@ class _EventCardDetails extends StatelessWidget {
                 event.title,
                 key: ValueKey('event-title-${event.id}'),
                 textAlign: TextAlign.left,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   color: AppColors.primary,
                   fontSize: 17,
@@ -1503,8 +1578,6 @@ class _EventCardDetails extends StatelessWidget {
               Text(
                 event.category,
                 key: ValueKey('event-category-${event.id}'),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.left,
                 style: const TextStyle(
                   color: AppColors.secondary,
@@ -1595,8 +1668,6 @@ class EventMetadataRow extends StatelessWidget {
         Expanded(
           child: Text(
             text,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
             style: TextStyle(
               color: AppColors.text,
               fontSize: compact ? 13 : 14,
@@ -1627,6 +1698,7 @@ class EventJoinButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final (label, icon) = switch (status) {
       TicketStatus.upcoming => ('Joined', Icons.check_circle_rounded),
+      TicketStatus.waitlisted => ('Waitlisted', Icons.hourglass_top_rounded),
       TicketStatus.cancelled => ('Cancelled', Icons.event_busy_rounded),
       null => ('Join Event', Icons.add_rounded),
     };
@@ -1640,7 +1712,11 @@ class EventJoinButton extends StatelessWidget {
         variant: status == null
             ? AppPrimaryButtonVariant.primary
             : AppPrimaryButtonVariant.outlined,
-        onPressed: status == TicketStatus.cancelled ? null : onPressed,
+        onPressed:
+            status == TicketStatus.cancelled ||
+                status == TicketStatus.waitlisted
+            ? null
+            : onPressed,
       ),
     );
   }
@@ -1655,6 +1731,7 @@ class EventStatusBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final label = switch (status) {
       TicketStatus.upcoming => 'Joined',
+      TicketStatus.waitlisted => 'Waitlisted',
       TicketStatus.cancelled => 'Cancelled',
       null => 'Open to join',
     };
@@ -1720,8 +1797,6 @@ class EventOrganizerSection extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   organizer.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: AppColors.primary,
                     fontSize: 16,

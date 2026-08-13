@@ -39,8 +39,11 @@ exports.send = async (req, res, next) => {
       throw publicError('You cannot send a Rose to yourself.', 'SELF_ROSE_NOT_ALLOWED');
     }
 
-    const { User, RoseTransaction, ConversationParticipant } = getModels();
-    const recipient = await User.findOne({ where: { id: recipientId, accountStatus: 'active' } });
+    const { User, OnboardingProfile, RoseTransaction, ConversationParticipant } = getModels();
+    const recipient = await User.findOne({
+      where: { id: recipientId, accountStatus: 'active' },
+      include: [{ model: OnboardingProfile, required: true, where: { onboardingCompleted: true } }],
+    });
     if (!recipient) throw publicError('The recipient is not available.', 'RECIPIENT_NOT_AVAILABLE', 404);
     if (await areUsersBlocked(senderId, recipientId)) {
       throw publicError('Rose sending is not available for this relationship.', 'ROSE_NOT_ALLOWED', 403);

@@ -52,7 +52,7 @@ class _ProfileBasicDetailsScreenState extends State<ProfileBasicDetailsScreen> {
     );
     _company = TextEditingController(text: profile.company);
     _education = TextEditingController(
-      text: ProfileFormOptions.normalizeEducation(profile.education),
+      text: ProfileFormOptions.educationSelectionFromStored(profile.education),
     );
     _customEducation = TextEditingController(
       text: ProfileFormOptions.customEducationFromStored(profile.education),

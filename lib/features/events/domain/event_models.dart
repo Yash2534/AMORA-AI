@@ -27,8 +27,11 @@ class EventModel {
     this.description = '',
     this.capacity = 0,
     this.registeredCount = 0,
+    this.waitlistCount = 0,
+    this.waitlistCapacity = 0,
     this.eventStatus = 'published',
     this.registrationOpen = true,
+    this.waitlistEnabled = false,
     this.attendees = const <EventAttendee>[],
     this.participationStatus,
   });
@@ -58,8 +61,11 @@ class EventModel {
   final String description;
   final int capacity;
   final int registeredCount;
+  final int waitlistCount;
+  final int waitlistCapacity;
   final String eventStatus;
   final bool registrationOpen;
+  final bool waitlistEnabled;
   final List<EventAttendee> attendees;
   final TicketStatus? participationStatus;
 
@@ -127,4 +133,4 @@ class UserEventRegistration {
   final DateTime? cancelledAt;
 }
 
-enum TicketStatus { upcoming, cancelled }
+enum TicketStatus { upcoming, waitlisted, cancelled }

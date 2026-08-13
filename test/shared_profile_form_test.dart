@@ -372,6 +372,70 @@ void main() {
     expect(find.text('Profile changes saved'), findsOneWidget);
   });
 
+  testWidgets('Edit Profile saves and restores custom Other education', (
+    tester,
+  ) async {
+    await repository.resetForTesting(completeProfile());
+    await pumpFlow(
+      tester,
+      const ProfileEditScreen(),
+      size: const Size(390, 1600),
+    );
+
+    final selector = find.byKey(const ValueKey('profile-education-field'));
+    await tester.ensureVisible(selector);
+    await tester.tap(selector);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('amoraa-select-option-Other')));
+    await tester.pumpAndSettle();
+
+    final custom = find.byKey(const ValueKey('profile-custom-education-field'));
+    expect(custom, findsOneWidget);
+    await tester.enterText(custom, 'Diploma in Fashion Design');
+    await tester.tap(find.byKey(const ValueKey('profile-save-button')));
+    await tester.pumpAndSettle();
+
+    expect(repository.profile.education, 'Diploma in Fashion Design');
+    expect(find.text('Profile changes saved'), findsOneWidget);
+
+    await pumpFlow(
+      tester,
+      const ProfileEditScreen(),
+      size: const Size(390, 1600),
+    );
+    expect(find.text('Other'), findsOneWidget);
+    final restored = tester.widget<TextFormField>(
+      find.byKey(const ValueKey('profile-custom-education-field')),
+    );
+    expect(restored.controller?.text, 'Diploma in Fashion Design');
+  });
+
+  testWidgets('Completion saves custom Other education', (tester) async {
+    await repository.resetForTesting(
+      blankProfile().copyWith(profession: 'Designer'),
+    );
+    await pumpFlow(tester, const ProfileCompletionScreen());
+    await openCompletionSection(tester, 'Work & Education');
+
+    final selector = find.byKey(const ValueKey('profile-education-field'));
+    await tester.tap(selector);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('amoraa-select-option-Other')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('profile-custom-education-field')),
+      'Diploma in Fashion Design',
+    );
+
+    final save = find.byKey(const ValueKey('completion-save-workEducation'));
+    await tester.ensureVisible(save);
+    await tester.tap(save);
+    await tester.pumpAndSettle();
+
+    expect(repository.profile.education, 'Diploma in Fashion Design');
+    expect(find.text('Work & Education saved successfully.'), findsOneWidget);
+  });
+
   testWidgets('Completion saves Other only after valid custom occupation', (
     tester,
   ) async {

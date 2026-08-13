@@ -513,7 +513,13 @@ abstract final class ProfileFormOptions {
   static String customEducationFromStored(String? storedValue) {
     final value = storedValue?.trim() ?? '';
     if (value.isEmpty || value.toLowerCase() == 'other') return '';
-    return normalizeEducation(value) == 'Other' ? value : '';
+    return education.contains(value) ? '' : value;
+  }
+
+  static String educationSelectionFromStored(String? storedValue) {
+    final value = storedValue?.trim() ?? '';
+    if (value.isEmpty) return '';
+    return education.contains(value) ? value : 'Other';
   }
 
   static String storedEducationValue(
@@ -528,8 +534,7 @@ abstract final class ProfileFormOptions {
   static String displayEducation(String? storedValue) {
     final value = storedValue?.trim() ?? '';
     if (value.isEmpty || value.toLowerCase() == 'other') return '';
-    final normalized = normalizeEducation(value);
-    return normalized == 'Other' ? value : normalized;
+    return value;
   }
 
   static String normalizeOccupation(String? storedValue) {

@@ -331,7 +331,8 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
       return;
     }
     final callback = widget.onSuperLike;
-    if (callback == null) {
+    final api = widget.api;
+    if (callback == null && api == null) {
       _snack('Super Like is unavailable for this profile');
       return;
     }
@@ -339,7 +340,13 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
     setState(() => _superLikeSending = true);
     final reduceMotion = MediaQuery.disableAnimationsOf(context);
     try {
-      final sent = await callback();
+      late final bool sent;
+      if (callback == null) {
+        await api!.superLikeProfile(_profile.id);
+        sent = true;
+      } else {
+        sent = await callback();
+      }
       if (!mounted) return;
       if (!sent) {
         _superLikeAnimation.reset();
@@ -352,6 +359,11 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
       } else {
         await _superLikeAnimation.forward(from: 0);
         if (mounted) _snack('Super Like sent');
+      }
+    } on AuthException catch (error) {
+      if (mounted) {
+        _superLikeAnimation.reset();
+        _snack(error.userMessage);
       }
     } catch (_) {
       if (mounted) {
@@ -434,17 +446,6 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
     }
     final repository = ChatRepository.instance;
     var conversationId = repository.conversationIdForProfile(_profile.id);
-    if (conversationId == null) {
-      try {
-        conversationId = await repository.createConversationForProfile(
-          _profile,
-        );
-      } catch (_) {
-        // A match is not required for a Rose; unmatched profiles continue
-        // without the optional chat card.
-      }
-    }
-    if (!mounted) return;
     final roseKey = RoseRepository.instance.newIdempotencyKey();
     setState(() => _roseSheetOpen = true);
     final sent = await showAmoraaRoseSheet(
@@ -457,10 +458,20 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
           conversationId: conversationId,
           note: note,
         );
-        if (conversationId != null) {
+        if (conversationId == null) {
+          try {
+            conversationId = await repository.createConversationForProfile(
+              _profile,
+            );
+          } catch (_) {
+            // A match is not required for a server-confirmed Rose.
+          }
+        }
+        final chatConversationId = conversationId;
+        if (chatConversationId != null) {
           try {
             await repository.sendMessage(
-              conversationId,
+              chatConversationId,
               note.isEmpty ? 'Rose' : note,
               context: const ChatMessageContext.rose(),
             );
@@ -474,14 +485,15 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
     if (!mounted) return;
     setState(() => _roseSheetOpen = false);
     if (!sent) return;
-    if (conversationId == null) {
+    final destinationConversationId = conversationId;
+    if (destinationConversationId == null) {
       _snack('Rose sent to ${_profile.name}');
       return;
     }
     Navigator.of(context).pushNamed(
       ChatDetailScreen.routeName,
       arguments: ChatDetailArgs(
-        conversationId: conversationId,
+        conversationId: destinationConversationId,
         recipientId: _profile.id,
         profileId: _profile.id,
         recipientName: _profile.name,
@@ -1092,7 +1104,7 @@ class ProfileStory extends StatelessWidget {
   Widget build(BuildContext context) {
     final hasQuickFacts = <String>[
       profile.height,
-      ProfileFormOptions.normalizeEducation(profile.education),
+      ProfileFormOptions.displayEducation(profile.education),
       ...profile.languages,
       profile.intent,
       profile.smoking,
@@ -1243,7 +1255,7 @@ class ProfileQuickFacts extends StatelessWidget {
       _SymbolicFact(
         Icons.school_rounded,
         'Education',
-        ProfileFormOptions.normalizeEducation(profile.education),
+        ProfileFormOptions.displayEducation(profile.education),
       ),
       _SymbolicFact(
         Icons.language_rounded,

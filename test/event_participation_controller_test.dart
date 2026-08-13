@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:amora_ai/features/events/data/events_dummy_data.dart';
+import 'package:amora_ai/features/events/data/event_repository.dart';
 import 'package:amora_ai/features/events/domain/event_models.dart';
 import 'package:amora_ai/features/events/domain/my_event_category.dart';
 import 'package:amora_ai/features/events/presentation/controllers/event_participation_controller.dart';
@@ -43,6 +46,77 @@ void main() {
     expect(controller.isLoading, isFalse);
     expect(controller.hasLoadError, isFalse);
   });
+
+  test(
+    'waitlist state changes only after the backend confirms success',
+    () async {
+      final remote = _WaitlistRemote();
+      final controller = EventParticipationController(
+        repository: EventRepository(remote: remote),
+      );
+      final event = _event('server-waitlist', now);
+
+      final request = controller.joinWaitlistRemote(event);
+      expect(controller.statusFor(event.id), isNull);
+
+      remote.completeJoin();
+      await request;
+      expect(controller.statusFor(event.id), TicketStatus.waitlisted);
+      expect(
+        controller
+            .registrationsFor(MyEventCategory.waitlist, now: now)
+            .single
+            .event
+            .id,
+        event.id,
+      );
+    },
+  );
+
+  test('failed waitlist response does not create frontend state', () async {
+    final remote = _WaitlistRemote();
+    final controller = EventParticipationController(
+      repository: EventRepository(remote: remote),
+    );
+    final event = _event('server-waitlist', now);
+
+    final expectation = expectLater(
+      controller.joinWaitlistRemote(event),
+      throwsA(isA<StateError>()),
+    );
+    remote.failJoin();
+    await expectation;
+
+    expect(controller.statusFor(event.id), isNull);
+  });
+}
+
+class _WaitlistRemote implements EventRemoteDataSource {
+  final _join = Completer<Map<String, dynamic>>();
+
+  void completeJoin() {
+    _join.complete({
+      'success': true,
+      'data': {
+        'participation': {'waitlisted': true, 'waitlistStatus': 'waiting'},
+      },
+    });
+  }
+
+  void failJoin() {
+    _join.completeError(StateError('Waitlist rejected'));
+  }
+
+  @override
+  Future<Map<String, dynamic>> request(
+    String method,
+    String path, {
+    Map<String, dynamic>? body,
+  }) {
+    expect(method, 'POST');
+    expect(path, '/api/events/server-waitlist/waitlist');
+    return _join.future;
+  }
 }
 
 EventModel _event(String id, DateTime startAt) {

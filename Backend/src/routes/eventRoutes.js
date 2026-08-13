@@ -20,9 +20,11 @@ router.get('/', [page, limit,
   query('past').optional().isBoolean().withMessage('past must be true or false.').toBoolean(),
   query('available').optional().isBoolean().withMessage('available must be true or false.').toBoolean(),
 ], validate, controller.list);
-router.get('/me', [page, limit, query('category').optional().isIn(['all', 'upcoming', 'past', 'cancelled']).withMessage('category is invalid.')], validate, controller.myEvents);
+router.get('/me', [page, limit, query('category').optional().isIn(['all', 'upcoming', 'past', 'waitlist', 'cancelled']).withMessage('category is invalid.')], validate, controller.myEvents);
 router.get('/:eventId', [eventId], validate, controller.detail);
 router.post('/:eventId/registration', eventActionLimiter, [eventId], validate, controller.register);
 router.delete('/:eventId/registration', eventActionLimiter, [eventId], validate, controller.cancelRegistration);
+router.post('/:eventId/waitlist', eventActionLimiter, [eventId], validate, controller.joinWaitlist);
+router.delete('/:eventId/waitlist', eventActionLimiter, [eventId], validate, controller.leaveWaitlist);
 
 module.exports = router;

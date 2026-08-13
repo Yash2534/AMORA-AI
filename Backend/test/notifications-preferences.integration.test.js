@@ -234,6 +234,28 @@ test('likes persist relational actors and receiver sees each current sender name
   assert.ok(receivedLikes.every((item) => item.actor.photoUrl.endsWith('/uploads/notification.jpg')));
   assert.ok(receivedLikes.every((item) => String(item.data.targetUserId) === item.actor.userId), JSON.stringify(receivedLikes));
 
+  await models.OnboardingProfile.update(
+    { photos: ['/uploads/priya-current.jpg'], primaryPhotoIndex: 0 },
+    { where: { userId: candidate.id } },
+  );
+  await models.OnboardingProfile.update(
+    { photos: ['/uploads/ananya-current.jpg'], primaryPhotoIndex: 0 },
+    { where: { userId: other.id } },
+  );
+  await models.OnboardingProfile.update(
+    { photos: [], primaryPhotoIndex: 0 },
+    { where: { userId: thirdSender.id } },
+  );
+  const currentImages = await request('/api/notifications?category=Likes');
+  const byActor = Object.fromEntries(
+    currentImages.body.data.notifications
+      .filter((item) => item.type === 'new_like')
+      .map((item) => [item.actor.userId, item.actor.photoUrl]),
+  );
+  assert.ok(byActor[String(candidate.id)].endsWith('/uploads/priya-current.jpg'));
+  assert.ok(byActor[String(other.id)].endsWith('/uploads/ananya-current.jpg'));
+  assert.equal(byActor[String(thirdSender.id)], null);
+
   for (const bearer of [candidateToken, otherToken, thirdSenderToken]) {
     const senderList = await request('/api/notifications', { bearer });
     assert.equal(senderList.body.data.notifications.some((item) => item.type === 'new_like' && item.actor?.userId === String(candidate.id)), false);

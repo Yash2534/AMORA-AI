@@ -104,6 +104,12 @@ class EventRepository {
   Future<TicketStatus?> cancelRegistration(String eventId) =>
       _participation('DELETE', '/api/events/$eventId/registration');
 
+  Future<TicketStatus?> joinWaitlist(String eventId) =>
+      _participation('POST', '/api/events/$eventId/waitlist');
+
+  Future<TicketStatus?> leaveWaitlist(String eventId) =>
+      _participation('DELETE', '/api/events/$eventId/waitlist');
+
   Future<TicketStatus?> _participation(String method, String path) async {
     final response = await _remote.request(method, path);
     return _status(
@@ -180,13 +186,17 @@ class EventRepository {
       description: json['description']?.toString() ?? '',
       capacity: (json['capacity'] as num?)?.toInt() ?? 0,
       registeredCount: (json['registeredCount'] as num?)?.toInt() ?? 0,
+      waitlistCount: (json['waitlistCount'] as num?)?.toInt() ?? 0,
+      waitlistCapacity: (json['waitlistCapacity'] as num?)?.toInt() ?? 0,
       eventStatus: json['status']?.toString() ?? 'published',
       registrationOpen: json['available'] == true,
+      waitlistEnabled: json['waitlistAvailable'] == true,
       participationStatus: _status(participation),
     );
   }
 
   TicketStatus? _status(Map<String, dynamic> value) {
+    if (value['waitlisted'] == true) return TicketStatus.waitlisted;
     if (value['registered'] == true) return TicketStatus.upcoming;
     if (value['registrationStatus'] == 'cancelled') {
       return TicketStatus.cancelled;

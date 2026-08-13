@@ -5,6 +5,8 @@ const { areUsersBlocked, notBlockedUserSql } = require('../services/accessContro
 const { serializePublicProfile } = require('../services/publicProfileService');
 const { defaults, filtersFor, updateFilters: persistFilters } = require('../services/discoverPreferenceService');
 const { createNotification } = require('../services/notificationService');
+const { ensureDirectConversation } = require('../services/conversationAccessService');
+const { emitConversationEvent } = require('../realtime/realtimeHub');
 
 const success = (res, message, data) => res.json({ success: true, message, data });
 const fail = (res, status, message, code, errors = []) => res.status(status).json({ success: false, message, code, errors });
@@ -212,6 +214,7 @@ exports.swipe = async (req, res, next) => {
     if (!target || await areUsersBlocked(req.user.sub, targetUserId)) return fail(res, 404, 'Profile is not available for Discover.', 'PROFILE_NOT_DISCOVERABLE');
     let match = null;
     let matchedRow = null;
+    let conversationRow = null;
     await User.sequelize.transaction(async (transaction) => {
       const participantIds = [Number(req.user.sub), targetUserId].sort((a, b) => a - b);
       await User.findAll({
@@ -258,17 +261,23 @@ exports.swipe = async (req, res, next) => {
           transaction,
         });
         matchedRow = row;
+        conversationRow = (await ensureDirectConversation(userOneId, userTwoId, { transaction })).conversation;
       }
     });
     if (matchedRow) {
       match = {
         matched: true,
         matchId: String(matchedRow.id),
+        conversationId: String(conversationRow.id),
         matchedProfile: profileData(req, target, target.OnboardingProfile, viewer),
       };
+        await emitConversationEvent(conversationRow.id, 'conversation.updated', {
+          conversationId: String(conversationRow.id),
+          matchId: String(matchedRow.id),
+        }).catch(() => {});
         await Promise.all([
-          createNotification({ userId: Number(req.user.sub), type: 'new_match', category: 'match', title: 'It\'s a match', message: `You and ${target.name} matched.`, data: { matchId: String(matchedRow.id), userId: String(targetUserId) }, dedupeKey: `match:${matchedRow.id}:${req.user.sub}` }),
-          createNotification({ userId: targetUserId, type: 'new_match', category: 'match', title: 'It\'s a match', message: 'You have a new match.', data: { matchId: String(matchedRow.id), userId: String(req.user.sub) }, dedupeKey: `match:${matchedRow.id}:${targetUserId}` }),
+          createNotification({ userId: Number(req.user.sub), actorUserId: targetUserId, type: 'new_match', category: 'match', title: 'It\'s a match', message: `You and ${target.name} matched.`, data: { matchId: String(matchedRow.id), userId: String(targetUserId) }, dedupeKey: `match:${matchedRow.id}:${req.user.sub}` }),
+          createNotification({ userId: targetUserId, actorUserId: Number(req.user.sub), type: 'new_match', category: 'match', title: 'It\'s a match', message: 'You have a new match.', data: { matchId: String(matchedRow.id), userId: String(req.user.sub) }, dedupeKey: `match:${matchedRow.id}:${targetUserId}` }),
         ]);
     }
     return success(res, 'Swipe saved.', {

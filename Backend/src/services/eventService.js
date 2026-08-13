@@ -1,7 +1,7 @@
 const { literal } = require('sequelize');
 const { getModels } = require('../models');
 
-const ACTIVE_REGISTRATION_STATUSES = ['registered'];
+const ACTIVE_REGISTRATION_STATUSES = ['registered', 'promoted'];
 
 class EventServiceError extends Error {
   constructor(status, code, message) {
@@ -51,30 +51,47 @@ function eligibilitySql(userId) {
 }
 
 function participationIncludes(userId) {
-  const { EventRegistration, User } = getModels();
+  const { EventRegistration, EventWaitlist, User } = getModels();
   return [
     { model: User, as: 'organizer', required: true, where: { accountStatus: 'active' }, attributes: ['id', 'name', 'identityVerifiedAt'] },
     { model: EventRegistration, as: 'registrations', required: false, where: { userId }, attributes: ['status', 'registeredAt', 'cancelledAt'] },
+    { model: EventWaitlist, as: 'waitlist', required: false, where: { userId }, attributes: ['status', 'joinedAt', 'endedAt'] },
   ];
 }
 
 function countAttributes() {
   return {
-    include: [[literal(`(SELECT COUNT(*) FROM \`EventRegistrations\` capacityRegistration WHERE capacityRegistration.eventId = \`Event\`.\`id\` AND capacityRegistration.status = 'registered')`), 'registeredCount']],
+    include: [
+      [literal(`(SELECT COUNT(*) FROM \`EventRegistrations\` capacityRegistration WHERE capacityRegistration.eventId = \`Event\`.\`id\` AND capacityRegistration.status IN ('registered','promoted'))`), 'registeredCount'],
+      [literal(`(SELECT COUNT(*) FROM \`EventWaitlist\` capacityWaitlist WHERE capacityWaitlist.eventId = \`Event\`.\`id\` AND capacityWaitlist.status = 'waiting')`), 'waitlistCount'],
+    ],
   };
 }
 
 function participationFor(event) {
   const registration = event.registrations?.[0];
+  const waitlist = event.waitlist?.[0];
   return {
-    registered: registration?.status === 'registered',
+    registered: Boolean(registration && ACTIVE_REGISTRATION_STATUSES.includes(registration.status)),
+    waitlisted: waitlist?.status === 'waiting',
     registrationStatus: registration?.status || null,
+    waitlistStatus: waitlist?.status || null,
   };
 }
 
 function serializeEvent(event) {
   const plain = event.get({ plain: true });
   const registeredCount = Number(plain.registeredCount || 0);
+  const waitlistCount = Number(plain.waitlistCount || 0);
+  const participation = participationFor(plain);
+  const waitlistAvailable = plain.status === 'published'
+    && new Date(plain.endDateTime) > new Date()
+    && plain.waitlistEnabled
+    && Number(plain.waitlistCapacity) > 0
+    && registeredCount >= Number(plain.capacity)
+    && waitlistCount < Number(plain.waitlistCapacity)
+    && !participation.registered
+    && !participation.waitlisted;
   return {
     id: String(plain.id),
     title: plain.title,
@@ -90,7 +107,10 @@ function serializeEvent(event) {
     capacity: Number(plain.capacity),
     registeredCount,
     seatsLeft: Math.max(0, Number(plain.capacity) - registeredCount),
+    waitlistCapacity: Number(plain.waitlistCapacity || 0),
+    waitlistCount,
     available: plain.status === 'published' && plain.registrationOpen && registeredCount < Number(plain.capacity),
+    waitlistAvailable,
     status: plain.status,
     heroImageUrl: plain.heroImageUrl,
     price: Number(plain.price || 0),
@@ -101,7 +121,7 @@ function serializeEvent(event) {
     facilities: Array.isArray(plain.facilities) ? plain.facilities : [],
     interests: Array.isArray(plain.interests) ? plain.interests : [],
     organizer: plain.organizer ? { id: String(plain.organizer.id), name: plain.organizer.name, verified: Boolean(plain.organizer.identityVerifiedAt) } : null,
-    participation: participationFor(plain),
+    participation,
   };
 }
 

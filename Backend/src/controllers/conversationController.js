@@ -1,7 +1,7 @@
 const { QueryTypes } = require('sequelize');
 const { getModels } = require('../models');
 const { areUsersBlocked } = require('../services/accessControlService');
-const { pairKeyFor, activeMatch, eligibleTarget } = require('../services/conversationAccessService');
+const { activeMatch, eligibleTarget, ensureDirectConversation } = require('../services/conversationAccessService');
 const { serializePublicProfile } = require('../services/publicProfileService');
 const { isUserOnline } = require('../realtime/realtimeHub');
 
@@ -34,6 +34,7 @@ async function summaryRows(userId, options = {}) {
       WHERE (visibilityBlock.blockerUserId = :userId AND visibilityBlock.blockedUserId = other.userId)
          OR (visibilityBlock.blockedUserId = :userId AND visibilityBlock.blockerUserId = other.userId)
     )
+    AND (SELECT COUNT(*) FROM ConversationParticipants exactPair WHERE exactPair.conversationId = c.id) = 2
     ${options.conversationId ? 'AND c.id = :conversationId' : ''}
     ORDER BY COALESCE(c.lastMessageAt, c.createdAt) DESC, c.id DESC
     LIMIT :limit OFFSET :offset
@@ -86,7 +87,7 @@ exports.create = async (req, res, next) => {
     const userId = Number(req.user.sub);
     const targetUserId = Number(req.body.targetUserId);
     if (userId === targetUserId) return res.status(400).json({ success: false, message: 'You cannot start a conversation with yourself.', code: 'SELF_CONVERSATION_NOT_ALLOWED', errors: [] });
-    const { User, Conversation, ConversationParticipant } = getModels();
+    const { User } = getModels();
     let conversation;
     let created = false;
     let denialCode = 'CONVERSATION_NOT_ALLOWED';
@@ -101,16 +102,7 @@ exports.create = async (req, res, next) => {
         return;
       }
       if (!(await activeMatch(userId, targetUserId, { transaction }))) return;
-      const pairKey = pairKeyFor(userId, targetUserId);
-      [conversation, created] = await Conversation.findOrCreate({
-        where: { pairKey },
-        defaults: { pairKey, type: 'direct' },
-        transaction,
-      });
-      await ConversationParticipant.bulkCreate([
-        { conversationId: conversation.id, userId, joinedAt: new Date() },
-        { conversationId: conversation.id, userId: targetUserId, joinedAt: new Date() },
-      ], { ignoreDuplicates: true, transaction });
+      ({ conversation, created } = await ensureDirectConversation(userId, targetUserId, { transaction }));
     });
     if (!conversation) {
       const targetUnavailable = denialCode === 'TARGET_NOT_AVAILABLE';

@@ -28,6 +28,18 @@ class PhaseTwoApiService {
     );
   }
 
+  Future<void> superLikeProfile(String userId) async {
+    final targetUserId = int.tryParse(userId);
+    if (targetUserId == null || targetUserId < 1) {
+      throw const AuthException('The selected profile is unavailable.');
+    }
+    await _auth.authenticatedRequest(
+      'POST',
+      '/api/discover/swipe',
+      body: {'targetUserId': targetUserId, 'action': 'superLike'},
+    );
+  }
+
   Future<List<MatchApiItem>> matches() async {
     final response = await _auth.authenticatedRequest('GET', '/api/matches');
     final values = _data(response)['matches'] as List? ?? const [];

@@ -177,9 +177,58 @@ test('partial update preserves omitted editable fields', async () => {
   const before = await request('/api/me/profile');
   const response = await request('/api/me/profile', { method: 'PUT', body: { bio: 'Only the biography changed and all omitted fields remain.' } });
   assert.equal(response.status, 200);
+  assert.equal(response.body.data.profile.bio, 'Only the biography changed and all omitted fields remain.');
   assert.equal(response.body.data.profile.company, before.body.data.profile.company);
+  assert.equal(response.body.data.profile.education, before.body.data.profile.education);
+  assert.equal(response.body.data.profile.communicationStyle, before.body.data.profile.communicationStyle);
   assert.deepEqual(response.body.data.profile.interests, before.body.data.profile.interests);
   assert.deepEqual(response.body.data.profile.prompts, before.body.data.profile.prompts);
+
+  const reloaded = await request('/api/me/profile');
+  assert.equal(reloaded.body.data.profile.bio, 'Only the biography changed and all omitted fields remain.');
+  assert.equal(reloaded.body.data.profile.company, before.body.data.profile.company);
+  assert.deepEqual(reloaded.body.data.profile.interests, before.body.data.profile.interests);
+});
+
+test('partial update persists multiple submitted fields and preserves every omitted field', async () => {
+  const before = await request('/api/me/profile');
+  const response = await request('/api/me/profile', {
+    method: 'PUT',
+    body: {
+      bio: 'Two submitted profile values changed together.',
+      communicationStyle: 'frequent_texting',
+      lifestyle: { ...before.body.data.profile.lifestyle, Height: '172 cm' },
+    },
+  });
+  assert.equal(response.status, 200, JSON.stringify(response.body));
+  assert.equal(response.body.data.profile.bio, 'Two submitted profile values changed together.');
+  assert.equal(response.body.data.profile.communicationStyle, 'frequent_texting');
+  assert.equal(response.body.data.profile.lifestyle.Height, '172 cm');
+  assert.equal(response.body.data.profile.name, before.body.data.profile.name);
+  assert.equal(response.body.data.profile.education, before.body.data.profile.education);
+  assert.deepEqual(response.body.data.profile.interests, before.body.data.profile.interests);
+
+  const storedProfile = await models.OnboardingProfile.findOne({ where: { userId: owner.id } });
+  assert.equal(storedProfile.bio, 'Two submitted profile values changed together.');
+  assert.equal(storedProfile.communicationStyle, 'frequent_texting');
+  assert.equal(storedProfile.lifestyle.Height, '172 cm');
+});
+
+test('custom education persists unchanged through API, database, and reload', async () => {
+  const education = 'Diploma in Fashion Design';
+  const response = await request('/api/me/profile', {
+    method: 'PUT',
+    body: { education },
+  });
+  assert.equal(response.status, 200, JSON.stringify(response.body));
+  assert.equal(response.body.data.profile.education, education);
+
+  const storedProfile = await models.OnboardingProfile.findOne({ where: { userId: owner.id } });
+  assert.equal(storedProfile.education, education);
+
+  const reloaded = await request('/api/me/profile');
+  assert.equal(reloaded.status, 200, JSON.stringify(reloaded.body));
+  assert.equal(reloaded.body.data.profile.education, education);
 });
 
 test('gender uses the canonical enum and clears an obsolete custom label', async () => {

@@ -1,6 +1,6 @@
 import 'package:amora_ai/features/events/domain/event_models.dart';
 
-enum MyEventCategory { upcoming, past, cancelled }
+enum MyEventCategory { upcoming, past, waitlist, cancelled }
 
 MyEventCategory classifyEventForUser(
   UserEventRegistration registration, {
@@ -9,6 +9,7 @@ MyEventCategory classifyEventForUser(
   final effectiveNow = now ?? DateTime.now();
   return switch (registration.status) {
     TicketStatus.cancelled => MyEventCategory.cancelled,
+    TicketStatus.waitlisted => MyEventCategory.waitlist,
     TicketStatus.upcoming =>
       eventEndDateTime(
             registration.event,
@@ -35,7 +36,8 @@ List<UserEventRegistration> sortMyEvents(
     final aStart = eventStartDateTime(a.event, relativeTo: effectiveNow);
     final bStart = eventStartDateTime(b.event, relativeTo: effectiveNow);
     return switch (category) {
-      MyEventCategory.upcoming => aStart.compareTo(bStart),
+      MyEventCategory.upcoming ||
+      MyEventCategory.waitlist => aStart.compareTo(bStart),
       MyEventCategory.past => bStart.compareTo(aStart),
       MyEventCategory.cancelled => (b.cancelledAt ?? bStart).compareTo(
         a.cancelledAt ?? aStart,

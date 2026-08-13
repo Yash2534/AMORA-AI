@@ -70,11 +70,13 @@ class DiscoverSwipeResult {
   const DiscoverSwipeResult({
     required this.matched,
     this.matchId,
+    this.conversationId,
     this.matchedProfile,
   });
 
   final bool matched;
   final String? matchId;
+  final String? conversationId;
   final Map<String, dynamic>? matchedProfile;
 }
 
@@ -158,6 +160,7 @@ class DiscoverApiService {
       DiscoverSwipeResult(
         matched: result.data!['matched'] == true,
         matchId: result.data!['matchId']?.toString(),
+        conversationId: result.data!['conversationId']?.toString(),
         matchedProfile: matchedProfile is Map
             ? matchedProfile.cast<String, dynamic>()
             : null,

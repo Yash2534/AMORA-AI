@@ -1,5 +1,6 @@
 import 'package:amora_ai/core/auth/auth_service.dart';
 import 'package:amora_ai/core/widgets/amora_filter_chip.dart';
+import 'package:amora_ai/core/widgets/amoraa_adaptive_image.dart';
 import 'package:amora_ai/core/widgets/amoraa_select_field.dart';
 import 'package:amora_ai/features/notifications/data/notification_inbox_repository.dart';
 import 'package:amora_ai/features/notifications/presentation/notifications_hub_screen.dart';
@@ -55,6 +56,11 @@ class _NotificationRemote implements NotificationInboxRemoteDataSource {
         'Riya sent you a new message',
         minutes: 2,
         data: {'conversationId': '5', 'targetUserId': '8'},
+        actor: {
+          'userId': '8',
+          'name': 'Riya',
+          'photoUrl': 'https://cdn.example.test/riya.jpg',
+        },
       ),
       item(
         'match-aadhya',
@@ -206,6 +212,38 @@ void main() {
     expect(record.displayTitle, 'You received a like');
   });
 
+  test(
+    'actor image reloads after refresh and notification session reset',
+    () async {
+      final remote = _NotificationRemote();
+      final repository = NotificationInboxRepository(remote: remote);
+      addTearDown(repository.dispose);
+
+      await repository.refresh();
+      expect(
+        repository.notifications.first.actor?.photoUrl,
+        'https://cdn.example.test/kavya.jpg',
+      );
+
+      final like = remote.rows.firstWhere((row) => row['id'] == 'like-kavya');
+      (like['actor'] as Map<String, dynamic>)['photoUrl'] =
+          'https://cdn.example.test/kavya-current.jpg';
+      await repository.refresh();
+      expect(
+        repository.notifications.first.actor?.photoUrl,
+        'https://cdn.example.test/kavya-current.jpg',
+      );
+
+      repository.clearSessionState();
+      expect(repository.notifications, isEmpty);
+      await repository.refresh();
+      expect(
+        repository.notifications.first.actor?.photoUrl,
+        'https://cdn.example.test/kavya-current.jpg',
+      );
+    },
+  );
+
   test('Rose notification derives persisted sender copy and reference', () {
     final record = InboxNotification.fromJson({
       'id': '3',
@@ -315,6 +353,60 @@ void main() {
     expect(find.text('Mark all as read'), findsNothing);
     expect(find.textContaining('Push token'), findsNothing);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('each notification avatar uses its own actor API image', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(390, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await pumpNotifications(tester);
+
+    final likeEntry = find.byKey(
+      const ValueKey('notification-entry-like-kavya'),
+    );
+    final messageEntry = find.byKey(
+      const ValueKey('notification-entry-message-riya'),
+    );
+    final likeImage = tester.widget<AmoraaAdaptiveImage>(
+      find.descendant(
+        of: likeEntry,
+        matching: find.byType(AmoraaAdaptiveImage),
+      ),
+    );
+    final messageImage = tester.widget<AmoraaAdaptiveImage>(
+      find.descendant(
+        of: messageEntry,
+        matching: find.byType(AmoraaAdaptiveImage),
+      ),
+    );
+
+    expect(likeImage.source, 'https://cdn.example.test/kavya.jpg');
+    expect(messageImage.source, 'https://cdn.example.test/riya.jpg');
+    expect(likeImage.assetPath, isNull);
+    expect(messageImage.assetPath, isNull);
+  });
+
+  testWidgets('missing actor image uses the existing avatar fallback', (
+    tester,
+  ) async {
+    final remote = _NotificationRemote();
+    final like = remote.rows.firstWhere((row) => row['id'] == 'like-kavya');
+    like['data'] = <String, dynamic>{
+      ...(like['data'] as Map<String, dynamic>),
+      'imageUrl': 'assets/images/profiles/female/profile_1.jpg',
+    };
+    (like['actor'] as Map<String, dynamic>)['photoUrl'] = null;
+    await pumpNotifications(tester, remote: remote);
+
+    final image = tester.widget<AmoraaAdaptiveImage>(
+      find.descendant(
+        of: find.byKey(const ValueKey('notification-entry-like-kavya')),
+        matching: find.byType(AmoraaAdaptiveImage),
+      ),
+    );
+    expect(image.source, isEmpty);
+    expect(image.fallbackAsset, isNotEmpty);
   });
 
   testWidgets('header and feed remain overflow-free at 1.3x text', (

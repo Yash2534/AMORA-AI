@@ -10,7 +10,6 @@ import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
 import 'package:amora_ai/features/profile/domain/profile_completion_calculator.dart';
-import 'package:amora_ai/features/profile/domain/profile_form_options.dart';
 import 'package:amora_ai/features/profile/domain/profile_form_validators.dart';
 import 'package:amora_ai/features/profile/presentation/controllers/profile_form_controller.dart';
 import 'package:amora_ai/features/profile/presentation/kyc_verification_screen.dart';
@@ -49,7 +48,6 @@ class AmoraaProfileForm extends StatefulWidget {
 }
 
 class _AmoraaProfileFormState extends State<AmoraaProfileForm> {
-  final _formKey = GlobalKey<FormState>();
   final _scrollController = ScrollController();
   late ProfileFormController _controller;
   late final ProfileFormNavigationTargets _navigationTargets;
@@ -206,7 +204,6 @@ class _AmoraaProfileFormState extends State<AmoraaProfileForm> {
           child: ResponsiveMobileFrame(
             maxWidth: 820,
             child: Form(
-              key: _formKey,
               child: CustomScrollView(
                 key: const PageStorageKey<String>('edit-profile-scroll'),
                 controller: _scrollController,
@@ -412,15 +409,9 @@ class _AmoraaProfileFormState extends State<AmoraaProfileForm> {
   Future<void> _save() async {
     FocusScope.of(context).unfocus();
     setState(() {
-      _showValidation = true;
+      _showValidation = _controller.promptEditorActive;
       _validationSummary = null;
     });
-    final profile = _controller.draftProfile;
-    _formKey.currentState?.validate();
-    final errors = ProfileFormValidators.editableProfile(
-      profile,
-      photoStates: _controller.repository.currentPhotos,
-    );
     final customEducationError = ProfileFormValidators.customEducation(
       _controller.education.text,
       _controller.customEducation.text,
@@ -432,22 +423,22 @@ class _AmoraaProfileFormState extends State<AmoraaProfileForm> {
     final promptError = _controller.promptEditorActive
         ? ProfileFormValidators.promptAnswer(_controller.promptAnswer.text)
         : null;
-    if (errors.isNotEmpty ||
-        customOccupationError != null ||
+    if (customOccupationError != null ||
         customEducationError != null ||
         promptError != null ||
         _controller.saving) {
-      final firstInvalid = _firstInvalidEditableField(profile);
-      final message = errors.isNotEmpty
-          ? errors.first
-          : customOccupationError ??
-                customEducationError ??
-                promptError ??
-                'Review the highlighted profile field.';
+      final firstInvalid = customOccupationError != null
+          ? ProfileFormFieldId.occupation
+          : customEducationError != null
+          ? ProfileFormFieldId.education
+          : ProfileFormFieldId.profilePrompt;
+      final message =
+          customOccupationError ??
+          customEducationError ??
+          promptError ??
+          'Review the highlighted profile field.';
       setState(() => _validationSummary = message);
-      if (firstInvalid != null) {
-        await _scrollToField(firstInvalid, requestFocus: true);
-      }
+      await _scrollToField(firstInvalid, requestFocus: true);
       return;
     }
     try {
@@ -463,71 +454,6 @@ class _AmoraaProfileFormState extends State<AmoraaProfileForm> {
         _showError('Profile could not be saved. Please try again.');
       }
     }
-  }
-
-  ProfileFormFieldId? _firstInvalidEditableField(UserProfile profile) {
-    if (ProfileFormValidators.requiredText(profile.name) != null) {
-      return ProfileFormFieldId.name;
-    }
-    if (ProfileFormValidators.dateOfBirth(profile.dateOfBirth) != null) {
-      return ProfileFormFieldId.dateOfBirth;
-    }
-    if (ProfileFormValidators.approvedSelection(
-          ProfileFormOptions.normalizeGender(profile.gender),
-          ProfileFormOptions.genderOptions,
-          'gender',
-        ) !=
-        null) {
-      return ProfileFormFieldId.gender;
-    }
-    if (ProfileFormValidators.storedOccupation(profile.profession) != null ||
-        ProfileFormValidators.customOccupation(
-              _controller.profession.text,
-              _controller.customOccupation.text,
-            ) !=
-            null) {
-      return ProfileFormFieldId.occupation;
-    }
-    if (ProfileFormValidators.approvedSelection(
-              ProfileFormOptions.normalizeEducation(profile.education),
-              ProfileFormOptions.education,
-              'education',
-            ) !=
-            null ||
-        ProfileFormValidators.customEducation(
-              _controller.education.text,
-              _controller.customEducation.text,
-            ) !=
-            null) {
-      return ProfileFormFieldId.education;
-    }
-    if (ProfileFormOptions.normalizeCity(profile.location).isEmpty) {
-      return ProfileFormFieldId.city;
-    }
-    if (ProfileFormOptions.normalizeDatingIntention(
-      profile.datingIntention,
-    ).isEmpty) {
-      return ProfileFormFieldId.datingIntention;
-    }
-    if (ProfileFormValidators.bio(profile.bio) != null) {
-      return ProfileFormFieldId.bio;
-    }
-    if (ProfileFormValidators.photos(
-          profile,
-          photoStates: _controller.repository.currentPhotos,
-        ) !=
-        null) {
-      return ProfileFormFieldId.photos;
-    }
-    if (ProfileFormValidators.interests(profile) != null) {
-      return ProfileFormFieldId.interests;
-    }
-    if (_controller.promptEditorActive &&
-        ProfileFormValidators.promptAnswer(_controller.promptAnswer.text) !=
-            null) {
-      return ProfileFormFieldId.profilePrompt;
-    }
-    return null;
   }
 
   Widget _target(ProfileFormFieldId id, String label, Widget child) {

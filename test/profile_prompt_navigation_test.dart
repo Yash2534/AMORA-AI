@@ -564,7 +564,7 @@ void main() {
   });
 
   testWidgets(
-    'Edit save validation scrolls and focuses the first invalid field',
+    'Edit save allows unrelated empty fields without forced validation',
     (tester) async {
       await repository.resetForTesting(completeProfile().copyWith(name: ''));
       await tester.binding.setSurfaceSize(const Size(320, 760));
@@ -578,18 +578,10 @@ void main() {
       await tester.pumpAndSettle();
       expect(
         find.byKey(const ValueKey('edit-profile-validation-summary')),
-        findsOneWidget,
+        findsNothing,
       );
-      final target = find.byKey(const ValueKey('profile-target-name'));
-      expect(target, findsOneWidget);
-      expect(tester.getTopLeft(target).dy, lessThan(700));
-      final editable = tester.widget<EditableText>(
-        find.descendant(
-          of: find.byKey(const ValueKey('profile-name-field')),
-          matching: find.byType(EditableText),
-        ),
-      );
-      expect(editable.focusNode.hasFocus, isTrue);
+      expect(repository.profile.name, isEmpty);
+      expect(find.text('Profile changes saved'), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );

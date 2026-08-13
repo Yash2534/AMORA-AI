@@ -15,6 +15,7 @@ import 'package:amora_ai/features/discover/presentation/discover_action_controll
 import 'package:amora_ai/features/matches/presentation/widgets/amoraa_inline_compatibility_filter.dart';
 import 'package:amora_ai/features/profile/domain/profile_interest_policy.dart';
 import 'package:amora_ai/features/profile/presentation/controllers/profile_relationship_controller.dart';
+import 'package:amora_ai/features/profile/presentation/profile_completion_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_detail_screen.dart';
 import 'package:flutter/material.dart';
 
@@ -198,6 +199,12 @@ class _MatchesScreenState extends State<MatchesScreen> {
                                   ],
                                 ),
                               )
+                            : _recommendations.isEmpty
+                            ? AiMatchesEmptyState(
+                                onCompleteProfile: () => Navigator.of(
+                                  context,
+                                ).pushNamed(ProfileCompletionScreen.routeName),
+                              )
                             : CustomScrollView(
                                 key: const PageStorageKey<String>(
                                   'ai-matches-scroll',
@@ -265,16 +272,7 @@ class _MatchesScreenState extends State<MatchesScreen> {
                                       ),
                                     ),
                                   ),
-                                  if (_recommendations.isEmpty)
-                                    SliverFillRemaining(
-                                      hasScrollBody: false,
-                                      child: AiMatchesEmptyState(
-                                        onDiscover: () => Navigator.of(
-                                          context,
-                                        ).pushReplacementNamed('/browse'),
-                                      ),
-                                    )
-                                  else if (_thresholdRecommendations.isEmpty)
+                                  if (_thresholdRecommendations.isEmpty)
                                     SliverFillRemaining(
                                       hasScrollBody: false,
                                       child: AiMatchesThresholdEmptyState(
@@ -2208,19 +2206,19 @@ class WhyThisMatchSheet extends StatelessWidget {
 }
 
 class AiMatchesEmptyState extends StatelessWidget {
-  const AiMatchesEmptyState({super.key, required this.onDiscover});
+  const AiMatchesEmptyState({super.key, required this.onCompleteProfile});
 
-  final VoidCallback onDiscover;
+  final VoidCallback onCompleteProfile;
 
   @override
   Widget build(BuildContext context) {
     return _AiMatchesStateLayout(
-      icon: Icons.auto_awesome_rounded,
-      title: 'We’re finding better matches for you',
+      icon: Icons.person_outline_rounded,
+      title: 'Complete your profile first',
       description:
-          'Update your preferences or check back after more compatible people join.',
-      actionLabel: 'Explore Discover',
-      onAction: onDiscover,
+          'Add your profile details to receive personalized AI Matches.',
+      actionLabel: 'Complete Profile',
+      onAction: onCompleteProfile,
     );
   }
 }

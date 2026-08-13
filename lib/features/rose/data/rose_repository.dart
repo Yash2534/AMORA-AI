@@ -41,18 +41,34 @@ class RoseRepository {
     String? conversationId,
     String? note,
   }) async {
+    final targetUserId = int.tryParse(recipientId);
+    if (targetUserId == null || targetUserId < 1) {
+      throw const AuthException('The selected profile is unavailable.');
+    }
+    final targetConversationId = conversationId == null
+        ? null
+        : int.tryParse(conversationId);
+    if (conversationId != null &&
+        (targetConversationId == null || targetConversationId < 1)) {
+      throw const AuthException('The Rose conversation is unavailable.');
+    }
     final response = await _remote.request(
       'POST',
       '/api/roses/send',
       body: {
-        'recipientId': int.parse(recipientId),
+        'recipientId': targetUserId,
         'idempotencyKey': idempotencyKey,
-        if (conversationId != null) 'conversationId': int.parse(conversationId),
+        'conversationId': ?targetConversationId,
         if (note?.trim().isNotEmpty == true) 'note': note!.trim(),
       },
     );
     final data = ((response['data'] as Map?) ?? const <String, dynamic>{})
         .cast<String, dynamic>();
-    return RoseSendResult.fromJson(data);
+    final result = RoseSendResult.fromJson(data);
+    if (result.transaction.recipientId != '$targetUserId' ||
+        result.transaction.status != 'sent') {
+      throw const AuthException('The Rose could not be confirmed.');
+    }
+    return result;
   }
 }

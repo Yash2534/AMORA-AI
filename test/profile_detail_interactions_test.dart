@@ -373,12 +373,14 @@ void main() {
     'confirmed Rose remains successful when optional chat card fails',
     (tester) async {
       await pumpProfile(tester, buildChat: true);
+      final conversationId = await repository.createConversationForProfile(
+        profile,
+      );
       await openRoseSheet(tester);
       await tester.enterText(
         find.byKey(const ValueKey('rose-note-field')),
         'Please keep this note.',
       );
-      final conversationId = repository.conversationIdForProfile(profile.id)!;
       final initialMessageCount = repository
           .conversation(conversationId)!
           .messages
@@ -427,6 +429,34 @@ void main() {
     expect(
       find.text('Rose sending is temporarily unavailable.'),
       findsOneWidget,
+    );
+  });
+
+  testWidgets('failed Rose creates no optional conversation or success state', (
+    tester,
+  ) async {
+    roseRemote.sendError = const AuthException(
+      'Rose sending is unavailable for this profile.',
+      code: 'ROSE_NOT_ALLOWED',
+      statusCode: 403,
+    );
+    await pumpProfile(tester);
+    expect(repository.conversationIdForProfile(profile.id), isNull);
+
+    await openRoseSheet(tester);
+    expect(repository.conversationIdForProfile(profile.id), isNull);
+    await tester.tap(find.byKey(const ValueKey('send-rose-button')));
+    await tester.pump(const Duration(milliseconds: 250));
+
+    expect(roseRemote.sendCalls, 1);
+    expect(repository.conversationIdForProfile(profile.id), isNull);
+    expect(
+      find.text('Rose sending is unavailable for this profile.'),
+      findsOneWidget,
+    );
+    expect(
+      find.text('Rose sent to ${profile.name.split(' ').first}'),
+      findsNothing,
     );
   });
 }

@@ -99,11 +99,16 @@ void main() {
       await tester.pump();
       expect(find.text('Specify education'), findsNWidgets(2));
 
-      await tester.enterText(custom, '  Montessori training  ');
+      await tester.enterText(custom, '  Diploma in Fashion Design  ');
       expect(formKey.currentState!.validate(), isTrue);
       await controller.save();
-      expect(controller.customEducation.text, 'Montessori training');
-      expect(repository.profile.education, 'Montessori training');
+      expect(controller.customEducation.text, 'Diploma in Fashion Design');
+      expect(repository.profile.education, 'Diploma in Fashion Design');
+
+      final reopened = ProfileFormController(repository: repository);
+      addTearDown(reopened.dispose);
+      expect(reopened.education.text, 'Other');
+      expect(reopened.customEducation.text, 'Diploma in Fashion Design');
 
       await tester.tap(selector);
       await tester.pumpAndSettle();
@@ -112,7 +117,9 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(custom, findsNothing);
-      expect(controller.customEducation.text, 'Montessori training');
+      expect(controller.customEducation.text, 'Diploma in Fashion Design');
+      await controller.save();
+      expect(repository.profile.education, 'Undergraduate');
     },
   );
 
