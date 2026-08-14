@@ -2,16 +2,22 @@ import 'package:amora_ai/core/access/amora_access.dart';
 import 'package:amora_ai/core/api/phase_two_api_service.dart';
 import 'package:amora_ai/core/auth/auth_service.dart';
 import 'package:amora_ai/core/data/image_repository.dart';
+import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/features/chat/data/chat_repository.dart';
 import 'package:amora_ai/features/profile/data/public_profile_mapper.dart';
+import 'package:amora_ai/features/profile/presentation/controllers/profile_relationship_controller.dart';
 import 'package:amora_ai/features/profile/presentation/profile_detail_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class _ProfileActionApi extends PhaseTwoApiService {
-  _ProfileActionApi(this.profileValue);
+  _ProfileActionApi(
+    this.profileValue, {
+    this.relationship = const PublicRelationshipState(),
+  });
 
   final DummyProfile profileValue;
+  final PublicRelationshipState relationship;
   final List<String> superLikeTargets = <String>[];
   Object? superLikeError;
 
@@ -19,7 +25,7 @@ class _ProfileActionApi extends PhaseTwoApiService {
   Future<PublicProfileResult> profile(String userId) async =>
       PublicProfileResult(
         profile: profileValue,
-        relationship: const PublicRelationshipState(),
+        relationship: relationship,
       );
 
   @override
@@ -69,6 +75,7 @@ void main() {
   setUp(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
     AmoraSession.logIn();
+    ProfileRelationshipController.instance.clear();
     await ChatRepository.instance.resetForTesting();
   });
 
@@ -160,6 +167,49 @@ void main() {
     expect(find.text('Profile liked successfully'), findsOneWidget);
     expect(find.text('Like'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Like fill follows the current viewer relationship state', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(430, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final profile = publicProfileFromJson({
+      'id': '41',
+      'name': 'Like State Profile',
+    }).profile;
+
+    Color likeFill() {
+      final container = tester.widget<AnimatedContainer>(
+        find.descendant(
+          of: find.byKey(const ValueKey('profile-like-button')),
+          matching: find.byType(AnimatedContainer),
+        ),
+      );
+      return (container.decoration! as BoxDecoration).color!;
+    }
+
+    await pumpProfile(
+      tester,
+      profile: profile,
+      api: _ProfileActionApi(profile),
+    );
+    expect(likeFill(), AppColors.surface);
+
+    await tester.tap(find.byKey(const ValueKey('profile-like-button')));
+    await tester.pumpAndSettle();
+    expect(likeFill(), AppColors.secondary);
+
+    ProfileRelationshipController.instance.clear();
+    await pumpProfile(
+      tester,
+      profile: profile,
+      api: _ProfileActionApi(
+        profile,
+        relationship: const PublicRelationshipState(liked: true),
+      ),
+    );
+    expect(likeFill(), AppColors.secondary);
   });
 
   testWidgets('message action preserves its existing route', (tester) async {

@@ -2162,7 +2162,7 @@ class _ProfileActionButtonState extends State<_ProfileActionButton>
 
   @override
   Widget build(BuildContext context) {
-    final filled = widget.selected || widget.dominant;
+    final filled = widget.selected;
     return Semantics(
       button: true,
       enabled: !widget.loading,

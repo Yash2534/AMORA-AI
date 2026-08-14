@@ -839,7 +839,7 @@ class _DetailActionBar extends StatelessWidget {
       TicketStatus.cancelled => 'Event Cancelled',
       null =>
         event.waitlistEnabled
-            ? 'Join Waitlist'
+            ? 'Waitlist'
             : event.registrationOpen
             ? 'Join Event'
             : 'Event Full',

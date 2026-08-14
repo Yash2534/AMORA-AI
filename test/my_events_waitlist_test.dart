@@ -32,7 +32,7 @@ void main() {
 
       expect(find.text('You’re on the waitlist'), findsOneWidget);
       expect(find.text('Leave waitlist'), findsOneWidget);
-      expect(find.text('Join Waitlist'), findsNothing);
+      expect(find.text('Waitlist'), findsNothing);
 
       await tester.tap(find.text('Leave waitlist'));
       await tester.pumpAndSettle();
@@ -59,8 +59,9 @@ void main() {
     );
     await tester.pump(const Duration(milliseconds: 300));
 
-    expect(find.text('Join Waitlist'), findsOneWidget);
-    await tester.tap(find.text('Join Waitlist'));
+    expect(find.text('Waitlist'), findsOneWidget);
+    expect(find.text('Join Event'), findsNothing);
+    await tester.tap(find.text('Waitlist'));
     await tester.pump();
     expect(remote.calls, ['POST /api/events/${event.id}/waitlist']);
     expect(controller.statusFor(event.id), isNull);
@@ -81,7 +82,7 @@ void main() {
       ),
     );
     await tester.pump(const Duration(milliseconds: 300));
-    expect(find.text('Join Waitlist'), findsNothing);
+    expect(find.text('Waitlist'), findsNothing);
     expect(find.text('Event Full'), findsOneWidget);
   });
 }
