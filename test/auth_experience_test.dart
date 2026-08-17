@@ -577,8 +577,12 @@ void main() {
         expect(find.text('Verify your mobile number'), findsOneWidget);
         expect(find.text('Verify your email'), findsNothing);
         expect(
-          find.byKey(const ValueKey('country-code-selector')),
+          find.byKey(const ValueKey('country-code-display')),
           findsOneWidget,
+        );
+        expect(
+          find.byKey(const ValueKey('country-code-selector')),
+          findsNothing,
         );
         await tester.tap(find.byKey(const ValueKey('send-otp-button')));
         await tester.pump(const Duration(milliseconds: 250));
@@ -633,11 +637,11 @@ void main() {
         await tester.testTextInput.receiveAction(TextInputAction.done);
         await tester.pump();
         expect(find.text('Enter a valid mobile number.'), findsOneWidget);
-        await tester.tap(find.byKey(const ValueKey('country-code-selector')));
-        await tester.pumpAndSettle();
-        expect(find.text('Select country code'), findsOneWidget);
-        await tester.tap(find.text('India'));
-        await tester.pumpAndSettle();
+        expect(
+          find.byKey(const ValueKey('country-code-display')),
+          findsOneWidget,
+        );
+        expect(find.text('Select country code'), findsNothing);
         await tester.enterText(
           find.byKey(const ValueKey('mobile-number-field')),
           '9876543210',
@@ -691,7 +695,7 @@ void main() {
             find.byKey(const ValueKey('unified-mobile-number-field')),
           );
           final country = tester.getRect(
-            find.byKey(const ValueKey('country-code-selector')),
+            find.byKey(const ValueKey('country-code-display')),
           );
           final number = tester.getRect(
             find.byKey(const ValueKey('mobile-number-field')),
@@ -761,7 +765,7 @@ void main() {
           final info = tester.getRect(find.byType(AuthTrustNote));
           final header = tester.getRect(find.byType(AuthBrandHeader));
           final country = tester.getRect(
-            find.byKey(const ValueKey('country-code-selector')),
+            find.byKey(const ValueKey('country-code-display')),
           );
           final phoneText = tester.getRect(find.byType(EditableText));
           final safeLeft = safeInsets.left;

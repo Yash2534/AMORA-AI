@@ -1208,7 +1208,13 @@ class ProfileStory extends StatelessWidget {
         for (var index = 0; index < sections.length; index++) ...[
           sections[index],
           if (index != sections.length - 1)
-            const SizedBox(height: AmoraSpacing.space24),
+            SizedBox(
+              height:
+                  sections[index].key ==
+                      const ValueKey('public-profile-section-lifestyle')
+                  ? AmoraSpacing.space12
+                  : AmoraSpacing.space24,
+            ),
         ],
       ],
     );

@@ -72,7 +72,6 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
   );
   final _otpNodes = List.generate(_codeLength, (_) => FocusNode());
   Timer? _timer;
-  late MobileCountry _country;
   MobileVerificationStep _step = MobileVerificationStep.phoneEntry;
   String? _error;
   String? _confirmation;
@@ -85,13 +84,12 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
 
   String get _localNumber =>
       _phoneController.text.replaceAll(RegExp(r'\D'), '');
-  String get _normalizedPhone => '${_country.dialCode}$_localNumber';
+  String get _normalizedPhone => '+91$_localNumber';
   String get _otp =>
       _otpControllers.map((controller) => controller.text).join();
   bool get _isCompleteOtp => RegExp(r'^\d{6}$').hasMatch(_otp);
   bool get _isBusy => _isSendingOtp || _isVerifyingOtp || _isResendingOtp;
-  bool get _isValidPhone =>
-      _country.code == 'IN' && RegExp(r'^[6-9]\d{9}$').hasMatch(_localNumber);
+  bool get _isValidPhone => RegExp(r'^[6-9]\d{9}$').hasMatch(_localNumber);
   String? get _phoneValidationMessage {
     if (!_showPhoneValidation || _isValidPhone) return null;
     return _localNumber.isEmpty
@@ -108,9 +106,6 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
     final arguments =
         widget.arguments ??
         (routeArguments is MobileVerificationArguments ? routeArguments : null);
-    _country =
-        arguments?.country ??
-        const MobileCountry(code: 'IN', name: 'India', dialCode: '+91');
     _phoneController.text = _nationalNumber(
       arguments?.phoneNumber ??
           LocalProfileRepository.instance.profile.phoneNumber,
@@ -165,10 +160,8 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
         children: [
           _UnifiedMobileNumberField(
             controller: _phoneController,
-            country: _country,
             enabled: !_isBusy,
             hasError: _error != null || _phoneValidationMessage != null,
-            onCountryTap: _showCountrySelector,
             onSubmitted: (_) => _submitPhone(),
           ),
           if (_phoneValidationMessage case final message?) ...[
@@ -373,48 +366,6 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
     }
   }
 
-  Future<void> _showCountrySelector() async {
-    // The current signup API accepts Indian national mobile numbers only.
-    final country = await showModalBottomSheet<MobileCountry>(
-      context: context,
-      showDragHandle: true,
-      useSafeArea: true,
-      builder: (context) => Padding(
-        padding: AmoraSpacing.bottomSheet,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Select country code', style: AmoraTextStyles.titleMedium),
-            const SizedBox(height: AmoraSpacing.space12),
-            Semantics(
-              selected: true,
-              label: 'India, +91, selected',
-              child: ListTile(
-                contentPadding: EdgeInsets.zero,
-                minVerticalPadding: AmoraSpacing.space8,
-                leading: const Text('🇮🇳', style: TextStyle(fontSize: 24)),
-                title: const Text('India'),
-                trailing: const Text('+91'),
-                onTap: () => Navigator.pop(
-                  context,
-                  const MobileCountry(
-                    code: 'IN',
-                    name: 'India',
-                    dialCode: '+91',
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-    if (country != null && mounted) {
-      setState(() => _country = country);
-    }
-  }
-
   Future<void> _sendOtp({bool resend = false}) async {
     if (_isBusy || (resend && _secondsLeft > 0) || !resend && !_isValidPhone) {
       return;
@@ -528,7 +479,7 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
     if (number.length < 4) {
       return _normalizedPhone;
     }
-    return '${_country.dialCode} ${number.substring(0, 2)}••• ••${number.substring(number.length - 3)}';
+    return '+91 ${number.substring(0, 2)}••• ••${number.substring(number.length - 3)}';
   }
 
   String _nationalNumber(String raw) {
@@ -628,18 +579,14 @@ class MobileCountry {
 class _UnifiedMobileNumberField extends StatefulWidget {
   const _UnifiedMobileNumberField({
     required this.controller,
-    required this.country,
     required this.enabled,
     required this.hasError,
-    required this.onCountryTap,
     required this.onSubmitted,
   });
 
   final TextEditingController controller;
-  final MobileCountry country;
   final bool enabled;
   final bool hasError;
-  final VoidCallback onCountryTap;
   final ValueChanged<String> onSubmitted;
 
   @override
@@ -736,59 +683,42 @@ class _UnifiedMobileNumberFieldState extends State<_UnifiedMobileNumberField> {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Semantics(
-                    button: true,
-                    enabled: widget.enabled,
-                    label:
-                        'Select country code. ${widget.country.name}, ${widget.country.dialCode}',
-                    child: InkWell(
-                      key: const ValueKey('country-code-selector'),
-                      onTap: widget.enabled ? widget.onCountryTap : null,
-                      borderRadius: const BorderRadius.horizontal(
-                        left: Radius.circular(15),
-                      ),
-                      child: SizedBox(
-                        width: countryWidth,
-                        child: SizedBox(
-                          height: double.infinity,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: AmoraSpacing.space8,
-                            ),
-                            child: FittedBox(
-                              fit: BoxFit.scaleDown,
-                              alignment: Alignment.centerLeft,
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const SizedBox(
-                                    width: 22,
-                                    height: 22,
-                                    child: FittedBox(
-                                      fit: BoxFit.contain,
-                                      child: Text(
-                                        '🇮🇳',
-                                        style: TextStyle(fontSize: 18),
-                                      ),
-                                    ),
+                    label: 'Country code, +91',
+                    child: SizedBox(
+                      key: const ValueKey('country-code-display'),
+                      width: countryWidth,
+                      height: double.infinity,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AmoraSpacing.space8,
+                        ),
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: FittedBox(
+                                  fit: BoxFit.contain,
+                                  child: Text(
+                                    '🇮🇳',
+                                    style: TextStyle(fontSize: 18),
                                   ),
-                                  const SizedBox(width: 7),
-                                  Text(
-                                    widget.country.dialCode,
-                                    style: AmoraTextStyles.bodyMedium.copyWith(
-                                      color: AppColors.primary,
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 2),
-                                  const Icon(
-                                    Icons.keyboard_arrow_down_rounded,
-                                    color: AppColors.primary,
-                                    size: 18,
-                                  ),
-                                ],
+                                ),
                               ),
-                            ),
+                              const SizedBox(width: 7),
+                              Text(
+                                '+91',
+                                style: AmoraTextStyles.bodyMedium.copyWith(
+                                  color: AppColors.primary,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),

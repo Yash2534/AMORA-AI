@@ -877,6 +877,7 @@ class _NotificationAvatar extends StatelessWidget {
               initials: item.initials,
               width: 52,
               height: 52,
+              fit: BoxFit.contain,
               borderRadius: BorderRadius.circular(26),
             ),
           Positioned(

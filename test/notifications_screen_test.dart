@@ -385,6 +385,8 @@ void main() {
     expect(messageImage.source, 'https://cdn.example.test/riya.jpg');
     expect(likeImage.assetPath, isNull);
     expect(messageImage.assetPath, isNull);
+    expect(likeImage.fit, BoxFit.contain);
+    expect(messageImage.fit, BoxFit.contain);
   });
 
   testWidgets('missing actor image uses the existing avatar fallback', (
