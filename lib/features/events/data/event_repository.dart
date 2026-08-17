@@ -53,7 +53,7 @@ class EventRepository {
     String? city,
     DateTime? dateFrom,
     DateTime? dateTo,
-    String timing = 'upcoming',
+    String timing = 'all',
     bool? available,
   }) async {
     final query = <String, String>{

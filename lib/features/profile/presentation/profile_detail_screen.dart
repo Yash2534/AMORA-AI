@@ -1212,7 +1212,7 @@ class ProfileStory extends StatelessWidget {
               height:
                   sections[index].key ==
                       const ValueKey('public-profile-section-lifestyle')
-                  ? AmoraSpacing.space12
+                  ? AmoraSpacing.space4
                   : AmoraSpacing.space24,
             ),
         ],

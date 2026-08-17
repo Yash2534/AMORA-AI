@@ -73,8 +73,10 @@ Map<String, dynamic> _eventJson() => {
 
 void main() {
   test('browse maps organizer and persisted capacity', () async {
-    final repository = EventRepository(remote: _Remote());
+    final remote = _Remote();
+    final repository = EventRepository(remote: remote);
     final event = (await repository.browse()).events.single;
+    expect(remote.calls.single, 'GET /api/events?page=1&limit=20&timing=all');
     expect(event.organizer.name, 'AMORAA Events');
     expect(
       event.organizer.photoAsset,

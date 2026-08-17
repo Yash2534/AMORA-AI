@@ -689,37 +689,39 @@ class _UnifiedMobileNumberFieldState extends State<_UnifiedMobileNumberField> {
                       width: countryWidth,
                       height: double.infinity,
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AmoraSpacing.space8,
+                        padding: const EdgeInsets.only(
+                          left: AmoraSpacing.space8,
+                          right: AmoraSpacing.space4,
                         ),
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
+                        child: Stack(
                           alignment: Alignment.centerLeft,
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const SizedBox(
-                                width: 22,
-                                height: 22,
-                                child: FittedBox(
-                                  fit: BoxFit.contain,
-                                  child: Text(
-                                    '🇮🇳',
-                                    style: TextStyle(fontSize: 18),
+                          children: [
+                            const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: FittedBox(
+                                fit: BoxFit.contain,
+                                child: Text(
+                                  '🇮🇳',
+                                  style: TextStyle(fontSize: 18),
+                                ),
+                              ),
+                            ),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  '+91',
+                                  style: AmoraTextStyles.bodyMedium.copyWith(
+                                    color: AppColors.primary,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 7),
-                              Text(
-                                '+91',
-                                style: AmoraTextStyles.bodyMedium.copyWith(
-                                  color: AppColors.primary,
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ),
                     ),

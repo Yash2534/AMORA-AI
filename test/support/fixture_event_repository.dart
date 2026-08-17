@@ -14,7 +14,7 @@ class FixtureEventRepository extends EventRepository {
     String? city,
     DateTime? dateFrom,
     DateTime? dateTo,
-    String timing = 'upcoming',
+    String timing = 'all',
     bool? available,
   }) async {
     final normalized = search?.trim().toLowerCase();
