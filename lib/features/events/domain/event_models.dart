@@ -69,6 +69,11 @@ class EventModel {
   final List<EventAttendee> attendees;
   final TicketStatus? participationStatus;
 
+  /// Capacity is server-owned and refreshed by the event detail request.
+  bool get isFull => capacity > 0 && registeredCount >= capacity;
+
+  bool get canJoinWaitlist => isFull && waitlistEnabled;
+
   /// Local content can contain a venue descriptor in this legacy field. Only
   /// render it as distance when it is actually a numeric kilometre value.
   bool get hasNumericDistance => RegExp(

@@ -331,7 +331,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     if (_status == TicketStatus.waitlisted) return;
     if (_status == TicketStatus.cancelled) return;
 
-    final joiningWaitlist = event.waitlistEnabled;
+    final joiningWaitlist = event.canJoinWaitlist;
     if (membershipTestMode && !joiningWaitlist) {
       _startJoinMotion();
       MembershipTestFlowController.instance.joinEvent(event.id);
@@ -838,8 +838,8 @@ class _DetailActionBar extends StatelessWidget {
       TicketStatus.waitlisted => 'Waitlisted',
       TicketStatus.cancelled => 'Event Cancelled',
       null =>
-        event.waitlistEnabled
-            ? 'Waitlist'
+        event.canJoinWaitlist
+            ? 'Join Waitlist'
             : event.registrationOpen
             ? 'Join Event'
             : 'Event Full',
@@ -850,7 +850,7 @@ class _DetailActionBar extends StatelessWidget {
       TicketStatus.waitlisted => Icons.hourglass_top_rounded,
       TicketStatus.cancelled => Icons.event_busy_rounded,
       null =>
-        event.waitlistEnabled
+        event.canJoinWaitlist
             ? Icons.hourglass_top_rounded
             : event.registrationOpen
             ? Icons.event_available_rounded
@@ -916,7 +916,7 @@ class _DetailActionBar extends StatelessWidget {
                         busy ||
                         (status == null &&
                             !event.registrationOpen &&
-                            !event.waitlistEnabled)
+                            !event.canJoinWaitlist)
                     ? null
                     : onPressed,
               ),

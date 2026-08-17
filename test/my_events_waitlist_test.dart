@@ -32,7 +32,7 @@ void main() {
 
       expect(find.text('You’re on the waitlist'), findsOneWidget);
       expect(find.text('Leave waitlist'), findsOneWidget);
-      expect(find.text('Waitlist'), findsNothing);
+      expect(find.text('Join Waitlist'), findsNothing);
 
       await tester.tap(find.text('Leave waitlist'));
       await tester.pumpAndSettle();
@@ -59,9 +59,9 @@ void main() {
     );
     await tester.pump(const Duration(milliseconds: 300));
 
-    expect(find.text('Waitlist'), findsOneWidget);
+    expect(find.text('Join Waitlist'), findsOneWidget);
     expect(find.text('Join Event'), findsNothing);
-    await tester.tap(find.text('Waitlist'));
+    await tester.tap(find.text('Join Waitlist'));
     await tester.pump();
     expect(remote.calls, ['POST /api/events/${event.id}/waitlist']);
     expect(controller.statusFor(event.id), isNull);
@@ -82,9 +82,62 @@ void main() {
       ),
     );
     await tester.pump(const Duration(milliseconds: 300));
-    expect(find.text('Waitlist'), findsNothing);
+    expect(find.text('Join Waitlist'), findsNothing);
     expect(find.text('Event Full'), findsOneWidget);
   });
+
+  testWidgets('detail refresh replaces stale capacity before showing the CTA', (
+    tester,
+  ) async {
+    final staleEvent = _availableEvent();
+    final fullEvent = _fullEvent(waitlistAvailable: true);
+    final repository = _DetailRepository(fullEvent);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: EventDetailScreen(event: staleEvent, repository: repository),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(repository.detailCalls, [staleEvent.id]);
+    expect(find.text('Join Waitlist'), findsOneWidget);
+    expect(find.text('Join Event'), findsNothing);
+  });
+}
+
+EventModel _availableEvent() {
+  final base = events.first;
+  return EventModel(
+    id: 'waitlist-open',
+    title: base.title,
+    category: base.category,
+    city: base.city,
+    date: base.date,
+    time: base.time,
+    price: base.price,
+    seatsLeft: 1,
+    compatibility: base.compatibility,
+    image: base.image,
+    organizer: base.organizer,
+    venue: base.venue,
+    distance: base.distance,
+    dressCode: base.dressCode,
+    ageRange: base.ageRange,
+    language: base.language,
+    palette: base.palette,
+    intent: base.intent,
+    interests: base.interests,
+    agenda: base.agenda,
+    startAt: DateTime.now().add(const Duration(days: 1)),
+    endAt: DateTime.now().add(const Duration(days: 1, hours: 3)),
+    description: base.description,
+    capacity: 1,
+    registeredCount: 0,
+    waitlistCapacity: 2,
+    waitlistEnabled: false,
+    registrationOpen: true,
+  );
 }
 
 EventModel _fullEvent({required bool waitlistAvailable}) {
@@ -143,4 +196,26 @@ class _WaitlistRemote implements EventRemoteDataSource {
     calls.add('$method $path');
     return _response.future;
   }
+}
+
+class _DetailRepository extends EventRepository {
+  _DetailRepository(this.refreshedEvent) : super(remote: _UnusedRemote());
+
+  final EventModel refreshedEvent;
+  final detailCalls = <String>[];
+
+  @override
+  Future<EventModel> detail(String eventId) async {
+    detailCalls.add(eventId);
+    return refreshedEvent;
+  }
+}
+
+class _UnusedRemote implements EventRemoteDataSource {
+  @override
+  Future<Map<String, dynamic>> request(
+    String method,
+    String path, {
+    Map<String, dynamic>? body,
+  }) => throw UnimplementedError();
 }
