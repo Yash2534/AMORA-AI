@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:amora_ai/core/access/amora_access.dart';
+import 'package:amora_ai/core/auth/auth_service.dart';
+import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/features/events/data/event_repository.dart';
 import 'package:amora_ai/features/events/data/events_dummy_data.dart';
 import 'package:amora_ai/features/events/domain/event_models.dart';
@@ -69,7 +71,13 @@ void main() {
     remote.completeJoin();
     await tester.pump(const Duration(milliseconds: 700));
     expect(controller.statusFor(event.id), TicketStatus.waitlisted);
-    expect(find.text('Waitlisted'), findsWidgets);
+    expect(find.text('On Waitlist'), findsOneWidget);
+    expect(
+      tester
+          .widget<AppPrimaryButton>(find.byKey(const ValueKey('On Waitlist')))
+          .onPressed,
+      isNull,
+    );
 
     final unavailable = _fullEvent(waitlistAvailable: false);
     await tester.pumpWidget(
@@ -103,6 +111,64 @@ void main() {
     expect(repository.detailCalls, [staleEvent.id]);
     expect(find.text('Join Waitlist'), findsOneWidget);
     expect(find.text('Join Event'), findsNothing);
+  });
+
+  testWidgets('persisted waitlist state renders from refreshed detail', (
+    tester,
+  ) async {
+    final seed = _availableEvent();
+    final waitlisted = _fullEvent(
+      waitlistAvailable: false,
+      participationStatus: TicketStatus.waitlisted,
+      id: seed.id,
+    );
+    final repository = _DetailRepository(waitlisted);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: EventDetailScreen(event: seed, repository: repository),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(repository.detailCalls, [waitlisted.id]);
+    expect(find.text('On Waitlist'), findsOneWidget);
+    expect(find.text('Join Event'), findsNothing);
+    expect(find.text('Join Waitlist'), findsNothing);
+    expect(
+      tester
+          .widget<AppPrimaryButton>(find.byKey(const ValueKey('On Waitlist')))
+          .onPressed,
+      isNull,
+    );
+  });
+
+  testWidgets('last-seat conflict refreshes CTA to Join Waitlist', (
+    tester,
+  ) async {
+    final available = _availableEvent();
+    final full = _fullEvent(waitlistAvailable: true);
+    final repository = _RaceRepository(full);
+    final controller = EventParticipationController(repository: repository);
+    AmoraSession.isLoggedIn.value = true;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: EventDetailScreen(event: available, controller: controller),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('Join Event'), findsOneWidget);
+
+    await tester.tap(find.text('Join Event'));
+    await tester.pump(const Duration(milliseconds: 700));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(repository.registerCalls, [available.id]);
+    expect(repository.detailCalls, [available.id]);
+    expect(find.text('Join Waitlist'), findsOneWidget);
+    expect(find.text('Join Event'), findsNothing);
+    expect(tester.takeException(), isNull);
   });
 }
 
@@ -140,10 +206,14 @@ EventModel _availableEvent() {
   );
 }
 
-EventModel _fullEvent({required bool waitlistAvailable}) {
+EventModel _fullEvent({
+  required bool waitlistAvailable,
+  TicketStatus? participationStatus,
+  String? id,
+}) {
   final base = events.first;
   return EventModel(
-    id: waitlistAvailable ? 'waitlist-open' : 'waitlist-closed',
+    id: id ?? (waitlistAvailable ? 'waitlist-open' : 'waitlist-closed'),
     title: base.title,
     category: base.category,
     city: base.city,
@@ -171,6 +241,7 @@ EventModel _fullEvent({required bool waitlistAvailable}) {
     waitlistCapacity: waitlistAvailable ? 2 : 0,
     waitlistEnabled: waitlistAvailable,
     registrationOpen: false,
+    participationStatus: participationStatus,
   );
 }
 
@@ -208,6 +279,22 @@ class _DetailRepository extends EventRepository {
   Future<EventModel> detail(String eventId) async {
     detailCalls.add(eventId);
     return refreshedEvent;
+  }
+}
+
+class _RaceRepository extends _DetailRepository {
+  _RaceRepository(super.refreshedEvent);
+
+  final registerCalls = <String>[];
+
+  @override
+  Future<TicketStatus?> register(String eventId) async {
+    registerCalls.add(eventId);
+    throw const AuthException(
+      'This event is full. You may join its waitlist.',
+      code: 'EVENT_FULL',
+      statusCode: 409,
+    );
   }
 }
 

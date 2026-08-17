@@ -398,6 +398,7 @@ void main() {
       venue: 'The Courtyard, Ahmedabad Heritage District',
       category: 'Culture and Meaningful Conversation',
     );
+    var joined = false;
 
     await tester.pumpWidget(
       MaterialApp(
@@ -411,7 +412,7 @@ void main() {
                 event: event,
                 status: null,
                 onOpen: () {},
-                onJoin: () {},
+                onJoin: () => joined = true,
                 showDistance: true,
               ),
             ),
@@ -439,6 +440,104 @@ void main() {
     expect(venue.overflow, isNull);
     expect(category.maxLines, isNull);
     expect(category.overflow, isNull);
+    expect(
+      tester.getSize(find.byKey(ValueKey('event-title-${event.id}'))).width,
+      greaterThan(130),
+    );
+    expect(
+      tester.getSize(find.byKey(ValueKey('event-action-${event.id}'))),
+      const Size(48, 48),
+    );
+
+    await tester.tap(find.byKey(ValueKey('event-action-${event.id}')));
+    await tester.pump();
+    expect(joined, isTrue);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('nearby card stays compact at small medium and large widths', (
+    tester,
+  ) async {
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final event = _eventWithText(
+      events.first,
+      title: 'AMORAA QA Live Music Social',
+      venue: 'The Courtyard, Ahmedabad Heritage District',
+      category: 'Live Music',
+    );
+
+    for (final width in const [280.0, 360.0, 420.0]) {
+      await tester.binding.setSurfaceSize(Size(width, 800));
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AmoraTheme.light(),
+          home: MediaQuery(
+            data: MediaQueryData(size: Size(width, 800)),
+            child: Scaffold(
+              body: Align(
+                alignment: Alignment.topLeft,
+                child: SizedBox(
+                  width: width,
+                  child: CompactEventCard(
+                    event: event,
+                    status: null,
+                    onOpen: () {},
+                    onJoin: () {},
+                    showDistance: true,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final card = find.byKey(ValueKey('event-card-${event.id}'));
+      final title = find.byKey(ValueKey('event-title-${event.id}'));
+      final venue = find.byKey(ValueKey('event-venue-${event.id}'));
+      final action = find.byKey(ValueKey('event-action-${event.id}'));
+      expect(tester.getSize(card).width, width);
+      expect(tester.getSize(title).width, greaterThan(130));
+      expect(tester.getSize(venue).width, greaterThan(130));
+      expect(tester.getSize(action), const Size(48, 48));
+      expect(
+        tester.getRect(action).bottom - tester.getRect(card).top,
+        lessThan(420),
+      );
+      expect(
+        tester.takeException(),
+        isNull,
+        reason: 'Nearby card overflowed at ${width.toInt()} px',
+      );
+    }
+
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AmoraTheme.light(),
+        home: const EventsBrowseScreen(showNavigation: false),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 520));
+    await tester.pump();
+    final nearbyRail = find.byKey(const ValueKey('nearby-event-rail'));
+    for (
+      var attempt = 0;
+      attempt < 8 && nearbyRail.evaluate().isEmpty;
+      attempt++
+    ) {
+      await tester.drag(
+        find.byKey(const PageStorageKey('events-member-feed')),
+        const Offset(0, -500),
+      );
+      await tester.pump();
+    }
+    final nearbyCard = find
+        .descendant(of: nearbyRail, matching: find.byType(CompactEventCard))
+        .first;
+    expect(nearbyRail, findsOneWidget);
+    expect(tester.getSize(nearbyCard).height, lessThan(300));
     expect(tester.takeException(), isNull);
   });
 

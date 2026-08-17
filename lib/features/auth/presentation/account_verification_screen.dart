@@ -653,7 +653,6 @@ class _UnifiedMobileNumberFieldState extends State<_UnifiedMobileNumberField> {
           builder: (context, constraints) {
             final availableWidth = constraints.maxWidth;
             final narrow = availableWidth < 260;
-            final countryWidth = (availableWidth * .33).clamp(80.0, 104.0);
             final phoneIconWidth = (availableWidth * .13).clamp(32.0, 40.0);
             return AnimatedContainer(
               key: const ValueKey('unified-mobile-number-field'),
@@ -686,15 +685,14 @@ class _UnifiedMobileNumberFieldState extends State<_UnifiedMobileNumberField> {
                     label: 'Country code, +91',
                     child: SizedBox(
                       key: const ValueKey('country-code-display'),
-                      width: countryWidth,
                       height: double.infinity,
                       child: Padding(
-                        padding: const EdgeInsets.only(
-                          left: AmoraSpacing.space8,
-                          right: AmoraSpacing.space4,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AmoraSpacing.space8,
                         ),
-                        child: Stack(
-                          alignment: Alignment.centerLeft,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             const SizedBox(
                               width: 22,
@@ -707,17 +705,15 @@ class _UnifiedMobileNumberFieldState extends State<_UnifiedMobileNumberField> {
                                 ),
                               ),
                             ),
-                            Align(
-                              alignment: Alignment.centerRight,
-                              child: FittedBox(
-                                fit: BoxFit.scaleDown,
-                                child: Text(
-                                  '+91',
-                                  style: AmoraTextStyles.bodyMedium.copyWith(
-                                    color: AppColors.primary,
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                            const SizedBox(width: AmoraSpacing.space8),
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                '+91',
+                                style: AmoraTextStyles.bodyMedium.copyWith(
+                                  color: AppColors.primary,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ),

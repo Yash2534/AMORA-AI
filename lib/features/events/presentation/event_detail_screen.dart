@@ -48,7 +48,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   EventParticipationController get _controller =>
       widget.controller ?? EventParticipationController.instance;
   EventRepository get _repository =>
-      widget.repository ?? EventRepository.instance;
+      widget.repository ??
+      widget.controller?.repository ??
+      EventRepository.instance;
 
   @override
   void initState() {
@@ -362,6 +364,12 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
             }
           }
         } catch (error) {
+          if (!joiningWaitlist &&
+              error is AuthException &&
+              error.code == 'EVENT_FULL' &&
+              await _refreshAfterFullConflict(event)) {
+            return;
+          }
           if (mounted) {
             showEventSnack(
               context,
@@ -376,6 +384,27 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
         }
       },
     );
+  }
+
+  Future<bool> _refreshAfterFullConflict(EventModel event) async {
+    try {
+      final refreshed = await _repository.detail(event.id);
+      _controller.syncCatalog([refreshed]);
+      if (!mounted) return true;
+      setState(() {
+        _event = refreshed;
+        _status = refreshed.participationStatus;
+      });
+      showEventSnack(
+        context,
+        refreshed.canJoinWaitlist
+            ? 'This event just filled. You can join the waitlist.'
+            : 'This event is now full.',
+      );
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<void> _shareEvent(EventModel event, BuildContext anchorContext) async {
@@ -835,7 +864,7 @@ class _DetailActionBar extends StatelessWidget {
     final hasParticipation = status != null;
     final statusLabel = switch (status) {
       TicketStatus.upcoming => 'Leave Event',
-      TicketStatus.waitlisted => 'Waitlisted',
+      TicketStatus.waitlisted => 'On Waitlist',
       TicketStatus.cancelled => 'Event Cancelled',
       null =>
         event.canJoinWaitlist

@@ -29,7 +29,7 @@ async function user(name) {
 before(async () => {
   await migrate({ databaseName: testDatabase, quiet: true }); await initializeDatabase(); models = getModels();
   organizer = await user('Event Organizer'); attendee = await user('Event Attendee'); other = await user('Other Attendee'); waitlisted = await user('Waitlisted Attendee');
-  event = await models.Event.create({ title: 'Retained Event', description: 'Browse and register', category: 'Social', city: 'Ahmedabad', venueName: 'Venue', startDateTime: new Date(Date.now() + 86400000), endDateTime: new Date(Date.now() + 90000000), capacity: 1, waitlistCapacity: 2, waitlistEnabled: true, status: 'published', visibility: 'public', organizerId: organizer.id });
+  event = await models.Event.create({ title: 'Retained Event', description: 'Browse and register', category: 'Social', city: 'Ahmedabad', venueName: 'Venue', startDateTime: new Date(Date.now() + 86400000), endDateTime: new Date(Date.now() + 90000000), capacity: 1, waitlistCapacity: 2, waitlistEnabled: true, status: 'published', visibility: 'public', heroImageUrl: '/uploads/e2e-test/live_music.png', organizerId: organizer.id });
   waitlistEvent = await models.Event.create({ title: 'Waitlist Event', description: 'Full event with waitlist', category: 'Social', city: 'Ahmedabad', venueName: 'Venue', startDateTime: new Date(Date.now() + 172800000), endDateTime: new Date(Date.now() + 176400000), capacity: 1, waitlistCapacity: 2, waitlistEnabled: true, status: 'published', visibility: 'public', organizerId: organizer.id });
   noWaitlistEvent = await models.Event.create({ title: 'No Waitlist Event', description: 'Full event without waitlist', category: 'Social', city: 'Ahmedabad', venueName: 'Venue', startDateTime: new Date(Date.now() + 259200000), endDateTime: new Date(Date.now() + 262800000), capacity: 1, waitlistCapacity: 0, waitlistEnabled: false, status: 'published', visibility: 'public', organizerId: organizer.id });
   await models.EventRegistration.bulkCreate([
@@ -60,6 +60,7 @@ test('events require authentication and return canonical organizer data', async 
   const value = listed.body.data.events.find((item) => item.id === String(event.id));
   assert.equal(value.organizer.name, organizer.name);
   assert.match(value.organizer.imageUrl, /\/uploads\/event\.jpg$/);
+  assert.match(value.heroImageUrl, /^http:\/\/127\.0\.0\.1:\d+\/uploads\/e2e-test\/live_music\.png$/);
   assert.equal(value.seatsLeft, 1);
 });
 

@@ -1476,6 +1476,7 @@ class LifestyleGrid extends StatelessWidget {
         LayoutBuilder(
           builder: (context, constraints) {
             final tileWidth = (constraints.maxWidth - AmoraSpacing.space8) / 2;
+            final tileHeight = _tileHeight(context, items, tileWidth);
             return Wrap(
               spacing: AmoraSpacing.space8,
               runSpacing: AmoraSpacing.space8,
@@ -1483,6 +1484,7 @@ class LifestyleGrid extends StatelessWidget {
                 for (final item in items)
                   SizedBox(
                     width: tileWidth,
+                    height: tileHeight,
                     child: _LifestyleTile(item: item),
                   ),
               ],
@@ -1491,6 +1493,45 @@ class LifestyleGrid extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  double _tileHeight(
+    BuildContext context,
+    List<_SymbolicFact> items,
+    double tileWidth,
+  ) {
+    final textWidth = (tileWidth - 70).clamp(0.0, double.infinity);
+    final textScaler = MediaQuery.textScalerOf(context);
+    final textDirection = Directionality.of(context);
+    final labelStyle = AmoraTextStyles.labelSmall.copyWith(
+      color: AppColors.textNeutral.withValues(alpha: .54),
+    );
+    final valueStyle = AmoraTextStyles.labelMedium.copyWith(
+      color: AppColors.textNeutral,
+      fontWeight: FontWeight.w700,
+    );
+    var contentHeight = 36.0;
+
+    for (final item in items) {
+      final label = TextPainter(
+        text: TextSpan(text: item.label, style: labelStyle),
+        textDirection: textDirection,
+        textScaler: textScaler,
+      )..layout(maxWidth: textWidth);
+      final value = TextPainter(
+        text: TextSpan(text: item.value, style: valueStyle),
+        textDirection: textDirection,
+        textScaler: textScaler,
+        maxLines: 3,
+        ellipsis: '…',
+      )..layout(maxWidth: textWidth);
+      final textHeight = label.height + AmoraSpacing.space4 + value.height;
+      if (textHeight > contentHeight) contentHeight = textHeight;
+    }
+
+    return (contentHeight + AmoraSpacing.space24 + 2)
+        .clamp(76.0, double.infinity)
+        .toDouble();
   }
 }
 
@@ -1505,7 +1546,7 @@ class _LifestyleTile extends StatelessWidget {
       label: '${item.label}, ${item.value}',
       child: ExcludeSemantics(
         child: Container(
-          constraints: const BoxConstraints(minHeight: 92),
+          constraints: const BoxConstraints(minHeight: 76),
           padding: const EdgeInsets.all(AmoraSpacing.space12),
           decoration: BoxDecoration(
             color: AppColors.surface,
@@ -1515,7 +1556,7 @@ class _LifestyleTile extends StatelessWidget {
             ),
           ),
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               DecoratedBox(
                 decoration: BoxDecoration(
@@ -1531,6 +1572,7 @@ class _LifestyleTile extends StatelessWidget {
               const SizedBox(width: AmoraSpacing.space8),
               Expanded(
                 child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(

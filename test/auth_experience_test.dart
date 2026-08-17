@@ -697,6 +697,8 @@ void main() {
           final country = tester.getRect(
             find.byKey(const ValueKey('country-code-display')),
           );
+          final flag = tester.getRect(find.text('🇮🇳'));
+          final dialCode = tester.getRect(find.text('+91'));
           final number = tester.getRect(
             find.byKey(const ValueKey('mobile-number-field')),
           );
@@ -714,6 +716,12 @@ void main() {
           expect(number.right, closeTo(field.right, 1.1));
           expect(number.width, greaterThan(72));
           expect(country.center.dy, closeTo(field.center.dy, 1));
+          expect(flag.center.dy, closeTo(dialCode.center.dy, 1));
+          expect(dialCode.left - flag.right, closeTo(AmoraSpacing.space8, 1));
+          expect(
+            country.right - dialCode.right,
+            closeTo(AmoraSpacing.space8, 1),
+          );
           expect(number.center.dy, closeTo(field.center.dy, 1));
           expect(phoneIcon.center.dy, closeTo(field.center.dy, 1));
           expect(field.left, greaterThanOrEqualTo(0));

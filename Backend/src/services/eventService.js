@@ -120,7 +120,7 @@ function serializeEvent(req, event) {
     available: plain.status === 'published' && plain.registrationOpen && registeredCount < Number(plain.capacity),
     waitlistAvailable,
     status: plain.status,
-    heroImageUrl: plain.heroImageUrl,
+    heroImageUrl: publicUrl(req, plain.heroImageUrl),
     price: Number(plain.price || 0),
     dressCode: plain.dressCode,
     ageRange: plain.minAge == null && plain.maxAge == null ? null : `${plain.minAge || 18}-${plain.maxAge || 'any'}`,

@@ -756,26 +756,25 @@ class _EventRail extends StatelessWidget {
       );
     }
     return SingleChildScrollView(
+      key: const ValueKey('nearby-event-rail'),
       scrollDirection: Axis.horizontal,
-      child: IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            for (var index = 0; index < events.length; index++) ...[
-              if (index > 0) const SizedBox(width: 12),
-              SizedBox(
-                width: itemWidth,
-                child: CompactEventCard(
-                  event: events[index],
-                  status: participation[events[index].id],
-                  onOpen: () => onOpen(events[index]),
-                  onJoin: () => onJoin(events[index]),
-                  showDistance: true,
-                ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (var index = 0; index < events.length; index++) ...[
+            if (index > 0) const SizedBox(width: 12),
+            SizedBox(
+              width: itemWidth,
+              child: CompactEventCard(
+                event: events[index],
+                status: participation[events[index].id],
+                onOpen: () => onOpen(events[index]),
+                onJoin: () => onJoin(events[index]),
+                showDistance: true,
               ),
-            ],
+            ),
           ],
-        ),
+        ],
       ),
     );
   }

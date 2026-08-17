@@ -377,6 +377,94 @@ void main() {
       );
     }
   });
+
+  testWidgets('Lifestyle cards remain compact and vertically balanced', (
+    tester,
+  ) async {
+    final profile = AmoraaPublicProfileData.fromProfile(
+      repository.profile,
+      repository.currentPhotos,
+    ).toPublicDisplayProfile();
+    const values = <String, String>{
+      'Smoking': 'Never',
+      'Drinking': 'Yes',
+      'Weed': 'Prefer not to say',
+      'Beliefs': 'Hindu',
+    };
+
+    for (final width in <double>[320, 360, 390, 430]) {
+      await tester.binding.setSurfaceSize(Size(width, 480));
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AmoraTheme.light(),
+          home: Scaffold(
+            body: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: LifestyleGrid(profile: profile),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final tileRects = <Rect>[];
+      for (final entry in values.entries) {
+        final tile = find.bySemanticsLabel('${entry.key}, ${entry.value}');
+        final tileRect = tester.getRect(tile);
+        final iconRect = tester.getRect(
+          find.descendant(of: tile, matching: find.byType(Icon)).first,
+        );
+        final contentRect = tester.getRect(
+          find.descendant(of: tile, matching: find.byType(Column)),
+        );
+
+        tileRects.add(tileRect);
+        expect(tileRect.height, lessThanOrEqualTo(92), reason: '$width px');
+        expect(iconRect.center.dy, closeTo(tileRect.center.dy, 1));
+        expect(contentRect.center.dy, closeTo(tileRect.center.dy, 1));
+      }
+      for (final rect in tileRects.skip(1)) {
+        expect(rect.height, closeTo(tileRects.first.height, 1));
+      }
+      expect(tester.takeException(), isNull, reason: '$width px');
+    }
+
+    repository.save(
+      repository.profile.copyWith(
+        lifestyle: {...repository.profile.lifestyle, 'Weed': 'Never'},
+      ),
+    );
+    final compactProfile = AmoraaPublicProfileData.fromProfile(
+      repository.profile,
+      repository.currentPhotos,
+    ).toPublicDisplayProfile();
+    await tester.binding.setSurfaceSize(const Size(390, 480));
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AmoraTheme.light(),
+        home: Scaffold(
+          body: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: LifestyleGrid(profile: compactProfile),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    for (final label in const ['Smoking', 'Drinking', 'Weed', 'Beliefs']) {
+      final value = label == 'Smoking' || label == 'Weed'
+          ? 'Never'
+          : label == 'Drinking'
+          ? 'Yes'
+          : 'Hindu';
+      expect(
+        tester.getRect(find.bySemanticsLabel('$label, $value')).height,
+        closeTo(76, 1),
+      );
+    }
+    expect(tester.takeException(), isNull);
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+  });
 }
 
 List<String> _sectionOrder(WidgetTester tester, List<String> keys) {

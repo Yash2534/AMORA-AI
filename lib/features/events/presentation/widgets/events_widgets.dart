@@ -1370,6 +1370,44 @@ class _HorizontalEventCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final stackContent = MediaQuery.sizeOf(context).width <= 360;
+    final details = _EventCardDetails(
+      event: event,
+      status: status,
+      showDistance: showDistance,
+      action: _EventCardIconAction(
+        event: event,
+        status: status,
+        onOpen: onOpen,
+        onJoin: onJoin,
+      ),
+    );
+    final content = stackContent
+        ? Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                EventImagePanel(event: event, height: 132, radius: 18),
+                const SizedBox(height: 12),
+                details,
+              ],
+            ),
+          )
+        : Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  width: 96,
+                  child: EventImagePanel(event: event, height: 120, radius: 18),
+                ),
+                const SizedBox(width: 12),
+                Expanded(child: details),
+              ],
+            ),
+          );
     return Material(
       color: AppColors.surface,
       elevation: 1.5,
@@ -1379,39 +1417,42 @@ class _HorizontalEventCard extends StatelessWidget {
         side: BorderSide(color: AppColors.tertiary.withValues(alpha: .5)),
       ),
       clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onOpen,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(
-                width: 112,
-                child: EventImagePanel(event: event, height: 126, radius: 18),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: _EventCardDetails(
-                  event: event,
-                  status: status,
-                  showDistance: showDistance,
-                ),
-              ),
-              const SizedBox(width: 6),
-              IconButton(
-                tooltip: status == null ? 'Join ${event.title}' : 'View event',
-                onPressed: status == null ? onJoin : onOpen,
-                icon: Icon(
-                  status == null
-                      ? Icons.add_circle_rounded
-                      : Icons.arrow_forward_rounded,
-                  color: AppColors.primary,
-                ),
-              ),
-            ],
-          ),
-        ),
+      child: InkWell(onTap: onOpen, child: content),
+    );
+  }
+}
+
+class _EventCardIconAction extends StatelessWidget {
+  const _EventCardIconAction({
+    required this.event,
+    required this.status,
+    required this.onOpen,
+    required this.onJoin,
+  });
+
+  final EventModel event;
+  final TicketStatus? status;
+  final VoidCallback onOpen;
+  final VoidCallback onJoin;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      key: ValueKey('event-action-${event.id}'),
+      tooltip: status == null ? 'Join ${event.title}' : 'View event',
+      constraints: const BoxConstraints.tightFor(
+        width: AmoraSpacing.minimumTouchTarget,
+        height: AmoraSpacing.minimumTouchTarget,
+      ),
+      padding: EdgeInsets.zero,
+      style: IconButton.styleFrom(
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.surface,
+      ),
+      onPressed: status == null ? onJoin : onOpen,
+      icon: Icon(
+        status == null ? Icons.add_rounded : Icons.arrow_forward_rounded,
+        size: 24,
       ),
     );
   }
@@ -1482,11 +1523,13 @@ class _EventCardDetails extends StatelessWidget {
     required this.event,
     required this.status,
     this.showDistance = false,
+    this.action,
   });
 
   final EventModel event;
   final TicketStatus? status;
   final bool showDistance;
+  final Widget? action;
 
   @override
   Widget build(BuildContext context) {
@@ -1506,10 +1549,8 @@ class _EventCardDetails extends StatelessWidget {
                 event.title,
                 key: ValueKey('event-title-${event.id}'),
                 textAlign: TextAlign.left,
-                style: const TextStyle(
-                  color: AppColors.primary,
-                  fontSize: 17,
-                  height: 1.15,
+                style: AmoraTextStyles.cardTitle.copyWith(
+                  height: 1.25,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -1544,16 +1585,20 @@ class _EventCardDetails extends StatelessWidget {
                   compact: true,
                 ),
               ],
-              const SizedBox(height: 4),
-              Text(
-                event.category,
-                key: ValueKey('event-category-${event.id}'),
-                textAlign: TextAlign.left,
-                style: const TextStyle(
-                  color: AppColors.secondary,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
+              const SizedBox(height: 8),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Text(
+                      event.category,
+                      key: ValueKey('event-category-${event.id}'),
+                      textAlign: TextAlign.left,
+                      style: AmoraTextStyles.accentText.copyWith(fontSize: 13),
+                    ),
+                  ),
+                  if (action != null) ...[const SizedBox(width: 8), action!],
+                ],
               ),
             ],
           ),
