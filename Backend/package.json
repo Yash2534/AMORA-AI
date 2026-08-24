@@ -27,7 +27,9 @@
     "db:seed:events": "node scripts/seed-events-development.js",
     "db:seed:subscriptions": "node scripts/seed-subscription-plans.js",
     "test:phase5": "node --test --test-concurrency=1 test/phase5.integration.test.js",
-    "test:send-rose": "node --test --test-concurrency=1 test/send-rose.integration.test.js"
+    "test:send-rose": "node --test --test-concurrency=1 test/send-rose.integration.test.js",
+    "admin:create": "node scripts/create-admin.js",
+    "test:admin": "node --test --test-concurrency=1 test/admin-permission-catalog.test.js test/admin-auth.integration.test.js test/admin-users.integration.test.js"
   },
   "engines": {
     "node": ">=18"

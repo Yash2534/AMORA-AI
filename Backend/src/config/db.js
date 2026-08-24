@@ -35,7 +35,17 @@ async function initializeDatabase() {
   } catch (error) {
     if (sequelize) await sequelize.close().catch(() => {});
     sequelize = undefined;
-    console.error('[Database] Could not connect to MySQL. Run migrations and verify DB_HOST/DB_USER/DB_PASS/DB_NAME.');
+    const safeCode = String(error.original?.code || error.code || '')
+      .replace(/[^A-Z0-9_]/gi, '')
+      .slice(0, 80);
+    const pendingMessage = String(error.message || '').startsWith('Pending database migrations:')
+      ? ` ${error.message}`
+      : '';
+    console.error(
+      `[Database] Startup validation failed.${pendingMessage}`
+      + `${safeCode ? ` Database error code: ${safeCode}.` : ''}`
+      + ' Run migration status and verify DB_HOST/DB_PORT/DB_NAME/DB_USER.',
+    );
     throw error;
   }
 }

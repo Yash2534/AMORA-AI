@@ -11,6 +11,9 @@ const validate = (message = 'Validation failed.') => (req, res, next) => {
       field: error.path,
       message: error.msg,
     })),
+    ...(String(req.originalUrl || '').startsWith('/api/admin/')
+      ? { meta: { requestId: req.adminCorrelationId || null } }
+      : {}),
   });
 };
 

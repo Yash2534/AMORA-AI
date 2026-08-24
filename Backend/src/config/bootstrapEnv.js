@@ -14,7 +14,7 @@ let envText = fs.readFileSync(envPath, 'utf8');
 const placeholders = new Set(['', 'changeme', 'change-me', 'your-secret', 'replace-me']);
 let changed = false;
 
-for (const key of ['JWT_SECRET', 'JWT_REFRESH_SECRET']) {
+for (const key of ['JWT_SECRET', 'JWT_REFRESH_SECRET', 'ADMIN_JWT_SECRET']) {
   const match = envText.match(new RegExp(`^${key}\\s*=\\s*(.*)$`, 'm'));
   const current = match ? match[1].trim().replace(/^['"]|['"]$/g, '') : '';
   if (!match || placeholders.has(current.toLowerCase())) {

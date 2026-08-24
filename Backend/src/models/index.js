@@ -9,12 +9,16 @@ const definitions = {
   SavedProfile: require('./SavedProfile'), NotificationPreference: require('./NotificationPreference'), Notification: require('./Notification'),
   IdentityVerification: require('./IdentityVerification'),
   UserDevice: require('./UserDevice'), NotificationDelivery: require('./NotificationDelivery'),
+  Administrator: require('./Administrator'), AdminRole: require('./AdminRole'),
+  AdminPermission: require('./AdminPermission'), AdminRefreshToken: require('./AdminRefreshToken'),
+  AdminAuditLog: require('./AdminAuditLog'), AdminPasswordResetToken: require('./AdminPasswordResetToken'),
 };
 let models = {};
 function initModels(sequelize) {
   if (models.User) return models;
   const created = Object.fromEntries(Object.entries(definitions).map(([name, define]) => [name, define(sequelize)]));
   const { User, RefreshToken, OnboardingProfile, DiscoverAction, Match, DiscoverFilterPreference, Block, Report, Conversation, ConversationParticipant, Message, MessageMedia, Event, EventRegistration, EventWaitlist, SubscriptionPlan, Subscription, Payment, PaymentEvent, RoseTransaction, SavedProfile, NotificationPreference, Notification, IdentityVerification, UserDevice, NotificationDelivery } = created;
+  const { Administrator, AdminRole, AdminPermission, AdminRefreshToken, AdminAuditLog, AdminPasswordResetToken } = created;
   User.hasMany(RefreshToken, { foreignKey: 'userId', onDelete: 'CASCADE' }); RefreshToken.belongsTo(User, { foreignKey: 'userId' }); User.hasOne(OnboardingProfile, { foreignKey: 'userId', onDelete: 'CASCADE' }); OnboardingProfile.belongsTo(User, { foreignKey: 'userId' });
   User.hasMany(DiscoverAction, { foreignKey: 'actorUserId', onDelete: 'CASCADE', as: 'discoverActions' }); DiscoverAction.belongsTo(User, { foreignKey: 'actorUserId', as: 'actor' }); DiscoverAction.belongsTo(User, { foreignKey: 'targetUserId', as: 'target' });
   User.hasMany(Match, { foreignKey: 'userOneId', onDelete: 'CASCADE', as: 'firstMatches' }); User.hasMany(Match, { foreignKey: 'userTwoId', onDelete: 'CASCADE', as: 'secondMatches' }); Match.belongsTo(User, { foreignKey: 'userOneId', as: 'userOne' }); Match.belongsTo(User, { foreignKey: 'userTwoId', as: 'userTwo' });
@@ -44,6 +48,61 @@ function initModels(sequelize) {
   RoseTransaction.belongsTo(User, { foreignKey: 'senderId', as: 'sender' });
   RoseTransaction.belongsTo(User, { foreignKey: 'recipientId', as: 'recipient' });
   RoseTransaction.belongsTo(Conversation, { foreignKey: 'conversationId', as: 'conversation' });
+  Administrator.belongsToMany(AdminRole, {
+    through: 'AdministratorRoles',
+    foreignKey: 'administratorId',
+    otherKey: 'roleId',
+    as: 'roles',
+  });
+  AdminRole.belongsToMany(Administrator, {
+    through: 'AdministratorRoles',
+    foreignKey: 'roleId',
+    otherKey: 'administratorId',
+    as: 'administrators',
+  });
+  AdminRole.belongsToMany(AdminPermission, {
+    through: 'AdminRolePermissions',
+    foreignKey: 'roleId',
+    otherKey: 'permissionId',
+    as: 'permissions',
+  });
+  AdminPermission.belongsToMany(AdminRole, {
+    through: 'AdminRolePermissions',
+    foreignKey: 'permissionId',
+    otherKey: 'roleId',
+    as: 'roles',
+  });
+  Administrator.hasMany(AdminRefreshToken, {
+    foreignKey: 'administratorId',
+    as: 'refreshTokens',
+    onDelete: 'CASCADE',
+  });
+  AdminRefreshToken.belongsTo(Administrator, {
+    foreignKey: 'administratorId',
+    as: 'administrator',
+  });
+  AdminRefreshToken.belongsTo(AdminRefreshToken, {
+    foreignKey: 'replacedByTokenId',
+    as: 'replacement',
+  });
+  Administrator.hasMany(AdminPasswordResetToken, {
+    foreignKey: 'administratorId',
+    as: 'passwordResetTokens',
+    onDelete: 'CASCADE',
+  });
+  AdminPasswordResetToken.belongsTo(Administrator, {
+    foreignKey: 'administratorId',
+    as: 'administrator',
+  });
+  Administrator.hasMany(AdminAuditLog, {
+    foreignKey: 'administratorId',
+    as: 'auditLogs',
+    onDelete: 'SET NULL',
+  });
+  AdminAuditLog.belongsTo(Administrator, {
+    foreignKey: 'administratorId',
+    as: 'administrator',
+  });
   models = created; return models;
 }
 function getModels() { if (!models.User) throw new Error('Models are not initialized.'); return models; }
