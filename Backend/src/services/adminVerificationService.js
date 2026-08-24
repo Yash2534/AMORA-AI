@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const fs = require('fs');
 const { Op } = require('sequelize');
 const { getModels } = require('../models');
 const { absolutePathFor } = require('../utils/identityVerificationStorage');
@@ -10,31 +11,49 @@ function apiError(status, code, message) {
   return error;
 }
 
+const imageTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
+
 function mediaId(verificationId, kind) {
-  const value = `${verificationId}.${kind}`;
+  const expiresAt = Math.floor(Date.now() / 1000) + 5 * 60;
+  const value = `${verificationId}.${kind}.${expiresAt}`;
   const signature = crypto.createHmac('sha256', process.env.ADMIN_JWT_SECRET).update(value).digest('base64url').slice(0, 32);
   return `${value}.${signature}`;
 }
 
 function parseMediaId(value) {
-  const match = String(value || '').match(/^(\d+)\.(aadhaar|selfie)\.([A-Za-z0-9_-]{32})$/);
+  const match = String(value || '').match(/^(\d+)\.(aadhaar|selfie)\.(\d{10})\.([A-Za-z0-9_-]{32})$/);
   if (!match) return null;
-  const expected = mediaId(match[1], match[2]);
-  const actualBuffer = Buffer.from(String(value));
+  const expiresAt = Number(match[3]);
+  if (expiresAt < Math.floor(Date.now() / 1000)) return null;
+  const signedValue = `${match[1]}.${match[2]}.${expiresAt}`;
+  const expected = crypto.createHmac('sha256', process.env.ADMIN_JWT_SECRET).update(signedValue).digest('base64url').slice(0, 32);
+  const actualBuffer = Buffer.from(match[4]);
   const expectedBuffer = Buffer.from(expected);
   if (actualBuffer.length !== expectedBuffer.length || !crypto.timingSafeEqual(actualBuffer, expectedBuffer)) return null;
-  return { verificationId: Number(match[1]), kind: match[2] };
+  return { verificationId: Number(match[1]), kind: match[2], expiresAt };
 }
 
-const apiStatus = (status) => status === 'verified' ? 'approved' : status;
+const apiStatus = (status) => status === 'verified'
+  ? 'approved'
+  : status === 'resubmission_requested' ? 'rejected' : status;
 const databaseStatuses = (status) => {
   if (status === 'pending') return ['pending', 'under_review'];
   if (status === 'approved') return ['verified'];
-  if (status === 'rejected') return ['rejected'];
+  if (status === 'rejected') return ['rejected', 'resubmission_requested'];
   throw apiError(422, 'VALIDATION_ERROR', 'Unsupported verification queue.');
 };
 
-function summary(row) {
+function allowedActions(request, row) {
+  if (!['pending', 'under_review'].includes(row.status)) return [];
+  const granted = request.adminPermissions || new Set();
+  return [
+    granted.has('verifications.approve') ? 'approve' : null,
+    granted.has('verifications.reject') ? 'reject' : null,
+    granted.has('verifications.resubmit') ? 'request_resubmission' : null,
+  ].filter(Boolean);
+}
+
+function summary(request, row) {
   const user = row.user;
   return {
     verificationId: String(row.id),
@@ -45,9 +64,16 @@ function summary(row) {
     documentType: 'aadhaar',
     submittedAt: row.submittedAt,
     updatedAt: row.updatedAt,
-    reviewVersion: row.updatedAt.toISOString(),
-    allowedActions: [],
+    reviewedAt: row.reviewedAt,
+    reviewerName: row.reviewer?.name || null,
+    reviewVersion: `verification-${row.id}-v${Number(row.reviewVersion || 1)}`,
+    allowedActions: allowedActions(request, row),
   };
+}
+
+function includeReviewer() {
+  const { Administrator } = getModels();
+  return { model: Administrator, as: 'reviewer', attributes: ['id', 'name'], required: false };
 }
 
 function includeUser(options = {}) {
@@ -85,14 +111,14 @@ async function listRows(request, page) {
     : [[sortBy, direction], ['id', 'DESC']];
   const result = await IdentityVerification.findAndCountAll({
     where,
-    include: [includeUser({ userWhere })],
+    include: [includeUser({ userWhere }), includeReviewer()],
     distinct: true,
     limit: page.pageSize,
     offset: page.offset,
     order,
   });
   return {
-    items: result.rows.map(summary),
+    items: result.rows.map((row) => summary(request, row)),
     pagination: {
       page: page.page,
       pageSize: page.pageSize,
@@ -102,12 +128,31 @@ async function listRows(request, page) {
   };
 }
 
-async function find(verificationId) {
+async function find(verificationId, options = {}) {
   const { IdentityVerification } = getModels();
-  return IdentityVerification.findByPk(verificationId, { include: [includeUser()] });
+  return IdentityVerification.findByPk(verificationId, {
+    ...options,
+    include: [includeUser(), includeReviewer()],
+  });
 }
 
-function details(request, row) {
+async function storedEvidence(row, kind) {
+  const prefix = kind === 'aadhaar' ? 'aadhaar' : 'selfie';
+  const storagePath = row[`${prefix}StoragePath`];
+  const mimeType = row[`${prefix}MimeType`];
+  const sizeBytes = Number(row[`${prefix}SizeBytes`]);
+  const absolutePath = absolutePathFor(storagePath);
+  if (!absolutePath || !imageTypes.has(mimeType) || !Number.isSafeInteger(sizeBytes) || sizeBytes <= 0) return null;
+  const stat = await fs.promises.stat(absolutePath).catch(() => null);
+  return stat?.isFile() && stat.size === sizeBytes ? { absolutePath, mimeType, sizeBytes } : null;
+}
+
+async function evidenceReady(row) {
+  const [aadhaar, selfie] = await Promise.all([storedEvidence(row, 'aadhaar'), storedEvidence(row, 'selfie')]);
+  return Boolean(aadhaar && selfie);
+}
+
+async function details(request, row) {
   const granted = request.adminPermissions || new Set();
   const evidence = [];
   if (granted.has('verifications.aadhaar.view')) evidence.push({
@@ -121,9 +166,9 @@ function details(request, row) {
     label: 'Selfie submission',
   });
   return {
-    summary: summary(row),
+    summary: summary(request, row),
     evidence,
-    evidenceReadyForDecision: false,
+    evidenceReadyForDecision: await evidenceReady(row),
   };
 }
 
@@ -133,11 +178,8 @@ async function media(value) {
   const { IdentityVerification } = getModels();
   const row = await IdentityVerification.findByPk(parsed.verificationId);
   if (!row) return null;
-  const storagePath = parsed.kind === 'aadhaar' ? row.aadhaarStoragePath : row.selfieStoragePath;
-  const mimeType = parsed.kind === 'aadhaar' ? row.aadhaarMimeType : row.selfieMimeType;
-  const sizeBytes = parsed.kind === 'aadhaar' ? row.aadhaarSizeBytes : row.selfieSizeBytes;
-  const absolutePath = absolutePathFor(storagePath);
-  return absolutePath ? { ...parsed, absolutePath, mimeType, sizeBytes } : null;
+  const stored = await storedEvidence(row, parsed.kind);
+  return stored ? { ...parsed, ...stored } : null;
 }
 
-module.exports = { listRows, find, details, media, parseMediaId };
+module.exports = { listRows, find, details, media, parseMediaId, evidenceReady };

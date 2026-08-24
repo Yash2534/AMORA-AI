@@ -6,7 +6,7 @@ const statusJson = (row) => row ? {
   status: row.status,
   submittedAt: row.submittedAt,
   reviewedAt: row.reviewedAt,
-  rejectionReason: row.status === 'rejected' ? row.rejectionReason : null,
+  rejectionReason: ['rejected', 'resubmission_requested'].includes(row.status) ? row.rejectionReason : null,
 } : { id: null, status: 'not_started', submittedAt: null, reviewedAt: null, rejectionReason: null };
 
 exports.me = async (req, res, next) => {
@@ -51,11 +51,18 @@ exports.submit = async (req, res, next) => {
         selfieSizeBytes: stored.selfie.sizeBytes,
         submittedAt: new Date(),
         reviewedAt: null,
+        reviewerAdministratorId: null,
+        reviewReasonCode: null,
+        resubmissionItems: null,
         rejectionReason: null,
       };
       if (existing) {
         previousPaths = [existing.aadhaarStoragePath, existing.selfieStoragePath];
-        row = await existing.update(values, { transaction });
+        row = await existing.update({
+          ...values,
+          reviewVersion: Number(existing.reviewVersion || 1) + 1,
+          submissionVersion: Number(existing.submissionVersion || 1) + 1,
+        }, { transaction });
       } else {
         row = await IdentityVerification.create(values, { transaction });
       }

@@ -224,7 +224,8 @@ test('admin user reads and lifecycle mutations commit to the client-authoritativ
     accessToken: adminToken,
   });
   assert.equal(verificationDetails.status, 200);
-  assert.equal(verificationDetails.body.data.summary.allowedActions.length, 0);
+  assert.deepEqual(verificationDetails.body.data.summary.allowedActions, ['approve']);
+  assert.equal(verificationDetails.body.data.evidenceReadyForDecision, true);
   assert.equal(verificationDetails.body.data.aadhaarStoragePath, undefined);
   assert.equal(verificationDetails.body.data.evidence.length, 2);
   const mediaResponse = await fetch(`${baseUrl}/api/admin/v1/media/${verificationDetails.body.data.evidence[0].mediaId}`, {
@@ -233,13 +234,32 @@ test('admin user reads and lifecycle mutations commit to the client-authoritativ
   assert.equal(mediaResponse.status, 200);
   assert.equal(mediaResponse.headers.get('cache-control'), 'no-store, private, max-age=0');
   assert.deepEqual(Buffer.from(await mediaResponse.arrayBuffer()), Buffer.from('89504e470d0a1a0a0000000d49484452', 'hex'));
-  const decisionBlocked = await request(`/api/admin/v1/verifications/${verification.id}/approve`, {
+  const decisionKey = crypto.randomUUID();
+  const approved = await request(`/api/admin/v1/verifications/${verification.id}/approve`, {
     method: 'POST',
     accessToken: adminToken,
-    body: { expectedVersion: verificationDetails.body.data.summary.reviewVersion, idempotencyKey: crypto.randomUUID() },
+    headers: {
+      'idempotency-key': decisionKey,
+      'if-match': verificationDetails.body.data.summary.reviewVersion,
+    },
+    body: { expectedVersion: verificationDetails.body.data.summary.reviewVersion, idempotencyKey: decisionKey },
   });
-  assert.equal(decisionBlocked.status, 501);
-  assert.equal(decisionBlocked.body.code, 'SCHEMA_NOT_AVAILABLE');
+  assert.equal(approved.status, 200);
+  assert.equal(approved.body.data.summary.status, 'approved');
+  await verification.reload();
+  await consumer.reload();
+  assert.equal(verification.status, 'verified');
+  assert.equal(String(verification.reviewerAdministratorId), String(administrator.id));
+  assert.ok(consumer.identityVerifiedAt);
+  const clientVerification = await request('/api/identity-verification/me', { accessToken: originalClientToken });
+  assert.equal(clientVerification.status, 200);
+  assert.equal(clientVerification.body.data.verification.status, 'verified');
+  const verificationHistory = await request(`/api/admin/v1/verifications/${verification.id}/history`, {
+    accessToken: adminToken,
+  });
+  assert.equal(verificationHistory.status, 200);
+  assert.equal(verificationHistory.body.data.items[0].action, 'approve');
+  assert.equal(verificationHistory.body.data.items[0].actorName, administrator.name);
 
   const deactivated = await request(`/api/admin/v1/users/${consumer.id}/deactivate`, {
     method: 'POST',

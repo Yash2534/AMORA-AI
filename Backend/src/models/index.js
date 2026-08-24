@@ -8,17 +8,20 @@ const definitions = {
   RoseTransaction: require('./RoseTransaction'),
   SavedProfile: require('./SavedProfile'), NotificationPreference: require('./NotificationPreference'), Notification: require('./Notification'),
   IdentityVerification: require('./IdentityVerification'),
+  IdentityVerificationReason: require('./IdentityVerificationReason'),
+  IdentityVerificationDecisionEvent: require('./IdentityVerificationDecisionEvent'),
   UserDevice: require('./UserDevice'), NotificationDelivery: require('./NotificationDelivery'),
   Administrator: require('./Administrator'), AdminRole: require('./AdminRole'),
   AdminPermission: require('./AdminPermission'), AdminRefreshToken: require('./AdminRefreshToken'),
   AdminAuditLog: require('./AdminAuditLog'), AdminPasswordResetToken: require('./AdminPasswordResetToken'),
+  AdminInvitation: require('./AdminInvitation'), AdminIdempotencyKey: require('./AdminIdempotencyKey'),
 };
 let models = {};
 function initModels(sequelize) {
   if (models.User) return models;
   const created = Object.fromEntries(Object.entries(definitions).map(([name, define]) => [name, define(sequelize)]));
-  const { User, RefreshToken, OnboardingProfile, DiscoverAction, Match, DiscoverFilterPreference, Block, Report, Conversation, ConversationParticipant, Message, MessageMedia, Event, EventRegistration, EventWaitlist, SubscriptionPlan, Subscription, Payment, PaymentEvent, RoseTransaction, SavedProfile, NotificationPreference, Notification, IdentityVerification, UserDevice, NotificationDelivery } = created;
-  const { Administrator, AdminRole, AdminPermission, AdminRefreshToken, AdminAuditLog, AdminPasswordResetToken } = created;
+  const { User, RefreshToken, OnboardingProfile, DiscoverAction, Match, DiscoverFilterPreference, Block, Report, Conversation, ConversationParticipant, Message, MessageMedia, Event, EventRegistration, EventWaitlist, SubscriptionPlan, Subscription, Payment, PaymentEvent, RoseTransaction, SavedProfile, NotificationPreference, Notification, IdentityVerification, IdentityVerificationReason, IdentityVerificationDecisionEvent, UserDevice, NotificationDelivery } = created;
+  const { Administrator, AdminRole, AdminPermission, AdminRefreshToken, AdminAuditLog, AdminPasswordResetToken, AdminInvitation, AdminIdempotencyKey } = created;
   User.hasMany(RefreshToken, { foreignKey: 'userId', onDelete: 'CASCADE' }); RefreshToken.belongsTo(User, { foreignKey: 'userId' }); User.hasOne(OnboardingProfile, { foreignKey: 'userId', onDelete: 'CASCADE' }); OnboardingProfile.belongsTo(User, { foreignKey: 'userId' });
   User.hasMany(DiscoverAction, { foreignKey: 'actorUserId', onDelete: 'CASCADE', as: 'discoverActions' }); DiscoverAction.belongsTo(User, { foreignKey: 'actorUserId', as: 'actor' }); DiscoverAction.belongsTo(User, { foreignKey: 'targetUserId', as: 'target' });
   User.hasMany(Match, { foreignKey: 'userOneId', onDelete: 'CASCADE', as: 'firstMatches' }); User.hasMany(Match, { foreignKey: 'userTwoId', onDelete: 'CASCADE', as: 'secondMatches' }); Match.belongsTo(User, { foreignKey: 'userOneId', as: 'userOne' }); Match.belongsTo(User, { foreignKey: 'userTwoId', as: 'userTwo' });
@@ -28,6 +31,14 @@ function initModels(sequelize) {
   User.hasMany(Notification, { foreignKey: 'userId', as: 'notifications', onDelete: 'CASCADE' }); Notification.belongsTo(User, { foreignKey: 'userId', as: 'user' });
   User.hasMany(Notification, { foreignKey: 'actorUserId', as: 'triggeredNotifications', onDelete: 'SET NULL' }); Notification.belongsTo(User, { foreignKey: 'actorUserId', as: 'actor' });
   User.hasOne(IdentityVerification, { foreignKey: 'userId', as: 'identityVerification', onDelete: 'CASCADE' }); IdentityVerification.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+  Administrator.hasMany(IdentityVerification, { foreignKey: 'reviewerAdministratorId', as: 'reviewedIdentityVerifications', onDelete: 'SET NULL' });
+  IdentityVerification.belongsTo(Administrator, { foreignKey: 'reviewerAdministratorId', as: 'reviewer' });
+  IdentityVerification.hasMany(IdentityVerificationDecisionEvent, { foreignKey: 'verificationId', as: 'decisionEvents', onDelete: 'CASCADE' });
+  IdentityVerificationDecisionEvent.belongsTo(IdentityVerification, { foreignKey: 'verificationId', as: 'verification' });
+  Administrator.hasMany(IdentityVerificationDecisionEvent, { foreignKey: 'administratorId', as: 'identityVerificationDecisions', onDelete: 'SET NULL' });
+  IdentityVerificationDecisionEvent.belongsTo(Administrator, { foreignKey: 'administratorId', as: 'administrator' });
+  IdentityVerificationReason.hasMany(IdentityVerificationDecisionEvent, { foreignKey: 'reasonId', as: 'decisionEvents', onDelete: 'RESTRICT' });
+  IdentityVerificationDecisionEvent.belongsTo(IdentityVerificationReason, { foreignKey: 'reasonId', as: 'reason' });
   User.hasMany(UserDevice, { foreignKey: 'userId', as: 'devices', onDelete: 'CASCADE' }); UserDevice.belongsTo(User, { foreignKey: 'userId', as: 'user' });
   Notification.hasMany(NotificationDelivery, { foreignKey: 'notificationId', as: 'deliveries', onDelete: 'CASCADE' }); NotificationDelivery.belongsTo(Notification, { foreignKey: 'notificationId', as: 'notification' }); UserDevice.hasMany(NotificationDelivery, { foreignKey: 'userDeviceId', as: 'deliveries', onDelete: 'CASCADE' }); NotificationDelivery.belongsTo(UserDevice, { foreignKey: 'userDeviceId', as: 'device' });
   User.hasMany(Block, { foreignKey: 'blockerUserId', as: 'blocksCreated', onDelete: 'CASCADE' }); User.hasMany(Block, { foreignKey: 'blockedUserId', as: 'blocksReceived', onDelete: 'CASCADE' }); Block.belongsTo(User, { foreignKey: 'blockerUserId', as: 'blocker' }); Block.belongsTo(User, { foreignKey: 'blockedUserId', as: 'blockedUser' });
@@ -94,6 +105,11 @@ function initModels(sequelize) {
     foreignKey: 'administratorId',
     as: 'administrator',
   });
+  Administrator.hasMany(AdminInvitation, { foreignKey: 'administratorId', as: 'invitations', onDelete: 'CASCADE' });
+  AdminInvitation.belongsTo(Administrator, { foreignKey: 'administratorId', as: 'administrator' });
+  AdminInvitation.belongsTo(Administrator, { foreignKey: 'invitedByAdministratorId', as: 'invitedBy' });
+  Administrator.hasMany(AdminIdempotencyKey, { foreignKey: 'administratorId', as: 'idempotencyKeys', onDelete: 'CASCADE' });
+  AdminIdempotencyKey.belongsTo(Administrator, { foreignKey: 'administratorId', as: 'administrator' });
   Administrator.hasMany(AdminAuditLog, {
     foreignKey: 'administratorId',
     as: 'auditLogs',

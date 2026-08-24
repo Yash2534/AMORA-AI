@@ -10,6 +10,7 @@ const dashboard = require('../controllers/adminDashboardController');
 const adminUserRoutes = require('./adminUserRoutes');
 const adminProfileRoutes = require('./adminProfileRoutes');
 const adminVerificationRoutes = require('./adminVerificationRoutes');
+const adminManagementRoutes = require('./adminManagementRoutes');
 
 router.use(auditContext);
 router.get('/health', (_req, res) => res.json({
@@ -23,6 +24,7 @@ router.use(requireAdminAuth);
 router.use('/users', adminUserRoutes);
 router.use('/profiles', adminProfileRoutes);
 router.use('/verifications', adminVerificationRoutes);
+router.use('/', adminManagementRoutes);
 router.get('/media/:mediaId', requireAdminPermission('verifications.details.view'), require('../controllers/adminVerificationController').media);
 router.get('/dashboard/overview', [
   query('range').optional().isIn(['today', '7d', '30d', '90d']),
@@ -31,8 +33,6 @@ router.get('/dashboard/overview', [
   query('timezone').optional().isString().isLength({ min: 1, max: 80 }),
 ], validate, requireAdminPermission('dashboard.view'), dashboard.overview);
 router.get('/dashboard/notifications', requireAdminPermission('dashboard.view'), dashboard.notifications);
-router.get('/permissions', requireAdminPermission('permissions.view', 'permissions.catalog.view'), catalog.permissions);
-router.get('/roles', requireAdminPermission('roles.view'), catalog.roles);
 router.get('/audit-logs', [
   query('page').optional().isInt({ min: 1, max: 100000 }).toInt(),
   query('pageSize').optional().isInt({ min: 1, max: 100 }).toInt(),

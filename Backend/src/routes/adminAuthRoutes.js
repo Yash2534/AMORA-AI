@@ -2,6 +2,7 @@ const router = require('express').Router();
 const { body, param } = require('express-validator');
 const rateLimit = require('express-rate-limit');
 const controller = require('../controllers/adminAuthController');
+const managementController = require('../controllers/adminManagementController');
 const validate = require('../middleware/validateRequest');
 const requireAdminAuth = require('../middleware/adminAuthMiddleware');
 const requireTrustedOrigin = require('../middleware/adminOriginMiddleware');
@@ -73,6 +74,13 @@ router.post('/reset-password', recoveryLimiter, [
   body('token').matches(/^[a-f0-9]{32}\.[a-f0-9]{64}$/).withMessage('A valid reset token is required.'),
   ...passwordFields(),
 ], validate, controller.resetPassword);
+router.post('/validate-invitation', recoveryLimiter, [
+  body('token').matches(/^[a-f0-9]{32}\.[a-f0-9]{64}$/).withMessage('A valid invitation token is required.'),
+], validate, managementController.invitationStatus);
+router.post('/accept-invitation', recoveryLimiter, [
+  body('token').matches(/^[a-f0-9]{32}\.[a-f0-9]{64}$/).withMessage('A valid invitation token is required.'),
+  ...passwordFields(),
+], validate, managementController.acceptInvitation);
 router.get('/me', requireAdminAuth, controller.me);
 router.post('/change-password', requireAdminAuth, [
   body('currentPassword').isString().isLength({ min: 8, max: 128 }).withMessage('Current password is required.'),

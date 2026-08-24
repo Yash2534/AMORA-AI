@@ -111,7 +111,7 @@ async function login(email, password, rememberMe, request) {
   const normalized = normalizeEmail(email);
   const administrator = await Administrator.findOne({ where: { email: normalized } });
   const locked = administrator?.lockedUntil && new Date(administrator.lockedUntil) > now();
-  const passwordMatches = administrator
+  const passwordMatches = administrator?.passwordHash
     ? await bcrypt.compare(password, administrator.passwordHash)
     : false;
 
@@ -361,7 +361,9 @@ async function passwordResetStatus(token) {
 }
 
 function validateNewPassword(value) {
-  if (typeof value !== 'string' || value.length < 8 || value.length > 128) {
+  if (typeof value !== 'string' || value.length < 8 || value.length > 128
+      || !/[a-z]/.test(value) || !/[A-Z]/.test(value)
+      || !/[0-9]/.test(value) || !/[^A-Za-z0-9]/.test(value)) {
     throw authError(422, 'PASSWORD_POLICY_FAILED', 'The new password does not satisfy the administrator password policy.');
   }
 }

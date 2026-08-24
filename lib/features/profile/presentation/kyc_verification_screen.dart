@@ -69,10 +69,19 @@ class _KycVerificationScreenState extends State<KycVerificationScreen> {
           IdentityVerificationStatus.verified,
         }.contains(snapshot.status)) {
           _stage = _KycStage.complete;
-        } else if (snapshot.status == IdentityVerificationStatus.rejected) {
+        } else if ({
+          IdentityVerificationStatus.rejected,
+          IdentityVerificationStatus.resubmissionRequested,
+        }.contains(snapshot.status)) {
           _verificationError =
               snapshot.rejectionReason?.trim().isNotEmpty == true
-              ? 'Previous submission was not approved: ${snapshot.rejectionReason}'
+              ? snapshot.status ==
+                        IdentityVerificationStatus.resubmissionRequested
+                    ? 'New evidence was requested: ${snapshot.rejectionReason}'
+                    : 'Previous submission was not approved: ${snapshot.rejectionReason}'
+              : snapshot.status ==
+                    IdentityVerificationStatus.resubmissionRequested
+              ? 'New verification evidence was requested. You can submit new images.'
               : 'Your previous submission was not approved. You can submit new images.';
         }
       });
@@ -126,6 +135,34 @@ class _KycVerificationScreenState extends State<KycVerificationScreen> {
                     _KycHero(progress: _progress, stage: _stage),
                     const SizedBox(height: AmoraSpacing.space16),
                     _VerificationTimeline(stage: _stage),
+                    if (_verificationError != null &&
+                        _stage != _KycStage.processing) ...[
+                      const SizedBox(height: AmoraSpacing.space16),
+                      Semantics(
+                        liveRegion: true,
+                        child: PremiumCard(
+                          color: AppColors.premiumGold.withValues(alpha: .12),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Icon(
+                                Icons.info_outline_rounded,
+                                color: AppColors.primary,
+                              ),
+                              const SizedBox(width: AmoraSpacing.space12),
+                              Expanded(
+                                child: Text(
+                                  _verificationError!,
+                                  style: AmoraTextStyles.bodyMedium.copyWith(
+                                    color: AppColors.primary,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: AmoraSpacing.space16),
                     AnimatedSwitcher(
                       duration: const Duration(milliseconds: 260),

@@ -7,6 +7,7 @@ enum IdentityVerificationStatus {
   underReview,
   verified,
   rejected,
+  resubmissionRequested,
 }
 
 class IdentityVerificationSnapshot {
@@ -29,6 +30,8 @@ class IdentityVerificationSnapshot {
       'under_review' => IdentityVerificationStatus.underReview,
       'verified' => IdentityVerificationStatus.verified,
       'rejected' => IdentityVerificationStatus.rejected,
+      'resubmission_requested' =>
+        IdentityVerificationStatus.resubmissionRequested,
       _ => IdentityVerificationStatus.notStarted,
     };
     return IdentityVerificationSnapshot(
