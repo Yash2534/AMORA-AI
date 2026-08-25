@@ -54,6 +54,13 @@ async function main() {
     assert(indexes.some((item) => item.unique && item.fields.some((field) => field.attribute === 'idempotencyKey')),
       'Unique decision idempotency index is missing.');
 
+    const revertedFinancialIndexes = await undo({ sequelize, quiet: true });
+    assert(revertedFinancialIndexes === '202608280001-add-admin-financial-read-indexes.js',
+      'Rollback did not first target the Admin financial read-index migration.');
+    const paymentIndexesAfterRollback = await queryInterface.showIndex('Payments');
+    assert(!paymentIndexesAfterRollback.some((item) => item.name === 'payments_admin_status_history'),
+      'Admin financial indexes survived rollback.');
+
     const reverted = await undo({ sequelize, quiet: true });
     assert(reverted === '202608270001-complete-kyc-decisions.js', 'Rollback did not target the KYC migration.');
     const rolledBackTables = new Set((await queryInterface.showAllTables()).map((value) => String(value).toLowerCase()));
@@ -64,8 +71,10 @@ async function main() {
       'KYC decision columns survived rollback.');
 
     const reapplied = await migrate({ sequelize, quiet: true });
-    assert(reapplied.length === 1 && reapplied[0] === '202608270001-complete-kyc-decisions.js',
-      'Forward migration did not reapply exactly once.');
+    assert(reapplied.length === 2
+      && reapplied[0] === '202608270001-complete-kyc-decisions.js'
+      && reapplied[1] === '202608280001-add-admin-financial-read-indexes.js',
+    'Forward migrations did not reapply in the expected order.');
     const finalStatus = await status({ sequelize });
     assert(finalStatus.every((item) => item.status === 'up'), 'Not every migration is up after reapply.');
     console.log(`[KYC Migration] ${finalStatus.length}/${finalStatus.length} up; rollback and forward reapply passed in ${databaseName}.`);
