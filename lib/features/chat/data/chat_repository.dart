@@ -1,12 +1,15 @@
 import 'dart:async';
+import 'dart:developer' as developer;
 
 import 'package:amora_ai/core/auth/auth_service.dart';
 import 'package:amora_ai/core/config/amora_api_config.dart';
 import 'package:amora_ai/core/data/image_repository.dart';
 import 'package:amora_ai/core/media/amora_media_picker.dart';
 import 'package:amora_ai/features/profile/data/public_profile_mapper.dart';
+import 'package:amora_ai/features/chat/data/stream_chat_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
+import 'package:stream_chat_flutter/stream_chat_flutter.dart' as stream;
 
 enum ChatMessageStatus { sending, queued, sent, delivered, read, failed }
 
@@ -116,6 +119,7 @@ class ChatConversation {
     this.draft = '',
     this.hasMoreMessages = false,
     this.nextMessageCursor,
+    this.matchId,
   });
 
   final String id;
@@ -132,6 +136,7 @@ class ChatConversation {
   final String draft;
   final bool hasMoreMessages;
   final String? nextMessageCursor;
+  final String? matchId;
 
   ChatConversation copyWith({
     List<ChatMessage>? messages,
@@ -146,6 +151,7 @@ class ChatConversation {
     String? draft,
     bool? hasMoreMessages,
     String? nextMessageCursor,
+    String? matchId,
   }) => ChatConversation(
     id: id,
     user: user,
@@ -161,7 +167,8 @@ class ChatConversation {
     unavailableReason: unavailableReason ?? this.unavailableReason,
     draft: draft ?? this.draft,
     hasMoreMessages: hasMoreMessages ?? this.hasMoreMessages,
-    nextMessageCursor: nextMessageCursor ?? this.nextMessageCursor,
+      nextMessageCursor: nextMessageCursor ?? this.nextMessageCursor,
+      matchId: matchId ?? this.matchId,
   );
 }
 
@@ -216,6 +223,8 @@ class ChatRepository extends ChangeNotifier {
   bool _testingMode = false;
   bool _failNextForTesting = false;
   final Map<String, Future<Uint8List>> _mediaCache = {};
+  final Map<String, StreamSubscription<List<stream.Message>>>
+  _streamMessageSubscriptions = {};
 
   List<ChatConversation> get conversations =>
       List<ChatConversation>.unmodifiable(_conversations);
@@ -232,6 +241,7 @@ class ChatRepository extends ChangeNotifier {
       notifyListeners();
       return;
     }
+    try { await StreamChatService.instance.connectAuthenticatedUser(); } on Object { /* Existing Amora chat remains available while Stream is not configured. */ }
     try {
       await refreshConversations();
     } catch (_) {
@@ -363,6 +373,15 @@ class ChatRepository extends ChangeNotifier {
     if (_testingMode) return conversation(conversationId);
     final current = conversation(conversationId);
     if (current?.canMessage == false) return current;
+    final matchId = current?.matchId;
+    if (matchId != null && matchId.isNotEmpty) {
+      try {
+        final channel = await StreamChatService.instance.openMatchedChannel(matchId);
+        _bindStreamMessages(conversationId, channel);
+      } on Object catch (error) {
+        developer.log('[Stream] Channel provisioning unavailable.', name: 'AmoraStream', error: error);
+      }
+    }
     final cursor = older ? current?.nextMessageCursor : null;
     final response = await _remote.request(
       'GET',
@@ -404,6 +423,7 @@ class ChatRepository extends ChangeNotifier {
       draft: conversationJson['draft']?.toString() ?? '',
       hasMoreMessages: pagination['hasMore'] == true,
       nextMessageCursor: pagination['nextCursor']?.toString(),
+      matchId: current?.matchId,
     );
     _upsertConversation(next);
     _socket?.emit('conversation.subscribe', {'conversationId': conversationId});
@@ -414,12 +434,21 @@ class ChatRepository extends ChangeNotifier {
     final current = conversation(conversationId);
     if (current == null) return;
     final latest = current.messages.isEmpty ? null : current.messages.last.id;
+    final latestMessageId = latest == null ? null : int.tryParse(latest);
     if (!_testingMode) {
       await _remote.request(
         'PUT',
         '/api/conversations/$conversationId/read',
-        body: {if (latest != null) 'messageId': int.parse(latest)},
+        body: {if (latestMessageId != null) 'messageId': latestMessageId},
       );
+      final matchId = current.matchId;
+      if (matchId != null && matchId.isNotEmpty) {
+        try {
+          await StreamChatService.instance.markRead(matchId);
+        } on Object catch (error) {
+          developer.log('[Stream] Read state update failed.', name: 'AmoraStream', error: error);
+        }
+      }
     }
     _replace(current.copyWith(unread: 0));
   }
@@ -574,6 +603,10 @@ class ChatRepository extends ChangeNotifier {
   }
 
   Future<void> clearForAccountDeletion() async {
+    for (final subscription in _streamMessageSubscriptions.values) {
+      await subscription.cancel();
+    }
+    _streamMessageSubscriptions.clear();
     _socket?.disconnect();
     _socket?.dispose();
     _socket = null;
@@ -581,6 +614,40 @@ class ChatRepository extends ChangeNotifier {
     _mediaCache.clear();
     _error = null;
     notifyListeners();
+  }
+
+  Future<void> closeStreamConversation(String conversationId) async {
+    final subscription = _streamMessageSubscriptions.remove(conversationId);
+    await subscription?.cancel();
+  }
+
+  void _bindStreamMessages(String conversationId, stream.Channel channel) {
+    if (_streamMessageSubscriptions.containsKey(conversationId)) return;
+    void sync(List<stream.Message> messages) {
+      final current = conversation(conversationId);
+      if (current == null) return;
+      final streamMessages = messages.map(_messageFromStream).toList();
+      final merged = _mergeMessages(current.messages, streamMessages);
+      if (merged.isEmpty) return;
+      _replace(
+        current.copyWith(
+          messages: merged,
+          lastMessage: _preview(merged.last),
+          time: merged.last.time,
+        ),
+      );
+    }
+
+    sync(channel.state?.messages ?? const <stream.Message>[]);
+    _streamMessageSubscriptions[conversationId] = channel.state!.messagesStream
+        .listen(sync, onError: (Object error, StackTrace stackTrace) {
+          developer.log(
+            '[Stream] Channel message stream failed.',
+            name: 'AmoraStream',
+            error: error,
+            stackTrace: stackTrace,
+          );
+        });
   }
 
   Future<void> _connectRealtime({bool force = false}) async {
@@ -784,6 +851,7 @@ class ChatRepository extends ChangeNotifier {
       muted: json['muted'] == true,
       canMessage: json['canMessage'] != false,
       availabilityReasonCode: json['availabilityReason']?.toString(),
+      matchId: json['matchId']?.toString(),
       unavailableReason: _unavailableMessage(
         json['availabilityReason']?.toString(),
       ),
@@ -840,6 +908,26 @@ class ChatRepository extends ChangeNotifier {
       type: json['type']?.toString() ?? 'text',
       mediaUrl: media.isEmpty ? null : (media.first as Map)['url']?.toString(),
       deleted: json['deleted'] == true,
+    );
+  }
+
+  ChatMessage _messageFromStream(stream.Message message) {
+    final sender = message.user?.id ?? '';
+    final senderId = sender.startsWith('amora_user_')
+        ? sender.substring('amora_user_'.length)
+        : sender;
+    final currentStreamUserId = StreamChatService.instance.connectedUserId;
+    final created = message.createdAt.toLocal();
+    return ChatMessage(
+      id: message.extraData['amora_message_id']?.toString() ?? 'stream:${message.id}',
+      text: message.isDeleted ? 'Message deleted' : message.text ?? '',
+      mine: sender == currentStreamUserId,
+      time: _displayTime(created),
+      createdAtEpochMs: created.millisecondsSinceEpoch,
+      conversationId: '',
+      senderId: senderId,
+      status: ChatMessageStatus.sent,
+      deleted: message.isDeleted,
     );
   }
 

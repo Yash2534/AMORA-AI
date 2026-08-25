@@ -7,6 +7,7 @@ const { serializePublicProfile } = require('../services/publicProfileService');
 const { emitConversationEvent, isUserOnline } = require('../realtime/realtimeHub');
 const { createNotification } = require('../services/notificationService');
 const { storeMedia, removeStoredMedia, absolutePathFor } = require('../utils/chatMediaStorage');
+const { publishMessage } = require('../services/streamChatService');
 
 const unavailable = (res) => res.status(404).json({ success: false, message: 'Conversation is not available.', code: 'CONVERSATION_NOT_AVAILABLE', errors: [] });
 const mediaFor = (message) => (message.media || []).map((item) => ({
@@ -154,6 +155,7 @@ exports.send = async (req, res, next) => {
     });
     message = await includedMessage(message.id);
     const payload = messageJson(message, userId, access.other.lastReadMessageId);
+    await publishMessage(access.match.id, message.id, userId, text);
     await emitConversationEvent(conversationId, 'message.created', { conversationId: String(conversationId), message: payload });
     await emitConversationEvent(conversationId, 'conversation.updated', { conversationId: String(conversationId), message: payload });
     await createNotification({ userId: Number(access.other.userId), actorUserId: userId, type: 'new_message', category: 'message', title: req.authUser.name, message: text.slice(0, 160), data: { conversationId: String(conversationId), messageId: String(message.id) }, conversationId, dedupeKey: `message:${message.id}` });

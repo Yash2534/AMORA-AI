@@ -40,8 +40,9 @@ async function conversationAccess(conversationId, userId, options = {}) {
   if (!member || !other || conversation.participants.length !== 2) return null;
   if (other.user?.accountStatus !== 'active') return null;
   if (await areUsersBlocked(userId, other.userId, { transaction: options.transaction })) return null;
-  if (!(await activeMatch(userId, other.userId, { transaction: options.transaction }))) return null;
-  return { conversation, member, other, otherUser: other.user };
+  const match = await activeMatch(userId, other.userId, { transaction: options.transaction });
+  if (!match) return null;
+  return { conversation, member, other, otherUser: other.user, match };
 }
 
 async function eligibleTarget(targetUserId, transaction) {

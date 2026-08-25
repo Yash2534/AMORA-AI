@@ -85,7 +85,7 @@ exports.updateOwnProfile = async (req, res, next) => {
       if (Object.prototype.hasOwnProperty.call(req.body, 'photos')) {
         const stored = list(profile.photos);
         const normalized = req.body.photos.map((value) => {
-          try { return new URL(value).pathname; } catch (_) { return value; }
+          try { const url = new URL(value); return url.host === req.get('host') ? url.pathname : value; } catch (_) { return value; }
         });
         const normalizedSet = new Set(normalized);
         if (normalized.length !== stored.length

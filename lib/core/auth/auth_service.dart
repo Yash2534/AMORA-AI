@@ -2,6 +2,9 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:amora_ai/core/config/amora_api_config.dart';
+import 'package:amora_ai/core/firebase/firebase_service.dart';
+import 'package:amora_ai/firebase_options.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -143,7 +146,9 @@ class AuthService {
       'phoneNumber': phoneNumber,
       'code': code,
     });
-    return _saveAuthentication(response);
+    final user = await _saveAuthentication(response);
+    await FirebaseService.instance.logAuthEvent('sign_up', method: 'password');
+    return user;
   }
 
   Future<AmoraUser> login(String email, String password) async {
@@ -151,11 +156,16 @@ class AuthService {
       'email': email,
       'password': password,
     });
-    return _saveAuthentication(response);
+    final user = await _saveAuthentication(response);
+    await FirebaseService.instance.logAuthEvent('login', method: 'password');
+    return user;
   }
 
   Future<AmoraUser> googleSignIn() async {
-    final account = await GoogleSignIn(scopes: const ['email']).signIn();
+    final account = await GoogleSignIn(
+      clientId: DefaultFirebaseOptions.googleSignInClientId,
+      scopes: const ['email'],
+    ).signIn();
     if (account == null) {
       throw const AuthException('Google sign-in was cancelled.');
     }
@@ -166,8 +176,24 @@ class AuthService {
         'Google did not return an ID token. Check the app OAuth configuration.',
       );
     }
-    final response = await _post('/api/auth/google', {'idToken': idToken});
-    return _saveAuthentication(response);
+    try {
+      await FirebaseService.instance.signInWithGoogleCredential(
+        idToken: idToken,
+        accessToken: authentication.accessToken,
+      );
+      final response = await _post('/api/auth/google', {'idToken': idToken});
+      final user = await _saveAuthentication(response);
+      await FirebaseService.instance.logAuthEvent('login', method: 'google');
+      return user;
+    } on FirebaseAuthException catch (error) {
+      throw AuthException(
+        error.message ?? 'Google sign-in could not be completed.',
+        code: error.code,
+      );
+    } on AuthException {
+      await FirebaseService.instance.signOut();
+      rethrow;
+    }
   }
 
   Future<void> forgotPassword(String email) async =>
@@ -204,6 +230,15 @@ class AuthService {
   Future<void> logout() async {
     try {
       if (_accessToken != null && _refreshToken != null) {
+        final deviceToken = await FirebaseService.instance.currentToken();
+        if (deviceToken != null) {
+          await _request(
+            'DELETE',
+            '/api/devices',
+            body: {'pushToken': deviceToken},
+            authenticated: true,
+          );
+        }
         await _post('/api/auth/logout', {
           'refreshToken': _refreshToken,
         }, authenticated: true);
@@ -211,6 +246,16 @@ class AuthService {
     } on AuthException {
       // Local token removal is still required if the network is unavailable.
     } finally {
+      FirebaseService.instance.clearAuthenticatedDevice();
+      try {
+        await FirebaseService.instance.signOut();
+      } catch (error, stack) {
+        await FirebaseService.instance.recordNonFatal(
+          error,
+          stack,
+          reason: 'firebase_sign_out',
+        );
+      }
       await clearSession();
     }
   }
@@ -238,7 +283,19 @@ class AuthService {
     await _storage.write(key: _accessKey, value: _accessToken);
     await _storage.write(key: _refreshKey, value: _refreshToken);
     currentUser = AmoraUser.fromJson(data['user'] as Map<String, dynamic>);
+    registerCurrentFirebaseDevice();
     return currentUser!;
+  }
+
+  void registerCurrentFirebaseDevice() {
+    if (_accessToken == null || currentUser == null) return;
+    FirebaseService.instance.bindAuthenticatedDevice((token, platform) async {
+      await authenticatedRequest(
+        'POST',
+        '/api/devices',
+        body: {'pushToken': token, 'platform': platform},
+      );
+    });
   }
 
   Future<Map<String, dynamic>> authenticatedRequest(

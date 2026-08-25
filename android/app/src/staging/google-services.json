@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "348078187236",
+    "project_id": "kinetictecharc-app-staging",
+    "storage_bucket": "kinetictecharc-app-staging.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:348078187236:android:2ab10b4180837287e842f1",
+        "android_client_info": {
+          "package_name": "com.kinetictecharc.app.staging"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "348078187236-665ejt62ifljk530dr218gbu8m28sb1f.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.kinetictecharc.app.staging",
+            "certificate_hash": "e0288246f3f5b2a94b7044c091fee3b38533d0ec"
+          }
+        },
+        {
+          "client_id": "348078187236-28har51vn6ccn13hbd9vadrvtohvuo18.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBmPGPtkHfA8_maLNJ-M0wFMsS1TsY5PIQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "348078187236-28har51vn6ccn13hbd9vadrvtohvuo18.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "348078187236-aftre9b12gsb8hjlcrhdaca345q9mruq.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.kinetictecharc.app"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

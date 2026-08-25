@@ -1,6 +1,12 @@
+import 'dart:async';
+
+import 'package:firebase_core/firebase_core.dart' hide FirebaseService;
+import 'package:firebase_analytics/firebase_analytics.dart';
+import 'firebase_options.dart';
 import 'package:amora_ai/core/constants/app_images.dart';
 import 'package:amora_ai/core/access/amora_access.dart';
 import 'package:amora_ai/core/auth/auth_service.dart';
+import 'package:amora_ai/core/firebase/firebase_service.dart';
 import 'package:amora_ai/core/api/phase_two_api_service.dart';
 import 'package:amora_ai/core/theme/amora_theme.dart';
 import 'package:amora_ai/core/theme/amora_theme_controller.dart';
@@ -26,6 +32,7 @@ import 'package:amora_ai/features/legal/presentation/legal_document_screen.dart'
 import 'package:amora_ai/features/legal/presentation/community_guidelines_screen.dart';
 import 'package:amora_ai/features/matches/presentation/matches_screen.dart';
 import 'package:amora_ai/features/notifications/presentation/notifications_hub_screen.dart';
+import 'package:amora_ai/features/notifications/data/notification_inbox_repository.dart';
 import 'package:amora_ai/features/onboarding/presentation/onboarding_screen.dart';
 import 'package:amora_ai/features/onboarding/presentation/profile_onboarding_flow.dart';
 import 'package:amora_ai/features/onboarding/data/local_onboarding_repository.dart';
@@ -62,8 +69,19 @@ import 'package:flutter/material.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await FirebaseService.instance.initialize();
+  FirebaseService.instance.listenForTokenRefresh();
+
   await AuthService.instance.initialize();
   await AmoraSession.restore();
+  AuthService.instance.registerCurrentFirebaseDevice();
+  FirebaseService.instance.foregroundMessages.listen((_) {
+    if (AuthService.instance.currentUser != null) {
+      unawaited(NotificationInboxRepository.instance.refresh());
+    }
+  });
   await LocalProfileRepository.instance.initialize();
   await ProfileRelationshipController.instance.refreshRemote();
   await LocalOnboardingRepository.instance.initialize();
@@ -71,6 +89,9 @@ Future<void> main() async {
   await ChatRepository.instance.initialize();
   runApp(const MyApp());
 }
+
+final GlobalKey<NavigatorState> _amoraNavigatorKey =
+    GlobalKey<NavigatorState>();
 
 String resolveAmoraInitialRoute(String platformRoute) {
   final hashIndex = platformRoute.indexOf('#');
@@ -95,6 +116,18 @@ class _MyAppState extends State<MyApp> {
   bool _didPrecacheImages = false;
 
   @override
+  void initState() {
+    super.initState();
+    FirebaseService.instance.setNotificationOpenHandler((_) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _amoraNavigatorKey.currentState?.pushNamed(
+          NotificationsHubScreen.routeName,
+        );
+      });
+    });
+  }
+
+  @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (_didPrecacheImages) return;
@@ -107,6 +140,12 @@ class _MyAppState extends State<MyApp> {
     return ValueListenableBuilder<ThemeMode>(
       valueListenable: AmoraThemeController.instance.mode,
       builder: (context, themeMode, _) => MaterialApp(
+        navigatorKey: _amoraNavigatorKey,
+        navigatorObservers: [
+          FirebaseAnalyticsObserver(
+            analytics: FirebaseService.instance.analytics,
+          ),
+        ],
         title: 'AMORAA',
         debugShowCheckedModeBanner: false,
         theme: AmoraTheme.light(),

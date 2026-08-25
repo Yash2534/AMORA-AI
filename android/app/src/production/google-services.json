@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "413960132847",
+    "project_id": "kinetictecharc-app-prod",
+    "storage_bucket": "kinetictecharc-app-prod.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:413960132847:android:74c1d3df817350899aa31a",
+        "android_client_info": {
+          "package_name": "com.kinetictecharc.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "413960132847-jo5c8mj76v01tn0lnalmhe0igqfsfo62.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.kinetictecharc.app",
+            "certificate_hash": "e0288246f3f5b2a94b7044c091fee3b38533d0ec"
+          }
+        },
+        {
+          "client_id": "413960132847-k6gfu1t5ldft5bmmomptspcjt5qobguq.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAkZtq_EGXwxQQ3I-GxBsX_YEaF7yCSz4g"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "413960132847-k6gfu1t5ldft5bmmomptspcjt5qobguq.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "413960132847-vt2tm9ajni5ebvn9ed3eabuevcrd4ut0.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.kinetictecharc.app"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -106,6 +106,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     final conversationId = _conversationId;
     if (conversationId != null) {
       unawaited(_repository.saveDraft(conversationId, _controller.text));
+      unawaited(_repository.closeStreamConversation(conversationId));
     }
     unawaited(_conversationSubscription?.cancel());
     _controller.dispose();

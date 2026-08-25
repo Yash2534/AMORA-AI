@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:developer' as developer;
 
 import 'package:amora_ai/core/constants/app_images.dart';
 import 'package:amora_ai/core/auth/auth_service.dart';
@@ -8,6 +9,8 @@ import 'package:amora_ai/core/widgets/amora_dob_field.dart';
 import 'package:amora_ai/features/profile/domain/profile_completion_calculator.dart';
 import 'package:amora_ai/features/profile/domain/communication_style.dart';
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 @immutable
@@ -580,17 +583,67 @@ class LocalProfileRepository extends ChangeNotifier {
     if (bytes == null || mimeType == null) {
       throw const AuthException('The selected photo is no longer available.');
     }
-    final extension = switch (mimeType) {
-      'image/png' => 'png',
-      'image/webp' => 'webp',
-      _ => 'jpg',
-    };
-    final response = await AuthService.instance.authenticatedMultipart(
-      '/api/onboarding/photos',
-      field: 'photos',
-      bytes: bytes,
-      filename: 'profile-${DateTime.now().microsecondsSinceEpoch}.$extension',
-      mimeType: mimeType,
+    if (!const {'image/jpeg', 'image/png', 'image/webp'}.contains(mimeType) ||
+        bytes.lengthInBytes > 12 * 1024 * 1024) {
+      throw const AuthException('Only JPEG, PNG, and WebP images up to 12 MB are allowed.');
+    }
+    developer.log('[Cloudinary] requesting signature', name: 'AmoraCloudinary');
+    final signatureResponse = await AuthService.instance.authenticatedRequest(
+      'POST',
+      '/api/onboarding/photos/sign',
+      body: {'mimeType': mimeType},
+    );
+    final signature = (signatureResponse['data'] as Map?)?.cast<String, dynamic>();
+    final cloudName = signature?['cloudName'] as String?;
+    final apiKey = signature?['apiKey'] as String?;
+    final timestamp = signature?['timestamp'];
+    final signedValue = signature?['signature'] as String?;
+    final uploadPreset = signature?['uploadPreset'] as String?;
+    final folder = signature?['folder'] as String?;
+    final publicId = signature?['publicId'] as String?;
+    final formats = (signature?['allowedFormats'] as List?)?.join(',');
+    if (cloudName == null || apiKey == null || timestamp == null || signedValue == null || uploadPreset == null || folder == null || publicId == null || formats == null) {
+      throw const AuthException('The upload service returned an incomplete signature.');
+    }
+    developer.log('[Cloudinary] signature received', name: 'AmoraCloudinary');
+    developer.log('[Cloudinary] uploading image', name: 'AmoraCloudinary');
+    final upload = http.MultipartRequest(
+      'POST',
+      Uri.parse('https://api.cloudinary.com/v1_1/$cloudName/image/upload'),
+    )
+      ..fields.addAll({
+        'api_key': apiKey,
+        'timestamp': timestamp.toString(),
+        'signature': signedValue,
+        'upload_preset': uploadPreset,
+        'folder': folder,
+        'public_id': publicId,
+        'allowed_formats': formats,
+      })
+      ..files.add(http.MultipartFile.fromBytes(
+        'file',
+        bytes,
+        filename: 'profile-${DateTime.now().microsecondsSinceEpoch}.${mimeType == 'image/png' ? 'png' : mimeType == 'image/webp' ? 'webp' : 'jpg'}',
+        contentType: MediaType.parse(mimeType),
+      ));
+    final cloudinaryResponse = await http.Response.fromStream(
+      await upload.send().timeout(const Duration(seconds: 10)),
+    );
+    final uploaded = cloudinaryResponse.body.isEmpty
+        ? <String, dynamic>{}
+        : jsonDecode(cloudinaryResponse.body) as Map<String, dynamic>;
+    if (cloudinaryResponse.statusCode < 200 || cloudinaryResponse.statusCode >= 300 || uploaded['public_id'] is! String) {
+      final cloudinaryError = uploaded['error'] is Map ? uploaded['error']['message'] as String? : null;
+      throw AuthException(cloudinaryError ?? 'Cloudinary rejected the image upload.', statusCode: cloudinaryResponse.statusCode);
+    }
+    final uploadedPublicId = uploaded['public_id'] as String;
+    developer.log('[Cloudinary] upload response received', name: 'AmoraCloudinary');
+    developer.log('[Cloudinary] public_id=$uploadedPublicId', name: 'AmoraCloudinary');
+    developer.log('[Cloudinary] persisting asset', name: 'AmoraCloudinary');
+    final response = await AuthService.instance.authenticatedRequest(
+      'POST',
+      '/api/onboarding/photos/cloudinary',
+      body: {'publicId': uploadedPublicId},
     );
     final onboarding = ((response['data'] as Map?)?['onboarding'] as Map?)
         ?.cast<String, dynamic>();
@@ -599,6 +652,7 @@ class LocalProfileRepository extends ChangeNotifier {
       throw const AuthException('The photo upload returned no file.');
     }
     final value = photos.last.toString();
+    developer.log('[Cloudinary] persistence success', name: 'AmoraCloudinary');
     return value.startsWith('http') ? value : '${AmoraApiConfig.baseUrl}$value';
   }
 

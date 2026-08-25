@@ -2,6 +2,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const { after, before, test } = require('node:test');
+const jwt = require('jsonwebtoken');
 
 require('../src/config/bootstrapEnv');
 const applicationDatabase = process.env.DB_NAME;
@@ -11,6 +12,10 @@ if (!testDatabase || testDatabase === applicationDatabase || !/test/i.test(testD
 }
 process.env.DB_NAME = testDatabase;
 process.env.NODE_ENV = 'test';
+process.env.CLOUDINARY_CLOUD_NAME = 'test-cloud';
+process.env.CLOUDINARY_API_KEY = 'test-key';
+process.env.CLOUDINARY_API_SECRET = 'test-secret';
+process.env.CLOUDINARY_UPLOAD_PRESET = 'test-preset';
 
 const verificationCode = '246810';
 const otpModule = require.resolve('../src/utils/generateOtp');
@@ -333,6 +338,26 @@ test('fresh account verifies, completes a persisted profile, reloads it, and log
   assert.equal(secondaryStatus.status, 200);
   assert.equal(secondaryStatus.body.data.onboarding.userId, secondaryUser.id);
   assert.deepEqual(secondaryStatus.body.data.onboarding.photos, []);
+});
+
+test('Cloudinary signatures require authentication and return only upload-safe values', async () => {
+  const unauthenticated = await request('/api/onboarding/photos/sign', { method: 'POST', token: null, body: { mimeType: 'image/jpeg' } });
+  assert.equal(unauthenticated.status, 401);
+  const signatureUser = await models.User.create({ name: 'Cloudinary Signature', email: `cloudinary-${Date.now()}@auth-flow.test`, phoneNumber: '', authProvider: 'local', isVerified: true });
+  const signatureToken = jwt.sign({ sub: signatureUser.id, ver: Number(signatureUser.tokenVersion || 0) }, process.env.JWT_SECRET, { expiresIn: '15m' });
+  try {
+    const invalid = await request('/api/onboarding/photos/sign', { method: 'POST', token: signatureToken, body: { mimeType: 'image/gif' } });
+    assert.equal(invalid.status, 400);
+    assert.equal(invalid.body.code, 'VALIDATION_ERROR');
+    const response = await request('/api/onboarding/photos/sign', { method: 'POST', token: signatureToken, body: { mimeType: 'image/jpeg' } });
+    assert.equal(response.status, 200, JSON.stringify(response.body));
+    assert.equal(response.body.success, true);
+    assert.equal(response.body.data.cloudName, 'test-cloud');
+    assert.equal(response.body.data.apiKey, 'test-key');
+    assert.equal(typeof response.body.data.signature, 'string');
+    assert.equal(Object.hasOwn(response.body.data, 'apiSecret'), false);
+    assert.match(response.body.data.folder, new RegExp(`amora/dev/users/${signatureUser.id}/profile`));
+  } finally { await models.OnboardingProfile.destroy({ where: { userId: signatureUser.id } }); await models.User.destroy({ where: { id: signatureUser.id } }); }
 });
 
 test('password recovery is email-based, non-enumerating, and single-use', async () => {

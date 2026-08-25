@@ -27,6 +27,7 @@ const notificationRoutes = require('./routes/notificationRoutes');
 const identityVerificationRoutes = require('./routes/identityVerificationRoutes');
 const deviceRoutes = require('./routes/deviceRoutes');
 const mePreferenceRoutes = require('./routes/mePreferenceRoutes');
+const chatProviderRoutes = require('./routes/chatProviderRoutes');
 const { attachRealtimeServer } = require("./realtime/realtimeHub");
 const errorHandler = require("./middleware/errorHandler");
 const { port } = require("./config/env");
@@ -79,6 +80,7 @@ app.use('/api/notification-preferences', notificationPreferenceRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/identity-verification', identityVerificationRoutes);
 app.use('/api/devices', deviceRoutes);
+app.use('/api/chat', chatProviderRoutes);
 app.use((_req, res) =>
   res
     .status(404)

@@ -79,6 +79,7 @@ async function serializeRows(req, rows) {
             : null;
     return {
       id: String(row.id),
+      matchId: row.activeMatchId ? String(row.activeMatchId) : null,
       participant,
       lastMessage,
       unreadCount: Number(row.unreadCount || 0),

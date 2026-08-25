@@ -4,6 +4,7 @@ import 'dart:developer' as developer;
 
 import 'package:amora_ai/core/auth/auth_service.dart';
 import 'package:amora_ai/core/config/amora_api_config.dart';
+import 'package:amora_ai/core/firebase/firebase_service.dart';
 import 'package:amora_ai/core/widgets/amora_dob_field.dart';
 import 'package:amora_ai/features/onboarding/data/onboarding_api_service.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
@@ -624,6 +625,7 @@ class LocalOnboardingRepository extends ChangeNotifier
       _logFailure(operation, result.message);
       return false;
     }
+    unawaited(FirebaseService.instance.logOnboardingStep(operation));
     return true;
   }
 
