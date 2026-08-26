@@ -35,7 +35,7 @@ class AmoraApiConfig {
     }
 
     if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
-      return 'http://localhost:5000';
+      return 'http://195.35.23.132:5001';
     }
 
     return 'http://10.0.2.2:5000';
