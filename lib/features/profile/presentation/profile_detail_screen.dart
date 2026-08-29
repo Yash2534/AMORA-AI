@@ -2067,7 +2067,6 @@ class ProfileActionBar extends StatelessWidget {
   });
 
   static const double height = 82;
-  static const double contentInset = 106;
 
   final bool liked;
   final String? profileName;
@@ -2099,7 +2098,7 @@ class ProfileActionBar extends StatelessWidget {
           ],
         ),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 5),
+          padding: const EdgeInsets.all(AmoraSpacing.space4),
           child: Row(
             children: [
               Expanded(
@@ -2145,7 +2144,7 @@ class ProfileActionBar extends StatelessWidget {
                       : 'Like $safeName',
                   icon: Icons.favorite_rounded,
                   selected: liked,
-                  dominant: true,
+                  accented: true,
                   onTap: onLike,
                 ),
               ),
@@ -2165,7 +2164,7 @@ class _ProfileActionButton extends StatefulWidget {
     required this.onTap,
     required this.semanticLabel,
     this.selected = false,
-    this.dominant = false,
+    this.accented = false,
     this.loading = false,
   });
 
@@ -2174,7 +2173,7 @@ class _ProfileActionButton extends StatefulWidget {
   final VoidCallback onTap;
   final String semanticLabel;
   final bool selected;
-  final bool dominant;
+  final bool accented;
   final bool loading;
 
   @override
@@ -2236,8 +2235,8 @@ class _ProfileActionButtonState extends State<_ProfileActionButton>
                     children: [
                       AnimatedContainer(
                         duration: const Duration(milliseconds: 220),
-                        width: widget.dominant ? 42 : 36,
-                        height: widget.dominant ? 42 : 36,
+                        width: 36,
+                        height: 36,
                         decoration: BoxDecoration(
                           color: filled
                               ? AppColors.secondary
@@ -2262,20 +2261,26 @@ class _ProfileActionButtonState extends State<_ProfileActionButton>
                                 color: filled
                                     ? AppColors.surface
                                     : AppColors.primary,
-                                size: widget.dominant ? 22 : 19,
+                                size: 19,
                               ),
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        widget.label,
-                        maxLines: 1,
-                        overflow: TextOverflow.fade,
-                        style: AmoraTextStyles.labelSmall.copyWith(
-                          color: widget.dominant
-                              ? AppColors.secondary
-                              : AppColors.textNeutral,
-                          fontSize: 10.5,
-                          fontWeight: FontWeight.w700,
+                      const SizedBox(height: AmoraSpacing.space4),
+                      SizedBox(
+                        height: AmoraSpacing.space20,
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            widget.label,
+                            maxLines: 1,
+                            softWrap: false,
+                            style: AmoraTextStyles.labelSmall.copyWith(
+                              color: widget.accented
+                                  ? AppColors.secondary
+                                  : AppColors.textNeutral,
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
                         ),
                       ),
                     ],

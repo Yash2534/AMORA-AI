@@ -228,28 +228,20 @@ class AuthBrandHeader extends StatelessWidget {
               borderRadius: AmoraRadius.pillBorder,
               border: Border.all(color: AppColors.tertiary),
             ),
-            child: compact
-                ? FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.center,
-                    child: Text(
-                      stepLabel!,
-                      maxLines: 1,
-                      style: AmoraTextStyles.labelMedium.copyWith(
-                        color: AppColors.primary,
-                        fontSize: 11.5,
-                        letterSpacing: .15,
-                      ),
-                    ),
-                  )
-                : Text(
-                    stepLabel!,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AmoraTextStyles.labelMedium.copyWith(
-                      color: AppColors.primary,
-                    ),
-                  ),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.center,
+              child: Text(
+                stepLabel!,
+                maxLines: 1,
+                softWrap: false,
+                style: AmoraTextStyles.labelMedium.copyWith(
+                  color: AppColors.primary,
+                  fontSize: compact ? 11.5 : null,
+                  letterSpacing: compact ? .15 : null,
+                ),
+              ),
+            ),
           );
     if (compact && onBack == null && stepBadge != null) {
       return Row(
@@ -325,34 +317,28 @@ class AuthBrandHeader extends StatelessWidget {
           semanticLabel: 'AMORAA icon',
         ),
         const SizedBox(width: AmoraSpacing.space8),
-        if (alignStepLabelRight && stepLabel != null) ...[
-          Image.asset(
-            AmoraBrandAssets.wordmark,
-            height: compact ? 16.5 : 19,
-            fit: BoxFit.contain,
+        Expanded(
+          child: Align(
             alignment: Alignment.centerLeft,
-            semanticLabel: 'AMORAA',
-          ),
-          const Spacer(),
-        ] else
-          Expanded(
-            child: Align(
+            child: Image.asset(
+              AmoraBrandAssets.wordmark,
+              height: compact ? 16.5 : 19,
+              fit: BoxFit.contain,
               alignment: Alignment.centerLeft,
-              child: Image.asset(
-                AmoraBrandAssets.wordmark,
-                height: compact ? 16.5 : 19,
-                fit: BoxFit.contain,
-                alignment: Alignment.centerLeft,
-                semanticLabel: 'AMORAA',
-              ),
+              semanticLabel: 'AMORAA',
             ),
           ),
+        ),
         if (stepBadge != null) ...[
           const SizedBox(width: AmoraSpacing.space8),
           if (alignStepLabelRight && compact)
             ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 132),
               child: stepBadge,
+            )
+          else if (alignStepLabelRight)
+            Expanded(
+              child: Align(alignment: Alignment.centerRight, child: stepBadge),
             )
           else
             Flexible(child: stepBadge),

@@ -10,7 +10,9 @@ import 'package:amora_ai/features/auth/presentation/widgets/auth_presentation.da
 import 'package:amora_ai/features/legal/presentation/legal_document_screen.dart';
 import 'package:amora_ai/features/onboarding/data/local_onboarding_repository.dart';
 import 'package:amora_ai/features/onboarding/presentation/profile_onboarding_flow.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -115,7 +117,16 @@ void main() {
       tester,
     ) async {
       addTearDown(() => tester.binding.setSurfaceSize(null));
-      for (final width in const <double>[320, 360, 390, 412, 430, 600, 768]) {
+      for (final width in const <double>[
+        320,
+        360,
+        375,
+        390,
+        412,
+        430,
+        600,
+        768,
+      ]) {
         await tester.binding.setSurfaceSize(Size(width, 900));
         await tester.pumpWidget(
           app(
@@ -131,6 +142,10 @@ void main() {
         await settleEntrance(tester);
 
         final chip = find.byKey(const ValueKey('signup-account-setup-chip'));
+        final chipText = find.descendant(
+          of: chip,
+          matching: find.byType(RichText),
+        );
         final header = find.byType(AuthBrandHeader);
         final formSurface = find.byType(AuthFormSurface);
         final horizontalPadding = width < 360
@@ -143,6 +158,22 @@ void main() {
         final expectedRightEdge = (width + contentWidth) / 2;
         expect(chip, findsOneWidget, reason: '${width.toInt()}px');
         expect(find.text('Account setup'), findsOneWidget);
+        expect(chipText, findsOneWidget, reason: '${width.toInt()}px');
+        expect(
+          tester.widget<RichText>(chipText).text.toPlainText(),
+          'Account setup',
+          reason: '${width.toInt()}px complete label',
+        );
+        expect(
+          tester.renderObject<RenderParagraph>(chipText).didExceedMaxLines,
+          isFalse,
+          reason: '${width.toInt()}px truncated label',
+        );
+        expect(
+          tester.getSize(chip).width,
+          greaterThan(90),
+          reason: '${width.toInt()}px usable pill width',
+        );
         expect(
           tester.getTopRight(chip).dx,
           moreOrLessEquals(expectedRightEdge, epsilon: .01),
@@ -188,6 +219,97 @@ void main() {
       await tester.pump();
       expect(find.byType(SignupScreen), findsOneWidget);
       expect(find.byKey(const ValueKey('signup-name-field')), findsOneWidget);
+    });
+
+    testWidgets('signup legal consent wraps naturally and keeps both links', (
+      tester,
+    ) async {
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      const visibleCopy = 'I accept the Terms & Conditions and Privacy Policy.';
+      for (final width in const <double>[320, 360, 375, 390, 412, 430, 600]) {
+        await tester.binding.setSurfaceSize(Size(width, 1000));
+        await tester.pumpWidget(
+          app(
+            home: MediaQuery(
+              data: MediaQueryData(
+                size: Size(width, 1000),
+                textScaler: const TextScaler.linear(1.3),
+              ),
+              child: const SignupScreen(),
+            ),
+            routes: {
+              TermsConditionsScreen.routeName: (_) =>
+                  const TermsConditionsScreen(),
+              PrivacyPolicyScreen.routeName: (_) => const PrivacyPolicyScreen(),
+            },
+          ),
+        );
+        await settleEntrance(tester);
+
+        final legalText = find.byKey(
+          const ValueKey('signup-legal-consent-text'),
+        );
+        await tester.ensureVisible(legalText);
+        await tester.pump();
+
+        final textWidget = tester.widget<Text>(legalText);
+        expect(
+          textWidget.textSpan?.toPlainText(),
+          visibleCopy,
+          reason: '${width.toInt()}px visible copy',
+        );
+        expect(
+          tester.getTopRight(legalText).dx,
+          lessThanOrEqualTo(
+            tester.getTopRight(find.byType(AuthFormSurface)).dx,
+          ),
+          reason: '${width.toInt()}px form boundary',
+        );
+        expect(tester.takeException(), isNull, reason: '${width.toInt()}px');
+      }
+
+      final textWidget = tester.widget<Text>(
+        find.byKey(const ValueKey('signup-legal-consent-text')),
+      );
+      final spans = (textWidget.textSpan! as TextSpan).children!
+          .whereType<TextSpan>();
+      final terms = spans.singleWhere(
+        (span) => span.text == 'Terms & Conditions',
+      );
+      final privacy = spans.singleWhere(
+        (span) => span.text == 'Privacy Policy',
+      );
+      expect(terms.recognizer, isA<TapGestureRecognizer>());
+      expect(privacy.recognizer, isA<TapGestureRecognizer>());
+
+      Future<void> tapInlineLink(String label) async {
+        final richText = find.descendant(
+          of: find.byKey(const ValueKey('signup-legal-consent-text')),
+          matching: find.byType(RichText),
+        );
+        final paragraph = tester.renderObject<RenderParagraph>(richText);
+        final start = visibleCopy.indexOf(label);
+        final boxes = paragraph.getBoxesForSelection(
+          TextSelection(baseOffset: start, extentOffset: start + label.length),
+        );
+        final target =
+            tester.getTopLeft(richText) + boxes.first.toRect().center;
+        await tester.tapAt(target);
+      }
+
+      await tester.tap(find.byType(Checkbox));
+      await tester.pump();
+      expect(tester.widget<Checkbox>(find.byType(Checkbox)).value, isTrue);
+
+      await tapInlineLink('Terms & Conditions');
+      await tester.pumpAndSettle();
+      expect(find.byType(TermsConditionsScreen), findsOneWidget);
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+
+      await tapInlineLink('Privacy Policy');
+      await tester.pumpAndSettle();
+      expect(find.byType(PrivacyPolicyScreen), findsOneWidget);
     });
 
     testWidgets('login accepts a non-empty legacy password', (tester) async {
@@ -251,8 +373,13 @@ void main() {
       await tester.pump();
 
       expect(find.text('Passwords do not match'), findsOneWidget);
-      expect(find.text('Terms & Conditions'), findsOneWidget);
-      expect(find.text('Privacy Policy'), findsOneWidget);
+      expect(
+        find.text(
+          'I accept the Terms & Conditions and Privacy Policy.',
+          findRichText: true,
+        ),
+        findsOneWidget,
+      );
     });
 
     testWidgets('shared OTP supports paste and updates all six cells', (
@@ -422,7 +549,7 @@ void main() {
         await settleEntrance(tester);
         await tester.enterText(
           find.byKey(const ValueKey('otp-native-input')),
-          '123456',
+          '111111',
         );
         await tester.pump();
         await tester.tap(find.byKey(const ValueKey('verify-account-button')));
@@ -593,12 +720,12 @@ void main() {
         );
         await tester.enterText(
           find.byKey(const ValueKey('otp-native-input')),
-          '123456',
+          '111111',
         );
         await tester.pump();
         await tester.tap(find.byKey(const ValueKey('verify-mobile-button')));
         await tester.pump();
-        expect(verifiedPayload, '+919876543210:123456');
+        expect(verifiedPayload, '+919876543210:111111');
         expect(find.text('Verification complete'), findsOneWidget);
         await tester.pump(const Duration(milliseconds: 500));
         await tester.pump();
@@ -909,12 +1036,12 @@ void main() {
 
         await tester.enterText(
           find.byKey(const ValueKey('otp-native-input')),
-          '123456',
+          '111111',
         );
         await tester.pump();
         await tester.tap(find.byKey(const ValueKey('verify-recovery-code')));
         await tester.pumpAndSettle();
-        expect(verified, 'member@example.com:123456');
+        expect(verified, 'member@example.com:111111');
         expect(find.byType(ResetPasswordScreen), findsOneWidget);
       },
     );

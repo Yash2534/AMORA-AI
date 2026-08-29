@@ -15,6 +15,20 @@ npm run dev
 
 On first setup, the migration command creates the configured database when permitted and applies the ordered migrations recorded in `SequelizeMeta`. The server only connects to the migrated schema; it does not call `sequelize.sync()` or mutate tables at startup. In development with no SMS provider configured, OTPs print in the terminal and are returned as `devOtp` in the successful OTP-generating response. This makes the whole flow testable in Postman without external accounts.
 
+## Fixed OTP for approved non-production environments
+
+Local development, QA, staging, and automated tests may opt into the fixed six-digit OTP by setting:
+
+```dotenv
+TEST_FIXED_OTP_ENABLED=true
+TEST_FIXED_OTP=111111
+TEST_OTP_SKIP_DELIVERY=true
+```
+
+The normal signup, resend, and forgot-password endpoints must still create a valid, unexpired `OtpToken` challenge before the fixed value can verify anything. The server continues to enforce identity checks, challenge purpose, expiry, consumption, attempt limits, rate limits, recovery-token rules, and normal session issuance. When delivery skipping is enabled, request and resend responses keep their normal shape but Twilio/SMTP are not called.
+
+Production rejects any configured fixed OTP, enabled fixed-OTP mode, or delivery skipping during startup. Leave all three values disabled/blank in production. The Flutter app contains no fixed-OTP bypass and always submits the entered code to the backend.
+
 Run `npm run db:migrate` as an explicit deployment step before starting a production release. Use `npm run db:migrate:status` to inspect state and `npm run db:migrate:undo` to revert the latest reversible migration.
 
 The Discover integration suite uses `TEST_DB_NAME` and refuses to run against `DB_NAME`:
@@ -55,12 +69,12 @@ Base URL: `http://localhost:5000`
 {"name":"Asha Patel","email":"asha@example.com","phoneNumber":"9876543210","password":"StrongPass123","confirmPassword":"StrongPass123","acceptedTerms":true}
 ```
 
-Copy `devOtp` from the response in development.
+Copy `devOtp` from the response in ordinary development, or enter `111111` when the guarded fixed-OTP configuration above is enabled.
 
 2. `POST /api/auth/verify-account`
 
 ```json
-{"email":"asha@example.com","code":"123456"}
+{"phoneNumber":"9876543210","code":"111111"}
 ```
 
 Save the returned `accessToken` and `refreshToken`.
@@ -78,3 +92,52 @@ Other endpoints: signup verification resend, password recovery/reset, access-tok
 ## API response shape
 
 Successful responses use `{ "success": true, "message": "...", "data": {} }`. Errors use `{ "success": false, "message": "...", "code": "...", "errors": [] }`. Development OTP responses additionally include `devOtp`; it is strictly omitted outside development.
+
+## Development dummy data
+
+The repeatable dummy-data workflow creates realistic synthetic profiles, local generated avatars, discover actions (likes, passes, and Super Likes), Roses, mutual matches, conversations, messages, saved profiles, filters, notification preferences, and a subset of development subscriptions. It never sends email or SMS. All generated accounts use the reserved non-deliverable domain `seed.amoraa.example.test`, and reset removes only that namespace and its dependent records.
+
+The command refuses to run unless all of these conditions are satisfied:
+
+- `NODE_ENV` is `development`, `test`, `qa`, or `staging` (production is always rejected).
+- `ALLOW_DUMMY_SEED=true` is set explicitly.
+- the exact `DB_NAME` appears in the comma-separated `DUMMY_SEED_DATABASES` allowlist.
+- the command contains `--confirm-development-db` (the npm scripts include it).
+
+Configure a local ignored `.env`—never a production environment—with values such as:
+
+```dotenv
+ALLOW_DUMMY_SEED=true
+DUMMY_SEED_DATABASES=amora_ai,amora_ai_test
+SEED_USER_COUNT=150
+SEED_RANDOM_SEED=12345
+SEED_REFERENCE_DATE=2026-08-29
+SEED_TEST_PASSWORD=Amoraa-Dev-Only-2026!
+SEED_MEDIA_VARIANTS=48
+```
+
+Then run:
+
+```bash
+npm run db:seed:dummy
+npm run db:seed:dummy:validate
+npm run verify:dummy-seed
+```
+
+`db:seed:dummy` is deterministic and idempotent: it removes the previous isolated seed dataset and recreates it in one database transaction. To remove only generated dummy data and its prefixed local media:
+
+```bash
+npm run db:seed:dummy:reset
+```
+
+The predictable video accounts are:
+
+| Role | Login | Scenario |
+| --- | --- | --- |
+| Demo A — Aisha Mehta | `demo.aisha@seed.amoraa.example.test` | Complete/discoverable; can Like Demo B; already matched with Demo C |
+| Demo B — Rohan Shah | `demo.rohan@seed.amoraa.example.test` | Has already liked Demo A, so A's Like creates a real match; receives Super Likes/Roses |
+| Demo C — Kavya Iyer | `demo.kavya@seed.amoraa.example.test` | Different age/city for filters; existing long conversation with Demo A |
+
+All three use `SEED_TEST_PASSWORD`. Seeded phone numbers use an internal deterministic pattern and work with the existing guarded development OTP flow; the seeder does not add or invoke any OTP bypass.
+
+The current schema has no coordinates, so discovery returns `distance: null` and true geospatial distance filtering cannot be populated without a future schema/business-logic change. Interests are JSON values validated against the mobile app's existing options rather than lookup-table foreign keys. Super Likes are `DiscoverActions.action = 'superLike'`; there is no separate Super Likes table.

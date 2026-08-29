@@ -62,36 +62,40 @@ class AmoraaPublicProfileView extends StatelessWidget {
                     story,
                   ],
                 );
-          return Stack(
-            children: [
-              SingleChildScrollView(
-                key: scrollKey,
-                physics: const BouncingScrollPhysics(
-                  parent: AlwaysScrollableScrollPhysics(),
-                ),
-                keyboardDismissBehavior:
-                    ScrollViewKeyboardDismissBehavior.onDrag,
-                padding: EdgeInsets.fromLTRB(
-                  horizontalPadding,
-                  desktop ? AmoraSpacing.space24 : 0,
-                  horizontalPadding,
-                  _showsInteractions ? 106 : AmoraSpacing.space40,
-                ),
-                child: content,
-              ),
-              if (_showsInteractions)
-                Align(
-                  alignment: Alignment.bottomCenter,
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(
-                      horizontalPadding,
-                      0,
-                      horizontalPadding,
-                      AmoraSpacing.space8,
+          final scrollView = SingleChildScrollView(
+            key: scrollKey,
+            physics: const BouncingScrollPhysics(
+              parent: AlwaysScrollableScrollPhysics(),
+            ),
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            padding: EdgeInsets.fromLTRB(
+              horizontalPadding,
+              desktop ? AmoraSpacing.space24 : 0,
+              horizontalPadding,
+              _showsInteractions ? AmoraSpacing.space16 : AmoraSpacing.space40,
+            ),
+            child: content,
+          );
+          final page = _showsInteractions
+              ? Column(
+                  children: [
+                    Expanded(child: scrollView),
+                    Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        horizontalPadding,
+                        AmoraSpacing.space8,
+                        horizontalPadding,
+                        AmoraSpacing.space8,
+                      ),
+                      child: interactionBar!,
                     ),
-                    child: interactionBar,
-                  ),
-                ),
+                  ],
+                )
+              : scrollView;
+          return Stack(
+            fit: StackFit.expand,
+            children: [
+              page,
               if (mode == PublicProfileViewMode.otherUser &&
                   interactionOverlay != null)
                 Positioned.fill(child: interactionOverlay!),

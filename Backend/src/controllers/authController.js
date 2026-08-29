@@ -1,8 +1,8 @@
 const bcrypt = require('bcrypt'); const jwt = require('jsonwebtoken'); const { Op } = require('sequelize'); const { OAuth2Client } = require('google-auth-library');
-const { getModels } = require('../models'); const generateOtp = require('../utils/generateOtp'); const sendSms = require('../utils/sendSms'); const sendEmail = require('../utils/sendEmail'); const { issueTokens, accessToken } = require('../utils/generateTokens');
+const { getModels } = require('../models'); const { issueTokens, accessToken } = require('../utils/generateTokens');
+const { createPhoneOtp, createEmailOtp, deliverPhoneOtp, deliverEmailOtp, verifyPhoneOtp, verifyEmailOtp } = require('../services/otpService');
 const googleIds = (process.env.GOOGLE_CLIENT_IDS || '').split(',').map((id) => id.trim()).filter((id) => id && id !== 'skip-for-now');
 const googleClient = googleIds.length ? new OAuth2Client() : null;
-const OTP_EXPIRY_MS = 10 * 60 * 1000;
 const OTP_RESEND_COOLDOWN_MS = 45 * 1000;
 const profile = (user) => ({ id: user.id, name: user.name, email: user.email, phoneNumber: user.phoneNumber, isVerified: user.isVerified, accountStatus: user.accountStatus });
 const emailOf = (value) => String(value || '').trim().toLowerCase();
@@ -11,48 +11,7 @@ const refreshSelectorOf = (value) => {
   const selector = String(value || '').split('.', 1)[0];
   return /^[a-f0-9]{32}$/.test(selector) && String(value).includes('.') ? selector : null;
 };
-async function deliverOtp(phoneNumber, purpose, code, expiresAt) {
-  await sendSms(phoneNumber, `Your Amora AI verification code is ${code}. It expires in 10 minutes.`, { code, purpose, expiresAt });
-}
-async function deliverPasswordResetOtp(email, code, expiresAt) {
-  await sendEmail(
-    email,
-    'Your Amora AI password reset code',
-    `<p>Your Amora AI password reset code is <strong>${code}</strong>.</p><p>It expires in 10 minutes. If you did not request this, you can ignore this email.</p>`,
-    { code, purpose: 'password_reset', expiresAt },
-  );
-}
-async function createOtp(phoneNumber, purpose, options = {}) {
-  const { OtpToken } = getModels(); const code = generateOtp(); const expiresAt = new Date(Date.now() + OTP_EXPIRY_MS);
-  const queryOptions = options.transaction ? { transaction: options.transaction } : {};
-  await OtpToken.update({ consumed: true }, { where: { phoneNumber, purpose, consumed: false }, ...queryOptions });
-  const otp = await OtpToken.create({ phoneNumber, purpose, codeHash: await bcrypt.hash(code, 12), expiresAt }, queryOptions);
-  if (options.deliver !== false) await deliverOtp(phoneNumber, purpose, code, expiresAt);
-  return { code, expiresAt, otp };
-}
-async function createEmailOtp(email, purpose, options = {}) {
-  const { OtpToken } = getModels(); const code = generateOtp(); const expiresAt = new Date(Date.now() + OTP_EXPIRY_MS);
-  const queryOptions = options.transaction ? { transaction: options.transaction } : {};
-  await OtpToken.update({ consumed: true }, { where: { email, purpose, consumed: false }, ...queryOptions });
-  const otp = await OtpToken.create({ email, purpose, codeHash: await bcrypt.hash(code, 12), expiresAt }, queryOptions);
-  if (options.deliver !== false) await deliverPasswordResetOtp(email, code, expiresAt);
-  return { code, expiresAt, otp };
-}
 function success(res, message, data, devOtp) { const body = { success: true, message, data }; if (process.env.NODE_ENV === 'development' && devOtp) body.devOtp = devOtp; return res.json(body); }
-async function verifyOtp(identifier, code, purpose) {
-  const { OtpToken } = getModels(); const otp = await OtpToken.findOne({ where: { phoneNumber: identifier, purpose, consumed: false }, order: [['createdAt', 'DESC']] });
-  if (!otp || otp.expiresAt <= new Date()) { if (otp) { otp.consumed = true; await otp.save(); } return { error: ['OTP_EXPIRED', 'This verification code has expired.'] }; }
-  if (otp.attempts >= 5) return { error: ['OTP_MAX_ATTEMPTS', 'Maximum verification attempts reached. Request a new code.'] };
-  if (!(await bcrypt.compare(code, otp.codeHash))) { otp.attempts += 1; if (otp.attempts >= 5) otp.consumed = true; await otp.save(); return { error: [otp.attempts >= 5 ? 'OTP_MAX_ATTEMPTS' : 'OTP_INVALID', otp.attempts >= 5 ? 'Maximum verification attempts reached. Request a new code.' : 'Invalid verification code.', 5 - otp.attempts] }; }
-  otp.consumed = true; await otp.save(); return { otp };
-}
-async function verifyEmailOtp(email, code, purpose) {
-  const { OtpToken } = getModels(); const otp = await OtpToken.findOne({ where: { email, purpose, consumed: false }, order: [['createdAt', 'DESC']] });
-  if (!otp || otp.expiresAt <= new Date()) { if (otp) { otp.consumed = true; await otp.save(); } return { error: ['OTP_EXPIRED', 'This verification code has expired.'] }; }
-  if (otp.attempts >= 5) return { error: ['OTP_MAX_ATTEMPTS', 'Maximum verification attempts reached. Request a new code.'] };
-  if (!(await bcrypt.compare(code, otp.codeHash))) { otp.attempts += 1; if (otp.attempts >= 5) otp.consumed = true; await otp.save(); return { error: [otp.attempts >= 5 ? 'OTP_MAX_ATTEMPTS' : 'OTP_INVALID', otp.attempts >= 5 ? 'Maximum verification attempts reached. Request a new code.' : 'Invalid verification code.', 5 - otp.attempts] }; }
-  otp.consumed = true; await otp.save(); return { otp };
-}
 exports.signup = async (req, res, next) => {
   const { User } = getModels();
   const email = emailOf(req.body.email);
@@ -84,7 +43,7 @@ exports.signup = async (req, res, next) => {
         passwordHash: await bcrypt.hash(req.body.password, 12),
         termsAcceptedAt: new Date(),
       }, { transaction });
-      ({ code } = await createOtp(phoneNumber, 'account_verification', { transaction }));
+      ({ code } = await createPhoneOtp(phoneNumber, 'account_verification', { transaction }));
     });
   } catch (error) {
     if (!error.status && /SMS|Twilio/i.test(error.message || '')) {
@@ -107,7 +66,7 @@ exports.verifyAccount = async (req, res) => {
     order: [['createdAt', 'DESC']],
   });
   if (!user) return res.status(400).json({ success: false, message: 'Account not found.', code: 'OTP_INVALID', errors: [] });
-  const checked = await verifyOtp(phoneNumber, req.body.code, 'account_verification');
+  const checked = await verifyPhoneOtp(phoneNumber, req.body.code, 'account_verification');
   if (checked.error) return res.status(400).json({ success: false, message: checked.error[1], code: checked.error[0], errors: checked.error[2] !== undefined ? [{ remainingAttempts: checked.error[2] }] : [] });
   user.isVerified = true;
   await user.save();
@@ -135,13 +94,13 @@ exports.resendVerification = async (req, res) => {
       transaction,
     });
     if (recentOtp) return;
-    pendingOtp = await createOtp(phoneNumber, 'account_verification', { transaction, deliver: false });
+    pendingOtp = await createPhoneOtp(phoneNumber, 'account_verification', { transaction, deliver: false });
   });
 
   let deliveredCode;
   if (pendingOtp) {
     try {
-      await deliverOtp(phoneNumber, 'account_verification', pendingOtp.code, pendingOtp.expiresAt);
+      await deliverPhoneOtp(phoneNumber, 'account_verification', pendingOtp.code, pendingOtp.expiresAt);
       deliveredCode = pendingOtp.code;
     } catch (error) {
       await OtpToken.update({ consumed: true }, { where: { id: pendingOtp.otp.id } }).catch(() => {});
@@ -183,7 +142,7 @@ exports.forgotPassword = async (req, res) => {
   let deliveredCode;
   if (pendingOtp) {
     try {
-      await deliverPasswordResetOtp(email, pendingOtp.code, pendingOtp.expiresAt);
+      await deliverEmailOtp(email, 'password_reset', pendingOtp.code, pendingOtp.expiresAt);
       deliveredCode = pendingOtp.code;
     } catch (_) {
       await OtpToken.update({ consumed: true }, { where: { id: pendingOtp.otp.id } }).catch(() => {});

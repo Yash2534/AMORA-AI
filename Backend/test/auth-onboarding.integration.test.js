@@ -11,6 +11,9 @@ if (!testDatabase || testDatabase === applicationDatabase || !/test/i.test(testD
 }
 process.env.DB_NAME = testDatabase;
 process.env.NODE_ENV = 'test';
+process.env.TEST_FIXED_OTP_ENABLED = 'true';
+process.env.TEST_FIXED_OTP = '111111';
+process.env.TEST_OTP_SKIP_DELIVERY = 'false';
 
 const verificationCode = '246810';
 const otpModule = require.resolve('../src/utils/generateOtp');
@@ -136,10 +139,19 @@ test('fresh account verifies, completes a persisted profile, reloads it, and log
   });
   assert.equal(beforeVerification.status, 403);
 
+  const resend = await request('/api/auth/resend-verification-code', {
+    method: 'POST',
+    token: null,
+    body: { phoneNumber },
+  });
+  assert.equal(resend.status, 200, JSON.stringify(resend.body));
+  assert.equal(resend.body.success, true);
+  assert.deepEqual(resend.body.data, { phoneNumber });
+
   const verification = await request('/api/auth/verify-account', {
     method: 'POST',
     token: null,
-    body: { phoneNumber, code: verificationCode },
+    body: { phoneNumber, code: '111111' },
   });
   assert.equal(verification.status, 200);
   accessToken = verification.body.data.accessToken;
@@ -321,6 +333,15 @@ test('fresh account verifies, completes a persisted profile, reloads it, and log
   });
   assert.equal(secondarySignup.status, 200, JSON.stringify(secondarySignup.body));
   secondaryUser = await models.User.findOne({ where: { email: secondaryEmail } });
+
+  const missingChallenge = await request('/api/auth/verify-account', {
+    method: 'POST',
+    token: null,
+    body: { phoneNumber: '+917000000001', code: '111111' },
+  });
+  assert.equal(missingChallenge.status, 400);
+  assert.equal(missingChallenge.body.code, 'OTP_INVALID');
+
   const secondaryVerification = await request('/api/auth/verify-account', {
     method: 'POST',
     token: null,
@@ -337,14 +358,23 @@ test('fresh account verifies, completes a persisted profile, reloads it, and log
 
 test('password recovery is email-based, non-enumerating, and single-use', async () => {
   const beforeUnknown = sentEmails.length;
+  const unknownEmail = `unknown-${Date.now()}@auth-flow.test`;
   const unknown = await request('/api/auth/forgot-password', {
     method: 'POST',
     token: null,
-    body: { email: `unknown-${Date.now()}@auth-flow.test` },
+    body: { email: unknownEmail },
   });
   assert.equal(unknown.status, 200);
   assert.equal(sentEmails.length, beforeUnknown);
   assert.equal(Object.hasOwn(unknown.body, 'devOtp'), false);
+
+  const unknownVerification = await request('/api/auth/verify-reset-code', {
+    method: 'POST',
+    token: null,
+    body: { email: unknownEmail, code: '111111' },
+  });
+  assert.equal(unknownVerification.status, 400);
+  assert.equal(unknownVerification.body.code, 'OTP_EXPIRED');
 
   const requested = await request('/api/auth/forgot-password', {
     method: 'POST',
@@ -377,7 +407,7 @@ test('password recovery is email-based, non-enumerating, and single-use', async 
   const verified = await request('/api/auth/verify-reset-code', {
     method: 'POST',
     token: null,
-    body: { email, code: verificationCode },
+    body: { email, code: '111111' },
   });
   assert.equal(verified.status, 200);
   const recoveryToken = verified.body.data.recoveryToken;

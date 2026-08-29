@@ -12,6 +12,7 @@ import 'package:amora_ai/features/auth/presentation/login_screen.dart';
 import 'package:amora_ai/features/auth/domain/amora_password_policy.dart';
 import 'package:amora_ai/features/auth/presentation/widgets/auth_presentation.dart';
 import 'package:amora_ai/features/legal/presentation/legal_document_screen.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -400,22 +401,7 @@ class _LegalConsentTile extends StatelessWidget {
           Expanded(
             child: Padding(
               padding: const EdgeInsets.only(top: AmoraSpacing.space12),
-              child: Wrap(
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  Text('I accept the ', style: AmoraTextStyles.bodyMedium),
-                  const _LegalLink(
-                    label: 'Terms & Conditions',
-                    routeName: TermsConditionsScreen.routeName,
-                  ),
-                  Text(' and ', style: AmoraTextStyles.bodyMedium),
-                  const _LegalLink(
-                    label: 'Privacy Policy',
-                    routeName: PrivacyPolicyScreen.routeName,
-                  ),
-                  Text('.', style: AmoraTextStyles.bodyMedium),
-                ],
-              ),
+              child: const _LegalConsentText(),
             ),
           ),
         ],
@@ -424,28 +410,65 @@ class _LegalConsentTile extends StatelessWidget {
   }
 }
 
-class _LegalLink extends StatelessWidget {
-  const _LegalLink({required this.label, required this.routeName});
+class _LegalConsentText extends StatefulWidget {
+  const _LegalConsentText();
 
-  final String label;
-  final String routeName;
+  @override
+  State<_LegalConsentText> createState() => _LegalConsentTextState();
+}
+
+class _LegalConsentTextState extends State<_LegalConsentText> {
+  late final TapGestureRecognizer _termsRecognizer;
+  late final TapGestureRecognizer _privacyRecognizer;
+
+  @override
+  void initState() {
+    super.initState();
+    _termsRecognizer = TapGestureRecognizer()
+      ..onTap = () => _openLegalDocument(TermsConditionsScreen.routeName);
+    _privacyRecognizer = TapGestureRecognizer()
+      ..onTap = () => _openLegalDocument(PrivacyPolicyScreen.routeName);
+  }
+
+  @override
+  void dispose() {
+    _termsRecognizer.dispose();
+    _privacyRecognizer.dispose();
+    super.dispose();
+  }
+
+  void _openLegalDocument(String routeName) {
+    Navigator.of(context).pushNamed(routeName);
+  }
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(8),
-      onTap: () => Navigator.of(context).pushNamed(routeName),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: AmoraSpacing.space4),
-        child: Text(
-          label,
-          style: AmoraTextStyles.bodyMedium.copyWith(
-            color: AppColors.primary,
-            fontWeight: FontWeight.w700,
-            decoration: TextDecoration.underline,
+    final linkStyle = AmoraTextStyles.bodyMedium.copyWith(
+      color: AppColors.primary,
+      fontWeight: FontWeight.w700,
+      decoration: TextDecoration.underline,
+    );
+    return Text.rich(
+      key: const ValueKey('signup-legal-consent-text'),
+      TextSpan(
+        style: AmoraTextStyles.bodyMedium,
+        children: [
+          const TextSpan(text: 'I accept the '),
+          TextSpan(
+            text: 'Terms & Conditions',
+            style: linkStyle,
+            recognizer: _termsRecognizer,
           ),
-        ),
+          const TextSpan(text: ' and '),
+          TextSpan(
+            text: 'Privacy Policy',
+            style: linkStyle,
+            recognizer: _privacyRecognizer,
+          ),
+          const TextSpan(text: '.'),
+        ],
       ),
+      softWrap: true,
     );
   }
 }
