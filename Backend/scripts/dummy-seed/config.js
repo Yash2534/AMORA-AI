@@ -5,7 +5,7 @@ const DEFAULT_USER_COUNT = 150;
 const MIN_USER_COUNT = 20;
 const MAX_USER_COUNT = 2000;
 const SEED_EMAIL_SUFFIX = '@seed.amoraa.example.test';
-const SEED_MEDIA_PREFIX = 'amoraa-seed-avatar-';
+const SEED_MEDIA_PREFIX = 'amoraa-demo-profile-';
 
 function parseInteger(name, raw, fallback, minimum, maximum) {
   const value = raw === undefined || raw === '' ? fallback : Number(raw);
@@ -55,13 +55,14 @@ function resolveDummySeedConfig(env = process.env, argv = process.argv.slice(2))
     databaseName,
     userCount: parseInteger('SEED_USER_COUNT', env.SEED_USER_COUNT, DEFAULT_USER_COUNT, MIN_USER_COUNT, MAX_USER_COUNT),
     randomSeed: parseInteger('SEED_RANDOM_SEED', env.SEED_RANDOM_SEED, 12345, 1, 2147483647),
-    mediaVariants: parseInteger('SEED_MEDIA_VARIANTS', env.SEED_MEDIA_VARIANTS, 48, 12, 120),
     referenceDate: new Date(`${referenceDateText}T12:00:00.000Z`),
     referenceDateText,
     password,
     emailSuffix: SEED_EMAIL_SUFFIX,
     mediaPrefix: SEED_MEDIA_PREFIX,
     uploadsDirectory: path.resolve(__dirname, '../../uploads/onboarding-photos'),
+    portraitAssetsDirectory: path.resolve(__dirname, '../../demo-assets/faker-person-portraits'),
+    repositoryPortraitsDirectory: path.resolve(__dirname, '../../../assets/images/profiles'),
     mode: argv.includes('--reset-only') ? 'reset' : argv.includes('--validate-only') ? 'validate' : 'seed',
   });
 }

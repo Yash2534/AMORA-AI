@@ -7,6 +7,7 @@ async function run() {
   const { initializeDatabase, getSequelize } = require('../src/config/db');
   const { getModels } = require('../src/models');
   const { createSeedMedia, removeSeedMedia } = require('./dummy-seed/media');
+  const { buildSeedBlueprint } = require('./dummy-seed/factory');
   const { resetSeedData, seedDummyData } = require('./dummy-seed/store');
   const { validateDummyData } = require('./dummy-seed/validate');
   await initializeDatabase();
@@ -20,10 +21,11 @@ async function run() {
     }
     let resetCounts;
     let result;
-    const mediaUrls = config.mode === 'reset' ? [] : createSeedMedia(config);
+    const blueprint = buildSeedBlueprint(config);
+    const mediaUrls = config.mode === 'reset' ? [] : createSeedMedia(config, blueprint);
     await sequelize.transaction(async (transaction) => {
       resetCounts = await resetSeedData(models, config, transaction);
-      if (config.mode === 'seed') result = await seedDummyData(models, config, mediaUrls, transaction);
+      if (config.mode === 'seed') result = await seedDummyData(models, config, mediaUrls, transaction, blueprint);
     });
     if (config.mode === 'reset') {
       removeSeedMedia(config);

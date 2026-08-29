@@ -4,6 +4,7 @@ const { Op, QueryTypes } = require('sequelize');
 const { findSeedUsers } = require('./store');
 const { pairKey } = require('./factory');
 const { calculateProfileCompletion } = require('../../src/services/profileCompletionService');
+const { detectedMimeType, sha256 } = require('./media');
 
 function invariant(condition, message) {
   if (!condition) throw new Error(`Dummy seed validation failed: ${message}`);
@@ -19,16 +20,33 @@ async function validateDummyData(sequelize, models, config) {
   invariant(profiles.length === users.length, 'every seed user must have one profile');
   const completed = profiles.filter((profile) => profile.onboardingCompleted);
   invariant(completed.length >= users.length - 2, 'only the deliberate edge profile may be incomplete');
+  const imageOwners = new Map();
+  const imageHashes = new Map();
+  for (const profile of profiles) {
+    invariant(Array.isArray(profile.photos) && profile.photos.length === 2, `profile ${profile.id} must have exactly two demo photos`);
+    invariant(Number(profile.primaryPhotoIndex) === 0, `profile ${profile.id} must have primaryPhotoIndex 0`);
+    for (const [photoIndex, photo] of profile.photos.entries()) {
+      invariant(photo.startsWith(`/uploads/onboarding-photos/${config.mediaPrefix}`), `profile ${profile.id} has an unexpected demo media URL`);
+      const file = path.join(path.resolve(config.uploadsDirectory, '..', '..'), photo.replace(/^\//, ''));
+      invariant(fs.existsSync(file), `missing media file ${photo}`);
+      const bytes = fs.readFileSync(file);
+      invariant(Boolean(detectedMimeType(bytes)), `unsupported or unreadable media file ${photo}`);
+      const previousOwner = imageOwners.get(photo);
+      invariant(!previousOwner, `photo ${photo} is assigned to profiles ${previousOwner?.profileId} and ${profile.id}`);
+      imageOwners.set(photo, { profileId: profile.id, userId: profile.userId, photoIndex });
+      const hash = sha256(bytes);
+      const previousHash = imageHashes.get(hash);
+      invariant(!previousHash, `duplicate image hash ${hash}: ${previousHash?.photo} and ${photo}`);
+      imageHashes.set(hash, { photo, profileId: profile.id, userId: profile.userId, photoIndex });
+    }
+  }
+  invariant(imageOwners.size === users.length * 2, 'each seed user must own two unique image files');
+  invariant(imageHashes.size === imageOwners.size, 'every seeded image must have a unique SHA-256 hash');
   for (const profile of completed) {
     invariant(profile.birthDate && profile.gender && profile.city && profile.profession && profile.education, `profile ${profile.id} is missing onboarding data`);
     invariant(Array.isArray(profile.interestedIn) && profile.interestedIn.length > 0, `profile ${profile.id} has no dating preference`);
     invariant(Array.isArray(profile.relationshipGoals) && profile.relationshipGoals.length > 0, `profile ${profile.id} has no relationship goal`);
     invariant(Array.isArray(profile.interests) && profile.interests.length >= 5 && profile.interests.length <= 10, `profile ${profile.id} has an invalid interest count`);
-    invariant(Array.isArray(profile.photos) && profile.photos.length >= 2 && profile.photos.length <= 6, `profile ${profile.id} has an invalid photo count`);
-    for (const photo of profile.photos) {
-      invariant(photo.startsWith('/uploads/onboarding-photos/'), `profile ${profile.id} has an unexpected media URL`);
-      invariant(fs.existsSync(path.join(path.resolve(config.uploadsDirectory, '..', '..'), photo.replace(/^\//, ''))), `missing media file ${photo}`);
-    }
   }
 
   const [actions, matches, conversations, participants, messages, roses, savedProfiles, blocks, filters, notificationPreferences] = await Promise.all([
@@ -97,6 +115,7 @@ async function validateDummyData(sequelize, models, config) {
     superLikes: actions.filter((value) => value.action === 'superLike').length,
     roses: roses.length, matches: matches.length, conversations: matches.length,
     messages: messages.length, savedProfiles: savedProfiles.length, blocks: blocks.length,
+    profileImages: imageOwners.size, uniqueImageHashes: imageHashes.size,
   };
 }
 

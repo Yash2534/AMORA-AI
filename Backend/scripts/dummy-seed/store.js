@@ -95,11 +95,11 @@ async function resetSeedData(models, config, transaction) {
   return { users: userIds.length, conversations: conversationIds.length };
 }
 
-async function seedDummyData(models, config, mediaUrls, transaction) {
+async function seedDummyData(models, config, mediaUrls, transaction, suppliedBlueprint) {
   const { User, OnboardingProfile, DiscoverAction, Match, Conversation, ConversationParticipant, Message,
     RoseTransaction, SavedProfile, Block, DiscoverFilterPreference, NotificationPreference, Notification,
     SubscriptionPlan, Subscription } = models;
-  const blueprint = buildSeedBlueprint(config);
+  const blueprint = suppliedBlueprint || buildSeedBlueprint(config);
   const passwordHash = await bcrypt.hash(config.password, 10);
 
   await User.bulkCreate(blueprint.users.map((entry) => ({
@@ -123,7 +123,7 @@ async function seedDummyData(models, config, mediaUrls, transaction) {
     interests: entry.interests, lifestyle: entry.lifestyle, prompts: entry.prompts, pronouns: entry.pronouns,
     sexuality: entry.sexuality, valuedQualities: entry.valuedQualities, loveLanguages: entry.loveLanguages,
     preferredTalkingHours: entry.preferredTalkingHours, communicationStyle: entry.communicationStyle,
-    photos: Array.from({ length: entry.photoCount }, (_, photoIndex) => mediaUrls[(index * 3 + photoIndex) % mediaUrls.length]),
+    photos: mediaUrls[index],
     primaryPhotoIndex: 0, height: `${entry.heightCm} cm`, smoking: entry.smoking, drinking: entry.drinking,
     weed: entry.weed, community: entry.community, religion: entry.religion, languages: entry.languages,
     stage: entry.completed ? 'complete' : 'photos', onboardingCompleted: entry.completed,

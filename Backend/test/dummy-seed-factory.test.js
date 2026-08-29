@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { buildSeedBlueprint, pairKey } = require('../scripts/dummy-seed/factory');
-const { generateAvatarPng } = require('../scripts/dummy-seed/media');
+const { detectedMimeType, sha256 } = require('../scripts/dummy-seed/media');
 
 const config = { userCount: 60, randomSeed: 789, referenceDate: new Date('2026-08-29T12:00:00.000Z') };
 
@@ -30,9 +30,9 @@ test('demo accounts and video relationships have stable identities', () => {
   assert.equal(pairKey(9, 2), '2:9');
 });
 
-test('generated avatars are valid PNG files and vary by seed index', () => {
-  const first = generateAvatarPng(1, 32, 32);
-  const second = generateAvatarPng(2, 32, 32);
-  assert.deepEqual([...first.subarray(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10]);
-  assert.notDeepEqual(first, second);
+test('seed media helpers only accept supported image signatures and hash content', () => {
+  const png = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+  assert.equal(detectedMimeType(png), 'image/png');
+  assert.equal(detectedMimeType(Buffer.from('not-an-image')), null);
+  assert.notEqual(sha256(Buffer.from('portrait-a')), sha256(Buffer.from('portrait-b')));
 });

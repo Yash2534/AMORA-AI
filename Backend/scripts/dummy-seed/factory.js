@@ -120,13 +120,13 @@ function buildSeedBlueprint(config) {
     const name = demo?.name || `${first} ${last}`;
     const gender = demo?.gender || (index % 11 === 0 ? 'Other' : index % 2 === 0 ? 'Female' : 'Male');
     const age = demo?.age || (index === 3 ? 18 : index === 4 ? 79 : integer(random, 21, 48));
-    const incomplete = !demo && index === config.userCount - 2;
-    const deactivated = !demo && index === config.userCount - 1;
-    const interests = demo?.interests || sample(random, INTERESTS, incomplete ? 3 : integer(random, 5, 10));
+    const interests = demo?.interests || sample(random, INTERESTS, integer(random, 5, 10));
     const city = demo?.city || CITIES[index % CITIES.length];
     const createdDaysAgo = index === 5 ? 0 : index === 6 ? 900 : integer(random, 1, 420);
     const lastActiveMinutes = index % 5 === 0 ? integer(random, 1, 12) : integer(random, 45, 60 * 24 * 20);
-    const photoCount = incomplete ? 1 : index === 7 ? 2 : index === 8 ? 6 : integer(random, 2, 6);
+    // Two photographs are the product minimum for a completed profile. Keeping
+    // this fixed makes the demo asset set deterministic and easy to audit.
+    const photoCount = 2;
     const email = demo?.email || `profile.${String(sequence).padStart(4, '0')}.${slug(first)}.${slug(last)}@seed.amoraa.example.test`;
     const languages = sample(random, LANGUAGES, integer(random, 1, 3));
     const religion = pick(random, RELIGIONS);
@@ -157,13 +157,13 @@ function buildSeedBlueprint(config) {
       sexuality: pick(random, ['Straight', 'Bisexual', 'Open']), valuedQualities: sample(random, QUALITIES, 3),
       loveLanguages: sample(random, LOVE_LANGUAGES, 2), preferredTalkingHours: sample(random, TALKING_HOURS, 2),
       communicationStyle: pick(random, COMMUNICATION_STYLES),
-      prompts: incomplete ? {} : {
+      prompts: {
         'A perfect Sunday looks like': pick(random, ['Coffee, a long walk, and cooking dinner together.', 'A slow morning followed by a spontaneous day trip.', 'Good music, close friends, and nowhere to rush.']),
         'The way to win me over is': pick(random, ['Be curious and communicate clearly.', 'Make me laugh and remember the little things.', 'Bring a thoughtful plan and an open mind.']),
       },
       iceBreaker: pick(random, ['What is a small thing that made your week better?', 'Which city would you revisit tomorrow?', 'What is your signature dish?']),
       preferredDistance: [20, 40, 80, 150][index % 4], photoCount,
-      accountStatus: deactivated ? 'deactivated' : 'active', completed: !incomplete,
+      accountStatus: 'active', completed: true,
       identityVerified: Boolean(demo) || index % 4 === 0,
       createdAt: dateDaysBefore(config.referenceDate, createdDaysAgo, index),
       updatedAt: dateDaysBefore(config.referenceDate, Math.min(createdDaysAgo, integer(random, 0, 20)), index),

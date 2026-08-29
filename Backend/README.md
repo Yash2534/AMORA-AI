@@ -95,7 +95,7 @@ Successful responses use `{ "success": true, "message": "...", "data": {} }`. Er
 
 ## Development dummy data
 
-The repeatable dummy-data workflow creates realistic synthetic profiles, local generated avatars, discover actions (likes, passes, and Super Likes), Roses, mutual matches, conversations, messages, saved profiles, filters, notification preferences, and a subset of development subscriptions. It never sends email or SMS. All generated accounts use the reserved non-deliverable domain `seed.amoraa.example.test`, and reset removes only that namespace and its dependent records.
+The repeatable dummy-data workflow creates realistic synthetic profiles, development-only local portrait media, discover actions (likes, passes, and Super Likes), Roses, mutual matches, conversations, messages, saved profiles, filters, notification preferences, and a subset of development subscriptions. It never sends email or SMS. All generated accounts use the reserved non-deliverable domain `seed.amoraa.example.test`, and reset removes only that namespace and its dependent records.
 
 The command refuses to run unless all of these conditions are satisfied:
 
@@ -113,16 +113,19 @@ SEED_USER_COUNT=150
 SEED_RANDOM_SEED=12345
 SEED_REFERENCE_DATE=2026-08-29
 SEED_TEST_PASSWORD=Amoraa-Dev-Only-2026!
-SEED_MEDIA_VARIANTS=48
 ```
 
 Then run:
 
 ```bash
+npm run setup:demo-portrait-assets
 npm run db:seed:dummy
 npm run db:seed:dummy:validate
 npm run verify:dummy-seed
+npm run verify:demo-profile-images
 ```
+
+`setup:demo-portrait-assets` caches 200 CC0 AI-generated portraits from the Faker person-portrait collection under `demo-assets/`. The seed combines those assets with the repository-owned synthetic portraits and writes exactly two unique images for each of the 150 completed demo profiles. The application never fetches portrait media at runtime.
 
 `db:seed:dummy` is deterministic and idempotent: it removes the previous isolated seed dataset and recreates it in one database transaction. To remove only generated dummy data and its prefixed local media:
 

@@ -2,8 +2,8 @@ import 'package:flutter/foundation.dart';
 
 /// Shared API location.
 ///
-/// Set AMORA_API_BASE_URL to an HTTPS deployment or a LAN address
-/// when running on a physical device.
+/// Set AMORA_API_BASE_URL to an HTTPS deployment or the development machine's
+/// LAN URL when running on a physical device.
 ///
 /// Android emulators use the host loopback alias 10.0.2.2.
 class AmoraApiConfig {
@@ -34,10 +34,10 @@ class AmoraApiConfig {
       throw StateError('AMORA_API_BASE_URL is required for release builds.');
     }
 
-    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
-      return 'http://195.35.23.132:5001';
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+      return 'http://10.0.2.2:5000';
     }
 
-    return 'http://195.35.23.132:5001';
+    return 'http://localhost:5000';
   }
 }
