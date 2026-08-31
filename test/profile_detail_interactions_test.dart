@@ -379,9 +379,8 @@ void main() {
         expect(style.fontWeight, referenceLabelStyle.fontWeight);
         expect(style.height, referenceLabelStyle.height);
         expect(style.letterSpacing, referenceLabelStyle.letterSpacing);
-        if (labels[index] == 'Like') {
-          expect(style.color, AppColors.secondary);
-        }
+        expect(style.color, referenceLabelStyle.color);
+        expect(style.color, AppColors.textNeutral);
       }
       for (final buttonWidth in buttonWidths.skip(1)) {
         expect(buttonWidth, moreOrLessEquals(buttonWidths.first, epsilon: .01));

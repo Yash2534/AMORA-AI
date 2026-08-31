@@ -2144,7 +2144,6 @@ class ProfileActionBar extends StatelessWidget {
                       : 'Like $safeName',
                   icon: Icons.favorite_rounded,
                   selected: liked,
-                  accented: true,
                   onTap: onLike,
                 ),
               ),
@@ -2164,7 +2163,6 @@ class _ProfileActionButton extends StatefulWidget {
     required this.onTap,
     required this.semanticLabel,
     this.selected = false,
-    this.accented = false,
     this.loading = false,
   });
 
@@ -2173,7 +2171,6 @@ class _ProfileActionButton extends StatefulWidget {
   final VoidCallback onTap;
   final String semanticLabel;
   final bool selected;
-  final bool accented;
   final bool loading;
 
   @override
@@ -2274,9 +2271,7 @@ class _ProfileActionButtonState extends State<_ProfileActionButton>
                             maxLines: 1,
                             softWrap: false,
                             style: AmoraTextStyles.labelSmall.copyWith(
-                              color: widget.accented
-                                  ? AppColors.secondary
-                                  : AppColors.textNeutral,
+                              color: AppColors.textNeutral,
                               fontSize: 10.5,
                               fontWeight: FontWeight.w700,
                             ),
