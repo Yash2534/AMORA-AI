@@ -18,6 +18,7 @@ const { migrate } = require('../src/migrations/run');
 const { app } = require('../src/server');
 const { getModels } = require('../src/models');
 const adminAuthService = require('../src/services/adminAuthService');
+const adminMfaService = require('../src/services/adminMfaService');
 
 let server;
 let baseUrl;
@@ -32,6 +33,7 @@ async function request(path, options = {}) {
       ...(options.accessToken ? { authorization: `Bearer ${options.accessToken}` } : {}),
       ...(options.cookie ? { cookie: options.cookie } : {}),
       ...(options.body ? { 'content-type': 'application/json' } : {}),
+      ...(options.headers || {}),
     },
     ...(options.body ? { body: JSON.stringify(options.body) } : {}),
   });
@@ -190,6 +192,24 @@ test('admin password recovery, password change, and session revocation are datab
   const otherSession = sessions.body.data.items.find((item) => !item.current);
   assert.ok(otherSession);
 
+  const enrollment = await request('/api/admin/v1/auth/mfa/enroll', {
+    method: 'POST', accessToken: first.body.data.accessToken,
+  });
+  assert.equal(enrollment.status, 201);
+  const counter = Math.floor(Date.now() / 30000);
+  const confirmation = await request('/api/admin/v1/auth/mfa/confirm', {
+    method: 'POST',
+    accessToken: first.body.data.accessToken,
+    body: { code: adminMfaService.totpFor(enrollment.body.data.secret, counter) },
+  });
+  assert.equal(confirmation.status, 200);
+  const recoveryCodes = confirmation.body.data.recoveryCodes;
+  const stepUp = await request('/api/admin/v1/auth/mfa/step-up', {
+    method: 'POST', accessToken: first.body.data.accessToken,
+    body: { recoveryCode: recoveryCodes[0] },
+  });
+  assert.equal(stepUp.status, 200);
+
   const revoked = await request(`/api/admin/v1/auth/sessions/${otherSession.id}/revoke`, {
     method: 'POST',
     accessToken: first.body.data.accessToken,
@@ -252,12 +272,17 @@ test('admin password recovery, password change, and session revocation are datab
     method: 'POST',
     body: { email: administrator.email, password: resetPassword, rememberMe: false },
   });
-  assert.equal(resetLogin.status, 200);
+  assert.equal(resetLogin.status, 202);
+  const verifiedResetLogin = await request('/api/admin/v1/auth/mfa/verify-login', {
+    method: 'POST',
+    body: { challengeToken: resetLogin.body.data.challengeToken, recoveryCode: recoveryCodes[1] },
+  });
+  assert.equal(verifiedResetLogin.status, 200);
 
   const changedPassword = `Changed!${crypto.randomUUID()}Aa1`;
   const changed = await request('/api/admin/v1/auth/change-password', {
     method: 'POST',
-    accessToken: resetLogin.body.data.accessToken,
+    accessToken: verifiedResetLogin.body.data.accessToken,
     body: {
       currentPassword: resetPassword,
       newPassword: changedPassword,
@@ -267,14 +292,26 @@ test('admin password recovery, password change, and session revocation are datab
   assert.equal(changed.status, 200);
   assert.equal(changed.body.data.sessionInvalidated, true);
   const changedAccess = await request('/api/admin/v1/auth/me', {
-    accessToken: resetLogin.body.data.accessToken,
+    accessToken: verifiedResetLogin.body.data.accessToken,
   });
   assert.equal(changedAccess.status, 401);
   const finalLogin = await request('/api/admin/v1/auth/login', {
     method: 'POST',
     body: { email: administrator.email, password: changedPassword, rememberMe: false },
   });
-  assert.equal(finalLogin.status, 200);
+  assert.equal(finalLogin.status, 202);
+  const verifiedFinalLogin = await request('/api/admin/v1/auth/mfa/verify-login', {
+    method: 'POST',
+    body: { challengeToken: finalLogin.body.data.challengeToken, recoveryCode: recoveryCodes[2] },
+  });
+  assert.equal(verifiedFinalLogin.status, 200);
+  const disabledMfa = await request('/api/admin/v1/auth/mfa', {
+    method: 'DELETE',
+    accessToken: verifiedFinalLogin.body.data.accessToken,
+    body: { recoveryCode: recoveryCodes[3] },
+  });
+  assert.equal(disabledMfa.status, 200);
+  assert.equal(disabledMfa.body.data.sessionInvalidated, true);
   password = changedPassword;
 });
 
@@ -296,4 +333,163 @@ test('expired administrator refresh sessions are rejected and revoked', async ()
   await result.session.row.reload();
   assert.ok(result.session.row.revokedAt);
   assert.equal(result.session.row.revokedReason, 'expired');
+});
+
+test('administrator MFA enrollment, challenge, recovery, replay protection, and step-up are database-backed', async () => {
+  const initial = await request('/api/admin/v1/auth/login', {
+    method: 'POST', body: { email: administrator.email, password, rememberMe: false },
+  });
+  assert.equal(initial.status, 200);
+
+  const enrollment = await request('/api/admin/v1/auth/mfa/enroll', {
+    method: 'POST', accessToken: initial.body.data.accessToken,
+  });
+  assert.equal(enrollment.status, 201);
+  assert.match(enrollment.body.data.secret, /^[A-Z2-7]+$/);
+  const currentCounter = Math.floor(Date.now() / 30000);
+  const enrollmentCode = adminMfaService.totpFor(enrollment.body.data.secret, currentCounter);
+  const confirmed = await request('/api/admin/v1/auth/mfa/confirm', {
+    method: 'POST', accessToken: initial.body.data.accessToken, body: { code: enrollmentCode },
+  });
+  assert.equal(confirmed.status, 200);
+  assert.equal(confirmed.body.data.enabled, true);
+  assert.equal(confirmed.body.data.recoveryCodes.length, 10);
+
+  const mfaLogin = await request('/api/admin/v1/auth/login', {
+    method: 'POST', body: { email: administrator.email, password, rememberMe: true },
+  });
+  assert.equal(mfaLogin.status, 202);
+  assert.equal(mfaLogin.body.data.mfaRequired, true);
+  const nextCode = adminMfaService.totpFor(enrollment.body.data.secret, currentCounter + 1);
+  const verified = await request('/api/admin/v1/auth/mfa/verify-login', {
+    method: 'POST', body: { challengeToken: mfaLogin.body.data.challengeToken, code: nextCode },
+  });
+  assert.equal(verified.status, 200);
+  assert.ok(verified.body.data.accessToken);
+
+  const replay = await request('/api/admin/v1/auth/mfa/step-up', {
+    method: 'POST', accessToken: verified.body.data.accessToken, body: { code: nextCode },
+  });
+  assert.equal(replay.status, 401);
+  assert.equal(replay.body.code, 'MFA_CODE_INVALID');
+
+  const recoveryCode = confirmed.body.data.recoveryCodes[0];
+  const stepUp = await request('/api/admin/v1/auth/mfa/step-up', {
+    method: 'POST', accessToken: verified.body.data.accessToken, body: { recoveryCode },
+  });
+  assert.equal(stepUp.status, 200);
+  const reusedRecoveryCode = await request('/api/admin/v1/auth/mfa/step-up', {
+    method: 'POST', accessToken: verified.body.data.accessToken, body: { recoveryCode },
+  });
+  assert.equal(reusedRecoveryCode.status, 401);
+  assert.equal(reusedRecoveryCode.body.code, 'MFA_CODE_INVALID');
+
+  const recoveryRegeneration = await request('/api/admin/v1/auth/mfa/recovery-codes', {
+    method: 'POST', accessToken: verified.body.data.accessToken,
+  });
+  assert.equal(recoveryRegeneration.status, 200);
+  assert.equal(recoveryRegeneration.body.data.recoveryCodes.length, 10);
+});
+
+test('production Admin mutation CSRF boundary accepts trusted origins, rejects cross-site browsers, and permits non-browser tooling', async () => {
+  const previousNodeEnv = process.env.NODE_ENV;
+  const previousOrigin = process.env.CORS_ORIGIN;
+  const { Administrator, AdminRole, AdminPermission, AdminAuditLog, AdminRefreshToken } = getModels();
+  const suffix = crypto.randomUUID().replaceAll('-', '');
+  const toolingPassword = `Security!${suffix}Aa1`;
+  let toolingAdministrator;
+  let toolingRole;
+  process.env.NODE_ENV = 'production';
+  process.env.CORS_ORIGIN = 'https://admin.example.test';
+  try {
+    const trusted = await request('/api/admin/v1/auth/login', {
+      method: 'POST',
+      headers: { origin: 'https://admin.example.test', 'sec-fetch-site': 'same-origin' },
+      body: { email: administrator.email, password, rememberMe: false },
+    });
+    assert.ok([200, 202].includes(trusted.status));
+
+    const denied = await request('/api/admin/v1/auth/login', {
+      method: 'POST',
+      headers: { origin: 'https://attacker.example.test', 'sec-fetch-site': 'cross-site' },
+      body: { email: administrator.email, password, rememberMe: false },
+    });
+    assert.equal(denied.status, 403);
+    assert.equal(denied.body.code, 'ORIGIN_DENIED');
+
+    const missingBrowserOrigin = await request('/api/admin/v1/auth/login', {
+      method: 'POST',
+      headers: { 'sec-fetch-site': 'cross-site' },
+      body: { email: administrator.email, password, rememberMe: false },
+    });
+    assert.equal(missingBrowserOrigin.status, 403);
+    assert.equal(missingBrowserOrigin.body.code, 'ORIGIN_DENIED');
+
+    const tooling = await request('/api/admin/v1/auth/login', {
+      method: 'POST',
+      body: { email: administrator.email, password, rememberMe: false },
+    });
+    assert.ok([200, 202].includes(tooling.status));
+
+    // Exercise the protected-route ordering with a distinct, non-MFA test
+    // administrator: authentication runs before origin checks and RBAC after
+    // them. The role deliberately lacks users.manage.
+    toolingRole = await AdminRole.create({
+      key: `security_${suffix}`,
+      name: 'Security Boundary Test Role',
+      description: 'Temporary role used to verify Admin mutation security.',
+      isActive: true,
+    });
+    const usersView = await AdminPermission.findOne({ where: { key: 'users.view' } });
+    await toolingRole.addPermission(usersView);
+    toolingAdministrator = await Administrator.create({
+      name: 'Security Boundary Test Admin',
+      email: `security.${suffix}@example.test`,
+      passwordHash: await bcrypt.hash(toolingPassword, 12),
+      status: 'active',
+      activatedAt: new Date(),
+    });
+    await toolingAdministrator.addRole(toolingRole);
+    const authenticated = await request('/api/admin/v1/auth/login', {
+      method: 'POST',
+      headers: { origin: 'https://admin.example.test', 'sec-fetch-site': 'same-origin' },
+      body: { email: toolingAdministrator.email, password: toolingPassword, rememberMe: false },
+    });
+    assert.equal(authenticated.status, 200);
+
+    const unauthenticatedMutation = await request('/api/admin/v1/users/1/force-logout', {
+      method: 'POST',
+      headers: { origin: 'https://admin.example.test', 'sec-fetch-site': 'same-origin' },
+    });
+    assert.equal(unauthenticatedMutation.status, 401);
+
+    const invalidOriginMutation = await request('/api/admin/v1/users/1/force-logout', {
+      method: 'POST',
+      accessToken: authenticated.body.data.accessToken,
+      headers: { origin: 'https://attacker.example.test', 'sec-fetch-site': 'cross-site' },
+    });
+    assert.equal(invalidOriginMutation.status, 403);
+    assert.equal(invalidOriginMutation.body.code, 'ORIGIN_DENIED');
+
+    const insufficientPermissionMutation = await request('/api/admin/v1/users/1/force-logout', {
+      method: 'POST',
+      accessToken: authenticated.body.data.accessToken,
+      headers: { origin: 'https://admin.example.test', 'sec-fetch-site': 'same-origin' },
+    });
+    assert.equal(insufficientPermissionMutation.status, 403);
+    assert.equal(insufficientPermissionMutation.body.code, 'ACCESS_DENIED');
+  } finally {
+    if (toolingAdministrator) {
+      await AdminAuditLog.destroy({ where: { administratorId: toolingAdministrator.id } });
+      await AdminRefreshToken.destroy({ where: { administratorId: toolingAdministrator.id }, force: true });
+      await toolingAdministrator.setRoles([]);
+      await Administrator.destroy({ where: { id: toolingAdministrator.id } });
+    }
+    if (toolingRole) {
+      await toolingRole.setPermissions([]);
+      await AdminRole.destroy({ where: { id: toolingRole.id } });
+    }
+    process.env.NODE_ENV = previousNodeEnv;
+    process.env.CORS_ORIGIN = previousOrigin;
+  }
 });

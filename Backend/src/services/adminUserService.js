@@ -3,6 +3,7 @@ const { getModels } = require('../models');
 const { recordAudit } = require('./adminAuditService');
 const { calculateProfileCompletion } = require('./profileCompletionService');
 const { ageFor } = require('./publicProfileService');
+const { createEmailOtp, deliverEmailOtp } = require('./otpService');
 
 const list = (value) => (Array.isArray(value) ? value : []);
 const can = (request, permission) => (request.adminPermissions || new Set()).has(permission);
@@ -287,6 +288,123 @@ async function forceLogout(request, userId) {
   });
 }
 
+async function remove(request, userId, reason, details) {
+  const { User, OtpToken, RefreshToken, Match } = getModels();
+  return User.sequelize.transaction(async (transaction) => {
+    const user = await User.findByPk(userId, { transaction, lock: transaction.LOCK.UPDATE });
+    if (!user) return null;
+    if (user.accountStatus === 'deleted') {
+      const error = new Error('This account has already been deleted.');
+      error.status = 409;
+      error.code = 'INVALID_STATE';
+      throw error;
+    }
+    const previous = {
+      accountStatus: user.accountStatus,
+      email: maskEmail(user.email),
+      phone: maskPhone(user.phoneNumber),
+    };
+    const previousEmail = user.email;
+    const previousPhoneNumber = user.phoneNumber;
+    const deletedIdentity = `deleted-${user.id}-${Date.now()}`;
+    await user.update({
+      accountStatus: 'deleted',
+      deletedAt: new Date(),
+      deactivatedAt: null,
+      tokenVersion: Number(user.tokenVersion || 0) + 1,
+      deletionReason: reason,
+      deletionDetails: details || null,
+      name: 'Deleted Member',
+      email: `${deletedIdentity}@deleted.amora.invalid`,
+      phoneNumber: deletedIdentity,
+      passwordHash: null,
+      googleId: null,
+      isVerified: false,
+    }, { transaction });
+    await Promise.all([
+      RefreshToken.destroy({ where: { userId }, transaction }),
+      OtpToken.destroy({
+        where: { [Op.or]: [{ email: previousEmail }, { phoneNumber: previousPhoneNumber }] },
+        transaction,
+      }),
+      Match.destroy({ where: { [Op.or]: [{ userOneId: userId }, { userTwoId: userId }] }, transaction }),
+    ]);
+    await recordAudit({
+      request,
+      administratorId: request.admin.id,
+      action: 'admin.users.delete',
+      targetType: 'user',
+      targetId: user.id,
+      reason,
+      oldValue: previous,
+      newValue: { accountStatus: 'deleted', identityAnonymized: true },
+      transaction,
+    });
+    return user;
+  });
+}
+
+async function requestPasswordReset(request, userId) {
+  const { User, OtpToken } = getModels();
+  const result = await User.sequelize.transaction(async (transaction) => {
+    const user = await User.findByPk(userId, { transaction, lock: transaction.LOCK.UPDATE });
+    if (!user) return null;
+    if (user.accountStatus === 'deleted' || user.authProvider !== 'local') {
+      const error = new Error('This user is not eligible for a password reset.');
+      error.status = 409;
+      error.code = 'INVALID_STATE';
+      throw error;
+    }
+    const recent = await OtpToken.findOne({
+      where: {
+        email: user.email,
+        purpose: 'password_reset',
+        consumed: false,
+        createdAt: { [Op.gte]: new Date(Date.now() - 60 * 1000) },
+      },
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+    });
+    if (recent) {
+      const error = new Error('A password reset was requested recently.');
+      error.status = 429;
+      error.code = 'RESET_DELIVERY_COOLDOWN';
+      throw error;
+    }
+    const pending = await createEmailOtp(user.email, 'password_reset', { transaction, deliver: false });
+    await recordAudit({
+      request,
+      administratorId: request.admin.id,
+      action: 'admin.users.password_reset_requested',
+      targetType: 'user',
+      targetId: user.id,
+      metadata: { delivery: 'email' },
+      transaction,
+    });
+    return { user, pending };
+  });
+  if (!result) return null;
+  try {
+    await deliverEmailOtp(result.user.email, 'password_reset', result.pending.code, result.pending.expiresAt);
+  } catch (cause) {
+    await OtpToken.update({ consumed: true }, { where: { id: result.pending.otp.id } });
+    await recordAudit({
+      request,
+      administratorId: request.admin.id,
+      action: 'admin.users.password_reset_delivery_failed',
+      targetType: 'user',
+      targetId: result.user.id,
+      metadata: { delivery: 'email' },
+    });
+    const error = new Error('Password reset delivery failed. No reset code remains active.');
+    error.status = 503;
+    error.code = 'RESET_DELIVERY_FAILED';
+    error.cause = cause;
+    throw error;
+  }
+  return result.user;
+}
+
 module.exports = {
   summary,
   users,
@@ -297,4 +415,6 @@ module.exports = {
   activate,
   deactivate,
   forceLogout,
+  remove,
+  requestPasswordReset,
 };

@@ -2,15 +2,38 @@ const router = require('express').Router();
 const { body, param, query } = require('express-validator');
 const validate = require('../middleware/validateRequest');
 const { requireAdminPermission } = require('../middleware/adminRbacMiddleware');
+const requireRecentAdminMfa = require('../middleware/adminMfaMiddleware');
+const { failure } = require('../admin/responses');
 const controller = require('../controllers/adminUserController');
 
 const userId = () => param('userId').isInt({ min: 1 }).withMessage('A valid user ID is required.').toInt();
+const deletionReasons = ['found_someone', 'taking_a_break', 'not_finding_matches', 'privacy_concerns', 'too_many_notifications', 'app_experience_issues', 'other'];
 const page = () => [
   query('page').optional().isInt({ min: 1, max: 100000 }).toInt(),
   query('pageSize').optional().isInt({ min: 1, max: 100 }).toInt(),
 ];
 
+const userListQueryKeys = new Set([
+  'page', 'pageSize', 'search', 'status', 'onlineStatus', 'registeredFrom',
+  'registeredTo', 'sortBy', 'sortDirection',
+]);
+
+function rejectUnsupportedUserListQuery(request, response, next) {
+  const unsupported = Object.keys(request.query).filter((key) => !userListQueryKeys.has(key));
+  if (unsupported.length) {
+    return failure(
+      request,
+      response,
+      422,
+      'UNSUPPORTED_QUERY_PARAMETER',
+      `Unsupported user-list query parameter${unsupported.length === 1 ? '' : 's'}: ${unsupported.join(', ')}.`,
+    );
+  }
+  return next();
+}
+
 router.get('/', [
+  rejectUnsupportedUserListQuery,
   ...page(),
   query('search').optional().isString().trim().isLength({ min: 1, max: 160 }),
   query('status').optional().isIn(['active', 'deactivated', 'deleted']),
@@ -29,6 +52,12 @@ router.post('/:userId/suspend', [userId(), body('reason').optional().isString().
 router.post('/:userId/deactivate', [userId(), body('reason').optional().isString().trim().isLength({ max: 500 })], validate, requireAdminPermission('users.manage'), controller.deactivate);
 router.post('/:userId/activate', [userId()], validate, requireAdminPermission('users.activate'), controller.activate);
 router.post('/:userId/force-logout', [userId()], validate, requireAdminPermission('users.forceLogout'), controller.forceLogout);
-router.post('/:userId/reset-password', [userId()], validate, requireAdminPermission('users.resetPassword'), controller.resetPassword);
+router.delete('/:userId', [
+  userId(),
+  body('reason').isIn(deletionReasons).withMessage('A valid deletion reason is required.'),
+  body('details').optional({ nullable: true }).isString().trim().isLength({ max: 240 }),
+  body('details').if(body('reason').equals('other')).notEmpty().withMessage('Details are required when the reason is other.'),
+], validate, requireRecentAdminMfa, requireAdminPermission('users.delete'), controller.remove);
+router.post('/:userId/reset-password', [userId()], validate, requireRecentAdminMfa, requireAdminPermission('users.resetPassword'), controller.resetPassword);
 
 module.exports = router;

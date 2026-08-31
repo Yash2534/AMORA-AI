@@ -1,6 +1,7 @@
 const auth = require('../services/adminAuthService');
 const { refreshTokenFrom, cookieValue, clearCookieValue } = require('../admin/httpCookies');
 const { success, failure } = require('../admin/responses');
+const mfa = require('../services/adminMfaService');
 
 const publicResult = (result) => ({
   accessToken: result.accessToken,
@@ -16,11 +17,70 @@ const publicResult = (result) => ({
 exports.login = async (req, res, next) => {
   try {
     const result = await auth.login(req.body.email, req.body.password, req.body.rememberMe, req);
+    if (result.mfaRequired) {
+      return success(req, res, 'Multi-factor authentication is required.', {
+        mfaRequired: true,
+        challengeToken: result.challengeToken,
+        expiresAt: result.expiresAt,
+        methods: result.methods,
+      }, 202);
+    }
     res.setHeader('Set-Cookie', cookieValue(result.session.token, result.session));
     return success(req, res, 'Administrator login successful.', publicResult(result));
   } catch (error) {
     return next(error);
   }
+};
+
+exports.verifyMfaLogin = async (req, res, next) => {
+  try {
+    const result = await auth.completeMfaLogin(req.body.challengeToken, {
+      code: req.body.code,
+      recoveryCode: req.body.recoveryCode,
+    }, req);
+    res.setHeader('Set-Cookie', cookieValue(result.session.token, result.session));
+    return success(req, res, 'Administrator login successful.', publicResult(result));
+  } catch (error) { return next(error); }
+};
+
+exports.mfaStatus = async (req, res, next) => {
+  try { return success(req, res, 'MFA status retrieved.', await mfa.status(req.admin.id)); }
+  catch (error) { return next(error); }
+};
+
+exports.beginMfaEnrollment = async (req, res, next) => {
+  try { return success(req, res, 'MFA enrollment started.', await mfa.beginEnrollment(req.admin, req), 201); }
+  catch (error) { return next(error); }
+};
+
+exports.confirmMfaEnrollment = async (req, res, next) => {
+  try { return success(req, res, 'MFA enabled.', await mfa.confirmEnrollment(req.admin, req.body.code, req)); }
+  catch (error) { return next(error); }
+};
+
+exports.stepUpMfa = async (req, res, next) => {
+  try {
+    return success(req, res, 'MFA step-up completed.', await mfa.stepUp(req.admin, req.adminSession, {
+      code: req.body.code,
+      recoveryCode: req.body.recoveryCode,
+    }, req));
+  } catch (error) { return next(error); }
+};
+
+exports.regenerateMfaRecoveryCodes = async (req, res, next) => {
+  try { return success(req, res, 'MFA recovery codes regenerated.', await mfa.regenerateRecoveryCodes(req.admin, req)); }
+  catch (error) { return next(error); }
+};
+
+exports.disableMfa = async (req, res, next) => {
+  try {
+    const result = await mfa.disable(req.admin, {
+      code: req.body.code,
+      recoveryCode: req.body.recoveryCode,
+    }, req);
+    res.setHeader('Set-Cookie', clearCookieValue());
+    return success(req, res, 'MFA disabled. Sign in again to continue.', result);
+  } catch (error) { return next(error); }
 };
 
 exports.refresh = async (req, res, next) => {

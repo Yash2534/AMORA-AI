@@ -19,6 +19,7 @@ const { initializeDatabase, getSequelize } = require('../src/config/db');
 const { getModels } = require('../src/models');
 const { app } = require('../src/server');
 const { absolutePathFor } = require('../src/utils/identityVerificationStorage');
+const adminMfaService = require('../src/services/adminMfaService');
 
 let server;
 let baseUrl;
@@ -57,7 +58,7 @@ before(async () => {
   });
   const keys = [
     'users.view', 'users.details.view', 'users.profile.view', 'users.sessions.view',
-    'users.manage', 'users.activate', 'users.forceLogout',
+    'users.manage', 'users.activate', 'users.forceLogout', 'users.delete', 'users.resetPassword',
     'profiles.view', 'profiles.details.view', 'profiles.preview', 'profiles.edit',
     'profiles.photos.view', 'profiles.photos.manage', 'profiles.audit.view',
     'verifications.view', 'verifications.pending.view', 'verifications.details.view',
@@ -155,6 +156,18 @@ test('admin user reads and lifecycle mutations commit to the client-authoritativ
   assert.equal(listed.displayName, consumer.name);
   assert.notEqual(listed.email, consumer.email);
   assert.equal(listed.verificationStatus, 'pending');
+
+  const supportedListContract = await request(
+    `/api/admin/v1/users?status=active&onlineStatus=offline&sortBy=displayName&sortDirection=asc&page=1&pageSize=20`,
+    { accessToken: adminToken },
+  );
+  assert.equal(supportedListContract.status, 200);
+  const unsupportedListQuery = await request(
+    '/api/admin/v1/users?verificationStatus=pending&page=1&pageSize=20',
+    { accessToken: adminToken },
+  );
+  assert.equal(unsupportedListQuery.status, 422);
+  assert.equal(unsupportedListQuery.body.code, 'UNSUPPORTED_QUERY_PARAMETER');
 
   const details = await request(`/api/admin/v1/users/${consumer.id}`, { accessToken: adminToken });
   assert.equal(details.status, 200);
@@ -302,4 +315,36 @@ test('admin user reads and lifecycle mutations commit to the client-authoritativ
   assert.equal(await RefreshToken.count({ where: { userId: consumer.id } }), 0);
   const afterForceLogout = await request('/api/auth/me', { accessToken: currentClientToken });
   assert.equal(afterForceLogout.status, 401);
+
+  const enrollment = await request('/api/admin/v1/auth/mfa/enroll', {
+    method: 'POST', accessToken: adminToken,
+  });
+  assert.equal(enrollment.status, 201);
+  const confirmed = await request('/api/admin/v1/auth/mfa/confirm', {
+    method: 'POST',
+    accessToken: adminToken,
+    body: { code: adminMfaService.totpFor(enrollment.body.data.secret, Math.floor(Date.now() / 30000)) },
+  });
+  assert.equal(confirmed.status, 200);
+  const stepUp = await request('/api/admin/v1/auth/mfa/step-up', {
+    method: 'POST',
+    accessToken: adminToken,
+    body: { recoveryCode: confirmed.body.data.recoveryCodes[0] },
+  });
+  assert.equal(stepUp.status, 200);
+
+  const reset = await request(`/api/admin/v1/users/${consumer.id}/reset-password`, {
+    method: 'POST', accessToken: adminToken,
+  });
+  assert.equal(reset.status, 200);
+  const deleted = await request(`/api/admin/v1/users/${consumer.id}`, {
+    method: 'DELETE',
+    accessToken: adminToken,
+    body: { reason: 'privacy_concerns' },
+  });
+  assert.equal(deleted.status, 200);
+  await consumer.reload();
+  assert.equal(consumer.accountStatus, 'deleted');
+  assert.equal(consumer.passwordHash, null);
+  assert.match(consumer.email, /@deleted\.amora\.invalid$/);
 });

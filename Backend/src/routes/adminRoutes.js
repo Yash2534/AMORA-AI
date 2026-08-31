@@ -2,6 +2,7 @@ const router = require('express').Router();
 const { query } = require('express-validator');
 const authRoutes = require('./adminAuthRoutes');
 const requireAdminAuth = require('../middleware/adminAuthMiddleware');
+const requireTrustedAdminOrigin = require('../middleware/adminOriginMiddleware');
 const auditContext = require('../middleware/adminAuditMiddleware');
 const { requireAdminPermission } = require('../middleware/adminRbacMiddleware');
 const validate = require('../middleware/validateRequest');
@@ -22,6 +23,7 @@ router.get('/health', (_req, res) => res.json({
 router.use('/auth', authRoutes);
 
 router.use(requireAdminAuth);
+router.use(requireTrustedAdminOrigin);
 router.use('/users', adminUserRoutes);
 router.use('/profiles', adminProfileRoutes);
 router.use('/verifications', adminVerificationRoutes);

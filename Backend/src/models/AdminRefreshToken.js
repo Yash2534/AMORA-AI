@@ -14,4 +14,5 @@ module.exports = (sequelize) => sequelize.define('AdminRefreshToken', {
   userAgent: { type: DataTypes.STRING(500), allowNull: true },
   lastUsedAt: { type: DataTypes.DATE, allowNull: true },
   persistent: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+  mfaVerifiedAt: { type: DataTypes.DATE, allowNull: true },
 }, { tableName: 'AdminRefreshTokens', updatedAt: false });

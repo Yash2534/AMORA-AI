@@ -23,9 +23,9 @@ function cookieValue(token, options = {}) {
     `${REFRESH_COOKIE}=${encodeURIComponent(token)}`,
     'HttpOnly',
     'Path=/api/admin/v1/auth',
-    'SameSite=Lax',
+    'SameSite=Strict',
   ];
-  if (process.env.NODE_ENV === 'production') parts.push('Secure');
+  if (process.env.NODE_ENV !== 'development') parts.push('Secure');
   if (options.persistent && options.expiresAt) {
     const seconds = Math.max(0, Math.floor((options.expiresAt.getTime() - Date.now()) / 1000));
     parts.push(`Max-Age=${seconds}`);
@@ -39,11 +39,11 @@ function clearCookieValue() {
     `${REFRESH_COOKIE}=`,
     'HttpOnly',
     'Path=/api/admin/v1/auth',
-    'SameSite=Lax',
+    'SameSite=Strict',
     'Max-Age=0',
     'Expires=Thu, 01 Jan 1970 00:00:00 GMT',
   ];
-  if (process.env.NODE_ENV === 'production') parts.push('Secure');
+  if (process.env.NODE_ENV !== 'development') parts.push('Secure');
   return parts.join('; ');
 }
 

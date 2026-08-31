@@ -5,6 +5,7 @@ const { Op } = require('sequelize');
 const { getModels } = require('../models');
 const { recordAudit } = require('./adminAuditService');
 const { sendAdminPasswordReset } = require('./adminPasswordMailer');
+const mfa = require('./adminMfaService');
 
 const accessMinutes = () => Math.max(5, Math.min(60, Number(process.env.ADMIN_ACCESS_TOKEN_TTL_MINUTES || 15)));
 const refreshDays = () => Math.max(1, Math.min(90, Number(process.env.ADMIN_REFRESH_TOKEN_TTL_DAYS || 30)));
@@ -27,7 +28,7 @@ function authError(status, code, message) {
 }
 
 async function administratorWithAccess(id, options = {}) {
-  const { Administrator, AdminRole, AdminPermission } = getModels();
+  const { Administrator, AdminRole, AdminPermission, AdminMfaCredential } = getModels();
   return Administrator.findByPk(id, {
     ...options,
     include: [{
@@ -41,6 +42,11 @@ async function administratorWithAccess(id, options = {}) {
         as: 'permissions',
         through: { attributes: [] },
       }],
+    }, {
+      model: AdminMfaCredential,
+      as: 'mfaCredential',
+      required: false,
+      attributes: ['id', 'enabledAt', 'disabledAt'],
     }],
   });
 }
@@ -68,6 +74,7 @@ function serializeAdministrator(administrator) {
     roles,
     permissions: permissionsFor(administrator),
     lastLoginAt: administrator.lastLoginAt,
+    mfaEnabled: Boolean(administrator.mfaCredential?.enabledAt && !administrator.mfaCredential?.disabledAt),
   };
 }
 
@@ -79,6 +86,7 @@ function accessTokenFor(administrator, session) {
       sid: session.selector,
       typ: 'admin_access',
       ver: Number(administrator.tokenVersion || 0),
+      amr: session.mfaVerifiedAt ? ['pwd', 'otp'] : ['pwd'],
     }, process.env.ADMIN_JWT_SECRET, {
       expiresIn,
       issuer: 'amoraa-backend',
@@ -102,6 +110,7 @@ async function createRefreshSession(administrator, request, options = {}) {
     createdByIp: request.ip || null,
     userAgent: String(request.headers['user-agent'] || '').slice(0, 500) || null,
     persistent: options.persistent === true,
+    mfaVerifiedAt: options.mfaVerifiedAt || null,
   }, { transaction: options.transaction });
   return { row, token, expiresAt, persistent: row.persistent };
 }
@@ -153,6 +162,10 @@ async function login(email, password, rememberMe, request) {
 
   const loaded = await administratorWithAccess(administrator.id);
   if (!loaded?.roles?.length) throw authError(403, 'ACCESS_DENIED', 'No active administrator role is assigned.');
+  if (await mfa.isEnabled(administrator.id)) {
+    const challenge = await mfa.createLoginChallenge(administrator, rememberMe, request);
+    return { mfaRequired: true, ...challenge };
+  }
   const session = await Administrator.sequelize.transaction(async (transaction) => {
     const signedInAt = now();
     await administrator.update({
@@ -171,6 +184,38 @@ async function login(email, password, rememberMe, request) {
       action: 'admin.auth.login_succeeded',
       targetType: 'administrator',
       targetId: administrator.id,
+      transaction,
+    });
+    return created;
+  });
+  return { ...accessTokenFor(administrator, session.row), user: serializeAdministrator(loaded), session };
+}
+
+async function completeMfaLogin(challengeToken, input, request) {
+  const verified = await mfa.consumeLoginChallenge(challengeToken, input, request);
+  const administrator = verified.administrator;
+  const loaded = await administratorWithAccess(administrator.id);
+  if (!loaded?.roles?.length) throw authError(403, 'ACCESS_DENIED', 'No active administrator role is assigned.');
+  const verifiedAt = now();
+  const session = await administrator.sequelize.transaction(async (transaction) => {
+    await administrator.update({
+      failedLoginAttempts: 0,
+      lockedUntil: null,
+      lastLoginAt: verifiedAt,
+      lastActiveAt: verifiedAt,
+    }, { transaction });
+    const created = await createRefreshSession(administrator, request, {
+      transaction,
+      persistent: verified.rememberMe,
+      mfaVerifiedAt: verifiedAt,
+    });
+    await recordAudit({
+      request,
+      administratorId: administrator.id,
+      action: 'admin.auth.login_succeeded',
+      targetType: 'administrator',
+      targetId: administrator.id,
+      metadata: { mfa: true, method: verified.method },
       transaction,
     });
     return created;
@@ -237,6 +282,7 @@ async function rotate(refreshToken, request) {
       transaction,
       persistent: existing.persistent,
       sessionFamilyId: existing.sessionFamilyId,
+      mfaVerifiedAt: existing.mfaVerifiedAt,
     });
     const rotatedAt = now();
     await existing.update({
@@ -533,6 +579,7 @@ module.exports = {
   serializeAdministrator,
   accessTokenFor,
   login,
+  completeMfaLogin,
   rotate,
   logout,
   requestPasswordReset,

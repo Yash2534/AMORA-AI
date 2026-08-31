@@ -39,7 +39,12 @@ if (process.env.NODE_ENV === "development" && origin === "*")
   console.warn(
     "[CORS] Development mode allows all origins. Configure CORS_ORIGIN before production.",
   );
-app.use(helmet());
+app.use(helmet({
+  hsts: process.env.NODE_ENV === 'production'
+    ? { maxAge: 31536000, includeSubDomains: true, preload: true }
+    : false,
+  crossOriginResourcePolicy: { policy: 'same-site' },
+}));
 app.use(
   cors({
     origin: origin === "*" ? "*" : origin.split(",").map((item) => item.trim()),

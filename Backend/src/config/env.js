@@ -16,11 +16,20 @@ if (process.env.NODE_ENV === 'production' && !smtpConfigured) {
   throw new Error('Production requires EMAIL_HOST, EMAIL_USER, and EMAIL_PASS to be configured.');
 }
 if (process.env.NODE_ENV === 'production') {
+  const mfaKey = String(process.env.ADMIN_MFA_ENCRYPTION_KEY || '');
+  const validMfaKey = /^[a-f0-9]{64}$/i.test(mfaKey)
+    || (() => { try { return Buffer.from(mfaKey, 'base64').length === 32; } catch (_) { return false; } })();
+  if (!validMfaKey) {
+    throw new Error('Production requires ADMIN_MFA_ENCRYPTION_KEY to be a 256-bit hex or base64 key.');
+  }
   if (!process.env.ADMIN_WEB_RESET_URL || !String(process.env.ADMIN_WEB_RESET_URL).startsWith('https://')) {
     throw new Error('Production requires an HTTPS ADMIN_WEB_RESET_URL.');
   }
   if (!process.env.CORS_ORIGIN || process.env.CORS_ORIGIN === '*') {
     throw new Error('Production requires an explicit CORS_ORIGIN for credentialed administrator sessions.');
+  }
+  if (String(process.env.CORS_ORIGIN).split(',').some((origin) => !origin.trim().startsWith('https://'))) {
+    throw new Error('Production CORS_ORIGIN entries must use HTTPS.');
   }
 }
 module.exports = { port: Number(process.env.PORT || 5000), smtpConfigured, otpTestConfig };

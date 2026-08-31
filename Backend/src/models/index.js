@@ -15,13 +15,15 @@ const definitions = {
   AdminPermission: require('./AdminPermission'), AdminRefreshToken: require('./AdminRefreshToken'),
   AdminAuditLog: require('./AdminAuditLog'), AdminPasswordResetToken: require('./AdminPasswordResetToken'),
   AdminInvitation: require('./AdminInvitation'), AdminIdempotencyKey: require('./AdminIdempotencyKey'),
+  AdminMfaCredential: require('./AdminMfaCredential'), AdminMfaRecoveryCode: require('./AdminMfaRecoveryCode'),
+  AdminMfaChallenge: require('./AdminMfaChallenge'),
 };
 let models = {};
 function initModels(sequelize) {
   if (models.User) return models;
   const created = Object.fromEntries(Object.entries(definitions).map(([name, define]) => [name, define(sequelize)]));
   const { User, RefreshToken, OnboardingProfile, DiscoverAction, Match, DiscoverFilterPreference, Block, Report, Conversation, ConversationParticipant, Message, MessageMedia, Event, EventRegistration, EventWaitlist, SubscriptionPlan, Subscription, Payment, PaymentEvent, RoseTransaction, SavedProfile, NotificationPreference, Notification, IdentityVerification, IdentityVerificationReason, IdentityVerificationDecisionEvent, UserDevice, NotificationDelivery } = created;
-  const { Administrator, AdminRole, AdminPermission, AdminRefreshToken, AdminAuditLog, AdminPasswordResetToken, AdminInvitation, AdminIdempotencyKey } = created;
+  const { Administrator, AdminRole, AdminPermission, AdminRefreshToken, AdminAuditLog, AdminPasswordResetToken, AdminInvitation, AdminIdempotencyKey, AdminMfaCredential, AdminMfaRecoveryCode, AdminMfaChallenge } = created;
   User.hasMany(RefreshToken, { foreignKey: 'userId', onDelete: 'CASCADE' }); RefreshToken.belongsTo(User, { foreignKey: 'userId' }); User.hasOne(OnboardingProfile, { foreignKey: 'userId', onDelete: 'CASCADE' }); OnboardingProfile.belongsTo(User, { foreignKey: 'userId' });
   User.hasMany(DiscoverAction, { foreignKey: 'actorUserId', onDelete: 'CASCADE', as: 'discoverActions' }); DiscoverAction.belongsTo(User, { foreignKey: 'actorUserId', as: 'actor' }); DiscoverAction.belongsTo(User, { foreignKey: 'targetUserId', as: 'target' });
   User.hasMany(Match, { foreignKey: 'userOneId', onDelete: 'CASCADE', as: 'firstMatches' }); User.hasMany(Match, { foreignKey: 'userTwoId', onDelete: 'CASCADE', as: 'secondMatches' }); Match.belongsTo(User, { foreignKey: 'userOneId', as: 'userOne' }); Match.belongsTo(User, { foreignKey: 'userTwoId', as: 'userTwo' });
@@ -110,6 +112,12 @@ function initModels(sequelize) {
   AdminInvitation.belongsTo(Administrator, { foreignKey: 'invitedByAdministratorId', as: 'invitedBy' });
   Administrator.hasMany(AdminIdempotencyKey, { foreignKey: 'administratorId', as: 'idempotencyKeys', onDelete: 'CASCADE' });
   AdminIdempotencyKey.belongsTo(Administrator, { foreignKey: 'administratorId', as: 'administrator' });
+  Administrator.hasOne(AdminMfaCredential, { foreignKey: 'administratorId', as: 'mfaCredential', onDelete: 'CASCADE' });
+  AdminMfaCredential.belongsTo(Administrator, { foreignKey: 'administratorId', as: 'administrator' });
+  Administrator.hasMany(AdminMfaRecoveryCode, { foreignKey: 'administratorId', as: 'mfaRecoveryCodes', onDelete: 'CASCADE' });
+  AdminMfaRecoveryCode.belongsTo(Administrator, { foreignKey: 'administratorId', as: 'administrator' });
+  Administrator.hasMany(AdminMfaChallenge, { foreignKey: 'administratorId', as: 'mfaChallenges', onDelete: 'CASCADE' });
+  AdminMfaChallenge.belongsTo(Administrator, { foreignKey: 'administratorId', as: 'administrator' });
   Administrator.hasMany(AdminAuditLog, {
     foreignKey: 'administratorId',
     as: 'auditLogs',

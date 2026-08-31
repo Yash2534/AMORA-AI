@@ -60,11 +60,26 @@ exports.forceLogout = async (req, res, next) => {
   } catch (error) { return next(error); }
 };
 
+exports.remove = async (req, res, next) => {
+  try {
+    const user = await service.remove(req, req.params.userId, req.body.reason, req.body.details);
+    if (!user) return notFound(req, res);
+    return success(req, res, 'User account deleted and identifying data anonymized.', {
+      user: { id: String(user.id), status: user.accountStatus },
+    });
+  } catch (error) { return next(error); }
+};
+
 exports.suspend = (req, res) => unavailable(req, res,
   'User suspension requires a schema distinct from the existing deactivated account state.');
 exports.loginHistory = (req, res) => unavailable(req, res,
   'User login history requires an approved append-only login event table.');
 exports.notes = (req, res) => unavailable(req, res,
   'User notes require an approved notes table with author, ownership, version, and retention constraints.');
-exports.resetPassword = (req, res) => unavailable(req, res,
-  'Administrator-initiated client password reset requires an approved delivery and eligibility policy.');
+exports.resetPassword = async (req, res, next) => {
+  try {
+    const user = await service.requestPasswordReset(req, req.params.userId);
+    if (!user) return notFound(req, res);
+    return success(req, res, 'Password reset instructions have been sent to the eligible user.', {});
+  } catch (error) { return next(error); }
+};
