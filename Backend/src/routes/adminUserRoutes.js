@@ -7,6 +7,7 @@ const { failure } = require('../admin/responses');
 const controller = require('../controllers/adminUserController');
 
 const userId = () => param('userId').isInt({ min: 1 }).withMessage('A valid user ID is required.').toInt();
+const noteId = () => param('noteId').isInt({ min: 1 }).withMessage('A valid note ID is required.').toInt();
 const deletionReasons = ['found_someone', 'taking_a_break', 'not_finding_matches', 'privacy_concerns', 'too_many_notifications', 'app_experience_issues', 'other'];
 const page = () => [
   query('page').optional().isInt({ min: 1, max: 100000 }).toInt(),
@@ -48,6 +49,16 @@ router.get('/:userId/profile', [userId()], validate, requireAdminPermission('use
 router.get('/:userId/sessions', [userId(), ...page()], validate, requireAdminPermission('users.sessions.view'), controller.sessions);
 router.get('/:userId/login-history', [userId(), ...page()], validate, requireAdminPermission('users.loginHistory.view'), controller.loginHistory);
 router.get('/:userId/notes', [userId(), ...page()], validate, requireAdminPermission('users.notes.view'), controller.notes);
+router.post('/:userId/notes', [
+  userId(),
+  body('text').isString().trim().isLength({ min: 1, max: 2000 }).withMessage('Note text must be between 1 and 2000 characters.'),
+], validate, requireAdminPermission('users.notes.manage'), controller.addNote);
+router.put('/:userId/notes/:noteId', [
+  userId(), noteId(),
+  body('text').isString().trim().isLength({ min: 1, max: 2000 }).withMessage('Note text must be between 1 and 2000 characters.'),
+], validate, requireAdminPermission('users.notes.manage'), controller.editNote);
+router.delete('/:userId/notes/:noteId', [userId(), noteId()], validate, requireAdminPermission('users.notes.manage'), controller.deleteNote);
+router.get('/:userId/timeline', [userId(), ...page()], validate, requireAdminPermission('users.timeline.view'), controller.timeline);
 router.post('/:userId/suspend', [userId(), body('reason').optional().isString().trim().isLength({ max: 500 })], validate, requireAdminPermission('users.suspend'), controller.suspend);
 router.post('/:userId/deactivate', [userId(), body('reason').optional().isString().trim().isLength({ max: 500 })], validate, requireAdminPermission('users.manage'), controller.deactivate);
 router.post('/:userId/activate', [userId()], validate, requireAdminPermission('users.activate'), controller.activate);

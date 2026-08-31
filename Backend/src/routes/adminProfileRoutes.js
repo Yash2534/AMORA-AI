@@ -11,6 +11,22 @@ const page = () => [
   query('page').optional().isInt({ min: 1, max: 100000 }).toInt(),
   query('pageSize').optional().isInt({ min: 1, max: 100 }).toInt(),
 ];
+const profileListQueryKeys = new Set([
+  'page', 'pageSize', 'search', 'profileStatus', 'verificationStatus',
+  'hasPhotos', 'registeredFrom', 'registeredTo', 'updatedFrom', 'updatedTo',
+  'sortBy', 'sortDirection',
+]);
+function rejectUnsupportedProfileListQuery(req, res, next) {
+  const unsupported = Object.keys(req.query).filter((key) => !profileListQueryKeys.has(key));
+  if (!unsupported.length) return next();
+  return res.status(422).json({
+    success: false,
+    message: `Unsupported profile-list query parameter${unsupported.length === 1 ? '' : 's'}: ${unsupported.join(', ')}.`,
+    code: 'UNSUPPORTED_QUERY_PARAMETER',
+    errors: [],
+    meta: { requestId: req.adminCorrelationId || null },
+  });
+}
 const uploadOne = (req, res, next) => upload.single('file')(req, res, (error) => {
   if (!error) return next();
   const code = error.code === 'LIMIT_FILE_SIZE' ? 'PHOTO_TOO_LARGE'
@@ -19,21 +35,20 @@ const uploadOne = (req, res, next) => upload.single('file')(req, res, (error) =>
 });
 
 router.get('/', [
+  rejectUnsupportedProfileListQuery,
   ...page(),
   query('search').optional().isString().trim().isLength({ min: 1, max: 160 }),
-  query('profileStatus').optional().isString().isLength({ min: 1, max: 40 }),
+  query('profileStatus').optional().isIn(['complete', 'incomplete']),
   query('verificationStatus').optional().isIn(['pending', 'under_review', 'verified', 'rejected', 'not_submitted']),
-  query('completionFrom').optional().isInt({ min: 0, max: 100 }).toInt(),
-  query('completionTo').optional().isInt({ min: 0, max: 100 }).toInt(),
   query('hasPhotos').optional().isBoolean(),
   query('registeredFrom').optional().isISO8601(),
   query('registeredTo').optional().isISO8601(),
   query('updatedFrom').optional().isISO8601(),
   query('updatedTo').optional().isISO8601(),
-  query('sortBy').optional().isIn(['displayName', 'completionPercentage', 'verificationStatus', 'createdAt', 'updatedAt', 'photoCount']),
+  query('sortBy').optional().isIn(['displayName', 'createdAt', 'updatedAt']),
   query('sortDirection').optional().isIn(['asc', 'desc', 'ASC', 'DESC']),
 ], validate, requireAdminPermission('profiles.view'), controller.list);
-router.get('/options/:category', [param('category').isString().isLength({ min: 1, max: 80 })], validate, requireAdminPermission('profiles.view'), controller.taxonomy);
+router.get('/options/:category', [param('category').isIn(['education', 'occupations', 'religions', 'languages', 'interests'])], validate, requireAdminPermission('profiles.view'), controller.taxonomy);
 router.get('/:profileId', [profileId()], validate, requireAdminPermission('profiles.details.view'), controller.details);
 router.patch('/:profileId', [profileId(), body().isObject()], validate, requireAdminPermission('profiles.edit'), controller.update);
 router.get('/:profileId/preview', [profileId()], validate, requireAdminPermission('profiles.preview'), controller.preview);

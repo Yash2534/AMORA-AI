@@ -72,10 +72,45 @@ exports.remove = async (req, res, next) => {
 
 exports.suspend = (req, res) => unavailable(req, res,
   'User suspension requires a schema distinct from the existing deactivated account state.');
-exports.loginHistory = (req, res) => unavailable(req, res,
-  'User login history requires an approved append-only login event table.');
-exports.notes = (req, res) => unavailable(req, res,
-  'User notes require an approved notes table with author, ownership, version, and retention constraints.');
+exports.loginHistory = async (req, res, next) => {
+  try {
+    const user = await service.userById(req, req.params.userId);
+    if (!user) return notFound(req, res);
+    return success(req, res, 'User login history retrieved.', await service.loginHistory(req, user.id, pagination(req.query)));
+  } catch (error) { return next(error); }
+};
+exports.notes = async (req, res, next) => {
+  try {
+    const user = await service.userById(req, req.params.userId);
+    if (!user) return notFound(req, res);
+    return success(req, res, 'User notes retrieved.', await service.notes(req, user.id, pagination(req.query)));
+  } catch (error) { return next(error); }
+};
+exports.addNote = async (req, res, next) => {
+  try {
+    const note = await service.addNote(req, req.params.userId, req.body.text);
+    return note ? success(req, res, 'User note added.', { note }) : notFound(req, res);
+  } catch (error) { return next(error); }
+};
+exports.editNote = async (req, res, next) => {
+  try {
+    const note = await service.editNote(req, req.params.userId, req.params.noteId, req.body.text);
+    return note ? success(req, res, 'User note updated.', { note }) : notFound(req, res);
+  } catch (error) { return next(error); }
+};
+exports.deleteNote = async (req, res, next) => {
+  try {
+    const deleted = await service.deleteNote(req, req.params.userId, req.params.noteId);
+    return deleted ? success(req, res, 'User note deleted.', {}) : notFound(req, res);
+  } catch (error) { return next(error); }
+};
+exports.timeline = async (req, res, next) => {
+  try {
+    const user = await service.userById(req, req.params.userId);
+    if (!user) return notFound(req, res);
+    return success(req, res, 'User timeline retrieved.', await service.timeline(req, user.id, pagination(req.query)));
+  } catch (error) { return next(error); }
+};
 exports.resetPassword = async (req, res, next) => {
   try {
     const user = await service.requestPasswordReset(req, req.params.userId);

@@ -4,6 +4,7 @@ const { recordAudit } = require('./adminAuditService');
 const { calculateProfileCompletion } = require('./profileCompletionService');
 const { ageFor } = require('./publicProfileService');
 const { createEmailOtp, deliverEmailOtp } = require('./otpService');
+const { appendTimeline } = require('./userActivityService');
 
 const list = (value) => (Array.isArray(value) ? value : []);
 const can = (request, permission) => (request.adminPermissions || new Set()).has(permission);
@@ -17,6 +18,41 @@ function maskEmail(value) {
 function maskPhone(value) {
   const digits = String(value || '').replace(/\D/g, '');
   return digits ? `******${digits.slice(-4)}` : null;
+}
+
+function maskIp(value) {
+  const raw = String(value || '').trim();
+  const ip = raw.startsWith('::ffff:') ? raw.slice(7) : raw;
+  if (!ip) return null;
+  if (/^\d{1,3}(?:\.\d{1,3}){3}$/.test(ip)) {
+    const parts = ip.split('.');
+    return `${parts[0]}.${parts[1]}.***.***`;
+  }
+  const parts = ip.split(':').filter(Boolean);
+  return parts.length > 2 ? `${parts.slice(0, 2).join(':')}:****` : '****';
+}
+
+function pagination(result, page) {
+  return {
+    page: page.page,
+    pageSize: page.pageSize,
+    totalItems: result.count,
+    totalPages: Math.ceil(result.count / page.pageSize),
+  };
+}
+
+function noteProjection(note, administratorId) {
+  return {
+    id: String(note.id),
+    text: note.text,
+    category: note.category,
+    version: note.version,
+    createdAt: note.createdAt,
+    updatedAt: note.updatedAt,
+    author: { id: String(note.authorAdministratorId), name: note.author?.name || 'Former administrator' },
+    canEdit: String(note.authorAdministratorId) === String(administratorId),
+    canDelete: String(note.authorAdministratorId) === String(administratorId),
+  };
 }
 
 function mediaUrl(request, value) {
@@ -118,15 +154,21 @@ async function userById(request, userId) {
 }
 
 async function details(request, userId) {
-  const { Report, RefreshToken } = getModels();
+  const { Report, RefreshToken, UserLoginEvent, UserTimelineEvent } = getModels();
   const user = await userById(request, userId);
   if (!user) return null;
-  const [openReportCount, activeSessionCount] = await Promise.all([
+  const [openReportCount, activeSessionCount, lastLogin, recentAdminEvent] = await Promise.all([
     can(request, 'reports.view')
       ? Report.count({ where: { reportedUserId: userId, status: { [Op.in]: ['open', 'reviewing'] } } })
       : null,
     can(request, 'users.sessions.view')
       ? RefreshToken.count({ where: { userId, expiresAt: { [Op.gt]: new Date() } } })
+      : null,
+    can(request, 'users.loginHistory.view')
+      ? UserLoginEvent.findOne({ where: { userId, result: 'successful' }, order: [['occurredAt', 'DESC']] })
+      : null,
+    can(request, 'users.timeline.view')
+      ? UserTimelineEvent.findOne({ where: { userId, administratorId: { [Op.ne]: null } }, order: [['occurredAt', 'DESC']] })
       : null,
   ]);
   return {
@@ -150,7 +192,13 @@ async function details(request, userId) {
       },
     } : {}),
     ...(openReportCount == null ? {} : { openReportCount }),
-    ...(activeSessionCount == null ? {} : { activity: { activeSessionCount } }),
+    ...(activeSessionCount == null && !lastLogin && !recentAdminEvent ? {} : {
+      activity: {
+        ...(activeSessionCount == null ? {} : { activeSessionCount }),
+        ...(lastLogin ? { lastLoginAt: lastLogin.occurredAt } : {}),
+        ...(recentAdminEvent ? { recentAdminAction: recentAdminEvent.title } : {}),
+      },
+    }),
   };
 }
 
@@ -197,12 +245,116 @@ async function sessions(request, userId, page) {
       expiresAt: session.expiresAt,
       ...(can(request, 'auditLogs.requestContext.view') ? { ipAddress: session.createdByIp } : {}),
     })),
-    pagination: {
-      page: page.page,
-      pageSize: page.pageSize,
-      totalItems: result.count,
-      totalPages: Math.ceil(result.count / page.pageSize),
-    },
+    pagination: pagination(result, page),
+  };
+}
+
+async function loginHistory(request, userId, page) {
+  const { UserLoginEvent } = getModels();
+  const result = await UserLoginEvent.findAndCountAll({
+    where: { userId },
+    order: [['occurredAt', 'DESC'], ['id', 'DESC']],
+    limit: page.pageSize,
+    offset: page.offset,
+  });
+  return {
+    items: result.rows.map((event) => ({
+      id: String(event.id),
+      occurredAt: event.occurredAt,
+      result: event.result,
+      authenticationMethod: event.authenticationMethod,
+      failureCategory: event.failureCategory,
+      ipAddress: maskIp(event.ipAddress),
+    })),
+    pagination: pagination(result, page),
+  };
+}
+
+async function notes(request, userId, page) {
+  const { AdminUserNote, Administrator } = getModels();
+  const result = await AdminUserNote.findAndCountAll({
+    where: { userId, deletedAt: null },
+    include: [{ model: Administrator, as: 'author', attributes: ['id', 'name'], required: false }],
+    order: [['createdAt', 'DESC'], ['id', 'DESC']],
+    limit: page.pageSize,
+    offset: page.offset,
+  });
+  return { items: result.rows.map((note) => noteProjection(note, request.admin.id)), pagination: pagination(result, page) };
+}
+
+async function addNote(request, userId, text) {
+  const { User, AdminUserNote, AdminUserNoteVersion } = getModels();
+  return User.sequelize.transaction(async (transaction) => {
+    const user = await User.findByPk(userId, { transaction, lock: transaction.LOCK.UPDATE });
+    if (!user) return null;
+    const note = await AdminUserNote.create({ userId, authorAdministratorId: request.admin.id, text: text.trim() }, { transaction });
+    await AdminUserNoteVersion.create({ noteId: note.id, version: note.version, action: 'created', text: note.text, administratorId: request.admin.id }, { transaction });
+    await appendTimeline({ userId, eventType: 'admin_note_created', title: 'Admin note added', relatedReference: String(note.id), administratorId: request.admin.id, transaction });
+    await recordAudit({ request, administratorId: request.admin.id, action: 'admin.users.note_created', targetType: 'user', targetId: user.id, metadata: { noteId: String(note.id), version: note.version }, transaction });
+    note.author = request.admin;
+    return noteProjection(note, request.admin.id);
+  });
+}
+
+function noteOwnershipError() {
+  const error = new Error('Only the administrator who created this note may change it.');
+  error.status = 403;
+  error.code = 'NOTE_OWNERSHIP_REQUIRED';
+  return error;
+}
+
+async function editNote(request, userId, noteId, text) {
+  const { User, AdminUserNote, AdminUserNoteVersion, Administrator } = getModels();
+  return User.sequelize.transaction(async (transaction) => {
+    const user = await User.findByPk(userId, { transaction, lock: transaction.LOCK.UPDATE });
+    if (!user) return null;
+    const note = await AdminUserNote.findOne({ where: { id: noteId, userId, deletedAt: null }, transaction, lock: transaction.LOCK.UPDATE });
+    if (!note) return null;
+    if (String(note.authorAdministratorId) !== String(request.admin.id)) throw noteOwnershipError();
+    const previousVersion = note.version;
+    await note.update({ text: text.trim(), version: previousVersion + 1 }, { transaction });
+    await AdminUserNoteVersion.create({ noteId: note.id, version: note.version, action: 'updated', text: note.text, administratorId: request.admin.id }, { transaction });
+    await appendTimeline({ userId, eventType: 'admin_note_updated', title: 'Admin note updated', relatedReference: String(note.id), administratorId: request.admin.id, transaction });
+    await recordAudit({ request, administratorId: request.admin.id, action: 'admin.users.note_updated', targetType: 'user', targetId: user.id, metadata: { noteId: String(note.id), previousVersion, version: note.version }, transaction });
+    note.author = await Administrator.findByPk(note.authorAdministratorId, { attributes: ['id', 'name'], transaction });
+    return noteProjection(note, request.admin.id);
+  });
+}
+
+async function deleteNote(request, userId, noteId) {
+  const { User, AdminUserNote, AdminUserNoteVersion } = getModels();
+  return User.sequelize.transaction(async (transaction) => {
+    const user = await User.findByPk(userId, { transaction, lock: transaction.LOCK.UPDATE });
+    if (!user) return null;
+    const note = await AdminUserNote.findOne({ where: { id: noteId, userId, deletedAt: null }, transaction, lock: transaction.LOCK.UPDATE });
+    if (!note) return null;
+    if (String(note.authorAdministratorId) !== String(request.admin.id)) throw noteOwnershipError();
+    const deletedAt = new Date();
+    const previousVersion = note.version;
+    await note.update({ deletedAt, deletedByAdministratorId: request.admin.id, version: previousVersion + 1 }, { transaction });
+    await AdminUserNoteVersion.create({ noteId: note.id, version: note.version, action: 'deleted', text: null, administratorId: request.admin.id }, { transaction });
+    await appendTimeline({ userId, eventType: 'admin_note_deleted', title: 'Admin note deleted', relatedReference: String(note.id), administratorId: request.admin.id, transaction });
+    await recordAudit({ request, administratorId: request.admin.id, action: 'admin.users.note_deleted', targetType: 'user', targetId: user.id, metadata: { noteId: String(note.id), previousVersion, version: note.version }, transaction });
+    return true;
+  });
+}
+
+async function timeline(request, userId, page) {
+  const { UserTimelineEvent, Administrator } = getModels();
+  const result = await UserTimelineEvent.findAndCountAll({
+    where: { userId },
+    include: [{ model: Administrator, as: 'administrator', attributes: ['id', 'name'], required: false }],
+    order: [['occurredAt', 'DESC'], ['id', 'DESC']],
+    limit: page.pageSize,
+    offset: page.offset,
+  });
+  return {
+    items: result.rows.map((event) => ({
+      id: String(event.id), title: event.title, description: event.description, occurredAt: event.occurredAt,
+      category: event.eventType, status: event.status, relatedReference: event.relatedReference,
+      actorName: event.administrator?.name || null,
+    })),
+    pagination: pagination(result, page),
   };
 }
 
@@ -229,6 +381,7 @@ async function activate(request, userId) {
       newValue: { accountStatus: user.accountStatus },
       transaction,
     });
+    await appendTimeline({ userId: user.id, eventType: 'account_activated', title: 'Account activated', status: user.accountStatus, administratorId: request.admin.id, transaction });
     return user;
   });
 }
@@ -264,6 +417,7 @@ async function deactivate(request, userId, reason) {
       newValue: { accountStatus: user.accountStatus },
       transaction,
     });
+    await appendTimeline({ userId: user.id, eventType: 'account_deactivated', title: 'Account deactivated', description: reason || null, status: user.accountStatus, administratorId: request.admin.id, transaction });
     return user;
   });
 }
@@ -284,6 +438,7 @@ async function forceLogout(request, userId) {
       metadata: { revokedSessions },
       transaction,
     });
+    await appendTimeline({ userId: user.id, eventType: 'sessions_revoked', title: 'Sessions revoked', description: `${revokedSessions} session(s) revoked`, administratorId: request.admin.id, transaction });
     return { user, revokedSessions };
   });
 }
@@ -340,6 +495,7 @@ async function remove(request, userId, reason, details) {
       newValue: { accountStatus: 'deleted', identityAnonymized: true },
       transaction,
     });
+    await appendTimeline({ userId: user.id, eventType: 'account_deleted', title: 'Account deleted', status: user.accountStatus, administratorId: request.admin.id, transaction });
     return user;
   });
 }
@@ -381,6 +537,7 @@ async function requestPasswordReset(request, userId) {
       metadata: { delivery: 'email' },
       transaction,
     });
+    await appendTimeline({ userId: user.id, eventType: 'password_reset_requested', title: 'Password reset requested', administratorId: request.admin.id, transaction });
     return { user, pending };
   });
   if (!result) return null;
@@ -412,6 +569,12 @@ module.exports = {
   details,
   profile,
   sessions,
+  loginHistory,
+  notes,
+  addNote,
+  editNote,
+  deleteNote,
+  timeline,
   activate,
   deactivate,
   forceLogout,

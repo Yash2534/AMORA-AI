@@ -110,5 +110,12 @@ exports.audit = async (req, res, next) => {
   } catch (error) { return next(error); }
 };
 
-exports.taxonomy = (req, res) => failure(req, res, 501, 'SCHEMA_NOT_AVAILABLE',
-  'Profile taxonomy requires approved option tables and stable option identifiers.');
+exports.taxonomy = async (req, res, next) => {
+  try {
+    if (req.params.category === 'religions' && !(req.adminPermissions || new Set()).has('profiles.sensitiveFields.view')) {
+      return failure(req, res, 403, 'PERMISSION_DENIED', 'Religion taxonomy requires sensitive profile permission.');
+    }
+    const data = await service.taxonomy(req, req.params.category);
+    return data ? success(req, res, 'Profile taxonomy retrieved.', data) : notFound(req, res);
+  } catch (error) { return next(error); }
+};

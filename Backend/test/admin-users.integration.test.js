@@ -30,6 +30,7 @@ let consumerProfile;
 let verification;
 let verificationStoragePath;
 let password;
+let consumerPassword;
 
 async function request(path, options = {}) {
   const response = await fetch(`${baseUrl}${path}`, {
@@ -58,6 +59,7 @@ before(async () => {
   });
   const keys = [
     'users.view', 'users.details.view', 'users.profile.view', 'users.sessions.view',
+    'users.loginHistory.view', 'users.notes.view', 'users.notes.manage', 'users.timeline.view',
     'users.manage', 'users.activate', 'users.forceLogout', 'users.delete', 'users.resetPassword',
     'profiles.view', 'profiles.details.view', 'profiles.preview', 'profiles.edit',
     'profiles.photos.view', 'profiles.photos.manage', 'profiles.audit.view',
@@ -74,11 +76,12 @@ before(async () => {
     passwordHash: await bcrypt.hash(password, 12),
   });
   await administrator.addRole(role);
+  consumerPassword = `Client!${suffix}Aa1`;
   consumer = await User.create({
     name: `Real Client ${suffix}`,
     email: `real.client.${suffix}@example.test`,
     phoneNumber: `+9199${suffix.slice(0, 8).replace(/[^0-9]/g, '7')}`,
-    passwordHash: await bcrypt.hash(`Client!${suffix}Aa1`, 12),
+    passwordHash: await bcrypt.hash(consumerPassword, 12),
     isVerified: true,
     accountStatus: 'active',
   });
@@ -119,6 +122,12 @@ before(async () => {
 after(async () => {
   if (server) await new Promise((resolve) => server.close(resolve));
   const { AdminAuditLog, AdminRefreshToken, Administrator, AdminRole, RefreshToken, OnboardingProfile, IdentityVerification, User } = getModels();
+  if (consumer) {
+    await IdentityVerification.destroy({ where: { userId: consumer.id } });
+    await RefreshToken.destroy({ where: { userId: consumer.id } });
+    await OnboardingProfile.destroy({ where: { userId: consumer.id } });
+    await User.destroy({ where: { id: consumer.id } });
+  }
   if (administrator) {
     await AdminAuditLog.destroy({ where: { administratorId: administrator.id } });
     await AdminRefreshToken.destroy({ where: { administratorId: administrator.id }, force: true });
@@ -128,12 +137,6 @@ after(async () => {
   if (role) {
     await role.setPermissions([]);
     await AdminRole.destroy({ where: { id: role.id } });
-  }
-  if (consumer) {
-    await IdentityVerification.destroy({ where: { userId: consumer.id } });
-    await RefreshToken.destroy({ where: { userId: consumer.id } });
-    await OnboardingProfile.destroy({ where: { userId: consumer.id } });
-    await User.destroy({ where: { id: consumer.id } });
   }
   if (verificationStoragePath) await fs.promises.unlink(absolutePathFor(verificationStoragePath)).catch(() => {});
   await getSequelize().close();
@@ -172,6 +175,52 @@ test('admin user reads and lifecycle mutations commit to the client-authoritativ
   const details = await request(`/api/admin/v1/users/${consumer.id}`, { accessToken: adminToken });
   assert.equal(details.status, 200);
   assert.equal(details.body.data.user.id, String(consumer.id));
+
+  const consumerLogin = await request('/api/auth/login', {
+    method: 'POST',
+    body: { email: consumer.email, password: consumerPassword },
+  });
+  assert.equal(consumerLogin.status, 200);
+  const loginHistory = await request(`/api/admin/v1/users/${consumer.id}/login-history?page=1&pageSize=20`, {
+    accessToken: adminToken,
+  });
+  assert.equal(loginHistory.status, 200);
+  assert.ok(loginHistory.body.data.items.some((item) => item.result === 'successful'));
+  assert.equal(loginHistory.body.data.items[0].ipAddress, '127.0.***.***');
+
+  const invalidNote = await request(`/api/admin/v1/users/${consumer.id}/notes`, {
+    method: 'POST', accessToken: adminToken, body: { text: '' },
+  });
+  assert.equal(invalidNote.status, 400);
+  const createdNote = await request(`/api/admin/v1/users/${consumer.id}/notes`, {
+    method: 'POST', accessToken: adminToken, body: { text: 'Persisted internal investigation note.' },
+  });
+  assert.equal(createdNote.status, 200);
+  assert.equal(createdNote.body.data.note.text, 'Persisted internal investigation note.');
+  assert.equal(createdNote.body.data.note.canEdit, true);
+  const noteId = createdNote.body.data.note.id;
+  const listedNotes = await request(`/api/admin/v1/users/${consumer.id}/notes?page=1&pageSize=20`, { accessToken: adminToken });
+  assert.equal(listedNotes.status, 200);
+  assert.equal(listedNotes.body.data.items[0].id, noteId);
+  const updatedNote = await request(`/api/admin/v1/users/${consumer.id}/notes/${noteId}`, {
+    method: 'PUT', accessToken: adminToken, body: { text: 'Updated internal investigation note.' },
+  });
+  assert.equal(updatedNote.status, 200);
+  assert.equal(updatedNote.body.data.note.version, 2);
+  const { AdminUserNoteVersion } = getModels();
+  assert.equal(await AdminUserNoteVersion.count({ where: { noteId } }), 2);
+  const timeline = await request(`/api/admin/v1/users/${consumer.id}/timeline?page=1&pageSize=20`, { accessToken: adminToken });
+  assert.equal(timeline.status, 200);
+  assert.ok(timeline.body.data.items.some((item) => item.category === 'login_successful'));
+  assert.ok(timeline.body.data.items.some((item) => item.category === 'admin_note_updated'));
+  const deletedNote = await request(`/api/admin/v1/users/${consumer.id}/notes/${noteId}`, {
+    method: 'DELETE', accessToken: adminToken,
+  });
+  assert.equal(deletedNote.status, 200);
+  const notesAfterDelete = await request(`/api/admin/v1/users/${consumer.id}/notes?page=1&pageSize=20`, { accessToken: adminToken });
+  assert.equal(notesAfterDelete.status, 200);
+  assert.equal(notesAfterDelete.body.data.items.some((item) => item.id === noteId), false);
+  assert.equal(await AdminUserNoteVersion.count({ where: { noteId } }), 3);
   const profile = await request(`/api/admin/v1/users/${consumer.id}/profile`, { accessToken: adminToken });
   assert.equal(profile.status, 200);
   assert.equal(profile.body.data.city, 'Pune');
@@ -189,6 +238,30 @@ test('admin user reads and lifecycle mutations commit to the client-authoritativ
   const listedProfile = profiles.body.data.items.find((item) => item.profileId === String(consumerProfile.id));
   assert.ok(listedProfile);
   assert.equal(listedProfile.city, 'Pune');
+
+  const filteredProfiles = await request(
+    `/api/admin/v1/profiles?search=${encodeURIComponent(consumer.name)}&profileStatus=complete&verificationStatus=pending&hasPhotos=true&registeredFrom=2020-01-01&registeredTo=2099-01-01&updatedFrom=2020-01-01&updatedTo=2099-01-01&sortBy=displayName&sortDirection=asc&page=1&pageSize=20`,
+    { accessToken: adminToken },
+  );
+  assert.equal(filteredProfiles.status, 200);
+  assert.ok(filteredProfiles.body.data.items.some((item) => item.profileId === String(consumerProfile.id)));
+  const unsupportedProfileFilter = await request('/api/admin/v1/profiles?completionFrom=50&page=1&pageSize=20', {
+    accessToken: adminToken,
+  });
+  assert.equal(unsupportedProfileFilter.status, 422);
+  assert.equal(unsupportedProfileFilter.body.code, 'UNSUPPORTED_QUERY_PARAMETER');
+  const unsupportedProfileSort = await request('/api/admin/v1/profiles?sortBy=photoCount&page=1&pageSize=20', {
+    accessToken: adminToken,
+  });
+  assert.equal(unsupportedProfileSort.status, 400);
+  const notSubmittedProfiles = await request('/api/admin/v1/profiles?verificationStatus=not_submitted&page=1&pageSize=20', {
+    accessToken: adminToken,
+  });
+  assert.equal(notSubmittedProfiles.status, 200);
+  assert.equal(
+    notSubmittedProfiles.body.data.items.some((item) => item.profileId === String(consumerProfile.id)),
+    false,
+  );
 
   const profileDetails = await request(`/api/admin/v1/profiles/${consumerProfile.id}`, { accessToken: adminToken });
   assert.equal(profileDetails.status, 200);

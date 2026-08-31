@@ -6,8 +6,12 @@ const { ageFor } = require('./publicProfileService');
 const { recordAudit } = require('./adminAuditService');
 const { COMMUNICATION_STYLE_VALUES } = require('../constants/communicationStyles');
 const { MAX_PROFILE_PHOTOS, store, publicPath, remove } = require('../utils/photoStorage');
+const crypto = require('crypto');
 
 const list = (value) => (Array.isArray(value) ? value : []);
+const taxonomyCategories = new Set(['education', 'occupations', 'religions', 'languages', 'interests']);
+const normalizeTaxonomy = (value) => String(value || '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('en-US');
+const taxonomyId = (category, value) => `taxonomy_${category}_${crypto.createHash('sha256').update(`${category}\0${normalizeTaxonomy(value)}`).digest('hex').slice(0, 32)}`;
 const can = (request, permission) => (request.adminPermissions || new Set()).has(permission);
 
 function apiError(status, code, message) {
@@ -42,6 +46,16 @@ function photoRows(request, profile) {
 
 function verificationStatus(user) {
   return user.identityVerification?.status || (user.identityVerifiedAt ? 'verified' : 'not_submitted');
+}
+
+function optionValue(category, value) {
+  if (value == null || String(value).trim() === '') return null;
+  const label = String(value).trim();
+  return { optionId: taxonomyId(category, label), label };
+}
+
+function optionList(category, value) {
+  return list(value).map((item) => optionValue(category, item)).filter(Boolean);
 }
 
 function summary(request, profile) {
@@ -83,19 +97,14 @@ function userInclude(request, options = {}) {
 
 async function profiles(request, page) {
   const { OnboardingProfile, User } = getModels();
-  if (request.query.completionFrom != null || request.query.completionTo != null
-    || ['completionPercentage', 'verificationStatus', 'photoCount'].includes(request.query.sortBy)) {
-    throw apiError(422, 'FILTER_NOT_SUPPORTED',
-      'The requested derived profile filter requires an approved indexed database projection.');
-  }
   const profileWhere = {};
   const userWhere = {};
   if (request.query.search) userWhere.name = { [Op.like]: `%${String(request.query.search).trim()}%` };
   if (request.query.profileStatus) {
-    if (!['complete', 'incomplete'].includes(request.query.profileStatus)) {
-      throw apiError(422, 'FILTER_NOT_SUPPORTED', 'Unsupported profile status filter.');
-    }
     profileWhere.onboardingCompleted = request.query.profileStatus === 'complete';
+  }
+  if (request.query.verificationStatus === 'not_submitted') {
+    profileWhere['$User.identityVerification.id$'] = null;
   }
   if (request.query.hasPhotos != null) {
     const comparison = request.query.hasPhotos === 'true' ? Op.gt : Op.eq;
@@ -156,11 +165,11 @@ function details(request, profile) {
     locationSummary: profile.city,
     photos: photoRows(request, profile),
     lifestyle: profile.lifestyle || {},
-    languages: list(profile.languages),
-    religion: profile.religion,
-    interests: list(profile.interests),
-    education: profile.education,
-    occupation: profile.profession,
+    languages: optionList('languages', profile.languages),
+    religion: optionValue('religions', profile.religion),
+    interests: optionList('interests', profile.interests),
+    education: optionValue('education', profile.education),
+    occupation: optionValue('occupations', profile.profession),
     communicationStyle: profile.communicationStyle,
     iceBreaker: profile.iceBreaker,
     ...(can(request, 'profiles.verification.view') && profile.User.identityVerification ? {

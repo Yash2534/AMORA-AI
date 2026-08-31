@@ -17,14 +17,26 @@ const definitions = {
   AdminInvitation: require('./AdminInvitation'), AdminIdempotencyKey: require('./AdminIdempotencyKey'),
   AdminMfaCredential: require('./AdminMfaCredential'), AdminMfaRecoveryCode: require('./AdminMfaRecoveryCode'),
   AdminMfaChallenge: require('./AdminMfaChallenge'),
+  UserLoginEvent: require('./UserLoginEvent'), AdminUserNote: require('./AdminUserNote'),
+  AdminUserNoteVersion: require('./AdminUserNoteVersion'), UserTimelineEvent: require('./UserTimelineEvent'),
+  ProfileTaxonomyCategory: require('./ProfileTaxonomyCategory'), ProfileTaxonomyOption: require('./ProfileTaxonomyOption'),
 };
 let models = {};
 function initModels(sequelize) {
   if (models.User) return models;
   const created = Object.fromEntries(Object.entries(definitions).map(([name, define]) => [name, define(sequelize)]));
-  const { User, RefreshToken, OnboardingProfile, DiscoverAction, Match, DiscoverFilterPreference, Block, Report, Conversation, ConversationParticipant, Message, MessageMedia, Event, EventRegistration, EventWaitlist, SubscriptionPlan, Subscription, Payment, PaymentEvent, RoseTransaction, SavedProfile, NotificationPreference, Notification, IdentityVerification, IdentityVerificationReason, IdentityVerificationDecisionEvent, UserDevice, NotificationDelivery } = created;
+  const { User, RefreshToken, OnboardingProfile, DiscoverAction, Match, DiscoverFilterPreference, Block, Report, Conversation, ConversationParticipant, Message, MessageMedia, Event, EventRegistration, EventWaitlist, SubscriptionPlan, Subscription, Payment, PaymentEvent, RoseTransaction, SavedProfile, NotificationPreference, Notification, IdentityVerification, IdentityVerificationReason, IdentityVerificationDecisionEvent, UserDevice, NotificationDelivery, UserLoginEvent, AdminUserNote, AdminUserNoteVersion, UserTimelineEvent, ProfileTaxonomyCategory, ProfileTaxonomyOption } = created;
   const { Administrator, AdminRole, AdminPermission, AdminRefreshToken, AdminAuditLog, AdminPasswordResetToken, AdminInvitation, AdminIdempotencyKey, AdminMfaCredential, AdminMfaRecoveryCode, AdminMfaChallenge } = created;
   User.hasMany(RefreshToken, { foreignKey: 'userId', onDelete: 'CASCADE' }); RefreshToken.belongsTo(User, { foreignKey: 'userId' }); User.hasOne(OnboardingProfile, { foreignKey: 'userId', onDelete: 'CASCADE' }); OnboardingProfile.belongsTo(User, { foreignKey: 'userId' });
+  User.hasMany(UserLoginEvent, { foreignKey: 'userId', as: 'loginEvents', onDelete: 'CASCADE' }); UserLoginEvent.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+  User.hasMany(AdminUserNote, { foreignKey: 'userId', as: 'adminNotes', onDelete: 'CASCADE' }); AdminUserNote.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+  Administrator.hasMany(AdminUserNote, { foreignKey: 'authorAdministratorId', as: 'userNotesAuthored', onDelete: 'RESTRICT' }); AdminUserNote.belongsTo(Administrator, { foreignKey: 'authorAdministratorId', as: 'author' });
+  Administrator.hasMany(AdminUserNote, { foreignKey: 'deletedByAdministratorId', as: 'userNotesDeleted', onDelete: 'SET NULL' }); AdminUserNote.belongsTo(Administrator, { foreignKey: 'deletedByAdministratorId', as: 'deletedBy' });
+  AdminUserNote.hasMany(AdminUserNoteVersion, { foreignKey: 'noteId', as: 'versions', onDelete: 'CASCADE' }); AdminUserNoteVersion.belongsTo(AdminUserNote, { foreignKey: 'noteId', as: 'note' });
+  Administrator.hasMany(AdminUserNoteVersion, { foreignKey: 'administratorId', as: 'userNoteVersions', onDelete: 'SET NULL' }); AdminUserNoteVersion.belongsTo(Administrator, { foreignKey: 'administratorId', as: 'administrator' });
+  User.hasMany(UserTimelineEvent, { foreignKey: 'userId', as: 'timelineEvents', onDelete: 'CASCADE' }); UserTimelineEvent.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+  Administrator.hasMany(UserTimelineEvent, { foreignKey: 'administratorId', as: 'userTimelineEvents', onDelete: 'SET NULL' }); UserTimelineEvent.belongsTo(Administrator, { foreignKey: 'administratorId', as: 'administrator' });
+  ProfileTaxonomyCategory.hasMany(ProfileTaxonomyOption, { foreignKey: 'categoryKey', as: 'options', onDelete: 'RESTRICT' }); ProfileTaxonomyOption.belongsTo(ProfileTaxonomyCategory, { foreignKey: 'categoryKey', as: 'category' });
   User.hasMany(DiscoverAction, { foreignKey: 'actorUserId', onDelete: 'CASCADE', as: 'discoverActions' }); DiscoverAction.belongsTo(User, { foreignKey: 'actorUserId', as: 'actor' }); DiscoverAction.belongsTo(User, { foreignKey: 'targetUserId', as: 'target' });
   User.hasMany(Match, { foreignKey: 'userOneId', onDelete: 'CASCADE', as: 'firstMatches' }); User.hasMany(Match, { foreignKey: 'userTwoId', onDelete: 'CASCADE', as: 'secondMatches' }); Match.belongsTo(User, { foreignKey: 'userOneId', as: 'userOne' }); Match.belongsTo(User, { foreignKey: 'userTwoId', as: 'userTwo' });
   User.hasOne(DiscoverFilterPreference, { foreignKey: 'userId', onDelete: 'CASCADE' }); DiscoverFilterPreference.belongsTo(User, { foreignKey: 'userId' });
