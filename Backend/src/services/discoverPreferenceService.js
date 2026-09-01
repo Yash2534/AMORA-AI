@@ -7,7 +7,7 @@ const defaults = {
   maxDistanceKm: 80,
   minScore: 0,
   city: '',
-  minHeight: '',
+  minHeight: null,
   hometown: [],
   datingIntentions: [],
   lifestyleTags: [],
@@ -50,6 +50,10 @@ async function filtersFor(userId, overrides = {}) {
     if (overrides[key] === undefined) continue;
     if (['minAge', 'maxAge', 'maxDistanceKm', 'minScore'].includes(key)) {
       values[key] = Number(overrides[key]);
+    } else if (key === 'minHeight') {
+      values[key] = overrides[key] === '' || overrides[key] == null
+        ? null
+        : Number(overrides[key]);
     } else if (['verifiedOnly', 'onlineNow', 'hasPrompts', 'hasEventInterest'].includes(key)) {
       values[key] = String(overrides[key]) === 'true';
     } else if (arrayFilters.has(key)) {
