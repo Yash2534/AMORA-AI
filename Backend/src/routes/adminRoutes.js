@@ -13,6 +13,7 @@ const adminProfileRoutes = require('./adminProfileRoutes');
 const adminVerificationRoutes = require('./adminVerificationRoutes');
 const adminManagementRoutes = require('./adminManagementRoutes');
 const adminFinancialRoutes = require('./adminFinancialRoutes');
+const adminMatchingRoutes = require('./adminMatchingRoutes');
 
 router.use(auditContext);
 router.get('/health', (_req, res) => res.json({
@@ -29,6 +30,7 @@ router.use('/profiles', adminProfileRoutes);
 router.use('/verifications', adminVerificationRoutes);
 router.use('/', adminFinancialRoutes);
 router.use('/', adminManagementRoutes);
+router.use('/', adminMatchingRoutes);
 router.get('/media/:mediaId', requireAdminPermission('verifications.details.view'), require('../controllers/adminVerificationController').media);
 router.get('/dashboard/overview', [
   query('range').optional().isIn(['today', '7d', '30d', '90d']),

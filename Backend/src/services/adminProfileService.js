@@ -6,7 +6,6 @@ const { ageFor } = require('./publicProfileService');
 const { recordAudit } = require('./adminAuditService');
 const { COMMUNICATION_STYLE_VALUES } = require('../constants/communicationStyles');
 const { MAX_PROFILE_PHOTOS, store, publicPath, remove } = require('../utils/photoStorage');
-const crypto = require('crypto');
 
 const list = (value) => (Array.isArray(value) ? value : []);
 const taxonomyCategories = new Set(['education', 'occupations', 'religions', 'languages', 'interests']);
@@ -56,6 +55,91 @@ function optionValue(category, value) {
 
 function optionList(category, value) {
   return list(value).map((item) => optionValue(category, item)).filter(Boolean);
+}
+
+async function taxonomy(_request, category) {
+  if (!taxonomyCategories.has(category)) return null;
+  const { ProfileTaxonomyCategory, ProfileTaxonomyOption } = getModels();
+  const row = await ProfileTaxonomyCategory.findByPk(category, {
+    include: [{
+      model: ProfileTaxonomyOption,
+      as: 'options',
+      required: false,
+    }],
+    order: [[{ model: ProfileTaxonomyOption, as: 'options' }, 'sortOrder', 'ASC'], [{ model: ProfileTaxonomyOption, as: 'options' }, 'label', 'ASC']],
+  });
+  if (!row) return null;
+  return {
+    category: row.key,
+    label: row.label,
+    maximumSelections: row.maximumSelections,
+    items: row.options.map((option) => ({
+      id: option.id,
+      label: option.label,
+      isActive: option.isActive,
+      allowsCustomValue: option.allowsCustomValue,
+    })),
+  };
+}
+
+async function resolveTaxonomyOption(category, raw, field, transaction) {
+  if (raw == null) return null;
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    throw apiError(422, 'VALIDATION_ERROR', `Invalid ${field}.`);
+  }
+  const optionId = typeof raw.optionId === 'string' ? raw.optionId.trim() : '';
+  if (!optionId) throw apiError(422, 'VALIDATION_ERROR', `Invalid ${field}.`);
+  const { ProfileTaxonomyOption } = getModels();
+  const option = await ProfileTaxonomyOption.findOne({
+    where: { id: optionId, categoryKey: category, isActive: true },
+    transaction,
+  });
+  if (!option) throw apiError(422, 'VALIDATION_ERROR', `Invalid ${field} option.`);
+  const customValue = typeof raw.customValue === 'string' ? raw.customValue.trim().replace(/\s+/g, ' ') : '';
+  if (!option.allowsCustomValue) {
+    if (customValue) throw apiError(422, 'VALIDATION_ERROR', `${field} does not accept a custom value.`);
+    return option.label;
+  }
+  if (!customValue || customValue.length > 255) {
+    throw apiError(422, 'VALIDATION_ERROR', `A valid custom ${field} is required.`);
+  }
+  const id = taxonomyId(category, customValue);
+  await ProfileTaxonomyOption.findOrCreate({
+    where: { id },
+    defaults: {
+      id,
+      categoryKey: category,
+      label: customValue,
+      normalizedLabel: normalizeTaxonomy(customValue),
+      allowsCustomValue: false,
+      isActive: true,
+      sortOrder: 100000,
+    },
+    transaction,
+  });
+  return customValue;
+}
+
+async function resolveTaxonomyList(category, raw, field, transaction) {
+  if (!Array.isArray(raw)) throw apiError(422, 'VALIDATION_ERROR', `Invalid ${field}.`);
+  const ids = raw.map((value) => (typeof value === 'string' ? value.trim() : ''));
+  if (ids.some((value) => !value) || new Set(ids).size !== ids.length) {
+    throw apiError(422, 'VALIDATION_ERROR', `Invalid ${field}.`);
+  }
+  const { ProfileTaxonomyCategory, ProfileTaxonomyOption } = getModels();
+  const taxonomyCategory = await ProfileTaxonomyCategory.findByPk(category, { transaction });
+  if (!taxonomyCategory) throw apiError(422, 'VALIDATION_ERROR', `Invalid ${field} category.`);
+  if (taxonomyCategory.maximumSelections != null && ids.length > taxonomyCategory.maximumSelections) {
+    throw apiError(422, 'VALIDATION_ERROR', `${field} accepts at most ${taxonomyCategory.maximumSelections} selections.`);
+  }
+  if (!ids.length) return [];
+  const options = await ProfileTaxonomyOption.findAll({
+    where: { id: { [Op.in]: ids }, categoryKey: category, isActive: true },
+    transaction,
+  });
+  if (options.length !== ids.length) throw apiError(422, 'VALIDATION_ERROR', `Invalid ${field} option.`);
+  const labels = new Map(options.map((option) => [option.id, option.label]));
+  return ids.map((id) => labels.get(id));
 }
 
 function summary(request, profile) {
@@ -166,7 +250,7 @@ function details(request, profile) {
     photos: photoRows(request, profile),
     lifestyle: profile.lifestyle || {},
     languages: optionList('languages', profile.languages),
-    religion: optionValue('religions', profile.religion),
+    ...(can(request, 'profiles.sensitiveFields.view') ? { religion: optionValue('religions', profile.religion) } : {}),
     interests: optionList('interests', profile.interests),
     education: optionValue('education', profile.education),
     occupation: optionValue('occupations', profile.profession),
@@ -205,9 +289,12 @@ function scalar(value, field, maximum) {
 
 async function update(request, profileId, values, expectedVersion) {
   const { OnboardingProfile } = getModels();
-  const allowed = new Set(['about', 'city', 'lifestyle', 'languages', 'religion', 'interests', 'education', 'occupation', 'communicationStyle', 'iceBreaker']);
+  const allowed = new Set(['about', 'city', 'lifestyle', 'languageIds', 'religion', 'interestIds', 'education', 'occupation', 'communicationStyle', 'iceBreaker']);
   const unknown = Object.keys(values).filter((key) => !allowed.has(key));
   if (unknown.length) throw apiError(422, 'VALIDATION_ERROR', `Unsupported profile fields: ${unknown.join(', ')}.`);
+  if (Object.hasOwn(values, 'religion') && !can(request, 'profiles.sensitiveFields.view')) {
+    throw apiError(403, 'PERMISSION_DENIED', 'Religion updates require sensitive profile permission.');
+  }
   const result = await OnboardingProfile.sequelize.transaction(async (transaction) => {
     const profile = await OnboardingProfile.findByPk(profileId, { transaction, lock: transaction.LOCK.UPDATE });
     if (!profile) return null;
@@ -217,9 +304,9 @@ async function update(request, profileId, values, expectedVersion) {
     const patch = {};
     if (Object.hasOwn(values, 'about')) patch.bio = scalar(values.about, 'about', 5000);
     if (Object.hasOwn(values, 'city')) patch.city = scalar(values.city, 'city', 160);
-    if (Object.hasOwn(values, 'education')) patch.education = scalar(values.education, 'education', 255);
-    if (Object.hasOwn(values, 'occupation')) patch.profession = scalar(values.occupation, 'occupation', 255);
-    if (Object.hasOwn(values, 'religion')) patch.religion = scalar(values.religion, 'religion', 255);
+    if (Object.hasOwn(values, 'education')) patch.education = await resolveTaxonomyOption('education', values.education, 'education', transaction);
+    if (Object.hasOwn(values, 'occupation')) patch.profession = await resolveTaxonomyOption('occupations', values.occupation, 'occupation', transaction);
+    if (Object.hasOwn(values, 'religion')) patch.religion = await resolveTaxonomyOption('religions', values.religion, 'religion', transaction);
     if (Object.hasOwn(values, 'iceBreaker')) patch.iceBreaker = scalar(values.iceBreaker, 'iceBreaker', 280);
     if (Object.hasOwn(values, 'communicationStyle')) {
       const communicationStyle = scalar(values.communicationStyle, 'communicationStyle', 80);
@@ -228,14 +315,8 @@ async function update(request, profileId, values, expectedVersion) {
       }
       patch.communicationStyle = communicationStyle || null;
     }
-    for (const field of ['languages', 'interests']) {
-      if (!Object.hasOwn(values, field)) continue;
-      if (!Array.isArray(values[field]) || values[field].length > 100
-        || values[field].some((item) => typeof item !== 'string' || item.length > 120)) {
-        throw apiError(422, 'VALIDATION_ERROR', `Invalid ${field}.`);
-      }
-      patch[field] = [...new Set(values[field].map((item) => item.trim()).filter(Boolean))];
-    }
+    if (Object.hasOwn(values, 'languageIds')) patch.languages = await resolveTaxonomyList('languages', values.languageIds, 'languages', transaction);
+    if (Object.hasOwn(values, 'interestIds')) patch.interests = await resolveTaxonomyList('interests', values.interestIds, 'interests', transaction);
     if (Object.hasOwn(values, 'lifestyle')) {
       if (!values.lifestyle || typeof values.lifestyle !== 'object' || Array.isArray(values.lifestyle)) {
         throw apiError(422, 'VALIDATION_ERROR', 'Invalid lifestyle.');
@@ -346,6 +427,7 @@ module.exports = {
   findProfile,
   details,
   photoRows,
+  taxonomy,
   update,
   uploadPhoto,
   removePhoto,

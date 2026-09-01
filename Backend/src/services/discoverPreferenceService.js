@@ -38,12 +38,15 @@ const arrayFilters = new Set([
 
 async function filtersFor(userId, overrides = {}) {
   const { DiscoverFilterPreference } = getModels();
+  const runtime = await require('./adminDiscoverConfigurationService').runtimeConfiguration();
+  const { onlineWindowMinutes: _onlineWindowMinutes, ...runtimePreferenceDefaults } = runtime.defaults;
+  const effectiveDefaults = { ...defaults, ...runtimePreferenceDefaults };
   const [stored] = await DiscoverFilterPreference.findOrCreate({
     where: { userId },
-    defaults: { userId, ...defaults },
+    defaults: { userId, ...effectiveDefaults },
   });
-  const values = { ...defaults, ...stored.toJSON() };
-  for (const key of Object.keys(defaults)) {
+  const values = { ...effectiveDefaults, ...stored.toJSON() };
+  for (const key of Object.keys(effectiveDefaults)) {
     if (overrides[key] === undefined) continue;
     if (['minAge', 'maxAge', 'maxDistanceKm', 'minScore'].includes(key)) {
       values[key] = Number(overrides[key]);
@@ -59,7 +62,8 @@ async function filtersFor(userId, overrides = {}) {
       values[key] = overrides[key];
     }
   }
-  return Object.fromEntries(Object.keys(defaults).map((key) => [key, values[key]]));
+  for (const key of Object.keys(effectiveDefaults)) if (!runtime.enabledFilters.has(key)) values[key] = effectiveDefaults[key];
+  return Object.fromEntries(Object.keys(effectiveDefaults).map((key) => [key, values[key]]));
 }
 
 async function updateFilters(userId, body) {

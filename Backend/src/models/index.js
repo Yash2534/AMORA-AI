@@ -20,6 +20,8 @@ const definitions = {
   UserLoginEvent: require('./UserLoginEvent'), AdminUserNote: require('./AdminUserNote'),
   AdminUserNoteVersion: require('./AdminUserNoteVersion'), UserTimelineEvent: require('./UserTimelineEvent'),
   ProfileTaxonomyCategory: require('./ProfileTaxonomyCategory'), ProfileTaxonomyOption: require('./ProfileTaxonomyOption'),
+  AdminDiscoverSetting: require('./AdminDiscoverSetting'), AdminDiscoverFilterField: require('./AdminDiscoverFilterField'),
+  MatchingActionFailure: require('./MatchingActionFailure'),
 };
 let models = {};
 function initModels(sequelize) {

@@ -116,6 +116,13 @@ exports.send = async (req, res, next) => {
       },
     });
   } catch (error) {
+    if (Number(error.status || 500) < 500) {
+      await require('../services/matchingActionFailureService').recordFailure({
+        actionType: 'rose', actorUserId: req.user?.sub, targetUserId: req.body?.recipientId,
+        code: error.code || 'ROSE_NOT_ALLOWED', stage: error.code === 'CONVERSATION_NOT_ALLOWED' ? 'conversation' : 'eligibility',
+        retryable: false,
+      }).catch(() => {});
+    }
     return next(error);
   }
 };

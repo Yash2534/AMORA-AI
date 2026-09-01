@@ -33,6 +33,17 @@ const uploadOne = (req, res, next) => upload.single('file')(req, res, (error) =>
     : error.code === 'INVALID_PHOTO_TYPE' ? 'INVALID_PHOTO_TYPE' : 'VALIDATION_ERROR';
   return res.status(400).json({ success: false, message: error.message || 'Profile photo upload failed.', code, errors: [], meta: { requestId: req.adminCorrelationId || null } });
 });
+const taxonomySelection = (field) => body(field).optional({ nullable: true }).custom((value) => {
+  if (value === null) return true;
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error(`${field} must be a taxonomy selection.`);
+  const keys = Object.keys(value);
+  if (keys.some((key) => !['optionId', 'customValue'].includes(key))) throw new Error(`${field} contains unsupported fields.`);
+  if (typeof value.optionId !== 'string' || !/^[A-Za-z0-9_-]{3,80}$/.test(value.optionId)) throw new Error(`${field}.optionId is invalid.`);
+  if (value.customValue != null && (typeof value.customValue !== 'string' || !value.customValue.trim() || value.customValue.trim().length > 255)) {
+    throw new Error(`${field}.customValue is invalid.`);
+  }
+  return true;
+});
 
 router.get('/', [
   rejectUnsupportedProfileListQuery,
@@ -50,7 +61,17 @@ router.get('/', [
 ], validate, requireAdminPermission('profiles.view'), controller.list);
 router.get('/options/:category', [param('category').isIn(['education', 'occupations', 'religions', 'languages', 'interests'])], validate, requireAdminPermission('profiles.view'), controller.taxonomy);
 router.get('/:profileId', [profileId()], validate, requireAdminPermission('profiles.details.view'), controller.details);
-router.patch('/:profileId', [profileId(), body().isObject()], validate, requireAdminPermission('profiles.edit'), controller.update);
+router.patch('/:profileId', [
+  profileId(),
+  body().isObject(),
+  taxonomySelection('education'),
+  taxonomySelection('occupation'),
+  taxonomySelection('religion'),
+  body('languageIds').optional().isArray({ max: 10 }),
+  body('languageIds.*').optional().isString().matches(/^[A-Za-z0-9_-]{3,80}$/),
+  body('interestIds').optional().isArray({ max: 20 }),
+  body('interestIds.*').optional().isString().matches(/^[A-Za-z0-9_-]{3,80}$/),
+], validate, requireAdminPermission('profiles.edit'), controller.update);
 router.get('/:profileId/preview', [profileId()], validate, requireAdminPermission('profiles.preview'), controller.preview);
 router.get('/:profileId/photos', [profileId()], validate, requireAdminPermission('profiles.photos.view'), controller.photos);
 router.post('/:profileId/photos', [profileId()], validate, requireAdminPermission('profiles.photos.manage'), uploadOne, controller.uploadPhoto);

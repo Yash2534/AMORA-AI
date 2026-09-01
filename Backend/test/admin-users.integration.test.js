@@ -27,6 +27,9 @@ let administrator;
 let role;
 let consumer;
 let consumerProfile;
+let matchingPeer;
+let matchingPeerProfile;
+let matchingConversation;
 let verification;
 let verificationStoragePath;
 let password;
@@ -46,10 +49,15 @@ async function request(path, options = {}) {
   return { status: response.status, body: await response.json() };
 }
 
+function taxonomyOptionId(category, label) {
+  const normalized = String(label).trim().replace(/\s+/g, ' ').toLocaleLowerCase('en-US');
+  return `taxonomy_${category}_${crypto.createHash('sha256').update(`${category}\0${normalized}`).digest('hex').slice(0, 32)}`;
+}
+
 before(async () => {
   await migrate({ databaseName: testDatabase, quiet: true });
   await initializeDatabase();
-  const { Administrator, AdminRole, AdminPermission, User, OnboardingProfile } = getModels();
+  const { Administrator, AdminRole, AdminPermission, User, OnboardingProfile, ProfileTaxonomyOption } = getModels();
   const suffix = crypto.randomUUID().replaceAll('-', '');
   password = `AdminUsers!${suffix}Aa1`;
   role = await AdminRole.create({
@@ -63,9 +71,15 @@ before(async () => {
     'users.manage', 'users.activate', 'users.forceLogout', 'users.delete', 'users.resetPassword',
     'profiles.view', 'profiles.details.view', 'profiles.preview', 'profiles.edit',
     'profiles.photos.view', 'profiles.photos.manage', 'profiles.audit.view',
+    'profiles.sensitiveFields.view',
     'verifications.view', 'verifications.pending.view', 'verifications.details.view',
     'verifications.aadhaar.view', 'verifications.selfie.view', 'verifications.history.view',
     'verifications.approve',
+    'matching.likes.view', 'matching.superLikes.view', 'matching.roses.view',
+    'matching.matches.view', 'matching.actions.details.view', 'matching.actions.failed.view',
+    'matching.aiScore.view', 'matching.aiScore.explanation.view', 'matching.audit.view',
+    'discover.settings.view', 'discover.settings.manage', 'discover.filters.view', 'discover.filters.manage',
+    'matching.sensitiveFields.view',
   ];
   const permissions = await AdminPermission.findAll({ where: { key: keys } });
   assert.equal(permissions.length, keys.length);
@@ -98,6 +112,44 @@ before(async () => {
     onboardingCompleted: true,
     stage: 'complete',
   });
+  const taxonomyOptions = [
+    ['education', 'Bachelor of Technology'],
+    ['languages', 'English'],
+    ['languages', 'Hindi'],
+    ['interests', 'music'],
+    ['interests', 'travel'],
+  ].map(([categoryKey, label], index) => ({
+    id: taxonomyOptionId(categoryKey, label),
+    categoryKey,
+    label,
+    normalizedLabel: label.toLocaleLowerCase('en-US'),
+    allowsCustomValue: false,
+    isActive: true,
+    sortOrder: index + 1,
+  }));
+  await ProfileTaxonomyOption.bulkCreate(taxonomyOptions, { ignoreDuplicates: true });
+  matchingPeer = await User.create({
+    name: `Matching Peer ${suffix}`,
+    email: `matching.peer.${suffix}@example.test`,
+    phoneNumber: `+9188${suffix.slice(0, 8).replace(/[^0-9]/g, '6')}`,
+    passwordHash: await bcrypt.hash(consumerPassword, 12),
+    isVerified: true,
+    accountStatus: 'active',
+  });
+  matchingPeerProfile = await OnboardingProfile.create({
+    userId: matchingPeer.id,
+    birthDate: '1994-03-19', gender: 'Woman', city: 'Pune',
+    bio: 'Authoritative matching integration peer.',
+    interests: ['music'], languages: ['English'], relationshipGoals: ['long_term'],
+    photos: ['/uploads/matching-peer.jpg'], primaryPhotoIndex: 0,
+    onboardingCompleted: true, stage: 'complete',
+  });
+  const { DiscoverAction, Match, RoseTransaction } = getModels();
+  await DiscoverAction.create({ actorUserId: consumer.id, targetUserId: matchingPeer.id, action: 'like' });
+  await DiscoverAction.create({ actorUserId: matchingPeer.id, targetUserId: consumer.id, action: 'superLike' });
+  await Match.create({ userOneId: Math.min(consumer.id, matchingPeer.id), userTwoId: Math.max(consumer.id, matchingPeer.id), matchedAt: new Date() });
+  matchingConversation = (await require('../src/services/conversationAccessService').ensureDirectConversation(consumer.id, matchingPeer.id)).conversation;
+  await RoseTransaction.create({ senderId: consumer.id, recipientId: matchingPeer.id, conversationId: matchingConversation.id, idempotencyKey: `admin-matching-${suffix}`, status: 'sent', note: 'Integration rose' });
   const { IdentityVerification } = getModels();
   const evidenceBytes = Buffer.from('89504e470d0a1a0a0000000d49484452', 'hex');
   verificationStoragePath = `identity-verification/${consumer.id}-admin-integration.png`;
@@ -121,12 +173,20 @@ before(async () => {
 
 after(async () => {
   if (server) await new Promise((resolve) => server.close(resolve));
-  const { AdminAuditLog, AdminRefreshToken, Administrator, AdminRole, RefreshToken, OnboardingProfile, IdentityVerification, User } = getModels();
+  const { AdminAuditLog, AdminRefreshToken, Administrator, AdminRole, RefreshToken, OnboardingProfile, IdentityVerification, User, Conversation, ConversationParticipant } = getModels();
   if (consumer) {
     await IdentityVerification.destroy({ where: { userId: consumer.id } });
     await RefreshToken.destroy({ where: { userId: consumer.id } });
     await OnboardingProfile.destroy({ where: { userId: consumer.id } });
     await User.destroy({ where: { id: consumer.id } });
+  }
+  if (matchingPeer) {
+    await OnboardingProfile.destroy({ where: { userId: matchingPeer.id } });
+    await User.destroy({ where: { id: matchingPeer.id } });
+  }
+  if (matchingConversation) {
+    await ConversationParticipant.destroy({ where: { conversationId: matchingConversation.id } });
+    await Conversation.destroy({ where: { id: matchingConversation.id } });
   }
   if (administrator) {
     await AdminAuditLog.destroy({ where: { administratorId: administrator.id } });
@@ -268,15 +328,48 @@ test('admin user reads and lifecycle mutations commit to the client-authoritativ
   assert.equal(profileDetails.body.data.about, 'A real integration profile persisted in the isolated test database.');
   assert.equal(profileDetails.body.data.photos.length, 1);
 
+  const educationTaxonomy = await request('/api/admin/v1/profiles/options/education', { accessToken: adminToken });
+  assert.equal(educationTaxonomy.status, 200);
+  assert.equal(educationTaxonomy.body.data.category, 'education');
+  assert.ok(educationTaxonomy.body.data.items.some((item) => item.label === 'Bachelor of Technology'));
+  const otherEducation = educationTaxonomy.body.data.items.find((item) => item.allowsCustomValue);
+  assert.ok(otherEducation);
+  const languageTaxonomy = await request('/api/admin/v1/profiles/options/languages', { accessToken: adminToken });
+  const interestTaxonomy = await request('/api/admin/v1/profiles/options/interests', { accessToken: adminToken });
+  assert.equal(languageTaxonomy.status, 200);
+  assert.equal(languageTaxonomy.body.data.maximumSelections, 10);
+  const englishId = languageTaxonomy.body.data.items.find((item) => item.label === 'English').id;
+  const hindiId = languageTaxonomy.body.data.items.find((item) => item.label === 'Hindi').id;
+  const musicId = interestTaxonomy.body.data.items.find((item) => item.label === 'music').id;
+
+  const crossCategoryTaxonomyUpdate = await request(`/api/admin/v1/profiles/${consumerProfile.id}`, {
+    method: 'PATCH', accessToken: adminToken, body: { education: { optionId: englishId } },
+  });
+  assert.equal(crossCategoryTaxonomyUpdate.status, 422);
+
   const updatedBio = 'This profile bio was committed by an authorized administrator integration test.';
   const profileUpdate = await request(`/api/admin/v1/profiles/${consumerProfile.id}`, {
     method: 'PATCH',
     accessToken: adminToken,
     headers: { 'if-match': profileDetails.body.data.version },
-    body: { about: updatedBio, city: 'Bengaluru' },
+    body: {
+      about: updatedBio,
+      city: 'Bengaluru',
+      education: { optionId: otherEducation.id, customValue: 'Doctorate' },
+      languageIds: [englishId, hindiId],
+      interestIds: [musicId],
+    },
   });
   assert.equal(profileUpdate.status, 200);
   assert.equal(profileUpdate.body.data.about, updatedBio);
+  assert.equal(profileUpdate.body.data.education.label, 'Doctorate');
+  assert.deepEqual(profileUpdate.body.data.languages.map((item) => item.label), ['English', 'Hindi']);
+  await consumerProfile.reload();
+  assert.equal(consumerProfile.education, 'Doctorate');
+  assert.deepEqual(consumerProfile.languages, ['English', 'Hindi']);
+  assert.deepEqual(consumerProfile.interests, ['music']);
+  const refreshedEducationTaxonomy = await request('/api/admin/v1/profiles/options/education', { accessToken: adminToken });
+  assert.ok(refreshedEducationTaxonomy.body.data.items.some((item) => item.label === 'Doctorate'));
   const clientProfile = await request('/api/me/profile', { accessToken: originalClientToken });
   assert.equal(clientProfile.status, 200);
   assert.equal(clientProfile.body.data.profile.bio, updatedBio);
@@ -300,6 +393,97 @@ test('admin user reads and lifecycle mutations commit to the client-authoritativ
   });
   assert.equal(profileAudit.status, 200);
   assert.ok(profileAudit.body.data.items.some((item) => item.actionType === 'admin.profiles.update'));
+
+  const likes = await request(`/api/admin/v1/matching/actions?type=like&search=${encodeURIComponent(matchingPeer.name)}&page=1&pageSize=20&sortBy=createdAt&sortDirection=desc&includeFailureDetails=false`, { accessToken: adminToken });
+  assert.equal(likes.status, 200);
+  assert.equal(likes.body.data.items.length, 1);
+  assert.equal(likes.body.data.items[0].actionType, 'like');
+  assert.equal(likes.body.data.items[0].result, 'matched');
+  const likeDetails = await request(`/api/admin/v1/matching/actions/${likes.body.data.items[0].actionId}`, { accessToken: adminToken });
+  assert.equal(likeDetails.status, 200);
+  assert.equal(likeDetails.body.data.sender.userId, String(consumer.id));
+  const superLikes = await request('/api/admin/v1/matching/actions?type=super_like&page=1&pageSize=20&sortBy=createdAt&sortDirection=desc&includeFailureDetails=true', { accessToken: adminToken });
+  assert.equal(superLikes.status, 200);
+  assert.ok(superLikes.body.data.items.some((item) => item.sender.userId === String(matchingPeer.id)));
+  const roses = await request('/api/admin/v1/matching/actions?type=rose&status=sent&page=1&pageSize=20&sortBy=createdAt&sortDirection=desc&includeFailureDetails=false', { accessToken: adminToken });
+  assert.equal(roses.status, 200);
+  assert.ok(roses.body.data.items.some((item) => item.target.userId === String(matchingPeer.id)));
+  const retiredGiftActions = await request('/api/admin/v1/matching/actions?type=gift&page=1&pageSize=20', { accessToken: adminToken });
+  assert.equal(retiredGiftActions.status, 400);
+  const matches = await request(`/api/admin/v1/matches?search=${encodeURIComponent(matchingPeer.name)}&conversationCreated=true&sortBy=aiScore&sortDirection=desc&page=1&pageSize=20`, { accessToken: adminToken });
+  assert.equal(matches.status, 200);
+  const matchingRow = matches.body.data.items.find((item) => item.userB.userId === String(matchingPeer.id) || item.userA.userId === String(matchingPeer.id));
+  assert.ok(matchingRow);
+  assert.equal(matchingRow.conversationExists, true);
+  const matchDetails = await request(`/api/admin/v1/matches/${matchingRow.matchId}`, { accessToken: adminToken });
+  assert.equal(matchDetails.status, 200);
+  assert.equal(matchDetails.body.data.mutualActionIds.length, 2);
+  const score = await request(`/api/admin/v1/matches/${matchingRow.matchId}/ai-score?includeExplanation=true`, { accessToken: adminToken });
+  assert.equal(score.status, 200);
+  assert.equal(score.body.data.scaleMinimum, 0);
+  assert.equal(score.body.data.scaleMaximum, 100);
+  assert.ok(score.body.data.factors.length > 0);
+  const matchHistory = await request(`/api/admin/v1/matches/${matchingRow.matchId}/history`, { accessToken: adminToken });
+  assert.equal(matchHistory.status, 200);
+  assert.ok(matchHistory.body.data.items.some((item) => item.action === 'admin.matching.ai_score_viewed'));
+  const failedLike = await request('/api/discover/swipe', {
+    method: 'POST', accessToken: originalClientToken, body: { targetUserId: consumer.id, action: 'like' },
+  });
+  assert.equal(failedLike.status, 400);
+  const failedActions = await request('/api/admin/v1/matching/actions?type=like&status=failed&failureCode=self_action_not_allowed&page=1&pageSize=20&sortBy=createdAt&sortDirection=desc&includeFailureDetails=true', { accessToken: adminToken });
+  assert.equal(failedActions.status, 200);
+  assert.ok(failedActions.body.data.items.some((item) => item.failure.safeCode === 'SELF_ACTION_NOT_ALLOWED'));
+  const failedActionDetails = await request(`/api/admin/v1/matching/actions/${failedActions.body.data.items[0].actionId}?includeFailureDetails=true`, { accessToken: adminToken });
+  assert.equal(failedActionDetails.status, 200);
+  assert.equal(failedActionDetails.body.data.status, 'failed');
+
+  const discoverSettings = await request('/api/admin/v1/discover/settings', { accessToken: adminToken });
+  assert.equal(discoverSettings.status, 200);
+  const originalMinimumScore = discoverSettings.body.data.settings.find((item) => item.key === 'default_minimum_score').value;
+  const updatedDiscoverSettings = await request('/api/admin/v1/discover/settings', {
+    method: 'PATCH', accessToken: adminToken,
+    headers: { 'if-match': discoverSettings.body.data.version },
+    body: { expectedVersion: discoverSettings.body.data.version, values: { default_minimum_score: 7 } },
+  });
+  assert.equal(updatedDiscoverSettings.status, 200);
+  assert.equal(updatedDiscoverSettings.body.data.settings.find((item) => item.key === 'default_minimum_score').value, 7);
+  const staleDiscoverSettings = await request('/api/admin/v1/discover/settings', {
+    method: 'PATCH', accessToken: adminToken,
+    headers: { 'if-match': discoverSettings.body.data.version },
+    body: { expectedVersion: discoverSettings.body.data.version, values: { default_minimum_score: 8 } },
+  });
+  assert.equal(staleDiscoverSettings.status, 409);
+  const peerToken = jwt.sign({ sub: String(matchingPeer.id), ver: matchingPeer.tokenVersion }, process.env.JWT_SECRET, { expiresIn: '5m' });
+  const peerDefaults = await request('/api/discover/filters', { accessToken: peerToken });
+  assert.equal(peerDefaults.status, 200);
+  assert.equal(peerDefaults.body.data.filters.minScore, 7);
+
+  const discoverFilters = await request('/api/admin/v1/discover/filter-configuration?includeSensitive=true', { accessToken: adminToken });
+  assert.equal(discoverFilters.status, 200);
+  const cityFilter = discoverFilters.body.data.filters.find((item) => item.id === 'city');
+  assert.ok(cityFilter);
+  const disabledCity = await request('/api/admin/v1/discover/filter-configuration/city', {
+    method: 'PATCH', accessToken: adminToken,
+    headers: { 'if-match': discoverFilters.body.data.version, 'x-field-version': cityFilter.version },
+    body: { enabled: false },
+  });
+  assert.equal(disabledCity.status, 200);
+  const ignoredDisabledFilter = await request('/api/discover/filters', { method: 'PUT', accessToken: peerToken, body: { city: 'Not-a-real-city' } });
+  assert.equal(ignoredDisabledFilter.status, 200);
+  assert.equal(ignoredDisabledFilter.body.data.filters.city, '');
+  const disabledCityRow = disabledCity.body.data.filters.find((item) => item.id === 'city');
+  const restoredCity = await request('/api/admin/v1/discover/filter-configuration/city', {
+    method: 'PATCH', accessToken: adminToken,
+    headers: { 'if-match': disabledCity.body.data.version, 'x-field-version': disabledCityRow.version },
+    body: { enabled: true },
+  });
+  assert.equal(restoredCity.status, 200);
+  const restoredSettings = await request('/api/admin/v1/discover/settings', {
+    method: 'PATCH', accessToken: adminToken,
+    headers: { 'if-match': updatedDiscoverSettings.body.data.version },
+    body: { expectedVersion: updatedDiscoverSettings.body.data.version, values: { default_minimum_score: originalMinimumScore } },
+  });
+  assert.equal(restoredSettings.status, 200);
 
   const verificationList = await request('/api/admin/v1/verifications?status=pending&page=1&pageSize=20', {
     accessToken: adminToken,

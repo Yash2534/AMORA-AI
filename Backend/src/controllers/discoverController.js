@@ -151,7 +151,8 @@ exports.getFeed = async (req, res, next) => {
     };
     if (filters.verifiedOnly) userWhere.identityVerifiedAt = { [Op.ne]: null };
     if (filters.onlineNow) {
-      const thresholdMinutes = Math.max(1, Number(process.env.ONLINE_NOW_WINDOW_MINUTES || 5));
+      const runtime = await require('../services/adminDiscoverConfigurationService').runtimeConfiguration();
+      const thresholdMinutes = Math.max(1, Number(runtime.defaults.onlineWindowMinutes || process.env.ONLINE_NOW_WINDOW_MINUTES || 5));
       userWhere.lastActiveAt = { [Op.gte]: new Date(Date.now() - thresholdMinutes * 60 * 1000) };
     }
     if (filters.hasEventInterest) {
@@ -202,7 +203,9 @@ exports.swipe = async (req, res, next) => {
     if (!viewer) return;
     const { User, OnboardingProfile, DiscoverAction, Match } = getModels();
     const targetUserId = Number(req.body.targetUserId);
+    const failureType = req.body.action === 'superLike' ? 'super_like' : req.body.action === 'like' ? 'like' : null;
     if (targetUserId === Number(req.user.sub)) {
+      if (failureType) await require('../services/matchingActionFailureService').recordFailure({ actionType: failureType, actorUserId: req.user.sub, targetUserId, code: 'SELF_ACTION_NOT_ALLOWED', stage: 'eligibility' });
       return fail(res, 400, 'You cannot swipe on your own profile.', 'INVALID_TARGET', [
         { field: 'targetUserId', message: 'Target user must be another user.' },
       ]);
@@ -211,7 +214,14 @@ exports.swipe = async (req, res, next) => {
       where: { id: targetUserId, accountStatus: 'active' },
       include: [{ model: OnboardingProfile, required: true, where: { onboardingCompleted: true } }],
     });
-    if (!target || await areUsersBlocked(req.user.sub, targetUserId)) return fail(res, 404, 'Profile is not available for Discover.', 'PROFILE_NOT_DISCOVERABLE');
+    if (!target) {
+      if (failureType) await require('../services/matchingActionFailureService').recordFailure({ actionType: failureType, actorUserId: req.user.sub, targetUserId, code: 'PROFILE_NOT_DISCOVERABLE', stage: 'eligibility' });
+      return fail(res, 404, 'Profile is not available for Discover.', 'PROFILE_NOT_DISCOVERABLE');
+    }
+    if (await areUsersBlocked(req.user.sub, targetUserId)) {
+      if (failureType) await require('../services/matchingActionFailureService').recordFailure({ actionType: failureType, actorUserId: req.user.sub, targetUserId, code: 'RELATIONSHIP_BLOCKED', stage: 'relationship' });
+      return fail(res, 404, 'Profile is not available for Discover.', 'PROFILE_NOT_DISCOVERABLE');
+    }
     let match = null;
     let matchedRow = null;
     let conversationRow = null;
