@@ -7,12 +7,15 @@ const catalog = require('../src/admin/permissions');
 
 test('administrator permission catalog is canonical, unique, and covers route guards', () => {
   const keys = catalog.map((permission) => permission.key);
-  assert.equal(keys.length, 263);
+  assert.equal(keys.length, 266);
   assert.equal(new Set(keys).size, keys.length);
   assert.ok(keys.includes('membership.view'));
   assert.ok(keys.includes('membership.manage'));
   assert.ok(!keys.includes('memberships.view'));
   assert.ok(!keys.includes('memberships.manage'));
+  assert.ok(keys.includes('systemSettings.view'));
+  assert.ok(keys.includes('systemSettings.update'));
+  assert.ok(keys.includes('safety.reports.personalData.view'));
   for (const permission of catalog) {
     assert.ok(permission.name);
     assert.ok(permission.description);

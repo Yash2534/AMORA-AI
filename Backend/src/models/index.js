@@ -21,14 +21,16 @@ const definitions = {
   AdminUserNoteVersion: require('./AdminUserNoteVersion'), UserTimelineEvent: require('./UserTimelineEvent'),
   ProfileTaxonomyCategory: require('./ProfileTaxonomyCategory'), ProfileTaxonomyOption: require('./ProfileTaxonomyOption'),
   AdminDiscoverSetting: require('./AdminDiscoverSetting'), AdminDiscoverFilterField: require('./AdminDiscoverFilterField'),
+  PlatformSetting: require('./PlatformSetting'),
   MatchingActionFailure: require('./MatchingActionFailure'),
+  AdminReportCase: require('./AdminReportCase'), AdminReportNote: require('./AdminReportNote'),
 };
 let models = {};
 function initModels(sequelize) {
   if (models.User) return models;
   const created = Object.fromEntries(Object.entries(definitions).map(([name, define]) => [name, define(sequelize)]));
   const { User, RefreshToken, OnboardingProfile, DiscoverAction, Match, DiscoverFilterPreference, Block, Report, Conversation, ConversationParticipant, Message, MessageMedia, Event, EventRegistration, EventWaitlist, SubscriptionPlan, Subscription, Payment, PaymentEvent, RoseTransaction, SavedProfile, NotificationPreference, Notification, IdentityVerification, IdentityVerificationReason, IdentityVerificationDecisionEvent, UserDevice, NotificationDelivery, UserLoginEvent, AdminUserNote, AdminUserNoteVersion, UserTimelineEvent, ProfileTaxonomyCategory, ProfileTaxonomyOption } = created;
-  const { Administrator, AdminRole, AdminPermission, AdminRefreshToken, AdminAuditLog, AdminPasswordResetToken, AdminInvitation, AdminIdempotencyKey, AdminMfaCredential, AdminMfaRecoveryCode, AdminMfaChallenge } = created;
+  const { Administrator, AdminRole, AdminPermission, AdminRefreshToken, AdminAuditLog, AdminPasswordResetToken, AdminInvitation, AdminIdempotencyKey, AdminMfaCredential, AdminMfaRecoveryCode, AdminMfaChallenge, PlatformSetting, AdminReportCase, AdminReportNote } = created;
   User.hasMany(RefreshToken, { foreignKey: 'userId', onDelete: 'CASCADE' }); RefreshToken.belongsTo(User, { foreignKey: 'userId' }); User.hasOne(OnboardingProfile, { foreignKey: 'userId', onDelete: 'CASCADE' }); OnboardingProfile.belongsTo(User, { foreignKey: 'userId' });
   User.hasMany(UserLoginEvent, { foreignKey: 'userId', as: 'loginEvents', onDelete: 'CASCADE' }); UserLoginEvent.belongsTo(User, { foreignKey: 'userId', as: 'user' });
   User.hasMany(AdminUserNote, { foreignKey: 'userId', as: 'adminNotes', onDelete: 'CASCADE' }); AdminUserNote.belongsTo(User, { foreignKey: 'userId', as: 'user' });
@@ -59,6 +61,10 @@ function initModels(sequelize) {
   Notification.hasMany(NotificationDelivery, { foreignKey: 'notificationId', as: 'deliveries', onDelete: 'CASCADE' }); NotificationDelivery.belongsTo(Notification, { foreignKey: 'notificationId', as: 'notification' }); UserDevice.hasMany(NotificationDelivery, { foreignKey: 'userDeviceId', as: 'deliveries', onDelete: 'CASCADE' }); NotificationDelivery.belongsTo(UserDevice, { foreignKey: 'userDeviceId', as: 'device' });
   User.hasMany(Block, { foreignKey: 'blockerUserId', as: 'blocksCreated', onDelete: 'CASCADE' }); User.hasMany(Block, { foreignKey: 'blockedUserId', as: 'blocksReceived', onDelete: 'CASCADE' }); Block.belongsTo(User, { foreignKey: 'blockerUserId', as: 'blocker' }); Block.belongsTo(User, { foreignKey: 'blockedUserId', as: 'blockedUser' });
   User.hasMany(Report, { foreignKey: 'reporterUserId', as: 'reportsCreated' }); User.hasMany(Report, { foreignKey: 'reportedUserId', as: 'reportsReceived' }); Report.belongsTo(User, { foreignKey: 'reporterUserId', as: 'reporter' }); Report.belongsTo(User, { foreignKey: 'reportedUserId', as: 'reportedUser' });
+  Report.hasOne(AdminReportCase, { foreignKey: 'reportId', as: 'adminCase', onDelete: 'CASCADE' }); AdminReportCase.belongsTo(Report, { foreignKey: 'reportId', as: 'report' });
+  Report.hasMany(AdminReportNote, { foreignKey: 'reportId', as: 'adminNotes', onDelete: 'CASCADE' }); AdminReportNote.belongsTo(Report, { foreignKey: 'reportId', as: 'report' });
+  Administrator.hasMany(AdminReportCase, { foreignKey: 'assignedAdministratorId', as: 'assignedReportCases' }); AdminReportCase.belongsTo(Administrator, { foreignKey: 'assignedAdministratorId', as: 'assignedAdministrator' });
+  Administrator.hasMany(AdminReportNote, { foreignKey: 'authorAdministratorId', as: 'reportNotes' }); AdminReportNote.belongsTo(Administrator, { foreignKey: 'authorAdministratorId', as: 'author' });
   Conversation.hasMany(ConversationParticipant, { foreignKey: 'conversationId', as: 'participants', onDelete: 'CASCADE' }); ConversationParticipant.belongsTo(Conversation, { foreignKey: 'conversationId', as: 'conversation' });
   User.hasMany(ConversationParticipant, { foreignKey: 'userId', as: 'conversationMemberships', onDelete: 'CASCADE' }); ConversationParticipant.belongsTo(User, { foreignKey: 'userId', as: 'user' });
   Conversation.hasMany(Message, { foreignKey: 'conversationId', as: 'messages', onDelete: 'CASCADE' }); Message.belongsTo(Conversation, { foreignKey: 'conversationId', as: 'conversation' });
@@ -137,6 +143,8 @@ function initModels(sequelize) {
     as: 'auditLogs',
     onDelete: 'SET NULL',
   });
+  Administrator.hasMany(PlatformSetting, { foreignKey: 'updatedByAdministratorId', as: 'platformSettingsUpdated', onDelete: 'SET NULL' });
+  PlatformSetting.belongsTo(Administrator, { foreignKey: 'updatedByAdministratorId', as: 'updatedBy' });
   AdminAuditLog.belongsTo(Administrator, {
     foreignKey: 'administratorId',
     as: 'administrator',

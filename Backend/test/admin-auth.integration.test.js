@@ -134,6 +134,13 @@ test('admin auth, refresh rotation, logout, RBAC, dashboard, and audit flow', as
   assert.equal(audit.body.data.items[0].userAgent, undefined);
   assert.equal(audit.body.data.items[0].administrator, undefined);
 
+  const auditMetadata = await request('/api/admin/v1/audit-logs/metadata', {
+    accessToken: login.body.data.accessToken,
+  });
+  assert.equal(auditMetadata.status, 200);
+  assert.ok(Array.isArray(auditMetadata.body.data.actions));
+  assert.ok(auditMetadata.body.data.actions.length > 0);
+
   const refresh = await request('/api/admin/v1/auth/refresh', { method: 'POST', cookie: login.cookie });
   assert.equal(refresh.status, 200);
   assert.ok(refresh.cookie);
@@ -169,6 +176,48 @@ test('admin auth, refresh rotation, logout, RBAC, dashboard, and audit flow', as
   assert.ok(actions.includes('admin.auth.session_refreshed'));
   assert.ok(actions.includes('admin.auth.refresh_replay_detected'));
   assert.ok(actions.includes('admin.auth.logout'));
+});
+
+test('system settings are permission-bound, validated, audited, and enforced at runtime', async () => {
+  const deniedLogin = await request('/api/admin/v1/auth/login', { method: 'POST', body: { email: administrator.email, password, rememberMe: false } });
+  const deniedRead = await request('/api/admin/v1/system-settings', { accessToken: deniedLogin.body.data.accessToken });
+  assert.equal(deniedRead.status, 403);
+
+  const { AdminPermission, AdminAuditLog } = getModels();
+  const view = await AdminPermission.findOne({ where: { key: 'systemSettings.view' } });
+  const update = await AdminPermission.findOne({ where: { key: 'systemSettings.update' } });
+  assert.ok(view); assert.ok(update);
+  await role.addPermissions([view, update]);
+  const login = await request('/api/admin/v1/auth/login', { method: 'POST', body: { email: administrator.email, password, rememberMe: false } });
+  const accessToken = login.body.data.accessToken;
+  const read = await request('/api/admin/v1/system-settings', { accessToken });
+  assert.equal(read.status, 200);
+  assert.equal(read.body.data.settings.length, 3);
+  const version = read.body.data.version;
+  const unknown = await request('/api/admin/v1/system-settings', { method: 'PATCH', accessToken, body: { expectedVersion: version, values: { jwt_secret: 'never' } } });
+  assert.equal(unknown.status, 422);
+  assert.equal(unknown.body.code, 'SETTING_NOT_ALLOWED');
+
+  const disabled = await request('/api/admin/v1/system-settings', { method: 'PATCH', accessToken, body: { expectedVersion: version, values: { registration_enabled: false, maintenance_mode_enabled: true, support_email: 'support@example.test' } } });
+  assert.equal(disabled.status, 200);
+  assert.equal(disabled.body.data.settings.find((item) => item.key === 'registration_enabled').value, false);
+  const config = await request('/api/app-config');
+  assert.equal(config.status, 200);
+  assert.equal(config.body.data.maintenanceModeEnabled, true);
+  assert.equal(config.body.data.supportEmail, 'support@example.test');
+  const maintenance = await request('/api/discover');
+  assert.equal(maintenance.status, 503);
+  assert.equal(maintenance.body.code, 'APP_MAINTENANCE');
+  const signup = await request('/api/auth/signup', { method: 'POST', body: { name: 'Settings Test', email: `settings.${crypto.randomUUID()}@example.test`, phoneNumber: '9876543210', password: 'Password!123', confirmPassword: 'Password!123', acceptedTerms: true } });
+  assert.equal(signup.status, 403);
+  assert.equal(signup.body.code, 'REGISTRATION_DISABLED');
+
+  const restored = await request('/api/admin/v1/system-settings', { method: 'PATCH', accessToken, body: { expectedVersion: disabled.body.data.version, values: { registration_enabled: true, maintenance_mode_enabled: false, support_email: '' } } });
+  assert.equal(restored.status, 200);
+  const actions = (await AdminAuditLog.findAll({ where: { administratorId: administrator.id }, attributes: ['action'] })).map((entry) => entry.action);
+  assert.ok(actions.includes('admin.system_settings.config_viewed'));
+  assert.ok(actions.includes('admin.system_settings.config_updated'));
+  await getModels().AdminRefreshToken.destroy({ where: { administratorId: administrator.id }, force: true });
 });
 
 test('admin password recovery, password change, and session revocation are database-backed', async () => {
@@ -391,7 +440,7 @@ test('administrator MFA enrollment, challenge, recovery, replay protection, and 
   assert.equal(recoveryRegeneration.body.data.recoveryCodes.length, 10);
 });
 
-test('production Admin mutation CSRF boundary accepts trusted origins, rejects cross-site browsers, and permits non-browser tooling', async () => {
+test('production Admin mutation CSRF boundary accepts explicitly trusted cross-site origins, rejects untrusted origins, and permits non-browser tooling', async () => {
   const previousNodeEnv = process.env.NODE_ENV;
   const previousOrigin = process.env.CORS_ORIGIN;
   const { Administrator, AdminRole, AdminPermission, AdminAuditLog, AdminRefreshToken } = getModels();
@@ -409,6 +458,13 @@ test('production Admin mutation CSRF boundary accepts trusted origins, rejects c
     });
     assert.ok([200, 202].includes(trusted.status));
 
+    const trustedCrossSite = await request('/api/admin/v1/auth/login', {
+      method: 'POST',
+      headers: { origin: 'https://admin.example.test', 'sec-fetch-site': 'cross-site' },
+      body: { email: administrator.email, password, rememberMe: false },
+    });
+    assert.ok([200, 202].includes(trustedCrossSite.status));
+
     const denied = await request('/api/admin/v1/auth/login', {
       method: 'POST',
       headers: { origin: 'https://attacker.example.test', 'sec-fetch-site': 'cross-site' },
@@ -423,7 +479,7 @@ test('production Admin mutation CSRF boundary accepts trusted origins, rejects c
       body: { email: administrator.email, password, rememberMe: false },
     });
     assert.equal(missingBrowserOrigin.status, 403);
-    assert.equal(missingBrowserOrigin.body.code, 'ORIGIN_DENIED');
+    assert.equal(missingBrowserOrigin.body.code, 'ORIGIN_REQUIRED');
 
     const tooling = await request('/api/admin/v1/auth/login', {
       method: 'POST',

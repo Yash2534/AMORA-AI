@@ -1,5 +1,5 @@
 const router = require('express').Router();
-const { query } = require('express-validator');
+const { query, body } = require('express-validator');
 const authRoutes = require('./adminAuthRoutes');
 const requireAdminAuth = require('../middleware/adminAuthMiddleware');
 const requireTrustedAdminOrigin = require('../middleware/adminOriginMiddleware');
@@ -14,6 +14,8 @@ const adminVerificationRoutes = require('./adminVerificationRoutes');
 const adminManagementRoutes = require('./adminManagementRoutes');
 const adminFinancialRoutes = require('./adminFinancialRoutes');
 const adminMatchingRoutes = require('./adminMatchingRoutes');
+const platformSettings = require('../controllers/platformSettingsController');
+const adminSafetyRoutes = require('./adminSafetyRoutes');
 
 router.use(auditContext);
 router.get('/health', (_req, res) => res.json({
@@ -31,6 +33,9 @@ router.use('/verifications', adminVerificationRoutes);
 router.use('/', adminFinancialRoutes);
 router.use('/', adminManagementRoutes);
 router.use('/', adminMatchingRoutes);
+router.use('/', adminSafetyRoutes);
+router.get('/system-settings', requireAdminPermission('systemSettings.view'), platformSettings.settings);
+router.patch('/system-settings', [body('values').isObject(), body('expectedVersion').optional().isString().isLength({ min: 10, max: 100 })], validate, requireAdminPermission('systemSettings.update'), platformSettings.update);
 router.get('/media/:mediaId', requireAdminPermission('verifications.details.view'), require('../controllers/adminVerificationController').media);
 router.get('/dashboard/overview', [
   query('range').optional().isIn(['today', '7d', '30d', '90d']),
@@ -48,5 +53,10 @@ router.get('/audit-logs', [
   query('sortBy').optional().isIn(['createdAt', 'action', 'targetType']),
   query('sortDirection').optional().isIn(['asc', 'desc', 'ASC', 'DESC']),
 ], validate, requireAdminPermission('auditLogs.view'), catalog.auditLogs);
+router.get('/audit-logs/metadata', requireAdminPermission('auditLogs.view'), catalog.auditMetadata);
+router.get('/audit-logs/:auditId', [
+  require('express-validator').param('auditId').isInt({ min: 1 }).toInt(),
+  query('include').optional(),
+], validate, requireAdminPermission('auditLogs.details.view'), catalog.auditLog);
 
 module.exports = router;

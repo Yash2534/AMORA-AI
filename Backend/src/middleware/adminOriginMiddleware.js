@@ -7,9 +7,6 @@ module.exports = function requireTrustedAdminOrigin(request, response, next) {
   if (['GET', 'HEAD', 'OPTIONS'].includes(request.method)) return next();
   const origin = String(request.headers.origin || '').trim();
   const fetchSite = String(request.headers['sec-fetch-site'] || '').trim().toLowerCase();
-  if (fetchSite === 'cross-site') {
-    return failure(request, response, 403, 'ORIGIN_DENIED', 'Cross-site administrator requests are not allowed.');
-  }
   if (!origin) {
     if (process.env.NODE_ENV === 'production' && fetchSite) {
       return failure(request, response, 403, 'ORIGIN_REQUIRED', 'Administrator requests must include a trusted origin.');
