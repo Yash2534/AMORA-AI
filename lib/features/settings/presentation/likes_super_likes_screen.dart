@@ -201,8 +201,8 @@ class _LikesSuperLikesScreenState extends State<LikesSuperLikesScreen> {
                                         amoraaProfileActionName(profile.name),
                                       ),
                               actionIcon: isLike
-                                  ? Icons.heart_broken_rounded
-                                  : Icons.star_border_rounded,
+                                  ? Icons.favorite_rounded
+                                  : Icons.star_rounded,
                               onAction: () =>
                                   _confirmRemoval(profile, isLike: isLike),
                               onOpen: () => Navigator.of(context).pushNamed(

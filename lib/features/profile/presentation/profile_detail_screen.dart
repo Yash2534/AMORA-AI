@@ -1468,10 +1468,7 @@ class LifestyleGrid extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _SectionTitle(
-          icon: Icons.dashboard_customize_outlined,
-          title: 'Lifestyle',
-        ),
+        const _SectionTitle(title: 'Lifestyle'),
         const SizedBox(height: AmoraSpacing.space16),
         LayoutBuilder(
           builder: (context, constraints) {
@@ -1620,7 +1617,7 @@ class _InterestsSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _SectionTitle(icon: Icons.interests_rounded, title: 'Interests'),
+        const _SectionTitle(title: 'Interests'),
         const SizedBox(height: AmoraSpacing.space16),
         Wrap(
           spacing: AmoraSpacing.space8,
@@ -1690,10 +1687,7 @@ class _ProfilePromptsSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _SectionTitle(
-          icon: Icons.format_quote_rounded,
-          title: 'Profile prompts',
-        ),
+        const _SectionTitle(title: 'Profile prompts'),
         const SizedBox(height: AmoraSpacing.space16),
         for (var index = 0; index < prompts.length; index++)
           Padding(
@@ -1736,12 +1730,6 @@ class ProfilePromptCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(
-            Icons.format_quote_rounded,
-            color: AppColors.secondary,
-            size: 28,
-          ),
-          const SizedBox(height: AmoraSpacing.space8),
           Text(
             prompt,
             style: AmoraTextStyles.labelLarge.copyWith(
@@ -2416,12 +2404,12 @@ class _SectionSurface extends StatelessWidget {
 
 class _SectionTitle extends StatelessWidget {
   const _SectionTitle({
-    required this.icon,
+    this.icon,
     required this.title,
     this.foreground = AppColors.primary,
   });
 
-  final IconData icon;
+  final IconData? icon;
   final String title;
   final Color foreground;
 
@@ -2429,8 +2417,10 @@ class _SectionTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(icon, color: foreground, size: 21),
-        const SizedBox(width: AmoraSpacing.space8),
+        if (icon != null) ...[
+          Icon(icon, color: foreground, size: 21),
+          const SizedBox(width: AmoraSpacing.space8),
+        ],
         Expanded(
           child: Text(
             title,

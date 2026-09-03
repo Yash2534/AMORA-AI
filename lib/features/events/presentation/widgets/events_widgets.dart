@@ -498,7 +498,11 @@ class EventDetailHero extends StatelessWidget {
                   spacing: 8,
                   runSpacing: 8,
                   children: [
-                    EventStatusBadge(status: status),
+                    EventStatusBadge(
+                      status: status,
+                      registrationClosed: event.registrationClosed,
+                      registrationDeadline: event.registrationDeadline,
+                    ),
                     const EventsMemberBadge(compact: true),
                   ],
                 ),
@@ -777,6 +781,7 @@ class FeaturedEventCard extends StatelessWidget {
                             eventTitle: event.title,
                             status: status,
                             onPressed: onJoin,
+                            registrationClosed: event.registrationClosed,
                           );
                           final details = AppPrimaryButton(
                             label: 'View Details',
@@ -980,7 +985,11 @@ class AmoraaRecommendedEventCard extends StatelessWidget {
                           padding: const EdgeInsets.all(AmoraSpacing.space12),
                           child: Align(
                             alignment: Alignment.topLeft,
-                            child: EventStatusBadge(status: status),
+                            child: EventStatusBadge(
+                              status: status,
+                              registrationClosed: event.registrationClosed,
+                              registrationDeadline: event.registrationDeadline,
+                            ),
                           ),
                         ),
                       ),
@@ -1040,6 +1049,7 @@ class AmoraaRecommendedEventCard extends StatelessWidget {
                       eventTitle: event.title,
                       status: status,
                       onPressed: onJoin,
+                      registrationClosed: event.registrationClosed,
                       compact: true,
                     ),
                   ),
@@ -1157,7 +1167,11 @@ class AmoraCircleCard extends StatelessWidget {
                               ),
                             ),
                             const Spacer(),
-                            EventStatusBadge(status: status),
+                            EventStatusBadge(
+                              status: status,
+                              registrationClosed: event.registrationClosed,
+                              registrationDeadline: event.registrationDeadline,
+                            ),
                           ],
                         ),
                         const Spacer(),
@@ -1221,6 +1235,7 @@ class AmoraCircleCard extends StatelessWidget {
                         eventTitle: event.title,
                         status: status,
                         onPressed: onJoin,
+                        registrationClosed: event.registrationClosed,
                         compact: true,
                       ),
                     ),
@@ -1284,7 +1299,11 @@ class MyEventsPreview extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            EventStatusBadge(status: status),
+                            EventStatusBadge(
+                              status: status,
+                              registrationClosed: event.registrationClosed,
+                              registrationDeadline: event.registrationDeadline,
+                            ),
                             const SizedBox(height: 8),
                             Text(
                               event.title,
@@ -1497,7 +1516,11 @@ class _VerticalEventCard extends StatelessWidget {
                   padding: const EdgeInsets.all(12),
                   child: Align(
                     alignment: Alignment.topLeft,
-                    child: EventStatusBadge(status: status),
+                    child: EventStatusBadge(
+                      status: status,
+                      registrationClosed: event.registrationClosed,
+                      registrationDeadline: event.registrationDeadline,
+                    ),
                   ),
                 ),
               ),
@@ -1508,6 +1531,7 @@ class _VerticalEventCard extends StatelessWidget {
                 eventTitle: event.title,
                 status: status,
                 onPressed: onJoin,
+                registrationClosed: event.registrationClosed,
                 compact: true,
               ),
             ],
@@ -1701,6 +1725,7 @@ class EventJoinButton extends StatelessWidget {
     required this.eventTitle,
     required this.status,
     required this.onPressed,
+    this.registrationClosed = false,
     this.compact = false,
   });
 
@@ -1708,6 +1733,7 @@ class EventJoinButton extends StatelessWidget {
   final TicketStatus? status;
   final VoidCallback? onPressed;
   final bool compact;
+  final bool registrationClosed;
 
   @override
   Widget build(BuildContext context) {
@@ -1715,6 +1741,10 @@ class EventJoinButton extends StatelessWidget {
       TicketStatus.upcoming => ('Joined', Icons.check_circle_rounded),
       TicketStatus.waitlisted => ('Waitlisted', Icons.hourglass_top_rounded),
       TicketStatus.cancelled => ('Cancelled', Icons.event_busy_rounded),
+      null when registrationClosed => (
+        'Registration Closed',
+        Icons.event_busy_rounded,
+      ),
       null => ('Join Event', Icons.add_rounded),
     };
     return AnimatedSwitcher(
@@ -1729,7 +1759,8 @@ class EventJoinButton extends StatelessWidget {
             : AppPrimaryButtonVariant.outlined,
         onPressed:
             status == TicketStatus.cancelled ||
-                status == TicketStatus.waitlisted
+                status == TicketStatus.waitlisted ||
+                registrationClosed
             ? null
             : onPressed,
       ),
@@ -1738,9 +1769,16 @@ class EventJoinButton extends StatelessWidget {
 }
 
 class EventStatusBadge extends StatelessWidget {
-  const EventStatusBadge({super.key, required this.status});
+  const EventStatusBadge({
+    super.key,
+    required this.status,
+    this.registrationClosed = false,
+    this.registrationDeadline,
+  });
 
   final TicketStatus? status;
+  final bool registrationClosed;
+  final DateTime? registrationDeadline;
 
   @override
   Widget build(BuildContext context) {
@@ -1748,29 +1786,74 @@ class EventStatusBadge extends StatelessWidget {
       TicketStatus.upcoming => 'Joined',
       TicketStatus.waitlisted => 'Waitlisted',
       TicketStatus.cancelled => 'Cancelled',
+      null when registrationClosed => 'Registration closed',
       null => 'Open to join',
     };
+    final deadline = registrationDeadline == null
+        ? null
+        : _deadlineLabel(registrationDeadline!);
     return Semantics(
-      label: 'Event status: $label',
+      label: deadline == null
+          ? 'Event status: $label'
+          : 'Event status: $label. Registration deadline: $deadline',
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: status == null
+          color: status == null && !registrationClosed
               ? AppColors.primary
               : AppColors.surface.withValues(alpha: .94),
           borderRadius: BorderRadius.circular(999),
           border: Border.all(color: AppColors.tertiary),
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: status == null ? AppColors.surface : AppColors.primary,
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-          ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                color: status == null && !registrationClosed
+                    ? AppColors.surface
+                    : AppColors.primary,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            if (deadline != null)
+              Text(
+                'Deadline: $deadline',
+                style: TextStyle(
+                  color: status == null && !registrationClosed
+                      ? AppColors.surface.withValues(alpha: .88)
+                      : AppColors.textNeutral.withValues(alpha: .7),
+                  fontSize: 10,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+          ],
         ),
       ),
     );
+  }
+
+  String _deadlineLabel(DateTime value) {
+    const months = <String>[
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    final local = value.toLocal();
+    final hour = local.hour % 12 == 0 ? 12 : local.hour % 12;
+    return '${local.day} ${months[local.month - 1]}, $hour:${local.minute.toString().padLeft(2, '0')} ${local.hour >= 12 ? 'PM' : 'AM'}';
   }
 }
 

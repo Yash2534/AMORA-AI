@@ -7,6 +7,7 @@ const {
   eligibilitySql,
   participationIncludes,
   serializeEvent,
+  registrationIsClosed,
   userMeetsEligibility,
 } = require('../services/eventService');
 
@@ -41,6 +42,9 @@ function eventWhere(query, userId) {
   else if (query.timing !== 'all') where.endDateTime = { [Op.gte]: now };
   if (query.available === true) {
     where.registrationOpen = true;
+    where[Op.and].push({ [Op.or]: [{ registrationDeadline: null }, { registrationDeadline: { [Op.gt]: now } }] });
+    // Legacy records had no explicit deadline; their start is the cutoff.
+    where[Op.and].push({ [Op.or]: [{ registrationDeadline: { [Op.ne]: null } }, { startDateTime: { [Op.gt]: now } }] });
     where[Op.and].push(literal(`(SELECT COUNT(*) FROM \`EventRegistrations\` availabilityRegistration WHERE availabilityRegistration.eventId = \`Event\`.\`id\` AND availabilityRegistration.status IN ('registered','promoted')) < \`Event\`.\`capacity\``));
   }
   return where;
@@ -103,7 +107,7 @@ exports.register = async (req, res, next) => {
       const event = await Event.findOne({ where: { id: eventId, visibility: 'public' }, transaction, lock: transaction.LOCK.UPDATE });
       if (!event) throw new EventServiceError(404, 'EVENT_NOT_FOUND', 'Event not found.');
       if (!(await userMeetsEligibility(userId, event, { transaction }))) throw new EventServiceError(403, 'EVENT_NOT_ELIGIBLE', 'This event is not available for your profile.');
-      if (event.status !== 'published' || !event.registrationOpen || new Date(event.endDateTime) <= new Date()) throw new EventServiceError(409, 'EVENT_REGISTRATION_CLOSED', 'Registration is closed for this event.');
+      if (event.status !== 'published' || !event.registrationOpen || registrationIsClosed(event)) throw new EventServiceError(409, 'EVENT_REGISTRATION_CLOSED', 'Registration is closed for this event.');
       const existing = await EventRegistration.findOne({ where: { eventId, userId }, transaction, lock: transaction.LOCK.UPDATE });
       if (existing && ACTIVE_REGISTRATION_STATUSES.includes(existing.status)) return;
       const waiting = await EventWaitlist.findOne({ where: { eventId, userId, status: 'waiting' }, transaction, lock: transaction.LOCK.UPDATE });
@@ -130,7 +134,7 @@ exports.cancelRegistration = async (req, res, next) => {
       const registration = await EventRegistration.findOne({ where: { eventId, userId }, transaction, lock: transaction.LOCK.UPDATE });
       if (!registration || !ACTIVE_REGISTRATION_STATUSES.includes(registration.status)) return;
       await registration.update({ status: 'cancelled', cancelledAt: new Date() }, { transaction });
-      if (event.status === 'published' && event.registrationOpen && new Date(event.endDateTime) > new Date()) {
+      if (event.status === 'published' && event.registrationOpen && !registrationIsClosed(event)) {
         promotedUserId = await promoteNextWaitlisted(event, transaction);
       }
     });
@@ -171,7 +175,7 @@ exports.joinWaitlist = async (req, res, next) => {
       const event = await Event.findOne({ where: { id: eventId, visibility: 'public' }, transaction, lock: transaction.LOCK.UPDATE });
       if (!event) throw new EventServiceError(404, 'EVENT_NOT_FOUND', 'Event not found.');
       if (!(await userMeetsEligibility(userId, event, { transaction }))) throw new EventServiceError(403, 'EVENT_NOT_ELIGIBLE', 'This event is not available for your profile.');
-      if (event.status !== 'published' || !event.waitlistEnabled || Number(event.waitlistCapacity) < 1 || new Date(event.endDateTime) <= new Date()) {
+      if (event.status !== 'published' || !event.waitlistEnabled || Number(event.waitlistCapacity) < 1 || registrationIsClosed(event)) {
         throw new EventServiceError(409, 'WAITLIST_CLOSED', 'The waitlist is not available.');
       }
       const registration = await EventRegistration.findOne({ where: { eventId, userId, ...activeRegistrationWhere }, transaction });

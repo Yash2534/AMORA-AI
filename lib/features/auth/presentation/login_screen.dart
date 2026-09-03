@@ -172,7 +172,7 @@ class _LoginScreenState extends State<LoginScreen> {
       }
       setState(() {
         _loading = false;
-        _error = error.message;
+        _error = _messageFor(error);
       });
     } catch (_) {
       if (mounted) {
@@ -216,6 +216,19 @@ class _LoginScreenState extends State<LoginScreen> {
       return 'Enter a valid email address';
     }
     return null;
+  }
+
+  /// The API intentionally does not reveal whether an account exists or
+  /// whether a password was wrong. Keep that secure, actionable message
+  /// instead of combining it with client-side field validation.
+  String _messageFor(AuthException error) {
+    return switch (error.code) {
+      'INVALID_CREDENTIALS' => 'Email or password is incorrect.',
+      'ACCOUNT_NOT_VERIFIED' => 'Please verify your account before signing in.',
+      _ => error.userMessage.isEmpty
+          ? 'Sign in is unavailable right now. Please try again.'
+          : error.userMessage,
+    };
   }
 }
 

@@ -24,6 +24,8 @@ class EventModel {
     this.agenda = const <(String, String)>[],
     this.startAt,
     this.endAt,
+    this.registrationDeadline,
+    this.serverRegistrationClosed,
     this.description = '',
     this.capacity = 0,
     this.registeredCount = 0,
@@ -58,6 +60,13 @@ class EventModel {
   final List<(String, String)> agenda;
   final DateTime? startAt;
   final DateTime? endAt;
+
+  /// Server-provided registration cutoff, shown in the viewer's local time.
+  final DateTime? registrationDeadline;
+
+  /// Authoritative availability computed by the API; local fallback supports
+  /// fixture/offline data only and never authorizes a registration.
+  final bool? serverRegistrationClosed;
   final String description;
   final int capacity;
   final int registeredCount;
@@ -72,7 +81,12 @@ class EventModel {
   /// Capacity is server-owned and refreshed by the event detail request.
   bool get isFull => capacity > 0 && registeredCount >= capacity;
 
-  bool get canJoinWaitlist => isFull && waitlistEnabled;
+  bool get registrationClosed =>
+      serverRegistrationClosed ??
+      (registrationDeadline != null &&
+          !registrationDeadline!.isAfter(DateTime.now()));
+
+  bool get canJoinWaitlist => !registrationClosed && isFull && waitlistEnabled;
 
   /// Local content can contain a venue descriptor in this legacy field. Only
   /// render it as distance when it is actually a numeric kilometre value.

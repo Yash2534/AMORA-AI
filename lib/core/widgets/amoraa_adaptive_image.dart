@@ -102,7 +102,8 @@ class _AmoraaAdaptiveImageState extends State<AmoraaAdaptiveImage> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (widget.aspectMode == AmoraaImageAspectMode.adaptive &&
-        widget.originalAspectRatio == null) {
+        widget.originalAspectRatio == null &&
+        !_isRemote(widget.source?.trim() ?? '')) {
       _resolveNaturalRatio();
     }
   }
@@ -119,7 +120,8 @@ class _AmoraaAdaptiveImageState extends State<AmoraaAdaptiveImage> {
       _removeRatioListener();
       _resolvedRatio = 4 / 5;
       if (widget.aspectMode == AmoraaImageAspectMode.adaptive &&
-          widget.originalAspectRatio == null) {
+          widget.originalAspectRatio == null &&
+          !_isRemote(widget.source?.trim() ?? '')) {
         _resolveNaturalRatio();
       }
     }

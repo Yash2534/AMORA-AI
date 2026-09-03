@@ -52,6 +52,8 @@ Map<String, dynamic> _eventJson() => {
   'venueName': 'Venue',
   'startDateTime': '2026-09-01T18:00:00.000Z',
   'endDateTime': '2026-09-01T21:00:00.000Z',
+  'registrationDeadline': '2026-08-31T18:00:00.000Z',
+  'registrationClosed': true,
   'capacity': 20,
   'registeredCount': 2,
   'seatsLeft': 18,
@@ -78,6 +80,11 @@ void main() {
     final event = (await repository.browse()).events.single;
     expect(remote.calls.single, 'GET /api/events?page=1&limit=20&timing=all');
     expect(event.organizer.name, 'AMORAA Events');
+    expect(
+      event.registrationDeadline,
+      DateTime.parse('2026-08-31T18:00:00.000Z').toLocal(),
+    );
+    expect(event.registrationClosed, isTrue);
     expect(
       event.organizer.photoAsset,
       'http://localhost:5000/uploads/organizer.jpg',

@@ -30,7 +30,7 @@ async function summaryRows(userId, options = {}) {
           AND unread.deletedAt IS NULL
           AND unread.id > COALESCE(me.lastReadMessageId, 0)) AS unreadCount
     FROM Conversations c
-    INNER JOIN ConversationParticipants me ON me.conversationId = c.id AND me.userId = :userId
+    INNER JOIN ConversationParticipants me ON me.conversationId = c.id AND me.userId = :userId AND me.hiddenAt IS NULL
     INNER JOIN ConversationParticipants other ON other.conversationId = c.id AND other.userId <> :userId
     INNER JOIN Users otherUser ON otherUser.id = other.userId
     INNER JOIN OnboardingProfiles otherProfile ON otherProfile.userId = other.userId AND otherProfile.onboardingCompleted = 1
@@ -182,6 +182,17 @@ exports.unmute = async (req, res, next) => {
     if (!row) return;
     await row.update({ mutedAt: null, mutedUntil: null });
     return res.json({ success: true, message: 'Conversation unmuted.', data: { muted: false, mutedUntil: null } });
+  } catch (error) { return next(error); }
+};
+
+// Participant-scoped removal retains the other member's conversation,
+// messages, match and all account data.
+exports.removeForParticipant = async (req, res, next) => {
+  try {
+    const row = await membership(req, res);
+    if (!row) return;
+    await row.update({ hiddenAt: new Date() });
+    return res.json({ success: true, message: 'Conversation removed from your chats.', data: { conversationId: String(req.params.conversationId) } });
   } catch (error) { return next(error); }
 };
 

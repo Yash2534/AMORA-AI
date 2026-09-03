@@ -48,7 +48,10 @@ class AccountVerificationScreen extends StatefulWidget {
     this.arguments,
     this.requestOtp,
     this.verifyOtp,
-    this.resendSeconds = 30,
+    // Keep the client cooldown aligned with the server-side OTP throttle
+    // (OTP_RESEND_COOLDOWN_MS). A shorter UI timer used to enable resend
+    // before the server could issue a new code.
+    this.resendSeconds = 45,
   });
 
   static const routeName = '/account-verification';
@@ -462,6 +465,9 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
 
   void _startCountdown() {
     _timer?.cancel();
+    // A successful request is the only path that may reset this value.  The
+    // previous periodic timer is always cancelled first, so a resend cannot
+    // leave a second timer updating this screen.
     setState(() => _secondsLeft = widget.resendSeconds);
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) return;

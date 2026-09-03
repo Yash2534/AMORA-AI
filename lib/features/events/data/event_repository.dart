@@ -185,6 +185,10 @@ class EventRepository {
           .toList(growable: false),
       startAt: start,
       endAt: end,
+      registrationDeadline: DateTime.tryParse(
+        json['registrationDeadline']?.toString() ?? '',
+      )?.toLocal(),
+      serverRegistrationClosed: json['registrationClosed'] as bool?,
       description: json['description']?.toString() ?? '',
       capacity: (json['capacity'] as num?)?.toInt() ?? 0,
       registeredCount: (json['registeredCount'] as num?)?.toInt() ?? 0,

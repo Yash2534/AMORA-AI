@@ -12,6 +12,8 @@ module.exports = (sequelize) => sequelize.define('Event', {
   longitude: { type: DataTypes.DECIMAL(10, 7), allowNull: true },
   startDateTime: { type: DataTypes.DATE, allowNull: false },
   endDateTime: { type: DataTypes.DATE, allowNull: false },
+  // When omitted, the event start remains the effective cutoff for legacy events.
+  registrationDeadline: { type: DataTypes.DATE, allowNull: true },
   capacity: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false },
   waitlistCapacity: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, defaultValue: 0 },
   status: { type: DataTypes.ENUM('draft', 'published', 'cancelled', 'completed'), allowNull: false, defaultValue: 'draft' },

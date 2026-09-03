@@ -56,7 +56,14 @@ app.use(
 app.use(express.json({ limit: "100kb", verify: (req, _res, buffer) => {
   if (req.originalUrl === "/api/payments/webhook") req.rawBody = Buffer.from(buffer);
 } }));
-app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
+// Profile uploads are addressed by their stored filename. Cache immutable
+// files at the client/CDN so moving among Discover, matches and conversations
+// does not re-download the same avatar after login.
+app.use('/uploads', express.static(path.join(__dirname, '../uploads'), {
+  maxAge: '7d',
+  immutable: true,
+  etag: true,
+}));
 app.get("/health", (_req, res) =>
   res.json({
     success: true,

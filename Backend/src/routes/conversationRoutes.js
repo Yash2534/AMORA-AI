@@ -53,5 +53,6 @@ router.put('/:conversationId/mute', [conversationId,
   body('mutedUntil').optional({ nullable: true }).isISO8601().withMessage('mutedUntil must be an ISO date.'),
 ], validate, conversationController.mute);
 router.delete('/:conversationId/mute', [conversationId], validate, conversationController.unmute);
+router.delete('/:conversationId', [conversationId], validate, conversationController.removeForParticipant);
 
 module.exports = router;

@@ -95,6 +95,7 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
   int _nextPage = 1;
   bool _hasMore = true;
   bool _loadingMore = false;
+  bool _openingProfile = false;
 
   DiscoverActionController get _actions => _controller!;
 
@@ -656,6 +657,8 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
   }
 
   Future<void> _openProfile(DummyProfile profile) async {
+    if (_openingProfile) return;
+    setState(() => _openingProfile = true);
     final decision = await Navigator.of(context).push(
       MaterialPageRoute<Object?>(
         settings: RouteSettings(
@@ -680,13 +683,16 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
         ),
       ),
     );
-    if (!mounted || decision == null) return;
-    await _performAction(
-      profile,
-      action: decision == ProfileDetailDecision.like
-          ? DiscoverAction.like
-          : DiscoverAction.pass,
-    );
+    if (!mounted) return;
+    setState(() => _openingProfile = false);
+    if (decision != null) {
+      await _performAction(
+        profile,
+        action: decision == ProfileDetailDecision.like
+            ? DiscoverAction.like
+            : DiscoverAction.pass,
+      );
+    }
   }
 
   Future<void> _openFilters() async {

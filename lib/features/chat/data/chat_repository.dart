@@ -110,6 +110,7 @@ class ChatConversation {
     required this.unread,
     required this.online,
     this.muted = false,
+    this.mutedUntil,
     this.canMessage = true,
     this.availabilityReasonCode,
     this.unavailableReason,
@@ -126,6 +127,7 @@ class ChatConversation {
   final int unread;
   final bool online;
   final bool muted;
+  final DateTime? mutedUntil;
   final bool canMessage;
   final String? availabilityReasonCode;
   final String? unavailableReason;
@@ -140,6 +142,8 @@ class ChatConversation {
     int? unread,
     bool? online,
     bool? muted,
+    DateTime? mutedUntil,
+    bool clearMutedUntil = false,
     bool? canMessage,
     String? availabilityReasonCode,
     String? unavailableReason,
@@ -155,6 +159,7 @@ class ChatConversation {
     unread: unread ?? this.unread,
     online: online ?? this.online,
     muted: muted ?? this.muted,
+    mutedUntil: clearMutedUntil ? null : mutedUntil ?? this.mutedUntil,
     canMessage: canMessage ?? this.canMessage,
     availabilityReasonCode:
         availabilityReasonCode ?? this.availabilityReasonCode,
@@ -395,6 +400,9 @@ class ChatRepository extends ChangeNotifier {
           conversationJson['participant'] is Map &&
           (conversationJson['participant'] as Map)['online'] == true,
       muted: conversationJson['muted'] == true,
+      mutedUntil: DateTime.tryParse(
+        conversationJson['mutedUntil']?.toString() ?? '',
+      ),
       canMessage: conversationJson['canMessage'] != false,
       availabilityReasonCode: conversationJson['availabilityReason']
           ?.toString(),
@@ -457,16 +465,39 @@ class ChatRepository extends ChangeNotifier {
     _replace(current.copyWith(draft: ''));
   }
 
-  Future<void> setMuted(String conversationId, bool muted) async {
+  Future<void> setMuted(String conversationId, {DateTime? mutedUntil}) async {
     final current = conversation(conversationId);
     if (current == null) return;
     if (!_testingMode) {
       await _remote.request(
-        muted ? 'PUT' : 'DELETE',
+        'PUT',
         '/api/conversations/$conversationId/mute',
+        body: {
+          if (mutedUntil != null) 'mutedUntil': mutedUntil.toUtc().toIso8601String(),
+        },
       );
     }
-    _replace(current.copyWith(muted: muted));
+    _replace(current.copyWith(muted: true, mutedUntil: mutedUntil));
+  }
+
+  Future<void> unmute(String conversationId) async {
+    final current = conversation(conversationId);
+    if (current == null) return;
+    if (!_testingMode) {
+      await _remote.request('DELETE', '/api/conversations/$conversationId/mute');
+    }
+    _replace(current.copyWith(muted: false, clearMutedUntil: true));
+  }
+
+  Future<void> deleteConversation(String conversationId) async {
+    if (conversation(conversationId) == null) return;
+    if (!_testingMode) {
+      await _remote.request('DELETE', '/api/conversations/$conversationId');
+    }
+    _conversations = _conversations
+        .where((item) => item.id != conversationId)
+        .toList(growable: false);
+    notifyListeners();
   }
 
   Future<ChatConversation?> sendMessage(
@@ -782,6 +813,7 @@ class ChatRepository extends ChangeNotifier {
       unread: (json['unreadCount'] as num?)?.toInt() ?? 0,
       online: participantJson['online'] == true,
       muted: json['muted'] == true,
+      mutedUntil: DateTime.tryParse(json['mutedUntil']?.toString() ?? ''),
       canMessage: json['canMessage'] != false,
       availabilityReasonCode: json['availabilityReason']?.toString(),
       unavailableReason: _unavailableMessage(

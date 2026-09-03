@@ -86,7 +86,21 @@ class _MatchesScreenState extends State<MatchesScreen> {
     });
     try {
       final matches = await widget.api!.matches();
-      if (mounted) setState(() => _matches = matches);
+      if (mounted) {
+        final availableIds = <String>{
+          ...matches.map((item) => item.profile.profile.id),
+          ...widget.initialProfiles.map((profile) => profile.id),
+        };
+        setState(() {
+          _matches = matches;
+          _selectedProfileIds.removeWhere((id) => !availableIds.contains(id));
+          _likedProfileIds.removeWhere((id) => !availableIds.contains(id));
+          _processingProfileIds.removeWhere((id) => !availableIds.contains(id));
+          if (_selectedProfileIds.isEmpty && !_bulkSubmitting) {
+            _selectionMode = false;
+          }
+        });
+      }
     } catch (_) {
       if (mounted) setState(() => _loadError = 'Couldn\'t load matches.');
     } finally {
@@ -164,13 +178,15 @@ class _MatchesScreenState extends State<MatchesScreen> {
                                   selectedCount: _selectedProfileIds.length,
                                   canSelectAll:
                                       !_bulkSubmitting &&
-                                      _eligibleVisibleRecommendations.any(
-                                        (profile) => !_selectedProfileIds
+                                      _eligibleVisibleRecommendations.isNotEmpty,
+                                  allEligibleSelected:
+                                      _eligibleVisibleRecommendations.every(
+                                        (profile) => _selectedProfileIds
                                             .contains(profile.id),
                                       ),
                                   editingLocked: _bulkSubmitting,
                                   onClose: _exitSelectionMode,
-                                  onSelectAll: _selectAllVisible,
+                                  onSelectAll: _toggleSelectAllVisible,
                                   onClearAll: _clearSelection,
                                 ),
                               )
@@ -557,12 +573,17 @@ class _MatchesScreenState extends State<MatchesScreen> {
     });
   }
 
-  void _selectAllVisible() {
+  void _toggleSelectAllVisible() {
     if (_bulkSubmitting) return;
     setState(() {
-      _selectedProfileIds.addAll(
-        _eligibleVisibleRecommendations.map((profile) => profile.id),
-      );
+      final eligibleIds = _eligibleVisibleRecommendations
+          .map((profile) => profile.id)
+          .toSet();
+      if (eligibleIds.every(_selectedProfileIds.contains)) {
+        _selectedProfileIds.removeAll(eligibleIds);
+      } else {
+        _selectedProfileIds.addAll(eligibleIds);
+      }
     });
   }
 
@@ -840,6 +861,7 @@ class AiMatchesSelectionToolbar extends StatelessWidget {
     super.key,
     required this.selectedCount,
     required this.canSelectAll,
+    required this.allEligibleSelected,
     required this.editingLocked,
     required this.onClose,
     required this.onSelectAll,
@@ -848,6 +870,7 @@ class AiMatchesSelectionToolbar extends StatelessWidget {
 
   final int selectedCount;
   final bool canSelectAll;
+  final bool allEligibleSelected;
   final bool editingLocked;
   final VoidCallback onClose;
   final VoidCallback onSelectAll;
@@ -894,9 +917,15 @@ class AiMatchesSelectionToolbar extends StatelessWidget {
                   if (compact)
                     IconButton(
                       key: const ValueKey('ai-matches-select-all'),
-                      tooltip: 'Select all eligible profiles',
+                      tooltip: allEligibleSelected
+                          ? 'Deselect all eligible profiles'
+                          : 'Select all eligible profiles',
                       onPressed: onSelectAll,
-                      icon: const Icon(Icons.done_all_rounded),
+                      icon: Icon(
+                        allEligibleSelected
+                            ? Icons.remove_done_rounded
+                            : Icons.done_all_rounded,
+                      ),
                       color: AppColors.primary,
                       constraints: const BoxConstraints(
                         minWidth: 48,
@@ -911,7 +940,9 @@ class AiMatchesSelectionToolbar extends StatelessWidget {
                         foregroundColor: AppColors.primary,
                         minimumSize: const Size(48, 48),
                       ),
-                      child: const Text('Select All'),
+                      child: Text(
+                        allEligibleSelected ? 'Deselect All' : 'Select All',
+                      ),
                     ),
                 if (compact)
                   IconButton(

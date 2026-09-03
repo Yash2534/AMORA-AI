@@ -518,6 +518,10 @@ class _EventsMemberExperienceState extends State<EventsMemberExperience> {
   }
 
   void _handleParticipation(EventModel event) {
+    if (event.registrationClosed && _participation[event.id] == null) {
+      showEventSnack(context, 'Registration is closed for this event.');
+      return;
+    }
     final status = _participation[event.id];
     if (status != null) {
       _openDetail(event);

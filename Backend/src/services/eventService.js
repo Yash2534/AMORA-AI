@@ -4,6 +4,15 @@ const { publicUrl } = require('./publicProfileService');
 
 const ACTIVE_REGISTRATION_STATUSES = ['registered', 'promoted'];
 
+function registrationDeadlineFor(event) {
+  return event.registrationDeadline || event.startDateTime;
+}
+
+function registrationIsClosed(event, now = new Date()) {
+  const deadline = registrationDeadlineFor(event);
+  return !deadline || new Date(deadline).getTime() <= now.getTime();
+}
+
 class EventServiceError extends Error {
   constructor(status, code, message) {
     super(message);
@@ -92,7 +101,9 @@ function serializeEvent(req, event) {
   const registeredCount = Number(plain.registeredCount || 0);
   const waitlistCount = Number(plain.waitlistCount || 0);
   const participation = participationFor(plain);
+  const registrationClosed = registrationIsClosed(plain);
   const waitlistAvailable = plain.status === 'published'
+    && !registrationClosed
     && new Date(plain.endDateTime) > new Date()
     && plain.waitlistEnabled
     && Number(plain.waitlistCapacity) > 0
@@ -112,12 +123,14 @@ function serializeEvent(req, event) {
     longitude: plain.longitude == null ? null : Number(plain.longitude),
     startDateTime: plain.startDateTime,
     endDateTime: plain.endDateTime,
+    registrationDeadline: registrationDeadlineFor(plain),
+    registrationClosed,
     capacity: Number(plain.capacity),
     registeredCount,
     seatsLeft: Math.max(0, Number(plain.capacity) - registeredCount),
     waitlistCapacity: Number(plain.waitlistCapacity || 0),
     waitlistCount,
-    available: plain.status === 'published' && plain.registrationOpen && registeredCount < Number(plain.capacity),
+    available: plain.status === 'published' && plain.registrationOpen && !registrationClosed && registeredCount < Number(plain.capacity),
     waitlistAvailable,
     status: plain.status,
     heroImageUrl: publicUrl(req, plain.heroImageUrl),
@@ -147,6 +160,8 @@ function serializeEvent(req, event) {
 module.exports = {
   ACTIVE_REGISTRATION_STATUSES,
   EventServiceError,
+  registrationDeadlineFor,
+  registrationIsClosed,
   countAttributes,
   eligibilitySql,
   participationIncludes,

@@ -6,6 +6,7 @@ import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/amora_bottom_sheet.dart';
 import 'package:amora_ai/core/widgets/amora_filter_chip.dart';
+import 'package:amora_ai/core/widgets/amoraa_identity_badge.dart';
 import 'package:amora_ai/core/widgets/amoraa_main_page_header.dart';
 import 'package:amora_ai/core/widgets/floating_bottom_nav.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
@@ -33,6 +34,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
   final FocusNode _searchFocusNode = FocusNode();
   String _query = '';
   ChatInboxFilter _filter = ChatInboxFilter.all;
+  bool _openingProfile = false;
 
   List<ChatConversation> get _allChats => _repository.conversations;
 
@@ -209,9 +211,12 @@ class _ChatListScreenState extends State<ChatListScreen> {
                                     key: ValueKey('conversation-${chat.id}'),
                                     chat: chat,
                                     onOpen: () => _openConversation(chat),
-                                    onOpenProfile: _openProfile,
-                                    onLongPress: () =>
-                                        _showConversationActions(chat),
+                                    onOpenProfile: () {
+                                      _openProfile(chat);
+                                    },
+                                    onLongPress: () {
+                                      _showConversationActions(chat);
+                                    },
                                   );
                                 },
                               ),
@@ -299,8 +304,17 @@ class _ChatListScreenState extends State<ChatListScreen> {
     );
   }
 
-  void _openProfile() {
-    Navigator.of(context).pushNamed(ProfileDetailScreen.routeName);
+  Future<void> _openProfile(ChatConversation chat) async {
+    if (_openingProfile) return;
+    setState(() => _openingProfile = true);
+    try {
+      await Navigator.of(context).pushNamed(
+        ProfileDetailScreen.routeName,
+        arguments: chat.user,
+      );
+    } finally {
+      if (mounted) setState(() => _openingProfile = false);
+    }
   }
 
   void _showComposeSheet() {
@@ -361,7 +375,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
             title: const Text('View profile'),
             onTap: () {
               Navigator.pop(context);
-              _openProfile();
+              _openProfile(chat);
             },
           ),
         ],
@@ -927,13 +941,10 @@ class _ConversationTileState extends State<ConversationTile> {
                                               const SizedBox(
                                                 width: AmoraSpacing.space4,
                                               ),
-                                              Icon(
+                                              AmoraaVerifiedIcon(
                                                 key: ValueKey(
                                                   'conversation-verified-badge-${chat.id}',
                                                 ),
-                                                Icons.verified_rounded,
-                                                color: AppColors.secondary,
-                                                size: 16,
                                               ),
                                             ],
                                           ],

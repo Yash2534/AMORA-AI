@@ -9,6 +9,7 @@ module.exports = (sequelize) => sequelize.define('ConversationParticipant', {
   draftText: { type: DataTypes.TEXT, allowNull: true },
   mutedAt: { type: DataTypes.DATE, allowNull: true },
   mutedUntil: { type: DataTypes.DATE, allowNull: true },
+  hiddenAt: { type: DataTypes.DATE, allowNull: true },
   joinedAt: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
 }, {
   tableName: 'ConversationParticipants',

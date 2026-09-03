@@ -1,5 +1,6 @@
 import 'package:amora_ai/core/data/image_repository.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
+import 'package:amora_ai/core/widgets/amoraa_identity_badge.dart';
 import 'package:amora_ai/core/widgets/premium_avatar.dart';
 import 'package:flutter/material.dart';
 
@@ -55,20 +56,7 @@ class ChatPresenceAvatar extends StatelessWidget {
               Positioned(
                 right: -1,
                 top: -1,
-                child: Container(
-                  width: 16,
-                  height: 16,
-                  decoration: BoxDecoration(
-                    color: AppColors.primary,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.surface, width: 2),
-                  ),
-                  child: const Icon(
-                    Icons.check_rounded,
-                    color: AppColors.surface,
-                    size: 10,
-                  ),
-                ),
+                child: const AmoraaVerifiedAvatarMark(),
               ),
             if (online)
               Positioned(

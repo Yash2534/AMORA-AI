@@ -4,6 +4,7 @@ import 'package:amora_ai/core/access/amora_access.dart';
 import 'package:amora_ai/core/auth/auth_service.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
+import 'package:amora_ai/core/widgets/amoraa_identity_badge.dart';
 import 'package:amora_ai/core/widgets/premium_avatar.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/events/data/event_repository.dart';
@@ -325,7 +326,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   }
 
   void _handlePrimaryAction(EventModel event) {
-    if (_actionBusy) return;
+    if (_actionBusy || (event.registrationClosed && _status == null)) return;
     if (_status == TicketStatus.upcoming) {
       _confirmLeave(event);
       return;
@@ -561,6 +562,14 @@ class _DetailMetadata extends StatelessWidget {
             label: 'Date and time',
             value: '${event.date} · ${event.time}',
           ),
+          if (event.registrationDeadline != null) ...[
+            const SizedBox(height: 16),
+            EventInfoTile(
+              icon: Icons.timer_off_rounded,
+              label: 'Registration deadline',
+              value: _deadlineLabel(event.registrationDeadline!),
+            ),
+          ],
           const SizedBox(height: 16),
           EventInfoTile(
             icon: Icons.place_rounded,
@@ -578,6 +587,27 @@ class _DetailMetadata extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String _deadlineLabel(DateTime value) {
+    const months = <String>[
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    final local = value.toLocal();
+    final hour = local.hour % 12 == 0 ? 12 : local.hour % 12;
+    final period = local.hour >= 12 ? 'PM' : 'AM';
+    return '${local.day} ${months[local.month - 1]} ${local.year}, $hour:${local.minute.toString().padLeft(2, '0')} $period';
   }
 }
 
@@ -810,12 +840,7 @@ class _AttendeeCard extends StatelessWidget {
                 semanticLabel: '${attendee.name} attendee photo',
               ),
               const Spacer(),
-              if (attendee.verified)
-                const Icon(
-                  Icons.verified_rounded,
-                  color: AppColors.primary,
-                  size: 18,
-                ),
+              if (attendee.verified) const AmoraaVerifiedIcon(size: 18),
             ],
           ),
           const SizedBox(height: 8),
@@ -869,6 +894,8 @@ class _DetailActionBar extends StatelessWidget {
       null =>
         event.canJoinWaitlist
             ? 'Join Waitlist'
+            : event.registrationClosed
+            ? 'Registration Closed'
             : event.registrationOpen
             ? 'Join Event'
             : 'Event Full',
@@ -881,6 +908,8 @@ class _DetailActionBar extends StatelessWidget {
       null =>
         event.canJoinWaitlist
             ? Icons.hourglass_top_rounded
+            : event.registrationClosed
+            ? Icons.event_busy_rounded
             : event.registrationOpen
             ? Icons.event_available_rounded
             : Icons.event_busy_rounded,
@@ -944,7 +973,8 @@ class _DetailActionBar extends StatelessWidget {
                         status == TicketStatus.waitlisted ||
                         busy ||
                         (status == null &&
-                            !event.registrationOpen &&
+                            (!event.registrationOpen ||
+                                event.registrationClosed) &&
                             !event.canJoinWaitlist)
                     ? null
                     : onPressed,

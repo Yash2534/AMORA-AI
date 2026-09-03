@@ -11,6 +11,7 @@ import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/amora_bottom_sheet.dart';
 import 'package:amora_ai/core/widgets/amora_snackbar.dart';
+import 'package:amora_ai/core/widgets/amoraa_identity_badge.dart';
 import 'package:amora_ai/core/widgets/premium_avatar.dart';
 import 'package:amora_ai/core/widgets/premium_motion.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
@@ -47,6 +48,8 @@ class ChatDetailArgs {
   final ChatMessageContext? messageContext;
 }
 
+enum _MuteChoice { hour1, hours8, hours24, week1, untilTurnedOff }
+
 class ChatDetailScreen extends StatefulWidget {
   const ChatDetailScreen({super.key});
 
@@ -68,6 +71,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   bool _sending = false;
   bool _loadingOlder = false;
   bool _emojiPickerVisible = false;
+  bool _openingProfile = false;
   Object? _error;
   String? _conversationId;
   String? _recipientId;
@@ -436,29 +440,45 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             title: 'View Profile',
             onTap: () {
               Navigator.pop(context);
-              Navigator.of(
-                context,
-              ).pushNamed(ProfileDetailScreen.routeName, arguments: _profile);
+              _openParticipantProfile();
             },
           ),
           _SheetAction(
             icon: AmoraIcons.notificationsOff,
             title: _conversation?.muted == true
-                ? 'Unmute Conversation'
+                ? _muteStatusLabel(_conversation!.mutedUntil)
                 : 'Mute Conversation',
             onTap: () async {
-              final nextMuted = _conversation?.muted != true;
+              final wasMuted = _conversation?.muted == true;
               Navigator.pop(context);
               try {
-                await _repository.setMuted(_conversationId!, nextMuted);
+                if (wasMuted) {
+                  await _repository.unmute(_conversationId!);
+                } else {
+                  final choice = await _chooseMuteDuration();
+                  if (choice == null || !mounted) return;
+                  await _repository.setMuted(
+                    _conversationId!,
+                    mutedUntil: _muteUntil(choice),
+                  );
+                }
                 if (!mounted) return;
                 _snack(
-                  nextMuted ? 'Conversation muted' : 'Conversation unmuted',
+                  wasMuted ? 'Conversation unmuted' : 'Conversation muted',
                 );
               } catch (_) {
                 if (!mounted) return;
                 _snack('Could not update conversation notifications');
               }
+            },
+          ),
+          _SheetAction(
+            icon: Icons.delete_outline_rounded,
+            title: 'Delete Conversation',
+            danger: true,
+            onTap: () {
+              Navigator.pop(context);
+              _confirmDeleteConversation();
             },
           ),
           _SheetAction(
@@ -511,6 +531,94 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _openParticipantProfile() async {
+    if (_openingProfile) return;
+    setState(() => _openingProfile = true);
+    try {
+      await Navigator.of(context).pushNamed(
+        ProfileDetailScreen.routeName,
+        arguments: _profile,
+      );
+    } finally {
+      if (mounted) setState(() => _openingProfile = false);
+    }
+  }
+
+  Future<_MuteChoice?> _chooseMuteDuration() => showAmoraBottomSheet<_MuteChoice>(
+    context: context,
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text('Mute conversation', style: AmoraTextStyles.titleMedium),
+        const SizedBox(height: 8),
+        for (final choice in _MuteChoice.values)
+          ListTile(
+            key: ValueKey('mute-duration-${choice.name}'),
+            contentPadding: EdgeInsets.zero,
+            title: Text(_muteLabel(choice)),
+            onTap: () => Navigator.of(context).pop(choice),
+          ),
+      ],
+    ),
+  );
+
+  DateTime? _muteUntil(_MuteChoice choice) {
+    final now = DateTime.now();
+    return switch (choice) {
+      _MuteChoice.hour1 => now.add(const Duration(hours: 1)),
+      _MuteChoice.hours8 => now.add(const Duration(hours: 8)),
+      _MuteChoice.hours24 => now.add(const Duration(hours: 24)),
+      _MuteChoice.week1 => now.add(const Duration(days: 7)),
+      _MuteChoice.untilTurnedOff => null,
+    };
+  }
+
+  String _muteLabel(_MuteChoice choice) => switch (choice) {
+    _MuteChoice.hour1 => '1 Hour',
+    _MuteChoice.hours8 => '8 Hours',
+    _MuteChoice.hours24 => '24 Hours',
+    _MuteChoice.week1 => '1 Week',
+    _MuteChoice.untilTurnedOff => 'Until I Turn It Back On',
+  };
+
+  String _muteStatusLabel(DateTime? mutedUntil) {
+    if (mutedUntil == null) return 'Unmute Conversation';
+    final local = mutedUntil.toLocal();
+    final date = '${local.day.toString().padLeft(2, '0')}/${local.month.toString().padLeft(2, '0')}';
+    final hour = local.hour % 12 == 0 ? 12 : local.hour % 12;
+    final minute = local.minute.toString().padLeft(2, '0');
+    final period = local.hour >= 12 ? 'PM' : 'AM';
+    return 'Muted until $date, $hour:$minute $period';
+  }
+
+  Future<void> _confirmDeleteConversation() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Conversation?'),
+        content: const Text('Are you sure you want to delete this conversation?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted || _conversationId == null) return;
+    try {
+      await _repository.deleteConversation(_conversationId!);
+      if (!mounted) return;
+      _snack('Conversation deleted');
+      Navigator.of(context).pop();
+    } catch (_) {
+      if (mounted) _snack('Could not delete this conversation');
+    }
   }
 
   Future<void> _showBlockDialog() async {
@@ -639,11 +747,8 @@ class ChatHeader extends StatelessWidget {
                                   ),
                                   if (profile.verified) ...[
                                     const SizedBox(width: 4),
-                                    const Icon(
-                                      Icons.verified_rounded,
+                                    const AmoraaVerifiedIcon(
                                       key: ValueKey('chat-header-verified'),
-                                      size: 16,
-                                      color: AppColors.secondary,
                                     ),
                                   ],
                                 ],
@@ -842,7 +947,7 @@ class MessageBubble extends StatelessWidget {
         label:
             '${message.mine ? 'Sent' : 'Received'} message at ${message.time}: ${message.text}',
         child: GestureDetector(
-          onLongPress: onDelete,
+          onLongPress: () => _showMessageInfo(context),
           child: Padding(
             padding: EdgeInsets.only(bottom: groupedWithNext ? 4 : 12),
             child: Row(
@@ -997,6 +1102,51 @@ class MessageBubble extends StatelessWidget {
       ),
     );
   }
+
+  Future<void> _showMessageInfo(BuildContext context) async {
+    final sentAt = DateTime.fromMillisecondsSinceEpoch(
+      message.createdAtEpochMs,
+    ).toLocal();
+    final date = '${sentAt.day.toString().padLeft(2, '0')}/${sentAt.month.toString().padLeft(2, '0')}/${sentAt.year}';
+    final hour = sentAt.hour % 12 == 0 ? 12 : sentAt.hour % 12;
+    final time = '$hour:${sentAt.minute.toString().padLeft(2, '0')} ${sentAt.hour >= 12 ? 'PM' : 'AM'}';
+    await showAmoraBottomSheet<void>(
+      context: context,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('Message Info', style: AmoraTextStyles.titleMedium),
+          const SizedBox(height: 12),
+          Text('Sent $date at $time'),
+          if (message.mine) ...[
+            const SizedBox(height: 8),
+            Text('Status: ${_statusLabel(message.status)}'),
+          ],
+          if (onDelete != null) ...[
+            const SizedBox(height: 12),
+            TextButton.icon(
+              onPressed: () {
+                Navigator.of(context).pop();
+                onDelete!();
+              },
+              icon: const Icon(Icons.delete_outline_rounded),
+              label: const Text('Delete message'),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  String _statusLabel(ChatMessageStatus status) => switch (status) {
+    ChatMessageStatus.sending => 'Sending',
+    ChatMessageStatus.queued => 'Queued',
+    ChatMessageStatus.sent => 'Sent',
+    ChatMessageStatus.delivered => 'Delivered',
+    ChatMessageStatus.read => 'Read',
+    ChatMessageStatus.failed => 'Failed',
+  };
 
   bool get _isRoseWithoutNote =>
       message.context?.type == ChatMessageContextType.rose &&

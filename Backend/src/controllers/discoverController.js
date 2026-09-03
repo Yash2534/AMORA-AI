@@ -110,6 +110,29 @@ function buildProfileWhere(filters) {
   return whereValues;
 }
 
+function discoveryPreferenceClauses(viewer) {
+  const clauses = [];
+  const interestedIn = normalizedList(viewer.interestedIn);
+  const viewerGender = lower(viewer.gender);
+
+  // A member's onboarding "Interested in" selection is the primary
+  // recommendation constraint. Do not infer orientation from profile text.
+  if (interestedIn.length) {
+    clauses.push(where(fn('LOWER', col('OnboardingProfile.gender')), { [Op.in]: interestedIn }));
+  }
+  // Respect a candidate's reciprocal preference when it is configured. Older
+  // completed profiles may not have this field, so an empty preference remains
+  // discoverable rather than making the feed unexpectedly empty.
+  if (viewerGender) {
+    const reciprocal = jsonContainsAny('interestedIn', [viewerGender]);
+    clauses.push({ [Op.or]: [
+      where(fn('JSON_LENGTH', col('OnboardingProfile.interestedIn')), 0),
+      ...reciprocal,
+    ] });
+  }
+  return clauses;
+}
+
 function compatibilityScoreSql(sequelize, viewer) {
   const quote = (value) => sequelize.getQueryInterface().queryGenerator.quoteIdentifier(value);
   const profileColumn = (name) => `${quote('OnboardingProfile')}.${quote(name)}`;
@@ -163,6 +186,7 @@ exports.getFeed = async (req, res, next) => {
     }
 
     const profileWhere = buildProfileWhere(filters);
+    const preferenceClauses = discoveryPreferenceClauses(viewer);
     const users = await User.findAll({
       where: userWhere,
       include: [{
@@ -172,6 +196,7 @@ exports.getFeed = async (req, res, next) => {
           ...profileWhere,
           [Op.and]: [
             ...(profileWhere[Op.and] || []),
+            ...preferenceClauses,
             where(literal(scoreSql), { [Op.gte]: filters.minScore }),
           ],
         },
@@ -346,4 +371,4 @@ exports.updateFilters = async (req, res, next) => {
   }
 };
 
-exports._test = { buildProfileWhere, compatibilityScoreSql };
+exports._test = { buildProfileWhere, discoveryPreferenceClauses, compatibilityScoreSql };

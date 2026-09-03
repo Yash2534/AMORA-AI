@@ -91,3 +91,42 @@ class AmoraaIdentityBadge extends StatelessWidget {
     );
   }
 }
+
+/// Compact form of the shared pink verified-profile treatment for dense
+/// surfaces such as conversation headers. Premium remains a separate purple
+/// membership state in [AmoraaIdentityBadge].
+class AmoraaVerifiedIcon extends StatelessWidget {
+  const AmoraaVerifiedIcon({super.key, this.size = 16});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) => Icon(
+    Icons.verified_rounded,
+    color: AppColors.secondary,
+    size: size,
+  );
+}
+
+/// Avatar-specific verified mark using the same pink verification token.
+class AmoraaVerifiedAvatarMark extends StatelessWidget {
+  const AmoraaVerifiedAvatarMark({super.key, this.diameter = 16});
+
+  final double diameter;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: diameter,
+    height: diameter,
+    decoration: BoxDecoration(
+      color: AppColors.secondary,
+      shape: BoxShape.circle,
+      border: Border.all(color: AppColors.surface, width: 2),
+    ),
+    child: Icon(
+      Icons.check_rounded,
+      color: AppColors.surface,
+      size: diameter * .625,
+    ),
+  );
+}
