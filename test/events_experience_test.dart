@@ -1008,7 +1008,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('main navigation opens Events directly with one bottom bar', (
+  testWidgets('main navigation hides Events while preserving its screen', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(390, 844));
@@ -1018,12 +1018,7 @@ void main() {
       MaterialApp(theme: AmoraTheme.light(), home: const MainShell()),
     );
     await tester.pump();
-    await tester.tap(find.byKey(const ValueKey('bottom-nav-Events')));
-    await tester.pump(const Duration(milliseconds: 520));
-    await tester.pump();
-
-    expect(find.text('Featured experience'), findsOneWidget);
-    expect(find.text('Unlock Events'), findsNothing);
+    expect(find.byKey(const ValueKey('bottom-nav-Events')), findsNothing);
     expect(find.byType(FloatingBottomNav), findsOneWidget);
     expect(tester.takeException(), isNull);
   });

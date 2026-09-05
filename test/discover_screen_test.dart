@@ -87,9 +87,9 @@ void main() {
 
     expect(find.text('Discover'), findsOneWidget);
     expect(find.text('Home'), findsNothing);
-    expect(find.text('Chats'), findsOneWidget);
+    expect(find.text('Chat'), findsOneWidget);
     expect(find.text('AI Matches'), findsOneWidget);
-    expect(find.text('Events'), findsOneWidget);
+    expect(find.text('Events'), findsNothing);
     expect(find.text('Profile'), findsOneWidget);
     expect(find.byKey(const ValueKey('discover-menu-button')), findsNothing);
     expect(
@@ -132,7 +132,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('bottom navigation has exactly five tabs and no Home', (
+  testWidgets('bottom navigation has exactly four tabs and no Events or Home', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(320, 760));
@@ -144,17 +144,12 @@ void main() {
       onNamedRoute: (settings) => openedRoute = settings,
     );
 
-    const labels = <String>[
-      'Discover',
-      'Chats',
-      'AI Matches',
-      'Events',
-      'Profile',
-    ];
+    const labels = <String>['Discover', 'Chat', 'AI Matches', 'Profile'];
     for (final label in labels) {
       expect(find.byKey(ValueKey('bottom-nav-$label')), findsOneWidget);
     }
     expect(find.byKey(const ValueKey('bottom-nav-Home')), findsNothing);
+    expect(find.byKey(const ValueKey('bottom-nav-Events')), findsNothing);
     expect(find.text('Home'), findsNothing);
     expect(tester.takeException(), isNull);
 

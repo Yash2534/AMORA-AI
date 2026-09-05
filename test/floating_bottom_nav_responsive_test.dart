@@ -42,7 +42,7 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('renders five equal items at every supported viewport', (
+  testWidgets('renders four equal items at every supported viewport', (
     tester,
   ) async {
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -63,8 +63,8 @@ void main() {
     for (final entry in expectedBarWidths.entries) {
       await pumpNavigation(tester, size: entry.key);
 
-      expect(FloatingBottomNav.items, hasLength(5));
-      expect(find.byType(InkWell), findsNWidgets(5));
+      expect(FloatingBottomNav.items, hasLength(4));
+      expect(find.byType(InkWell), findsNWidgets(4));
       final barSize = tester.getSize(
         find.byKey(const ValueKey('floating-bottom-nav-bar')),
       );
@@ -158,7 +158,7 @@ void main() {
       selectedIndicatorFinder,
     );
     final inactiveIndicator = tester.widget<AnimatedContainer>(
-      find.byKey(const ValueKey('bottom-nav-indicator-Chats')),
+      find.byKey(const ValueKey('bottom-nav-indicator-Chat')),
     );
     final selectedIcon = tester.widget<Icon>(
       find.descendant(
@@ -220,7 +220,7 @@ void main() {
         tester.getRect(find.byKey(ValueKey('bottom-nav-${item.label}'))),
     ];
 
-    await tester.tap(find.byKey(const ValueKey('bottom-nav-Chats')));
+    await tester.tap(find.byKey(const ValueKey('bottom-nav-Chat')));
     await tester.pumpAndSettle();
 
     expect(activeTab, AmoraNavTab.chats);
@@ -235,7 +235,7 @@ void main() {
     ];
     expect(afterItems, orderedEquals(beforeItems));
 
-    await tester.tap(find.byKey(const ValueKey('bottom-nav-Chats')));
+    await tester.tap(find.byKey(const ValueKey('bottom-nav-Chat')));
     await tester.pumpAndSettle();
     expect(callbackCount, 1, reason: 'The active tab remains a no-op.');
 
@@ -243,7 +243,7 @@ void main() {
         .widgetList<Semantics>(find.byType(Semantics))
         .where(
           (widget) =>
-              widget.properties.label == 'Chats' &&
+              widget.properties.label == 'Chat' &&
               widget.properties.selected == true,
         );
     expect(selectedSemantics, isNotEmpty);

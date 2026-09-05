@@ -1,3 +1,4 @@
+import 'package:amora_ai/core/config/app_feature_flags.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
@@ -50,7 +51,7 @@ class FloatingBottomNav extends StatelessWidget {
     AmoraNavigationDestination(
       icon: Icons.chat_bubble_outline_rounded,
       selectedIcon: Icons.chat_bubble_rounded,
-      label: 'Chats',
+      label: 'Chat',
       tab: AmoraNavTab.chats,
       routeName: '/chats',
     ),
@@ -61,13 +62,14 @@ class FloatingBottomNav extends StatelessWidget {
       tab: AmoraNavTab.matches,
       routeName: '/matches',
     ),
-    AmoraNavigationDestination(
-      icon: Icons.calendar_month_outlined,
-      selectedIcon: Icons.calendar_month_rounded,
-      label: 'Events',
-      tab: AmoraNavTab.events,
-      routeName: '/events',
-    ),
+    if (AppFeatureFlags.eventsEnabled)
+      AmoraNavigationDestination(
+        icon: Icons.calendar_month_outlined,
+        selectedIcon: Icons.calendar_month_rounded,
+        label: 'Events',
+        tab: AmoraNavTab.events,
+        routeName: '/events',
+      ),
     AmoraNavigationDestination(
       icon: Icons.person_outline_rounded,
       selectedIcon: Icons.person_rounded,

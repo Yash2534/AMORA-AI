@@ -7,11 +7,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('primary navigation preserves the five approved destinations', () {
-    expect(FloatingBottomNav.items, hasLength(5));
+  test('primary navigation contains the four visible destinations', () {
+    expect(FloatingBottomNav.items, hasLength(4));
     expect(
       FloatingBottomNav.items.map((item) => item.label),
-      orderedEquals(['Discover', 'Chats', 'AI Matches', 'Events', 'Profile']),
+      orderedEquals(['Discover', 'Chat', 'AI Matches', 'Profile']),
     );
   });
 
@@ -37,23 +37,25 @@ void main() {
       FloatingBottomNav.barHeight + FloatingBottomNav.minimumBottomSpacing,
     );
 
-    for (final destination in <String>[
-      'Chats',
-      'AI Matches',
-      'Events',
-      'Profile',
-    ]) {
+    const destinations = <String, String>{
+      'Chat': 'Chats',
+      'AI Matches': 'AI Matches',
+      'Profile': 'Profile',
+    };
+    for (final entry in destinations.entries) {
+      final destination = entry.key;
       await tester.tap(find.byKey(ValueKey('bottom-nav-$destination')));
       await tester.pumpAndSettle();
       expect(
         find.descendant(
           of: find.byType(AmoraaMainPageHeader),
-          matching: find.text(destination),
+          matching: find.text(entry.value),
         ),
         findsOneWidget,
       );
       expect(find.byType(FloatingBottomNav), findsOneWidget);
     }
+    expect(find.byKey(const ValueKey('bottom-nav-Events')), findsNothing);
     expect(tester.takeException(), isNull);
   });
 }

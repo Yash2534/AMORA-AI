@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:amora_ai/core/config/app_feature_flags.dart';
 import 'package:amora_ai/core/constants/app_images.dart';
 import 'package:amora_ai/core/access/amora_access.dart';
 import 'package:amora_ai/core/data/image_repository.dart';
@@ -436,7 +437,8 @@ class _QuickActionsRow extends StatelessWidget {
       _QuickAction(Icons.tune_rounded, 'Filters', onFilters),
       _QuickAction(Icons.near_me_rounded, 'Nearby', onNearby),
       _QuickAction(Icons.chat_bubble_outline_rounded, 'Chats', onChats),
-      _QuickAction(Icons.event_available_rounded, 'Events', onEvents),
+      if (AppFeatureFlags.eventsEnabled)
+        _QuickAction(Icons.event_available_rounded, 'Events', onEvents),
       _QuickAction(Icons.person_outline_rounded, 'Profile', onProfile),
     ];
     return SizedBox(

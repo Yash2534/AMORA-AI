@@ -1,3 +1,4 @@
+import 'package:amora_ai/core/config/app_feature_flags.dart';
 import 'package:amora_ai/core/auth/auth_service.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
@@ -195,7 +196,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                                 ? null
                                 : _continueToPayment,
                           )
-                        else
+                        else if (AppFeatureFlags.eventsEnabled)
                           AppPrimaryButton(
                             label: 'Explore Member Events',
                             icon: Icons.event_rounded,
@@ -1001,12 +1002,14 @@ class CurrentMembershipCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 18),
-          AppPrimaryButton(
-            label: 'Open Events',
-            icon: Icons.event_rounded,
-            onPressed: onEvents,
-          ),
-          const SizedBox(height: 8),
+          if (AppFeatureFlags.eventsEnabled) ...[
+            AppPrimaryButton(
+              label: 'Open Events',
+              icon: Icons.event_rounded,
+              onPressed: onEvents,
+            ),
+            const SizedBox(height: 8),
+          ],
           AppPrimaryButton(
             label: 'Manage Membership',
             variant: AppPrimaryButtonVariant.outlined,

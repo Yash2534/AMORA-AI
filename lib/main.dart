@@ -161,8 +161,10 @@ class _MyAppState extends State<MyApp> {
           ChatDetailScreen.routeName: (_) => const ChatDetailScreen(),
           NotificationsHubScreen.routeName: (_) =>
               const NotificationsHubScreen(),
+          // Preserve the Events route while its normal frontend entry points
+          // are temporarily hidden.
           EventsScreen.routeName: (_) =>
-              const MainShell(initialTab: AmoraNavTab.events),
+              const EventsScreen(showNavigation: false),
           EventDetailScreen.routeName: (_) => const EventDetailScreen(),
           MyEventsScreen.routeName: (_) => const MyEventsScreen(),
           AiIcebreakersScreen.routeName: (_) => const AiIcebreakersScreen(),

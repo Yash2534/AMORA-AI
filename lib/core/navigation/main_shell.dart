@@ -1,3 +1,4 @@
+import 'package:amora_ai/core/config/app_feature_flags.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/api/phase_two_api_service.dart';
 import 'package:amora_ai/core/widgets/floating_bottom_nav.dart';
@@ -8,7 +9,7 @@ import 'package:amora_ai/features/matches/presentation/matches_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_screen.dart';
 import 'package:flutter/material.dart';
 
-/// Persistent five-tab application shell.
+/// Persistent primary application shell.
 ///
 /// IndexedStack keeps each tab subtree alive, including its scroll position and
 /// local presentation state. Secondary routes continue to use the root
@@ -31,7 +32,7 @@ class _MainShellState extends State<MainShell> {
     AmoraNavTab.discover,
     AmoraNavTab.chats,
     AmoraNavTab.matches,
-    AmoraNavTab.events,
+    if (AppFeatureFlags.eventsEnabled) AmoraNavTab.events,
     AmoraNavTab.profile,
   ];
 
@@ -60,7 +61,8 @@ class _MainShellState extends State<MainShell> {
             showNavigation: false,
             api: PhaseTwoApiService.instance,
           ),
-          const EventsScreen(showNavigation: false),
+          if (AppFeatureFlags.eventsEnabled)
+            const EventsScreen(showNavigation: false),
           const ProfileScreen(showNavigation: false),
         ],
       ),
