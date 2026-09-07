@@ -1,12 +1,13 @@
-const bcrypt = require('bcrypt'); const jwt = require('jsonwebtoken'); const { Op } = require('sequelize'); const { OAuth2Client } = require('google-auth-library');
+const bcrypt = require('bcrypt'); const crypto = require('crypto'); const jwt = require('jsonwebtoken'); const { Op } = require('sequelize'); const { OAuth2Client } = require('google-auth-library');
 const { getModels } = require('../models'); const { issueTokens, accessToken } = require('../utils/generateTokens');
 const { createPhoneOtp, createEmailOtp, deliverPhoneOtp, deliverEmailOtp, verifyPhoneOtp, verifyEmailOtp } = require('../services/otpService');
 const { recordLoginEvent } = require('../services/userActivityService');
 const { runtimeConfiguration } = require('../services/platformSettingsService');
+const consentService = require('../services/consentService');
 const googleIds = (process.env.GOOGLE_CLIENT_IDS || '').split(',').map((id) => id.trim()).filter((id) => id && id !== 'skip-for-now');
 const googleClient = googleIds.length ? new OAuth2Client() : null;
 const OTP_RESEND_COOLDOWN_MS = 45 * 1000;
-const profile = (user) => ({ id: user.id, name: user.name, email: user.email, phoneNumber: user.phoneNumber, isVerified: user.isVerified, accountStatus: user.accountStatus });
+const profile = (user) => ({ id: user.id, name: user.name, email: user.email, phoneNumber: user.phoneNumber, isVerified: user.isVerified, accountStatus: user.accountStatus, authProvider: user.authProvider });
 const emailOf = (value) => String(value || '').trim().toLowerCase();
 const phoneOf = (value) => { const digits = String(value || '').replace(/\D/g, ''); const national = digits.length === 12 && digits.startsWith('91') ? digits.slice(2) : digits; return /^\d{10}$/.test(national) ? `+91${national}` : ''; };
 const refreshSelectorOf = (value) => {
@@ -14,6 +15,18 @@ const refreshSelectorOf = (value) => {
   return /^[a-f0-9]{32}$/.test(selector) && String(value).includes('.') ? selector : null;
 };
 function success(res, message, data, devOtp) { const body = { success: true, message, data }; if (process.env.NODE_ENV === 'development' && devOtp) body.devOtp = devOtp; return res.json(body); }
+const deletionConfirmationToken = () => {
+  const selector = crypto.randomBytes(16).toString('hex');
+  const secret = crypto.randomBytes(32).toString('hex');
+  const token = `${selector}.${secret}`;
+  return { token, selector, hash: crypto.createHash('sha256').update(token).digest('hex') };
+};
+exports.requiredSignupLegalDocuments = async (_req, res, next) => {
+  try {
+    const documents = await consentService.requiredSignupDocuments();
+    return success(res, 'Required legal documents.', { documents });
+  } catch (error) { return next(error); }
+};
 exports.signup = async (req, res, next) => {
   const configuration = await runtimeConfiguration();
   if (!configuration.registration_enabled) return res.status(403).json({ success: false, message: 'New registrations are currently unavailable.', code: 'REGISTRATION_DISABLED', errors: [] });
@@ -22,6 +35,7 @@ exports.signup = async (req, res, next) => {
   const phoneNumber = phoneOf(req.body.phoneNumber);
   let user;
   let code;
+  let otpDeliveryInProgress = false;
   try {
     await User.sequelize.transaction(async (transaction) => {
       const existing = await User.findOne({
@@ -45,14 +59,23 @@ exports.signup = async (req, res, next) => {
         email,
         phoneNumber,
         passwordHash: await bcrypt.hash(req.body.password, 12),
-        termsAcceptedAt: new Date(),
       }, { transaction });
+      await consentService.recordRequiredSignupConsent({
+        userId: user.id,
+        acceptedLegalDocuments: req.body.acceptedLegalDocuments,
+        source: 'SIGNUP_EMAIL',
+        platform: req.body.platform,
+        metadata: req.body.consentMetadata,
+        transaction,
+      });
+      otpDeliveryInProgress = true;
       ({ code } = await createPhoneOtp(phoneNumber, 'account_verification', { transaction }));
     });
   } catch (error) {
-    if (!error.status && /SMS|Twilio/i.test(error.message || '')) {
+    if (otpDeliveryInProgress) {
       error.status = 503;
       error.code = 'OTP_DELIVERY_FAILED';
+      error.message = "We couldn't send the verification code. Please try again.";
     }
     return next(error);
   }
@@ -106,9 +129,15 @@ exports.resendVerification = async (req, res) => {
     try {
       await deliverPhoneOtp(phoneNumber, 'account_verification', pendingOtp.code, pendingOtp.expiresAt);
       deliveredCode = pendingOtp.code;
-    } catch (error) {
+    } catch (_) {
       await OtpToken.update({ consumed: true }, { where: { id: pendingOtp.otp.id } }).catch(() => {});
       console.error('[OTP] Verification resend delivery failed.');
+      return res.status(503).json({
+        success: false,
+        message: "We couldn't send the verification code. Please try again.",
+        code: 'OTP_DELIVERY_FAILED',
+        errors: [],
+      });
     }
   }
   return success(
@@ -119,7 +148,58 @@ exports.resendVerification = async (req, res) => {
   );
 };
 exports.login = async (req, res) => { const { User } = getModels(); const user = await User.findOne({ where: { email: emailOf(req.body.email) } }); if (!user || user.authProvider !== 'local' || !(await bcrypt.compare(req.body.password, user.passwordHash || '')) || user.accountStatus === 'deleted') { if (user && user.accountStatus !== 'deleted') await recordLoginEvent({ userId: user.id, result: 'failed', authenticationMethod: 'password', failureCategory: 'invalid_credentials', request: req }); const provider = user && user.authProvider === 'google'; return res.status(401).json({ success: false, message: provider ? 'This account uses Google Sign-In. Please sign in with Google.' : 'Invalid email or password.', code: 'INVALID_CREDENTIALS', errors: [] }); } if (!user.isVerified) { await recordLoginEvent({ userId: user.id, result: 'failed', authenticationMethod: 'password', failureCategory: 'account_not_verified', request: req }); return res.status(403).json({ success: false, message: 'Please verify your account before logging in.', code: 'ACCOUNT_NOT_VERIFIED', errors: [] }); } const reactivated = user.accountStatus === 'deactivated'; if (reactivated) { user.accountStatus = 'active'; user.deactivatedAt = null; await user.save(); } await recordLoginEvent({ userId: user.id, result: 'successful', authenticationMethod: 'password', request: req }); return success(res, reactivated ? 'Account reactivated and logged in.' : 'Logged in.', { ...(await issueTokens(user, req.ip)), user: profile(user), reactivated }); };
-exports.google = async (req, res) => { if (!googleClient) return res.status(503).json({ success: false, message: 'Google Sign-In is not configured on this server yet.', code: 'GOOGLE_AUTH_NOT_CONFIGURED', errors: [] }); let payload; try { payload = (await googleClient.verifyIdToken({ idToken: req.body.idToken, audience: googleIds })).getPayload(); } catch (_) { return res.status(401).json({ success: false, message: 'Invalid Google ID token.', code: 'TOKEN_INVALID', errors: [] }); } if (!payload.email || !payload.sub) return res.status(401).json({ success: false, message: 'Google token is missing required profile information.', code: 'TOKEN_INVALID', errors: [] }); const { User } = getModels(); const email = emailOf(payload.email); let user = await User.findOne({ where: { email } }); let isNewUser = false; if (user?.accountStatus === 'deleted') return res.status(401).json({ success: false, message: 'This account is unavailable.', code: 'INVALID_CREDENTIALS', errors: [] }); if (user && user.authProvider === 'local') return res.status(409).json({ success: false, message: 'An account with this email uses password login. Please log in with your password first.', code: 'INVALID_CREDENTIALS', errors: [] }); if (!user) { if (!(await runtimeConfiguration()).registration_enabled) return res.status(403).json({ success: false, message: 'New registrations are currently unavailable.', code: 'REGISTRATION_DISABLED', errors: [] }); user = await User.create({ name: payload.name || email.split('@')[0], email, googleId: payload.sub, phoneNumber: '', authProvider: 'google', isVerified: true }); isNewUser = true; } const reactivated = user.accountStatus === 'deactivated'; if (reactivated) { user.accountStatus = 'active'; user.deactivatedAt = null; await user.save(); } await recordLoginEvent({ userId: user.id, result: 'successful', authenticationMethod: 'google', request: req }); return success(res, reactivated ? 'Account reactivated and signed in.' : 'Google Sign-In successful.', { ...(await issueTokens(user, req.ip)), user: profile(user), isNewUser, reactivated }); };
+exports.google = async (req, res, next) => {
+  if (!googleClient) return res.status(503).json({ success: false, message: 'Google Sign-In is not configured on this server yet.', code: 'GOOGLE_AUTH_NOT_CONFIGURED', errors: [] });
+  let payload;
+  try { payload = (await googleClient.verifyIdToken({ idToken: req.body.idToken, audience: googleIds })).getPayload(); } catch (_) { return res.status(401).json({ success: false, message: 'Invalid Google ID token.', code: 'TOKEN_INVALID', errors: [] }); }
+  if (!payload.email || !payload.sub) return res.status(401).json({ success: false, message: 'Google token is missing required profile information.', code: 'TOKEN_INVALID', errors: [] });
+  const { User } = getModels();
+  const email = emailOf(payload.email);
+  let user = await User.findOne({ where: { email } });
+  let isNewUser = false;
+  if (user?.accountStatus === 'deleted') return res.status(401).json({ success: false, message: 'This account is unavailable.', code: 'INVALID_CREDENTIALS', errors: [] });
+  if (user && user.authProvider === 'local') return res.status(409).json({ success: false, message: 'An account with this email uses password login. Please log in with your password first.', code: 'INVALID_CREDENTIALS', errors: [] });
+  if (!user) {
+    if (!(await runtimeConfiguration()).registration_enabled) return res.status(403).json({ success: false, message: 'New registrations are currently unavailable.', code: 'REGISTRATION_DISABLED', errors: [] });
+    try {
+      user = await User.sequelize.transaction(async (transaction) => {
+        const created = await User.create({ name: payload.name || email.split('@')[0], email, googleId: payload.sub, phoneNumber: '', authProvider: 'google', isVerified: true }, { transaction });
+        await consentService.recordRequiredSignupConsent({ userId: created.id, acceptedLegalDocuments: req.body.acceptedLegalDocuments, source: 'SIGNUP_GOOGLE', platform: req.body.platform, metadata: req.body.consentMetadata, transaction });
+        return created;
+      });
+      isNewUser = true;
+    } catch (error) { return next(error); }
+  }
+  const reactivated = user.accountStatus === 'deactivated';
+  if (reactivated) { user.accountStatus = 'active'; user.deactivatedAt = null; await user.save(); }
+  await recordLoginEvent({ userId: user.id, result: 'successful', authenticationMethod: 'google', request: req });
+  return success(res, reactivated ? 'Account reactivated and signed in.' : 'Google Sign-In successful.', { ...(await issueTokens(user, req.ip)), user: profile(user), isNewUser, reactivated });
+};
+exports.reauthenticateForAccountDeletion = async (req, res, next) => {
+  try {
+    const { User, AccountDeletionConfirmation } = getModels();
+    const user = await User.findByPk(req.user.sub);
+    if (!user || user.accountStatus === 'deleted') return res.status(401).json({ success: false, message: 'Please re-authenticate before deleting your account.', code: 'REAUTHENTICATION_REQUIRED', errors: [] });
+
+    if (user.authProvider === 'local') {
+      if (!req.body.password || !(await bcrypt.compare(req.body.password, user.passwordHash || ''))) {
+        return res.status(401).json({ success: false, message: 'The password you entered is incorrect.', code: 'REAUTHENTICATION_FAILED', errors: [] });
+      }
+    } else if (user.authProvider === 'google') {
+      if (!googleClient) return res.status(503).json({ success: false, message: 'Unable to verify your Google account. Please try again.', code: 'GOOGLE_AUTH_NOT_CONFIGURED', errors: [] });
+      let payload;
+      try { payload = (await googleClient.verifyIdToken({ idToken: req.body.idToken, audience: googleIds })).getPayload(); } catch (_) { return res.status(401).json({ success: false, message: 'Unable to verify your Google account. Please try again.', code: 'REAUTHENTICATION_FAILED', errors: [] }); }
+      if (!payload?.sub || payload.sub !== user.googleId || emailOf(payload.email) !== user.email) return res.status(401).json({ success: false, message: 'Unable to verify your Google account. Please try again.', code: 'REAUTHENTICATION_FAILED', errors: [] });
+    } else {
+      return res.status(401).json({ success: false, message: 'Please re-authenticate before deleting your account.', code: 'REAUTHENTICATION_REQUIRED', errors: [] });
+    }
+
+    const generated = deletionConfirmationToken();
+    const expiresAt = new Date(Date.now() + (5 * 60 * 1000));
+    await AccountDeletionConfirmation.create({ userId: user.id, tokenSelector: generated.selector, tokenHash: generated.hash, purpose: 'account_deletion', expiresAt });
+    return success(res, 'Re-authentication successful.', { deletionConfirmation: generated.token, expiresIn: 300 });
+  } catch (error) { return next(error); }
+};
 exports.forgotPassword = async (req, res) => {
   const email = emailOf(req.body.email);
   const { User, OtpToken } = getModels();
@@ -151,6 +231,12 @@ exports.forgotPassword = async (req, res) => {
     } catch (_) {
       await OtpToken.update({ consumed: true }, { where: { id: pendingOtp.otp.id } }).catch(() => {});
       console.error('[OTP] Password reset email delivery failed.');
+      return res.status(503).json({
+        success: false,
+        message: "We couldn't send the verification code. Please try again.",
+        code: 'OTP_DELIVERY_FAILED',
+        errors: [],
+      });
     }
   }
   return success(res, 'If an eligible account exists, a password reset code has been sent.', {}, deliveredCode);

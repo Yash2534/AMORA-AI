@@ -20,11 +20,11 @@ const { app } = require('../src/server');
 let server; let baseUrl; let models; let viewer; let recent; let eventUser; let old; let token;
 const userIds = [];
 
-async function user(name, values = {}) {
+async function user(name, values = {}, profileValues = {}) {
   const suffix = `${Date.now()}_${Math.random()}`;
   const row = await models.User.create({ name, email: `${suffix}@partial.test`, phoneNumber: '', authProvider: 'local', isVerified: true, identityVerifiedAt: new Date(), termsAcceptedAt: new Date(), ...values });
   userIds.push(row.id);
-  await models.OnboardingProfile.create({ userId: row.id, birthDate: '1998-02-14', gender: 'Woman', interestedIn: ['Men'], relationshipGoals: ['long_term'], city: 'Ahmedabad', profession: 'Engineer', education: 'Graduate', interests: ['events'], lifestyle: { drinking: 'never' }, prompts: { date: 'Coffee' }, photos: ['/uploads/one.jpg', '/uploads/two.jpg'], stage: 'complete', onboardingCompleted: true });
+  await models.OnboardingProfile.create({ userId: row.id, birthDate: '1998-02-14', gender: profileValues.gender || 'Male', interestedIn: profileValues.interestedIn || ['Female'], relationshipGoals: ['long_term'], city: 'Ahmedabad', profession: 'Engineer', education: 'Graduate', interests: ['events'], lifestyle: { drinking: 'never' }, prompts: { date: 'Coffee' }, photos: ['/uploads/one.jpg', '/uploads/two.jpg'], stage: 'complete', onboardingCompleted: true });
   return row;
 }
 
@@ -37,7 +37,7 @@ before(async () => {
   await migrate({ databaseName: testDatabase, quiet: true });
   await initializeDatabase();
   models = getModels();
-  viewer = await user('Partial Viewer');
+  viewer = await user('Partial Viewer', {}, { gender: 'Female', interestedIn: ['Male'] });
   recent = await user('Recently Active', { lastActiveAt: new Date() });
   eventUser = await user('Event Interested', { lastActiveAt: new Date() });
   old = await user('Inactive', { lastActiveAt: new Date(Date.now() - 60 * 60 * 1000) });

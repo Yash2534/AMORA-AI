@@ -213,12 +213,12 @@ class _MyAppState extends State<MyApp> {
           ),
           DeleteAccountInformationScreen.routeName: (_) =>
               DeleteAccountInformationScreen(
-                onDeleteSelection: (selection) async {
-                  await PhaseTwoApiService.instance.deleteAccount(
+                onDeleteSelection: (selection, deletionConfirmation) async {
+                  return PhaseTwoApiService.instance.deleteAccount(
                     reason: selection.backendValue,
                     details: selection.details,
+                    deletionConfirmation: deletionConfirmation,
                   );
-                  return true;
                 },
               ),
         },

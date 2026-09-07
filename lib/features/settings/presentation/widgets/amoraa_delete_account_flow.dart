@@ -1,3 +1,5 @@
+import 'package:amora_ai/core/auth/auth_service.dart';
+import 'package:amora_ai/core/api/phase_two_api_service.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
@@ -67,19 +69,33 @@ class DeleteAccountSelection {
 }
 
 typedef DeleteAccountConfirmed =
-    Future<bool> Function(DeleteAccountSelection selection);
+    Future<AccountDeletionResult> Function(
+      DeleteAccountSelection selection,
+      String deletionConfirmation,
+    );
 
-enum _DeleteAccountStep { reason, confirmation, failure }
+enum _DeleteAccountStep {
+  reason,
+  reauthentication,
+  confirmation,
+  processing,
+  completed,
+  pendingReview,
+  failure,
+  unknown,
+}
 
 class AmoraaDeleteAccountFlow extends StatefulWidget {
   const AmoraaDeleteAccountFlow({
     super.key,
     required this.onDeleteConfirmed,
     required this.onCancel,
+    this.reauthenticateWithPassword,
   });
 
   final DeleteAccountConfirmed onDeleteConfirmed;
   final VoidCallback onCancel;
+  final Future<String> Function(String password)? reauthenticateWithPassword;
 
   @override
   State<AmoraaDeleteAccountFlow> createState() =>
@@ -90,9 +106,13 @@ class _AmoraaDeleteAccountFlowState extends State<AmoraaDeleteAccountFlow> {
   static const _maximumOtherReasonLength = 240;
 
   final _otherController = TextEditingController();
+  final _passwordController = TextEditingController();
   DeleteAccountReason? _selectedReason;
   _DeleteAccountStep _step = _DeleteAccountStep.reason;
   bool _submitting = false;
+  String? _reauthenticationError;
+  String? _deletionConfirmation;
+  bool _canRetry = false;
 
   bool get _isOther => _selectedReason?.code == 'other';
   bool get _otherIsValid =>
@@ -110,6 +130,7 @@ class _AmoraaDeleteAccountFlowState extends State<AmoraaDeleteAccountFlow> {
     _otherController
       ..removeListener(_refresh)
       ..dispose();
+    _passwordController.dispose();
     super.dispose();
   }
 
@@ -134,8 +155,13 @@ class _AmoraaDeleteAccountFlowState extends State<AmoraaDeleteAccountFlow> {
       switchOutCurve: Curves.easeInCubic,
       child: switch (_step) {
         _DeleteAccountStep.reason => _buildReasonStep(),
+        _DeleteAccountStep.reauthentication => _buildReauthenticationStep(),
         _DeleteAccountStep.confirmation => _buildConfirmationStep(),
+        _DeleteAccountStep.processing => _buildProcessingStep(),
+        _DeleteAccountStep.completed => _buildCompletedStep(),
+        _DeleteAccountStep.pendingReview => _buildPendingReviewStep(),
         _DeleteAccountStep.failure => _buildFailureStep(),
+        _DeleteAccountStep.unknown => _buildUnknownStep(),
       },
     );
   }
@@ -207,7 +233,7 @@ class _AmoraaDeleteAccountFlowState extends State<AmoraaDeleteAccountFlow> {
           onPressed: _canContinue
               ? () {
                   FocusScope.of(context).unfocus();
-                  setState(() => _step = _DeleteAccountStep.confirmation);
+                  setState(() => _step = _DeleteAccountStep.reauthentication);
                 }
               : null,
         ),
@@ -217,6 +243,70 @@ class _AmoraaDeleteAccountFlowState extends State<AmoraaDeleteAccountFlow> {
           label: 'Cancel',
           variant: AppPrimaryButtonVariant.text,
           onPressed: widget.onCancel,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildReauthenticationStep() {
+    final isGoogle = AuthService.instance.currentUser?.authProvider == 'google';
+    return Column(
+      key: const ValueKey('delete-account-reauthentication-step'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text('Confirm it’s you', style: AmoraTextStyles.titleLarge),
+        const SizedBox(height: AmoraSpacing.space8),
+        Text(
+          isGoogle
+              ? 'Re-authenticate with the Google account linked to AMORAA before deleting your account.'
+              : 'Enter your current password before deleting your account.',
+          style: AmoraTextStyles.bodyMedium.copyWith(
+            color: AppColors.textSecondary,
+          ),
+        ),
+        const SizedBox(height: AmoraSpacing.space20),
+        if (isGoogle)
+          AppPrimaryButton(
+            key: const ValueKey('delete-account-google-reauthenticate'),
+            label: 'Continue with Google',
+            icon: Icons.login_rounded,
+            isLoading: _submitting,
+            onPressed: _submitting ? null : _reauthenticateWithGoogle,
+          )
+        else ...[
+          TextFormField(
+            key: const ValueKey('delete-account-password-field'),
+            controller: _passwordController,
+            obscureText: true,
+            autocorrect: false,
+            enableSuggestions: false,
+            textInputAction: TextInputAction.done,
+            onFieldSubmitted: (_) => _reauthenticateWithPassword(),
+            decoration: const InputDecoration(labelText: 'Current Password'),
+          ),
+          const SizedBox(height: AmoraSpacing.space16),
+          AppPrimaryButton(
+            key: const ValueKey('delete-account-password-reauthenticate'),
+            label: 'Continue',
+            icon: Icons.lock_outline_rounded,
+            isLoading: _submitting,
+            onPressed: _submitting ? null : _reauthenticateWithPassword,
+          ),
+        ],
+        if (_reauthenticationError != null) ...[
+          const SizedBox(height: AmoraSpacing.space12),
+          Text(
+            _reauthenticationError!,
+            style: AmoraTextStyles.bodySmall.copyWith(color: AppColors.error),
+          ),
+        ],
+        const SizedBox(height: AmoraSpacing.space8),
+        AppPrimaryButton(
+          label: 'Go back',
+          variant: AppPrimaryButtonVariant.text,
+          onPressed: _submitting
+              ? null
+              : () => setState(() => _step = _DeleteAccountStep.reason),
         ),
       ],
     );
@@ -234,7 +324,7 @@ class _AmoraaDeleteAccountFlowState extends State<AmoraaDeleteAccountFlow> {
         ),
         const SizedBox(height: AmoraSpacing.space8),
         Text(
-          'This action cannot be undone. Your AMORAA account and access will be permanently removed according to the existing account-deletion policy.',
+          'After you confirm your identity, we will submit your account deletion request. Deletion may require additional processing or review.',
           style: AmoraTextStyles.bodyMedium.copyWith(
             color: AppColors.textSecondary,
             height: 1.5,
@@ -252,7 +342,7 @@ class _AmoraaDeleteAccountFlowState extends State<AmoraaDeleteAccountFlow> {
             icon: Icons.delete_forever_rounded,
             isLoading: _submitting,
             variant: AppPrimaryButtonVariant.destructive,
-            onPressed: _submitting ? null : _submit,
+            onPressed: _submitting ? null : _submitDeletion,
           ),
         ),
         const SizedBox(height: AmoraSpacing.space8),
@@ -274,13 +364,13 @@ class _AmoraaDeleteAccountFlowState extends State<AmoraaDeleteAccountFlow> {
         Semantics(
           liveRegion: true,
           child: Text(
-            'Couldn\u2019t delete your account',
+            'Deletion could not be completed',
             style: AmoraTextStyles.titleLarge,
           ),
         ),
         const SizedBox(height: AmoraSpacing.space8),
         Text(
-          'Your account has not been deleted. Please try again.',
+          'We were unable to complete your deletion request. Please try again or contact support if the problem continues.',
           style: AmoraTextStyles.bodyMedium.copyWith(
             color: AppColors.textSecondary,
             height: 1.5,
@@ -289,14 +379,19 @@ class _AmoraaDeleteAccountFlowState extends State<AmoraaDeleteAccountFlow> {
         const SizedBox(height: AmoraSpacing.space16),
         _SelectedReasonSummary(selection: _selection),
         const SizedBox(height: AmoraSpacing.space20),
-        AppPrimaryButton(
-          key: const ValueKey('delete-account-retry'),
-          label: 'Try Again',
-          icon: Icons.refresh_rounded,
-          isLoading: _submitting,
-          variant: AppPrimaryButtonVariant.destructive,
-          onPressed: _submitting ? null : _submit,
-        ),
+        if (_canRetry)
+          AppPrimaryButton(
+            key: const ValueKey('delete-account-retry'),
+            label: 'Try Again',
+            icon: Icons.refresh_rounded,
+            isLoading: _submitting,
+            variant: AppPrimaryButtonVariant.destructive,
+            onPressed: _submitting
+                ? null
+                : () => setState(
+                    () => _step = _DeleteAccountStep.reauthentication,
+                  ),
+          ),
         const SizedBox(height: AmoraSpacing.space8),
         AppPrimaryButton(
           key: const ValueKey('delete-failure-cancel'),
@@ -308,19 +403,160 @@ class _AmoraaDeleteAccountFlowState extends State<AmoraaDeleteAccountFlow> {
     );
   }
 
-  Future<void> _submit() async {
+  Widget _buildProcessingStep() => _buildLifecycleState(
+    key: 'delete-account-processing-step',
+    title: 'Processing deletion',
+    message:
+        'Your account deletion request is being processed. Some deletion steps may take additional time to complete.',
+    icon: Icons.hourglass_top_rounded,
+  );
+
+  Widget _buildCompletedStep() => _buildLifecycleState(
+    key: 'delete-account-completed-step',
+    title: 'Deletion completed',
+    message: 'Your account deletion has been completed.',
+    icon: Icons.check_circle_outline_rounded,
+  );
+
+  Widget _buildPendingReviewStep() => _buildLifecycleState(
+    key: 'delete-account-pending-review-step',
+    title: 'Deletion request received',
+    message:
+        'Your account deletion request has been received. Some information may require additional review before the process can be fully completed.',
+    icon: Icons.info_outline_rounded,
+  );
+
+  Widget _buildUnknownStep() => _buildLifecycleState(
+    key: 'delete-account-unknown-step',
+    title: 'Unable to confirm deletion status',
+    message:
+        'We could not confirm the current status of your deletion request. Please contact support if the problem continues.',
+    icon: Icons.help_outline_rounded,
+  );
+
+  Widget _buildLifecycleState({
+    required String key,
+    required String title,
+    required String message,
+    required IconData icon,
+  }) => Column(
+    key: ValueKey(key),
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      Semantics(liveRegion: true, child: Icon(icon, color: AppColors.primary)),
+      const SizedBox(height: AmoraSpacing.space12),
+      Text(title, style: AmoraTextStyles.titleLarge),
+      const SizedBox(height: AmoraSpacing.space8),
+      Text(
+        message,
+        style: AmoraTextStyles.bodyMedium.copyWith(
+          color: AppColors.textSecondary,
+          height: 1.5,
+        ),
+      ),
+      const SizedBox(height: AmoraSpacing.space20),
+      AppPrimaryButton(
+        label: 'Close',
+        variant: AppPrimaryButtonVariant.text,
+        onPressed: widget.onCancel,
+      ),
+    ],
+  );
+
+  Future<void> _reauthenticateWithPassword() async {
+    if (_submitting || _passwordController.text.isEmpty) return;
+    await _reauthenticate(
+      () =>
+          widget.reauthenticateWithPassword?.call(_passwordController.text) ??
+          AuthService.instance.reauthenticateForAccountDeletionWithPassword(
+            _passwordController.text,
+          ),
+    );
+  }
+
+  Future<void> _reauthenticateWithGoogle() => _reauthenticate(
+    AuthService.instance.reauthenticateForAccountDeletionWithGoogle,
+  );
+
+  Future<void> _reauthenticate(Future<String> Function() action) async {
+    setState(() {
+      _submitting = true;
+      _reauthenticationError = null;
+    });
+    try {
+      final confirmation = await action();
+      if (!mounted) return;
+      setState(() {
+        _submitting = false;
+        _deletionConfirmation = confirmation;
+        _step = _DeleteAccountStep.confirmation;
+      });
+    } on AuthException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _submitting = false;
+        _reauthenticationError = error.userMessage;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _submitting = false;
+        _reauthenticationError =
+            'Please re-authenticate before deleting your account.';
+      });
+    } finally {
+      _passwordController.clear();
+    }
+  }
+
+  Future<void> _submitDeletion() async {
     if (_submitting || !_canContinue) return;
     setState(() => _submitting = true);
-    var deleted = false;
+    AccountDeletionResult? result;
     try {
-      deleted = await widget.onDeleteConfirmed(_selection);
+      final confirmation = _deletionConfirmation;
+      if (confirmation == null) {
+        throw const AuthException(
+          'Please re-authenticate before deleting your account.',
+        );
+      }
+      result = await widget.onDeleteConfirmed(_selection, confirmation);
+    } on AuthException catch (error) {
+      if (!mounted) return;
+      final confirmationExpired =
+          error.code == 'DELETION_CONFIRMATION_INVALID' ||
+          error.code == 'REAUTHENTICATION_REQUIRED';
+      setState(() {
+        _submitting = false;
+        _deletionConfirmation = null;
+        if (confirmationExpired) {
+          _reauthenticationError =
+              'Your identity confirmation has expired. Please confirm your identity again.';
+          _step = _DeleteAccountStep.reauthentication;
+        } else {
+          _step = _DeleteAccountStep.unknown;
+        }
+      });
+      return;
     } catch (_) {
-      deleted = false;
+      result = const AccountDeletionResult(
+        status: AccountDeletionStatus.unknown,
+        canRetry: false,
+      );
     }
     if (!mounted) return;
     setState(() {
       _submitting = false;
-      if (!deleted) _step = _DeleteAccountStep.failure;
+      _deletionConfirmation = null;
+      _canRetry = result!.canRetry;
+      _step = switch (result.status) {
+        AccountDeletionStatus.verified ||
+        AccountDeletionStatus.processing => _DeleteAccountStep.processing,
+        AccountDeletionStatus.completed => _DeleteAccountStep.completed,
+        AccountDeletionStatus.pendingReview => _DeleteAccountStep.pendingReview,
+        AccountDeletionStatus.failed => _DeleteAccountStep.failure,
+        AccountDeletionStatus.unknown => _DeleteAccountStep.unknown,
+      };
     });
   }
 }

@@ -32,6 +32,16 @@ test('production gives the fixed OTP no special treatment when disabled', () => 
   assert.equal(matchesFixedOtp('111111', production), false);
 });
 
+test('production permits a clean environment with no test OTP configuration', () => {
+  const production = { NODE_ENV: 'production' };
+  const config = resolveOtpTestConfig(production);
+
+  assert.equal(config.enabled, false);
+  assert.equal(config.fixedOtp, '');
+  assert.equal(config.skipDelivery, false);
+  assert.equal(matchesFixedOtp('111111', production), false);
+});
+
 test('production fails closed when fixed OTP mode is configured', () => {
   assert.throws(
     () => resolveOtpTestConfig({
@@ -44,6 +54,21 @@ test('production fails closed when fixed OTP mode is configured', () => {
   );
 });
 
+test('production fails closed for each unsafe test OTP variable independently', () => {
+  const unsafeConfigurations = [
+    { TEST_FIXED_OTP_ENABLED: ' true ' },
+    { TEST_FIXED_OTP: '111111' },
+    { TEST_OTP_SKIP_DELIVERY: 'true' },
+  ];
+
+  for (const unsafeConfiguration of unsafeConfigurations) {
+    assert.throws(
+      () => resolveOtpTestConfig({ NODE_ENV: 'production', ...unsafeConfiguration }),
+      /Production must not configure/,
+    );
+  }
+});
+
 test('enabled test OTP configuration validates environment, format, and delivery dependency', () => {
   assert.throws(
     () => resolveOtpTestConfig({
@@ -51,6 +76,13 @@ test('enabled test OTP configuration validates environment, format, and delivery
       TEST_FIXED_OTP: '111111',
     }),
     /not permitted.*unset/,
+  );
+  assert.throws(
+    () => resolveOtpTestConfig({
+      NODE_ENV: 'production',
+      TEST_FIXED_OTP_ENABLED: '1',
+    }),
+    /must be either true or false/,
   );
   assert.throws(
     () => resolveOtpTestConfig({

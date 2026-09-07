@@ -2,6 +2,7 @@ const assert = require('node:assert/strict');
 const { after, before, test } = require('node:test');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
+const crypto = require('crypto');
 const { Op } = require('sequelize');
 
 require('../src/config/bootstrapEnv');
@@ -17,6 +18,8 @@ const { migrate } = require('../src/migrations/run');
 const { initializeDatabase, getSequelize } = require('../src/config/db');
 const { getModels } = require('../src/models');
 const { app } = require('../src/server');
+const accountDeletionService = require('../src/services/accountDeletionService');
+const { AccountDeletionService, FAILURE_CODES } = require('../src/services/accountDeletionService');
 
 let models;
 let server;
@@ -24,6 +27,7 @@ let baseUrl;
 const users = {};
 const userIds = [];
 const lifecyclePassword = 'LifecyclePass1!';
+const deletionPassword = 'DeletionPass1!';
 
 const tokenFor = (user) => jwt.sign(
   { sub: user.id, ver: user.tokenVersion || 0 },
@@ -67,7 +71,7 @@ async function createUser(key, state = 'active') {
     preferredTalkingHours: ['evening'],
     communicationStyle: 'calls',
     languages: ['Gujarati', 'English'],
-    photos: ['/uploads/phase2-one.jpg', '/uploads/phase2-two.jpg'],
+    photos: ['/uploads/onboarding-photos/phase2-one.jpg', '/uploads/onboarding-photos/phase2-two.jpg'],
     stage: 'complete',
     onboardingCompleted: true,
   });
@@ -100,7 +104,14 @@ before(async () => {
     createUser('deleted', 'deleted'),
     createUser('lifecycle'),
     createUser('deleteMe'),
+    createUser('service'),
+    createUser('concurrent'),
+    createUser('failure'),
   ]);
+  users.deleteMe.passwordHash = await bcrypt.hash(deletionPassword, 12);
+  await users.deleteMe.save();
+  users.outsider.passwordHash = await bcrypt.hash(deletionPassword, 12);
+  await users.outsider.save();
   const first = Math.min(users.viewer.id, users.target.id);
   const second = Math.max(users.viewer.id, users.target.id);
   await models.Match.create({ userOneId: first, userTwoId: second, matchedAt: new Date() });
@@ -119,6 +130,8 @@ after(async () => {
     await models.DiscoverAction.destroy({ where: { [Op.or]: [{ actorUserId: userIds }, { targetUserId: userIds }] } });
     await models.DiscoverFilterPreference.destroy({ where: { userId: userIds } });
     await models.RefreshToken.destroy({ where: { userId: userIds } });
+    await models.AccountDeletionFileTask.destroy({ where: {} });
+    await models.AccountDeletionRequest.destroy({ where: { userId: userIds } });
     await models.OnboardingProfile.destroy({ where: { userId: userIds } });
     await models.User.destroy({ where: { id: userIds } });
   }
@@ -138,6 +151,64 @@ test('public profile requires auth, enforces lifecycle visibility, and returns s
   assert.equal((await request('/api/profiles/999999999', { headers: auth(users.viewer) })).status, 404);
   assert.equal((await request(`/api/profiles/${users.deactivated.id}`, { headers: auth(users.viewer) })).status, 404);
   assert.equal((await request(`/api/profiles/${users.deleted.id}`, { headers: auth(users.viewer) })).status, 404);
+});
+
+test('account deletion request lifecycle schema stores only minimal operational metadata', async () => {
+  assert.equal(models.AccountDeletionRequest.STATUSES.BLOCKED_BY_RETENTION_DECISION, 'BLOCKED_BY_RETENTION_DECISION');
+  const request = await models.AccountDeletionRequest.create({
+    userId: users.viewer.id,
+    requestedAt: new Date(),
+  });
+  await request.reload();
+  assert.match(request.correlationId, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+  assert.equal(request.status, 'PENDING');
+  assert.equal(request.legalHold, false);
+  assert.equal(request.verifiedAt, null);
+  assert.equal(request.processingStartedAt, null);
+  assert.equal(request.completedAt, null);
+  assert.equal(request.failedAt, null);
+  await assert.rejects(() => models.AccountDeletionRequest.create({ userId: users.viewer.id, correlationId: crypto.randomUUID(), requestedAt: new Date(), status: 'RANDOM_VALUE' }));
+  await assert.rejects(() => models.AccountDeletionRequest.create({ userId: users.viewer.id, correlationId: request.correlationId, requestedAt: new Date() }));
+  await assert.rejects(() => models.AccountDeletionRequest.create({ userId: 999999999, correlationId: crypto.randomUUID(), requestedAt: new Date() }));
+  const schema = await getSequelize().getQueryInterface().describeTable('AccountDeletionRequests');
+  for (const forbidden of ['password', 'otp', 'token', 'aadhaar', 'authToken', 'googleToken']) assert.equal(Object.hasOwn(schema, forbidden), false);
+});
+
+test('account deletion service is idempotent, state-safe, and records controlled failures', async () => {
+  const testService = new AccountDeletionService({ backupRetentionApproved: true });
+  const createVerifiedRequest = (user) => models.AccountDeletionRequest.create({
+    userId: user.id, status: 'VERIFIED', requestedAt: new Date(), verifiedAt: new Date(),
+  });
+
+  const pending = await models.AccountDeletionRequest.create({ userId: users.outsider.id, requestedAt: new Date() });
+  const pendingResult = await testService.execute({ userId: users.outsider.id, deletionRequestId: pending.id, correlationId: pending.correlationId });
+  assert.equal(pendingResult.notVerified, true);
+  const blocked = await models.AccountDeletionRequest.create({
+    userId: users.outsider.id, status: 'BLOCKED_BY_RETENTION_DECISION', legalHold: true, legalHoldReason: 'RETENTION_REVIEW_REQUIRED', requestedAt: new Date(),
+  });
+  const blockedResult = await testService.execute({ userId: users.outsider.id, deletionRequestId: blocked.id, correlationId: blocked.correlationId });
+  assert.equal(blockedResult.blocked, true);
+
+  const serviceRequest = await createVerifiedRequest(users.service);
+  const completed = await testService.execute({ userId: users.service.id, deletionRequestId: serviceRequest.id, correlationId: serviceRequest.correlationId, deletionReason: 'privacy_concerns' });
+  assert.equal(completed.completed, true);
+  await serviceRequest.reload();
+  assert.equal(serviceRequest.status, 'COMPLETED');
+  assert.ok(serviceRequest.processingStartedAt);
+  assert.ok(serviceRequest.completedAt);
+  assert.equal(serviceRequest.failedAt, null);
+  assert.equal(await models.OnboardingProfile.count({ where: { userId: users.service.id } }), 0, 'missing profile files are treated as already cleaned');
+  const repeated = await testService.execute({ userId: users.service.id, deletionRequestId: serviceRequest.id, correlationId: serviceRequest.correlationId });
+  assert.equal(repeated.alreadyCompleted, true);
+
+  const concurrentRequest = await createVerifiedRequest(users.concurrent);
+  const concurrentResults = await Promise.all([
+    testService.execute({ userId: users.concurrent.id, deletionRequestId: concurrentRequest.id, correlationId: concurrentRequest.correlationId, deletionReason: 'privacy_concerns' }),
+    testService.execute({ userId: users.concurrent.id, deletionRequestId: concurrentRequest.id, correlationId: concurrentRequest.correlationId, deletionReason: 'privacy_concerns' }),
+  ]);
+  assert.equal(concurrentResults.filter((result) => result.completed).length, 1);
+  assert.equal(concurrentResults.filter((result) => result.alreadyProcessing || result.alreadyCompleted).length, 1);
+
 });
 
 test('blocks are idempotent, forbid self-blocking, enforce both directions, Discover, and matches', async () => {
@@ -235,21 +306,61 @@ test('account deactivation revokes every session and valid login reactivates the
   assert.equal((await request(`/api/profiles/${users.lifecycle.id}`, { headers: auth(users.viewer) })).status, 200);
 });
 
-test('soft deletion revokes old tokens and removes the account from public access', async () => {
+test('deletion request enters retention review without claiming completion', async () => {
   const token = tokenFor(users.deleteMe);
-  const deleted = await request('/api/account', {
+  const noConfirmation = await request('/api/account', {
     method: 'DELETE',
     headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
     body: JSON.stringify({ reason: 'privacy_concerns' }),
   });
-  assert.equal(deleted.status, 200);
+  assert.equal(noConfirmation.status, 401);
+  const wrongPassword = await request('/api/account/deletion/reauthenticate', {
+    method: 'POST', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify({ password: 'wrong-password' }),
+  });
+  assert.equal(wrongPassword.status, 401);
+  const expiredReauthentication = await request('/api/account/deletion/reauthenticate', {
+    method: 'POST', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify({ password: deletionPassword }),
+  });
+  assert.equal(expiredReauthentication.status, 200);
+  const expiredConfirmation = expiredReauthentication.body.data.deletionConfirmation;
+  await models.AccountDeletionConfirmation.update({ expiresAt: new Date(Date.now() - 1000) }, { where: { tokenSelector: expiredConfirmation.split('.')[0] } });
+  const expiredAttempt = await request('/api/account', {
+    method: 'DELETE', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify({ reason: 'privacy_concerns', deletionConfirmation: expiredConfirmation }),
+  });
+  assert.equal(expiredAttempt.status, 401);
+  const reauthenticated = await request('/api/account/deletion/reauthenticate', {
+    method: 'POST', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify({ password: deletionPassword }),
+  });
+  assert.equal(reauthenticated.status, 200, JSON.stringify(reauthenticated.body));
+  const confirmation = reauthenticated.body.data.deletionConfirmation;
+  assert.match(confirmation, /^[a-f0-9]{32}\.[a-f0-9]{64}$/);
+  const storedConfirmation = await models.AccountDeletionConfirmation.findOne({ where: { tokenSelector: confirmation.split('.')[0] } });
+  assert.equal(storedConfirmation.tokenHash.includes(confirmation), false);
+  const invalidConfirmation = await request('/api/account', {
+    method: 'DELETE', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify({ reason: 'privacy_concerns', deletionConfirmation: `${'a'.repeat(32)}.${'b'.repeat(64)}` }),
+  });
+  assert.equal(invalidConfirmation.status, 401);
+  const crossAccountAttempt = await request('/api/account', {
+    method: 'DELETE', headers: { ...auth(users.outsider), 'content-type': 'application/json' }, body: JSON.stringify({ reason: 'privacy_concerns', deletionConfirmation: confirmation }),
+  });
+  assert.equal(crossAccountAttempt.status, 401);
+  const deleted = await request('/api/account', {
+    method: 'DELETE',
+    headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+    body: JSON.stringify({ reason: 'privacy_concerns', deletionConfirmation: confirmation }),
+  });
+  assert.equal(deleted.status, 202);
+  assert.equal(deleted.body.data.deletionStatus, 'BLOCKED_BY_RETENTION_DECISION');
+  assert.equal(deleted.body.data.canRetry, false);
   const row = await models.User.findByPk(users.deleteMe.id);
-  assert.equal(row.accountStatus, 'deleted');
-  assert.equal(row.tokenVersion, 1);
-  assert.equal(row.name, 'Deleted Member');
-  assert.match(row.email, /^deleted-\d+-\d+@deleted\.amora\.invalid$/);
-  assert.equal(row.passwordHash, null);
-  assert.equal(row.isVerified, false);
+  assert.equal(row.accountStatus, 'active');
+  assert.equal(await models.AccountDeletionConfirmation.count({ where: { tokenSelector: confirmation.split('.')[0] } }), 0);
+  const deletionRequest = await models.AccountDeletionRequest.findOne({ where: { userId: users.deleteMe.id }, order: [['id', 'DESC']] });
+  assert.equal(deletionRequest.status, 'BLOCKED_BY_RETENTION_DECISION');
+  const reused = await request('/api/account', {
+    method: 'DELETE', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify({ reason: 'privacy_concerns', deletionConfirmation: confirmation }),
+  });
+  assert.equal(reused.status, 401);
   assert.equal((await request('/api/account/reactivate', { method: 'POST', headers: { authorization: `Bearer ${token}` } })).status, 404);
   assert.equal((await request(`/api/profiles/${users.deleteMe.id}`, { headers: auth(users.viewer) })).status, 404);
 });

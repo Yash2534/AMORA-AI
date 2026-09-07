@@ -1,5 +1,5 @@
 const definitions = {
-  User: require('./User'), OtpToken: require('./OtpToken'), RefreshToken: require('./RefreshToken'), OnboardingProfile: require('./OnboardingProfile'),
+  User: require('./User'), OtpToken: require('./OtpToken'), RefreshToken: require('./RefreshToken'), AccountDeletionConfirmation: require('./AccountDeletionConfirmation'), AccountDeletionRequest: require('./AccountDeletionRequest'), AccountDeletionFileTask: require('./AccountDeletionFileTask'), LegalDocumentVersion: require('./LegalDocumentVersion'), ConsentEvent: require('./ConsentEvent'), OnboardingProfile: require('./OnboardingProfile'),
   DiscoverAction: require('./DiscoverAction'), Match: require('./Match'), DiscoverFilterPreference: require('./DiscoverFilterPreference'),
   Block: require('./Block'), Report: require('./Report'), Conversation: require('./Conversation'),
   ConversationParticipant: require('./ConversationParticipant'), Message: require('./Message'), MessageMedia: require('./MessageMedia'), Event: require('./Event'),
@@ -29,7 +29,19 @@ let models = {};
 function initModels(sequelize) {
   if (models.User) return models;
   const created = Object.fromEntries(Object.entries(definitions).map(([name, define]) => [name, define(sequelize)]));
-  const { User, RefreshToken, OnboardingProfile, DiscoverAction, Match, DiscoverFilterPreference, Block, Report, Conversation, ConversationParticipant, Message, MessageMedia, Event, EventRegistration, EventWaitlist, SubscriptionPlan, Subscription, Payment, PaymentEvent, RoseTransaction, SavedProfile, NotificationPreference, Notification, IdentityVerification, IdentityVerificationReason, IdentityVerificationDecisionEvent, UserDevice, NotificationDelivery, UserLoginEvent, AdminUserNote, AdminUserNoteVersion, UserTimelineEvent, ProfileTaxonomyCategory, ProfileTaxonomyOption } = created;
+  const { User, RefreshToken, AccountDeletionConfirmation, AccountDeletionRequest, AccountDeletionFileTask, LegalDocumentVersion, ConsentEvent, OnboardingProfile, DiscoverAction, Match, DiscoverFilterPreference, Block, Report, Conversation, ConversationParticipant, Message, MessageMedia, Event, EventRegistration, EventWaitlist, SubscriptionPlan, Subscription, Payment, PaymentEvent, RoseTransaction, SavedProfile, NotificationPreference, Notification, IdentityVerification, IdentityVerificationReason, IdentityVerificationDecisionEvent, UserDevice, NotificationDelivery, UserLoginEvent, AdminUserNote, AdminUserNoteVersion, UserTimelineEvent, ProfileTaxonomyCategory, ProfileTaxonomyOption } = created;
+  AccountDeletionRequest.STATUSES = definitions.AccountDeletionRequest.STATUSES;
+  LegalDocumentVersion.DOCUMENT_KEYS = definitions.LegalDocumentVersion.DOCUMENT_KEYS;
+  LegalDocumentVersion.STATUSES = definitions.LegalDocumentVersion.STATUSES;
+  ConsentEvent.ACTIONS = definitions.ConsentEvent.ACTIONS;
+  ConsentEvent.SOURCES = definitions.ConsentEvent.SOURCES;
+  ConsentEvent.PLATFORMS = definitions.ConsentEvent.PLATFORMS;
+  ConsentEvent.PURPOSES = definitions.ConsentEvent.PURPOSES;
+  User.hasMany(AccountDeletionConfirmation, { foreignKey: 'userId', onDelete: 'CASCADE' }); AccountDeletionConfirmation.belongsTo(User, { foreignKey: 'userId' });
+  User.hasMany(AccountDeletionRequest, { foreignKey: 'userId', as: 'deletionRequests', onDelete: 'SET NULL' }); AccountDeletionRequest.belongsTo(User, { foreignKey: 'userId', as: 'user', onDelete: 'SET NULL' });
+  User.hasMany(ConsentEvent, { foreignKey: 'userId', as: 'consentEvents', onDelete: 'SET NULL' }); ConsentEvent.belongsTo(User, { foreignKey: 'userId', as: 'user', onDelete: 'SET NULL' });
+  LegalDocumentVersion.hasMany(ConsentEvent, { foreignKey: 'documentVersionId', as: 'consentEvents', onDelete: 'RESTRICT' }); ConsentEvent.belongsTo(LegalDocumentVersion, { foreignKey: 'documentVersionId', as: 'documentVersion', onDelete: 'RESTRICT' });
+  AccountDeletionRequest.hasMany(AccountDeletionFileTask, { foreignKey: 'accountDeletionRequestId', as: 'fileTasks', onDelete: 'RESTRICT' }); AccountDeletionFileTask.belongsTo(AccountDeletionRequest, { foreignKey: 'accountDeletionRequestId', as: 'deletionRequest', onDelete: 'RESTRICT' });
   const { Administrator, AdminRole, AdminPermission, AdminRefreshToken, AdminAuditLog, AdminPasswordResetToken, AdminInvitation, AdminIdempotencyKey, AdminMfaCredential, AdminMfaRecoveryCode, AdminMfaChallenge, PlatformSetting, AdminReportCase, AdminReportNote } = created;
   User.hasMany(RefreshToken, { foreignKey: 'userId', onDelete: 'CASCADE' }); RefreshToken.belongsTo(User, { foreignKey: 'userId' }); User.hasOne(OnboardingProfile, { foreignKey: 'userId', onDelete: 'CASCADE' }); OnboardingProfile.belongsTo(User, { foreignKey: 'userId' });
   User.hasMany(UserLoginEvent, { foreignKey: 'userId', as: 'loginEvents', onDelete: 'CASCADE' }); UserLoginEvent.belongsTo(User, { foreignKey: 'userId', as: 'user' });

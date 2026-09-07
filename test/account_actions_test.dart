@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:amora_ai/core/access/amora_access.dart';
+import 'package:amora_ai/core/api/phase_two_api_service.dart';
 import 'package:amora_ai/core/theme/amora_theme.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/features/auth/presentation/login_screen.dart';
@@ -64,6 +65,15 @@ void main() {
     await tapVisible(
       tester,
       find.byKey(const ValueKey('delete-reason-continue')),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('delete-account-password-field')),
+      'test-password',
+    );
+    await tapVisible(
+      tester,
+      find.byKey(const ValueKey('delete-account-password-reauthenticate')),
     );
     await tester.pumpAndSettle();
     expect(
@@ -169,7 +179,12 @@ void main() {
   testWidgets('reason selection is single-select and enables Continue', (
     tester,
   ) async {
-    await pumpAction(tester, const DeleteAccountInformationScreen());
+    await pumpAction(
+      tester,
+      DeleteAccountInformationScreen(
+        reauthenticateWithPassword: (_) async => 'test-confirmation',
+      ),
+    );
 
     await selectDeleteReason(tester, 'found_someone');
     expect(find.byIcon(Icons.radio_button_checked_rounded), findsOneWidget);
@@ -189,7 +204,12 @@ void main() {
   testWidgets('Other requires trimmed non-empty details and preserves text', (
     tester,
   ) async {
-    await pumpAction(tester, const DeleteAccountInformationScreen());
+    await pumpAction(
+      tester,
+      DeleteAccountInformationScreen(
+        reauthenticateWithPassword: (_) async => 'test-confirmation',
+      ),
+    );
 
     await selectDeleteReason(tester, 'other');
     final field = find.byKey(const ValueKey('delete-other-reason-field'));
@@ -235,6 +255,7 @@ void main() {
     await pumpAction(
       tester,
       DeleteAccountInformationScreen(
+        reauthenticateWithPassword: (_) async => 'test-confirmation',
         onDeleteAccount: () async {
           calls += 1;
           return false;
@@ -250,9 +271,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(calls, 1);
-    expect(find.text('Couldn\u2019t delete your account'), findsOneWidget);
+    expect(find.text('Deletion could not be completed'), findsOneWidget);
     expect(find.text('Privacy concerns'), findsOneWidget);
-    expect(find.text('Try Again'), findsOneWidget);
+    expect(find.text('Try Again'), findsNothing);
     expect(AmoraSession.isLoggedIn.value, isTrue);
     expect(profiles.profile.name, nameBefore);
   });
@@ -263,6 +284,7 @@ void main() {
     await pumpAction(
       tester,
       DeleteAccountInformationScreen(
+        reauthenticateWithPassword: (_) async => 'test-confirmation',
         onDeleteAccount: () {
           calls += 1;
           return result.future;
@@ -283,6 +305,32 @@ void main() {
     expect(AmoraSession.isLoggedIn.value, isTrue);
   });
 
+  testWidgets('retention review is not presented as deletion completion', (
+    tester,
+  ) async {
+    await pumpAction(
+      tester,
+      DeleteAccountInformationScreen(
+        reauthenticateWithPassword: (_) async => 'test-confirmation',
+        onDeleteSelection: (_, _) async => const AccountDeletionResult(
+          status: AccountDeletionStatus.pendingReview,
+          canRetry: false,
+        ),
+      ),
+    );
+    await selectDeleteReason(tester, 'privacy_concerns');
+    await continueToFinalConfirmation(tester);
+    await tapVisible(
+      tester,
+      find.byKey(const ValueKey('settings-delete-permanently')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Deletion request received'), findsOneWidget);
+    expect(find.text('Deletion completed'), findsNothing);
+    expect(AmoraSession.isLoggedIn.value, isTrue);
+  });
+
   testWidgets('confirmed server deletion clears local state then logs out', (
     tester,
   ) async {
@@ -290,9 +338,13 @@ void main() {
     await pumpAction(
       tester,
       DeleteAccountInformationScreen(
-        onDeleteAccount: () async {
+        reauthenticateWithPassword: (_) async => 'test-confirmation',
+        onDeleteSelection: (_, _) async {
           calls += 1;
-          return true;
+          return const AccountDeletionResult(
+            status: AccountDeletionStatus.completed,
+            canRetry: false,
+          );
         },
       ),
     );

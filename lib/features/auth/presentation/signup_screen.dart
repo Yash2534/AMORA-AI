@@ -13,6 +13,7 @@ import 'package:amora_ai/features/auth/domain/amora_password_policy.dart';
 import 'package:amora_ai/features/auth/presentation/widgets/auth_presentation.dart';
 import 'package:amora_ai/features/legal/presentation/legal_document_screen.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -240,12 +241,16 @@ class _SignupScreenState extends State<SignupScreen> {
       _error = null;
     });
     try {
+      final acceptedLegalDocuments =
+          await AuthService.instance.requiredSignupLegalDocuments();
       await AuthService.instance.signUp(
         name: _nameController.text.trim(),
         email: _emailController.text.trim(),
         phoneNumber: _phoneController.text.trim(),
         password: _passwordController.text,
         confirmPassword: _confirmPasswordController.text,
+        acceptedLegalDocuments: acceptedLegalDocuments,
+        platform: _consentPlatform,
       );
       if (!mounted) return;
       LocalOnboardingRepository.instance.resetForNewAccount();
@@ -279,9 +284,18 @@ class _SignupScreenState extends State<SignupScreen> {
   }
 
   Future<void> _continueWithGoogle() async {
+    if (!_terms || !_privacy) {
+      _snack('Please accept Terms and Privacy');
+      return;
+    }
     setState(() => _googleLoading = true);
     try {
-      await AuthService.instance.googleSignIn();
+      final acceptedLegalDocuments =
+          await AuthService.instance.requiredSignupLegalDocuments();
+      await AuthService.instance.googleSignIn(
+        acceptedLegalDocuments: acceptedLegalDocuments,
+        platform: _consentPlatform,
+      );
       if (!mounted) return;
       await AmoraSession.completeAuthentication(context);
     } on AuthException catch (error) {
@@ -334,6 +348,14 @@ class _SignupScreenState extends State<SignupScreen> {
 
   void _snack(String message) {
     showAmoraSnackBar(context, message: message);
+  }
+
+  String get _consentPlatform {
+    if (kIsWeb) return 'WEB';
+    return switch (defaultTargetPlatform) {
+      TargetPlatform.iOS => 'IOS',
+      _ => 'ANDROID',
+    };
   }
 }
 
