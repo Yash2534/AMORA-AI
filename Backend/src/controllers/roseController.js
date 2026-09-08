@@ -4,6 +4,18 @@ const { areUsersBlocked } = require('../services/accessControlService');
 const { idempotencyKey, publicError } = require('../services/paymentService');
 const { createNotification } = require('../services/notificationService');
 
+const isRetryableTransactionError = (error) => ['ER_LOCK_DEADLOCK', 'ER_LOCK_WAIT_TIMEOUT'].includes(error?.code)
+  || [1213, 1205].includes(Number(error?.errno));
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+async function withTransactionRetry(operation, attempts = 3) {
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try { return await operation(); } catch (error) {
+      if (!isRetryableTransactionError(error) || attempt === attempts) throw error;
+      await sleep(25 * attempt);
+    }
+  }
+}
+
 function roseJson(row) {
   return {
     id: String(row.id),
@@ -62,7 +74,7 @@ exports.send = async (req, res, next) => {
     let notification;
     let created = false;
     try {
-      await RoseTransaction.sequelize.transaction(async (transaction) => {
+      await withTransactionRetry(() => RoseTransaction.sequelize.transaction(async (transaction) => {
         row = await RoseTransaction.findOne({
           where: { senderId, idempotencyKey: key },
           transaction,
@@ -98,7 +110,7 @@ exports.send = async (req, res, next) => {
           dedupeKey: `rose:${row.id}`,
           transaction,
         });
-      });
+      }));
     } catch (error) {
       if (!(error instanceof UniqueConstraintError)) throw error;
       row = await RoseTransaction.findOne({ where: { senderId, idempotencyKey: key } });
@@ -127,4 +139,4 @@ exports.send = async (req, res, next) => {
   }
 };
 
-exports._json = { roseJson };
+exports._json = { roseJson, isRetryableTransactionError, withTransactionRetry };

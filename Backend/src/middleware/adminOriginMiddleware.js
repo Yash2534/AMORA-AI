@@ -1,4 +1,5 @@
 const { failure } = require('../admin/responses');
+const { isAllowedOrigin } = require('../config/originPolicy');
 
 module.exports = function requireTrustedAdminOrigin(request, response, next) {
   // CSRF boundary: browser state-changing requests must present the configured
@@ -13,10 +14,6 @@ module.exports = function requireTrustedAdminOrigin(request, response, next) {
     }
     return next();
   }
-  const allowed = String(process.env.CORS_ORIGIN || '')
-    .split(',')
-    .map((item) => item.trim())
-    .filter(Boolean);
-  if (allowed.includes(origin)) return next();
+  if (isAllowedOrigin(origin)) return next();
   return failure(request, response, 403, 'ORIGIN_DENIED', 'The request origin is not allowed.');
 };
