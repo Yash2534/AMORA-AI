@@ -9,7 +9,17 @@ const registry = Object.freeze({
 });
 const cache = { expiresAt: 0, value: null };
 const can = (request, permission) => (request.adminPermissions || new Set()).has(permission);
-const parsed = (row) => typeof row.value === 'string' ? JSON.parse(row.value) : row.value;
+function parsed(row) {
+  const definition = registry[row.key];
+  const value = typeof row.value === 'string' ? (() => { try { return JSON.parse(row.value); } catch (_) { return row.value; } })() : row.value;
+  if (definition?.type === 'boolean') {
+    if ([true, 1, '1', 'true'].includes(value)) return true;
+    if ([false, 0, '0', 'false', null, undefined, ''].includes(value)) return false;
+    return Boolean(value);
+  }
+  if (definition?.type === 'email') return value == null ? '' : String(value);
+  return value;
+}
 const versionFor = (rows) => `platform_settings_${crypto.createHash('sha256').update(rows.map((row) => `${row.key}:${row.version}`).join('|')).digest('hex').slice(0, 24)}`;
 const bad = (message, code = 'VALIDATION_ERROR') => Object.assign(new Error(message), { status: 422, code });
 
@@ -68,4 +78,4 @@ async function runtimeConfiguration() {
   return cache.value;
 }
 function invalidateCache() { cache.value = null; cache.expiresAt = 0; }
-module.exports = { registry, settings, update, runtimeConfiguration, invalidateCache };
+module.exports = { registry, settings, update, runtimeConfiguration, invalidateCache, _parsed: parsed };

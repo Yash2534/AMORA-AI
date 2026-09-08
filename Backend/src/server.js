@@ -33,11 +33,11 @@ const { publicConfiguration } = require('./controllers/platformSettingsControlle
 const { attachRealtimeServer } = require("./realtime/realtimeHub");
 const errorHandler = require("./middleware/errorHandler");
 const { port } = require("./config/env");
+const { corsOrigin } = require('./config/originPolicy');
 const { logGoogleStatus } = require("./controllers/authController");
 const app = express();
 app.set("trust proxy", 1);
-const origin = process.env.CORS_ORIGIN || "*";
-if (process.env.NODE_ENV === "development" && origin === "*")
+if (process.env.NODE_ENV === "development" && !process.env.CORS_ORIGIN)
   console.warn(
     "[CORS] Development mode allows all origins. Configure CORS_ORIGIN before production.",
   );
@@ -49,8 +49,8 @@ app.use(helmet({
 }));
 app.use(
   cors({
-    origin: origin === "*" ? "*" : origin.split(",").map((item) => item.trim()),
-    credentials: origin !== "*",
+    origin: corsOrigin,
+    credentials: true,
   }),
 );
 app.use(express.json({ limit: "100kb", verify: (req, _res, buffer) => {

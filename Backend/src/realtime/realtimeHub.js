@@ -4,6 +4,7 @@ const { getModels } = require('../models');
 const { conversationAccess } = require('../services/conversationAccessService');
 const { areUsersBlocked } = require('../services/accessControlService');
 const { activeMatch } = require('../services/conversationAccessService');
+const { corsOrigin } = require('../config/originPolicy');
 
 let io;
 const connections = new Map();
@@ -59,7 +60,7 @@ async function emitPresence(userId, online) {
 function attachRealtimeServer(httpServer) {
   if (io) return io;
   io = new Server(httpServer, {
-    cors: { origin: process.env.CORS_ORIGIN === '*' || !process.env.CORS_ORIGIN ? '*' : process.env.CORS_ORIGIN.split(',').map((item) => item.trim()) },
+    cors: { origin: corsOrigin, credentials: true },
     transports: ['websocket', 'polling'],
   });
   io.use(async (socket, next) => {
