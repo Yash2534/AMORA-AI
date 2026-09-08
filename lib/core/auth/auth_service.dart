@@ -22,6 +22,21 @@ class AuthenticatedMultipartFile {
   final String mimeType;
 }
 
+class LegalDocumentAcceptance {
+  const LegalDocumentAcceptance({
+    required this.documentKey,
+    required this.documentVersionId,
+  });
+
+  final String documentKey;
+  final int documentVersionId;
+
+  Map<String, dynamic> toJson() => {
+    'documentKey': documentKey,
+    'documentVersionId': documentVersionId,
+  };
+}
+
 class AuthException implements Exception {
   const AuthException(
     this.message, {
@@ -66,6 +81,7 @@ class AmoraUser {
     required this.phoneNumber,
     required this.isVerified,
     this.accountStatus = 'active',
+    this.authProvider = 'local',
   });
 
   final int id;
@@ -74,6 +90,7 @@ class AmoraUser {
   final String phoneNumber;
   final bool isVerified;
   final String accountStatus;
+  final String authProvider;
 
   factory AmoraUser.fromJson(Map<String, dynamic> json) => AmoraUser(
     id: json['id'] as int,
@@ -82,6 +99,7 @@ class AmoraUser {
     phoneNumber: json['phoneNumber'] as String? ?? '',
     isVerified: json['isVerified'] as bool? ?? false,
     accountStatus: json['accountStatus'] as String? ?? 'active',
+    authProvider: json['authProvider'] as String? ?? 'local',
   );
 }
 
@@ -124,6 +142,8 @@ class AuthService {
     required String phoneNumber,
     required String password,
     required String confirmPassword,
+    required List<LegalDocumentAcceptance> acceptedLegalDocuments,
+    required String platform,
   }) async {
     await _post('/api/auth/signup', {
       'name': name,
@@ -132,7 +152,30 @@ class AuthService {
       'password': password,
       'confirmPassword': confirmPassword,
       'acceptedTerms': true,
+      'acceptedLegalDocuments': acceptedLegalDocuments
+          .map((document) => document.toJson())
+          .toList(),
+      'platform': platform,
     });
+  }
+
+  Future<List<LegalDocumentAcceptance>> requiredSignupLegalDocuments() async {
+    final response = await _request('GET', '/api/auth/legal-documents/signup');
+    final documents = _data(response)['documents'] as List? ?? const [];
+    return documents.map((item) {
+      final value = (item as Map).cast<String, dynamic>();
+      final versionId = int.tryParse(
+        value['documentVersionId']?.toString() ?? '',
+      );
+      final key = value['documentKey']?.toString() ?? '';
+      if (versionId == null || key.isEmpty) {
+        throw const AuthException('Required legal documents are unavailable.');
+      }
+      return LegalDocumentAcceptance(
+        documentKey: key,
+        documentVersionId: versionId,
+      );
+    }).toList();
   }
 
   Future<void> resendVerification(String phoneNumber) async =>
@@ -154,7 +197,10 @@ class AuthService {
     return _saveAuthentication(response);
   }
 
-  Future<AmoraUser> googleSignIn() async {
+  Future<AmoraUser> googleSignIn({
+    List<LegalDocumentAcceptance>? acceptedLegalDocuments,
+    String? platform,
+  }) async {
     final account = await GoogleSignIn(scopes: const ['email']).signIn();
     if (account == null) {
       throw const AuthException('Google sign-in was cancelled.');
@@ -166,8 +212,61 @@ class AuthService {
         'Google did not return an ID token. Check the app OAuth configuration.',
       );
     }
-    final response = await _post('/api/auth/google', {'idToken': idToken});
+    final legalDocumentsJson = acceptedLegalDocuments
+        ?.map((document) => document.toJson())
+        .toList();
+    final legalDocumentsPayload = legalDocumentsJson == null
+        ? null
+        : {'acceptedLegalDocuments': legalDocumentsJson};
+    final platformPayload = platform == null ? null : {'platform': platform};
+    final response = await _post('/api/auth/google', {
+      'idToken': idToken,
+      ...?legalDocumentsPayload,
+      ...?platformPayload,
+    });
     return _saveAuthentication(response);
+  }
+
+  Future<String> reauthenticateForAccountDeletionWithPassword(
+    String password,
+  ) async {
+    final response = await _request(
+      'POST',
+      '/api/account/deletion/reauthenticate',
+      body: {'password': password},
+      authenticated: true,
+    );
+    return _deletionConfirmation(response);
+  }
+
+  Future<String> reauthenticateForAccountDeletionWithGoogle() async {
+    final account = await GoogleSignIn(scopes: const ['email']).signIn();
+    if (account == null) {
+      throw const AuthException('Google re-authentication was cancelled.');
+    }
+    final idToken = (await account.authentication).idToken;
+    if (idToken == null) {
+      throw const AuthException(
+        'Unable to verify your Google account. Please try again.',
+      );
+    }
+    final response = await _request(
+      'POST',
+      '/api/account/deletion/reauthenticate',
+      body: {'idToken': idToken},
+      authenticated: true,
+    );
+    return _deletionConfirmation(response);
+  }
+
+  String _deletionConfirmation(Map<String, dynamic> response) {
+    final confirmation = _data(response)['deletionConfirmation'] as String?;
+    if (confirmation == null || confirmation.isEmpty) {
+      throw const AuthException(
+        'Please re-authenticate before deleting your account.',
+      );
+    }
+    return confirmation;
   }
 
   Future<void> forgotPassword(String email) async =>

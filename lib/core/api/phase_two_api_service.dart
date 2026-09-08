@@ -1,6 +1,44 @@
 import 'package:amora_ai/core/auth/auth_service.dart';
 import 'package:amora_ai/features/profile/data/public_profile_mapper.dart';
 
+enum AccountDeletionStatus {
+  verified,
+  processing,
+  completed,
+  pendingReview,
+  failed,
+  unknown,
+}
+
+class AccountDeletionResult {
+  const AccountDeletionResult({
+    required this.status,
+    required this.canRetry,
+    this.requestId,
+  });
+
+  final AccountDeletionStatus status;
+  final bool canRetry;
+  final String? requestId;
+
+  factory AccountDeletionResult.fromResponse(Map<String, dynamic> data) {
+    final rawStatus = data['deletionStatus']?.toString();
+    final status = switch (rawStatus) {
+      'VERIFIED' => AccountDeletionStatus.verified,
+      'PROCESSING' => AccountDeletionStatus.processing,
+      'COMPLETED' => AccountDeletionStatus.completed,
+      'BLOCKED_BY_RETENTION_DECISION' => AccountDeletionStatus.pendingReview,
+      'FAILED' => AccountDeletionStatus.failed,
+      _ => AccountDeletionStatus.unknown,
+    };
+    return AccountDeletionResult(
+      status: status,
+      canRetry: data['canRetry'] == true,
+      requestId: data['deletionRequestId']?.toString(),
+    );
+  }
+}
+
 class MatchApiItem {
   const MatchApiItem({required this.id, required this.profile, this.matchedAt});
   final String id;
@@ -110,16 +148,34 @@ class PhaseTwoApiService {
 
   Future<void> deactivate() async =>
       _auth.authenticatedRequest('POST', '/api/account/deactivate');
-  Future<void> deleteAccount({required String reason, String? details}) async {
-    await _auth.authenticatedRequest(
-      'DELETE',
-      '/api/account',
-      body: {
-        'reason': reason,
-        if (details != null && details.trim().isNotEmpty)
-          'details': details.trim(),
-      },
-    );
-    await _auth.clearSession();
+  Future<AccountDeletionResult> deleteAccount({
+    required String reason,
+    required String deletionConfirmation,
+    String? details,
+  }) async {
+    try {
+      final response = await _auth.authenticatedRequest(
+        'DELETE',
+        '/api/account',
+        body: {
+          'reason': reason,
+          'deletionConfirmation': deletionConfirmation,
+          if (details != null && details.trim().isNotEmpty)
+            'details': details.trim(),
+        },
+      );
+      return AccountDeletionResult.fromResponse(_data(response));
+    } on AuthException catch (error) {
+      // A server response with a controlled processing-failure code is a
+      // known lifecycle outcome. Transport failures remain exceptions so the
+      // UI does not incorrectly claim that the request failed.
+      if (error.statusCode == 500 && error.code != null) {
+        return const AccountDeletionResult(
+          status: AccountDeletionStatus.failed,
+          canRetry: false,
+        );
+      }
+      rethrow;
+    }
   }
 }

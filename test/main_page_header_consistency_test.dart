@@ -4,8 +4,6 @@ import 'package:amora_ai/core/theme/amora_theme.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/amoraa_main_page_header.dart';
 import 'package:amora_ai/features/chat/presentation/chat_list_screen.dart';
-import 'package:amora_ai/features/events/presentation/widgets/events_widgets.dart';
-import 'package:amora_ai/features/matches/presentation/matches_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -56,13 +54,13 @@ void main() {
     await tester.pump();
   }
 
-  testWidgets('all five main pages use the same header geometry', (
+  testWidgets('all four visible main pages use the same header geometry', (
     tester,
   ) async {
     await pumpMainShell(tester);
 
     final headers = find.byType(AmoraaMainPageHeader, skipOffstage: false);
-    expect(headers, findsNWidgets(5));
+    expect(headers, findsNWidgets(4));
 
     final headerContext = tester.element(headers.first);
     expect(
@@ -95,7 +93,7 @@ void main() {
       AmoraaMainPageHeaderAction,
       skipOffstage: false,
     );
-    expect(actions, findsNWidgets(7));
+    expect(actions, findsNWidgets(5));
     for (final element in actions.evaluate()) {
       expect(
         rectFor(element).size,
@@ -143,12 +141,8 @@ void main() {
         matching: find.text('Chats', skipOffstage: false),
       ),
       find.descendant(
-        of: find.byType(AiMatchesAppBar, skipOffstage: false),
+        of: find.byType(AmoraaMainPageHeader, skipOffstage: false),
         matching: find.text('AI Matches', skipOffstage: false),
-      ),
-      find.descendant(
-        of: find.byType(EventsAppBar, skipOffstage: false),
-        matching: find.text('Events', skipOffstage: false),
       ),
       find.descendant(
         of: find.byType(AmoraaMainPageHeader, skipOffstage: false),
@@ -179,7 +173,7 @@ void main() {
     await pumpMainShell(tester, textScale: 1.3);
 
     final headers = find.byType(AmoraaMainPageHeader, skipOffstage: false);
-    expect(headers, findsNWidgets(5));
+    expect(headers, findsNWidgets(4));
     for (final header in headers.evaluate()) {
       final rect = rectFor(header);
       final contentRect = rectFor(contentRowFor(header));
@@ -201,10 +195,11 @@ void main() {
       findsOneWidget,
     );
     expect(
-      find.byKey(
-        const ValueKey('events-my-events-button'),
-        skipOffstage: false,
-      ),
+      find.byKey(const ValueKey('ai-matches-select'), skipOffstage: false),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('ai-matches-info'), skipOffstage: false),
       findsOneWidget,
     );
     expect(
@@ -304,7 +299,7 @@ void main() {
         await pumpMainShell(tester, width: width, textScale: textScale);
 
         final headers = find.byType(AmoraaMainPageHeader, skipOffstage: false);
-        expect(headers, findsNWidgets(5));
+        expect(headers, findsNWidgets(4));
         final context = tester.element(headers.first);
         final headerElements = headers.evaluate().toList(growable: false);
         for (final rect in headerElements.map(rectFor)) {

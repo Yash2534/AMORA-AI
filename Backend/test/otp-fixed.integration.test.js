@@ -1,10 +1,12 @@
 const assert = require('node:assert/strict');
+const crypto = require('node:crypto');
 const { once } = require('node:events');
 const { after, before, test } = require('node:test');
 
 require('../src/config/bootstrapEnv');
 const applicationDatabase = process.env.DB_NAME;
-const testDatabase = process.env.TEST_DB_NAME || `${applicationDatabase}_test`;
+const baseTestDatabase = process.env.TEST_DB_NAME || `${applicationDatabase}_test`;
+const testDatabase = `${baseTestDatabase}_otp_fixed`;
 if (!testDatabase || testDatabase === applicationDatabase || !/test/i.test(testDatabase)) {
   throw new Error('Fixed OTP integration tests require an isolated TEST_DB_NAME containing "test".');
 }
@@ -48,9 +50,17 @@ const { app } = require('../src/server');
 let server;
 let baseUrl;
 let models;
+let termsDocument;
+let privacyDocument;
 const createdUserIds = [];
 const createdEmails = [];
 const createdPhones = [];
+const legalDocumentIds = [];
+const documentHash = (value) => crypto.createHash('sha256').update(value).digest('hex');
+const signupLegalDocuments = () => [
+  { documentKey: 'TERMS_OF_SERVICE', documentVersionId: termsDocument.id },
+  { documentKey: 'PRIVACY_POLICY', documentVersionId: privacyDocument.id },
+];
 
 async function request(pathname, body) {
   const response = await fetch(`${baseUrl}${pathname}`, {
@@ -72,6 +82,8 @@ async function signUp(suffix, phonePrefix = '9') {
     password,
     confirmPassword: password,
     acceptedTerms: true,
+    acceptedLegalDocuments: signupLegalDocuments(),
+    platform: 'WEB',
   });
   assert.equal(response.status, 200, JSON.stringify(response.body));
   const user = await models.User.findOne({ where: { email } });
@@ -86,6 +98,24 @@ before(async () => {
   await migrate({ databaseName: testDatabase, quiet: true });
   await initializeDatabase();
   models = getModels();
+  const now = new Date(Date.now() - 1000);
+  termsDocument = await models.LegalDocumentVersion.create({
+    documentKey: 'TERMS_OF_SERVICE',
+    version: `fixed-otp-test-${Date.now()}`,
+    contentHash: documentHash('fixed OTP test terms'),
+    publishedAt: now,
+    effectiveAt: now,
+    status: 'ACTIVE',
+  });
+  privacyDocument = await models.LegalDocumentVersion.create({
+    documentKey: 'PRIVACY_POLICY',
+    version: `fixed-otp-test-${Date.now()}`,
+    contentHash: documentHash('fixed OTP test privacy'),
+    publishedAt: now,
+    effectiveAt: now,
+    status: 'ACTIVE',
+  });
+  legalDocumentIds.push(termsDocument.id, privacyDocument.id);
   server = app.listen(0);
   if (!server.listening) await once(server, 'listening');
   baseUrl = `http://127.0.0.1:${server.address().port}`;
@@ -93,10 +123,12 @@ before(async () => {
 
 after(async () => {
   if (models) {
+    await models.ConsentEvent.destroy({ where: { userId: createdUserIds } });
     await models.RefreshToken.destroy({ where: { userId: createdUserIds } });
     await models.OtpToken.destroy({ where: { phoneNumber: createdPhones } });
     await models.OtpToken.destroy({ where: { email: createdEmails } });
     await models.User.destroy({ where: { id: createdUserIds } });
+    await models.LegalDocumentVersion.destroy({ where: { id: legalDocumentIds } });
   }
   if (server) {
     server.closeIdleConnections?.();

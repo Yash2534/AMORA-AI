@@ -1,11 +1,13 @@
 const assert = require('node:assert/strict');
+const crypto = require('node:crypto');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const { after, before, test } = require('node:test');
 
 require('../src/config/bootstrapEnv');
 const applicationDatabase = process.env.DB_NAME;
-const testDatabase = process.env.TEST_DB_NAME || `${applicationDatabase}_test`;
+const baseTestDatabase = process.env.TEST_DB_NAME || `${applicationDatabase}_test`;
+const testDatabase = `${baseTestDatabase}_auth_onboarding`;
 if (!testDatabase || testDatabase === applicationDatabase || !/test/i.test(testDatabase)) {
   throw new Error('Auth integration tests require an isolated TEST_DB_NAME containing "test".');
 }
@@ -23,9 +25,14 @@ require(otpModule);
 require(smsModule);
 require(emailModule);
 require.cache[otpModule].exports = () => verificationCode;
-require.cache[smsModule].exports = async () => {};
+let smsDeliveryFailure = false;
+require.cache[smsModule].exports = async () => {
+  if (smsDeliveryFailure) throw new Error('SMS provider delivery failed.');
+};
 const sentEmails = [];
+let emailDeliveryFailure = false;
 require.cache[emailModule].exports = async (to, subject, html, meta) => {
+  if (emailDeliveryFailure) throw new Error('Email provider delivery failed.');
   sentEmails.push({ to, subject, html, meta });
 };
 
@@ -44,19 +51,32 @@ let phoneNumber;
 let email;
 let secondaryUser;
 let secondaryPhoneNumber;
+let termsDocument;
+let privacyDocument;
 const uploadedFiles = [];
+const legalDocumentIds = [];
+const deliveryFailureUserIds = [];
+const deliveryFailureEmails = [];
+const deliveryFailurePhones = [];
+const documentHash = (value) => crypto.createHash('sha256').update(value).digest('hex');
+const signupLegalDocuments = () => [
+  { documentKey: 'TERMS_OF_SERVICE', documentVersionId: termsDocument.id },
+  { documentKey: 'PRIVACY_POLICY', documentVersionId: privacyDocument.id },
+];
 
 async function request(pathname, {
   method = 'GET',
   body,
   form,
   token = accessToken,
+  forwardedFor,
 } = {}) {
   const response = await fetch(`${baseUrl}${pathname}`, {
     method,
     headers: {
       ...(token ? { authorization: `Bearer ${token}` } : {}),
       ...(body ? { 'content-type': 'application/json' } : {}),
+      ...(forwardedFor ? { 'x-forwarded-for': forwardedFor } : {}),
     },
     ...(body ? { body: JSON.stringify(body) } : {}),
     ...(form ? { body: form } : {}),
@@ -68,6 +88,24 @@ before(async () => {
   await migrate({ databaseName: testDatabase, quiet: true });
   await initializeDatabase();
   models = getModels();
+  const now = new Date(Date.now() - 1000);
+  termsDocument = await models.LegalDocumentVersion.create({
+    documentKey: 'TERMS_OF_SERVICE',
+    version: `auth-test-${Date.now()}`,
+    contentHash: documentHash('auth onboarding test terms'),
+    publishedAt: now,
+    effectiveAt: now,
+    status: 'ACTIVE',
+  });
+  privacyDocument = await models.LegalDocumentVersion.create({
+    documentKey: 'PRIVACY_POLICY',
+    version: `auth-test-${Date.now()}`,
+    contentHash: documentHash('auth onboarding test privacy'),
+    publishedAt: now,
+    effectiveAt: now,
+    status: 'ACTIVE',
+  });
+  legalDocumentIds.push(termsDocument.id, privacyDocument.id);
   server = app.listen(0);
   await new Promise((resolve) => server.once('listening', resolve));
   baseUrl = `http://127.0.0.1:${server.address().port}`;
@@ -79,6 +117,7 @@ after(async () => {
     await fs.unlink(path.join(__dirname, '..', 'uploads', 'onboarding-photos', filename)).catch(() => {});
   }
   if (models && user) {
+    await models.ConsentEvent.destroy({ where: { userId: user.id } });
     await models.RefreshToken.destroy({ where: { userId: user.id } });
     await models.OnboardingProfile.destroy({ where: { userId: user.id } });
     await models.OtpToken.destroy({ where: { phoneNumber } });
@@ -86,12 +125,51 @@ after(async () => {
     await models.User.destroy({ where: { id: user.id } });
   }
   if (models && secondaryUser) {
+    await models.ConsentEvent.destroy({ where: { userId: secondaryUser.id } });
     await models.RefreshToken.destroy({ where: { userId: secondaryUser.id } });
     await models.OnboardingProfile.destroy({ where: { userId: secondaryUser.id } });
     await models.OtpToken.destroy({ where: { phoneNumber: secondaryPhoneNumber } });
     await models.User.destroy({ where: { id: secondaryUser.id } });
   }
+  if (models && deliveryFailureUserIds.length) {
+    await models.ConsentEvent.destroy({ where: { userId: deliveryFailureUserIds } });
+    await models.RefreshToken.destroy({ where: { userId: deliveryFailureUserIds } });
+    await models.OtpToken.destroy({ where: { phoneNumber: deliveryFailurePhones } });
+    await models.OtpToken.destroy({ where: { email: deliveryFailureEmails } });
+    await models.User.destroy({ where: { id: deliveryFailureUserIds } });
+  }
+  if (models) await models.LegalDocumentVersion.destroy({ where: { id: legalDocumentIds } });
   try { await getSequelize().close(); } catch (_) {}
+});
+
+test('registration provider failure rolls back the account and returns a safe delivery failure', async () => {
+  const suffix = `${Date.now()}${Math.floor(Math.random() * 1000)}`;
+  const failedEmail = `delivery-failure-${suffix}@auth-flow.test`;
+  const failedPhone = `+917${suffix.slice(-9)}`;
+  smsDeliveryFailure = true;
+  try {
+    const response = await request('/api/auth/signup', {
+      method: 'POST',
+      token: null,
+      body: {
+        name: 'Delivery Failure',
+        email: failedEmail,
+        phoneNumber: failedPhone,
+        password: 'ProviderFailure123!',
+        confirmPassword: 'ProviderFailure123!',
+        acceptedTerms: true,
+        acceptedLegalDocuments: signupLegalDocuments(),
+        platform: 'WEB',
+      },
+    });
+    assert.equal(response.status, 503);
+    assert.equal(response.body.code, 'OTP_DELIVERY_FAILED');
+    assert.equal(Object.hasOwn(response.body, 'devOtp'), false);
+    assert.equal(JSON.stringify(response.body).includes(verificationCode), false);
+    assert.equal(await models.User.count({ where: { email: failedEmail } }), 0);
+  } finally {
+    smsDeliveryFailure = false;
+  }
 });
 
 test('fresh account verifies, completes a persisted profile, reloads it, and logs out', async () => {
@@ -110,6 +188,8 @@ test('fresh account verifies, completes a persisted profile, reloads it, and log
       password,
       confirmPassword: password,
       acceptedTerms: true,
+      acceptedLegalDocuments: signupLegalDocuments(),
+      platform: 'WEB',
     },
   });
   assert.equal(signup.status, 200, JSON.stringify(signup.body));
@@ -127,6 +207,8 @@ test('fresh account verifies, completes a persisted profile, reloads it, and log
       password,
       confirmPassword: password,
       acceptedTerms: true,
+      acceptedLegalDocuments: signupLegalDocuments(),
+      platform: 'WEB',
     },
   });
   assert.equal(duplicatePhone.status, 409);
@@ -329,6 +411,8 @@ test('fresh account verifies, completes a persisted profile, reloads it, and log
       password,
       confirmPassword: password,
       acceptedTerms: true,
+      acceptedLegalDocuments: signupLegalDocuments(),
+      platform: 'WEB',
     },
   });
   assert.equal(secondarySignup.status, 200, JSON.stringify(secondarySignup.body));
@@ -451,4 +535,86 @@ test('password recovery is email-based, non-enumerating, and single-use', async 
     body: { email, password: 'ChangedPass123!' },
   });
   assert.equal(newPassword.status, 200);
+});
+
+test('resend and password-reset delivery failures return controlled errors and consume unusable challenges', async () => {
+  const suffix = `${Date.now()}${Math.floor(Math.random() * 1000)}`;
+  const resendEmail = `resend-failure-${suffix}@auth-flow.test`;
+  const resendPhone = `+916${suffix.slice(-9)}`;
+  const signup = await request('/api/auth/signup', {
+    method: 'POST',
+    token: null,
+    body: {
+      name: 'Resend Delivery Failure',
+      email: resendEmail,
+      phoneNumber: resendPhone,
+      password: 'ProviderFailure123!',
+      confirmPassword: 'ProviderFailure123!',
+      acceptedTerms: true,
+      acceptedLegalDocuments: signupLegalDocuments(),
+      platform: 'WEB',
+    },
+  });
+  assert.equal(signup.status, 200, JSON.stringify(signup.body));
+  const resendUser = await models.User.findOne({ where: { email: resendEmail } });
+  deliveryFailureUserIds.push(resendUser.id);
+  deliveryFailureEmails.push(resendEmail);
+  deliveryFailurePhones.push(resendPhone);
+  await models.OtpToken.update(
+    { createdAt: new Date(Date.now() - 46_000) },
+    { where: { phoneNumber: resendPhone, purpose: 'account_verification' } },
+  );
+
+  const logged = [];
+  const originalError = console.error;
+  console.error = (...args) => logged.push(args.join(' '));
+  smsDeliveryFailure = true;
+  let resend;
+  try {
+    resend = await request('/api/auth/resend-verification-code', {
+      method: 'POST',
+      token: null,
+      body: { phoneNumber: resendPhone },
+      forwardedFor: '198.51.100.20',
+    });
+  } finally {
+    smsDeliveryFailure = false;
+    console.error = originalError;
+  }
+  assert.equal(resend.status, 503);
+  assert.equal(resend.body.code, 'OTP_DELIVERY_FAILED');
+  assert.equal(JSON.stringify(resend.body).includes(verificationCode), false);
+  const failedResendOtp = await models.OtpToken.findOne({
+    where: { phoneNumber: resendPhone, purpose: 'account_verification' },
+    order: [['createdAt', 'DESC']],
+  });
+  assert.equal(failedResendOtp.consumed, true);
+  assert.equal(logged.some((entry) => entry.includes(verificationCode)), false);
+
+  await models.OtpToken.update(
+    { createdAt: new Date(Date.now() - 46_000) },
+    { where: { email, purpose: 'password_reset' } },
+  );
+  const beforeFailures = sentEmails.length;
+  emailDeliveryFailure = true;
+  let forgot;
+  try {
+    forgot = await request('/api/auth/forgot-password', {
+      method: 'POST',
+      token: null,
+      body: { email },
+      forwardedFor: '198.51.100.21',
+    });
+  } finally {
+    emailDeliveryFailure = false;
+  }
+  assert.equal(forgot.status, 503);
+  assert.equal(forgot.body.code, 'OTP_DELIVERY_FAILED');
+  assert.equal(JSON.stringify(forgot.body).includes(verificationCode), false);
+  assert.equal(sentEmails.length, beforeFailures);
+  const failedResetOtp = await models.OtpToken.findOne({
+    where: { email, purpose: 'password_reset' },
+    order: [['createdAt', 'DESC']],
+  });
+  assert.equal(failedResetOtp.consumed, true);
 });

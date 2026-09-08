@@ -31,7 +31,7 @@ let thirdSenderToken;
 let rollbackSenderToken;
 const userIds = [];
 
-async function createUser(name, birthDate = '1997-04-03') {
+async function createUser(name, birthDate = '1997-04-03', profileValues = {}) {
   const suffix = `${Date.now()}_${Math.random()}`;
   const user = await models.User.create({
     name,
@@ -46,8 +46,8 @@ async function createUser(name, birthDate = '1997-04-03') {
   await models.OnboardingProfile.create({
     userId: user.id,
     birthDate,
-    gender: 'Female',
-    interestedIn: ['Male'],
+    gender: profileValues.gender || 'Male',
+    interestedIn: profileValues.interestedIn || ['Female'],
     relationshipGoals: ['Meaningful Dating'],
     city: 'Ahmedabad',
     profession: 'Engineer',
@@ -75,7 +75,10 @@ before(async () => {
   await migrate({ databaseName: testDatabase, quiet: true });
   await initializeDatabase();
   models = getModels();
-  owner = await createUser('Notification Owner');
+  owner = await createUser('Notification Owner', '1997-04-03', {
+    gender: 'Female',
+    interestedIn: ['Male'],
+  });
   other = await createUser('Ananya');
   candidate = await createUser('Priya', '1998-05-04');
   thirdSender = await createUser('Neha', '1996-06-05');

@@ -1,4 +1,5 @@
 import 'package:amora_ai/core/access/amora_access.dart';
+import 'package:amora_ai/core/api/phase_two_api_service.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
@@ -45,7 +46,10 @@ class LogoutAccountScreen extends StatelessWidget {
 typedef AccountDeactivationCallback = Future<bool> Function();
 typedef AccountDeletionCallback = Future<bool> Function();
 typedef AccountDeletionSelectionCallback =
-    Future<bool> Function(DeleteAccountSelection selection);
+    Future<AccountDeletionResult> Function(
+      DeleteAccountSelection selection,
+      String deletionConfirmation,
+    );
 
 class DeactivateAccountScreen extends StatefulWidget {
   const DeactivateAccountScreen({super.key, this.onDeactivate});
@@ -162,12 +166,16 @@ class DeleteAccountInformationScreen extends StatefulWidget {
     super.key,
     this.onDeleteAccount,
     this.onDeleteSelection,
+    this.reauthenticateWithPassword,
   });
 
   static const routeName = '/delete-account';
 
   final AccountDeletionCallback? onDeleteAccount;
   final AccountDeletionSelectionCallback? onDeleteSelection;
+
+  /// Test seam; production callers leave this null and use server re-authentication.
+  final Future<String> Function(String password)? reauthenticateWithPassword;
 
   @override
   State<DeleteAccountInformationScreen> createState() =>
@@ -176,26 +184,42 @@ class DeleteAccountInformationScreen extends StatefulWidget {
 
 class _DeleteAccountInformationScreenState
     extends State<DeleteAccountInformationScreen> {
-  Future<bool> _deletePermanently(DeleteAccountSelection selection) async {
+  Future<AccountDeletionResult> _deletePermanently(
+    DeleteAccountSelection selection,
+    String deletionConfirmation,
+  ) async {
     final callback = widget.onDeleteAccount;
     final selectionCallback = widget.onDeleteSelection;
-    if (callback == null && selectionCallback == null) return false;
-    var deleted = false;
-    try {
-      deleted = selectionCallback != null
-          ? await selectionCallback(selection)
-          : await callback!();
-    } catch (_) {
-      deleted = false;
+    if (callback == null && selectionCallback == null) {
+      return const AccountDeletionResult(
+        status: AccountDeletionStatus.failed,
+        canRetry: false,
+      );
     }
-    if (!deleted) return false;
+    AccountDeletionResult result;
+    try {
+      result = selectionCallback != null
+          ? await selectionCallback(selection, deletionConfirmation)
+          : AccountDeletionResult(
+              status: await callback!()
+                  ? AccountDeletionStatus.completed
+                  : AccountDeletionStatus.failed,
+              canRetry: false,
+            );
+    } catch (_) {
+      return const AccountDeletionResult(
+        status: AccountDeletionStatus.unknown,
+        canRetry: false,
+      );
+    }
+    if (result.status != AccountDeletionStatus.completed) return result;
     await _clearDeletedAccountState();
-    if (!mounted) return true;
+    if (!mounted) return result;
     AmoraSession.logOut();
     Navigator.of(
       context,
     ).pushNamedAndRemoveUntil(LoginScreen.routeName, (_) => false);
-    return true;
+    return result;
   }
 
   Future<void> _clearDeletedAccountState() async {
@@ -228,6 +252,7 @@ class _DeleteAccountInformationScreenState
       action: AmoraaDeleteAccountFlow(
         onDeleteConfirmed: _deletePermanently,
         onCancel: () => Navigator.of(context).maybePop(),
+        reauthenticateWithPassword: widget.reauthenticateWithPassword,
       ),
       showBackAction: false,
     );

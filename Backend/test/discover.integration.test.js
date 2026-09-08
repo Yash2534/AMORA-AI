@@ -55,8 +55,8 @@ async function createProfile(user, values = {}) {
   return models.OnboardingProfile.create({
     userId: user.id,
     birthDate: values.birthDate || birthDateForAge(28),
-    gender: values.gender || 'Woman',
-    interestedIn: values.interestedIn || ['Men'],
+    gender: values.gender || 'Male',
+    interestedIn: values.interestedIn || ['Female'],
     relationshipGoals: values.relationshipGoals || ['long_term'],
     city: values.city || 'Ahmedabad',
     profession: values.profession || 'Engineer',
@@ -100,7 +100,8 @@ before(async () => {
 
   const viewer = await createUser('Phase Viewer');
   await createProfile(viewer, {
-    interestedIn: ['Women'],
+    gender: 'Female',
+    interestedIn: ['Male'],
     languages: ['Gujarati', 'English'],
     interests: ['hiking', 'music'],
     valuedQualities: ['kindness'],

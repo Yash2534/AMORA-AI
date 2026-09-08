@@ -11,6 +11,7 @@ const normalizedIdentity = (req) => {
 };
 module.exports = {
   loginLimiter: rateLimit(options(15 * 60 * 1000, 5, normalizedIdentity)),
+  accountDeletionReauthLimiter: rateLimit(options(15 * 60 * 1000, 5, (req) => String(req.user?.sub || req.ip))),
   signupLimiter: rateLimit(options(15 * 60 * 1000, 10, (req) => req.ip)),
   otpLimiter: rateLimit(options(45 * 1000, 1, normalizedIdentity)),
   photoUploadLimiter: rateLimit(options(15 * 60 * 1000, 20, (req) => String(req.user?.sub || req.ip))),
