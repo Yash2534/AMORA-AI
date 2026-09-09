@@ -11,6 +11,10 @@ if (!testDatabase || testDatabase === applicationDatabase || !/test/i.test(testD
   throw new Error('Fixed OTP integration tests require an isolated TEST_DB_NAME containing "test".');
 }
 
+const originalEnvironment = Object.fromEntries(
+  ['DB_NAME', 'NODE_ENV', 'TEST_FIXED_OTP_ENABLED', 'TEST_FIXED_OTP', 'TEST_OTP_SKIP_DELIVERY']
+    .map((key) => [key, process.env[key]]),
+);
 process.env.DB_NAME = testDatabase;
 process.env.NODE_ENV = 'test';
 process.env.TEST_FIXED_OTP_ENABLED = 'true';
@@ -21,6 +25,9 @@ const generatedOtp = '246810';
 const generatePath = require.resolve('../src/utils/generateOtp');
 const smsPath = require.resolve('../src/utils/sendSms');
 const emailPath = require.resolve('../src/utils/sendEmail');
+const originalGenerateModule = require.cache[generatePath];
+const originalSmsModule = require.cache[smsPath];
+const originalEmailModule = require.cache[emailPath];
 require.cache[generatePath] = {
   id: generatePath,
   filename: generatePath,
@@ -136,6 +143,12 @@ after(async () => {
     await new Promise((resolve) => server.close(resolve));
   }
   try { await getSequelize().close(); } catch (_) {}
+  if (originalGenerateModule) require.cache[generatePath] = originalGenerateModule; else delete require.cache[generatePath];
+  if (originalSmsModule) require.cache[smsPath] = originalSmsModule; else delete require.cache[smsPath];
+  if (originalEmailModule) require.cache[emailPath] = originalEmailModule; else delete require.cache[emailPath];
+  for (const [key, value] of Object.entries(originalEnvironment)) {
+    if (value === undefined) delete process.env[key]; else process.env[key] = value;
+  }
 });
 
 test('fixed OTP covers registration, resend, normal fallback, and challenge guards', async () => {

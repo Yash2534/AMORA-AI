@@ -25,6 +25,10 @@ const legalDocuments = () => [{ documentKey: 'TERMS_OF_SERVICE', documentVersion
 before(async () => {
   await migrate({ databaseName: testDatabase, quiet: true });
   await initializeDatabase(); models = getModels();
+  // This suite owns a dedicated schema. Clear fixtures left by an interrupted prior
+  // run so the active-document invariant always starts from a known state.
+  await models.ConsentEvent.destroy({ where: {} });
+  await models.LegalDocumentVersion.destroy({ where: {} });
   const now = new Date(Date.now() - 1000);
   terms = await models.LegalDocumentVersion.create({ documentKey: 'TERMS_OF_SERVICE', version: `test-${Date.now()}`, contentHash: hash('terms canonical content'), publishedAt: now, effectiveAt: now, status: 'ACTIVE' });
   privacy = await models.LegalDocumentVersion.create({ documentKey: 'PRIVACY_POLICY', version: `test-${Date.now()}`, contentHash: hash('privacy canonical content'), publishedAt: now, effectiveAt: now, status: 'ACTIVE' });

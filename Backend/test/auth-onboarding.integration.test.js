@@ -11,6 +11,10 @@ const testDatabase = `${baseTestDatabase}_auth_onboarding`;
 if (!testDatabase || testDatabase === applicationDatabase || !/test/i.test(testDatabase)) {
   throw new Error('Auth integration tests require an isolated TEST_DB_NAME containing "test".');
 }
+const originalEnvironment = Object.fromEntries(
+  ['DB_NAME', 'NODE_ENV', 'TEST_FIXED_OTP_ENABLED', 'TEST_FIXED_OTP', 'TEST_OTP_SKIP_DELIVERY']
+    .map((key) => [key, process.env[key]]),
+);
 process.env.DB_NAME = testDatabase;
 process.env.NODE_ENV = 'test';
 process.env.TEST_FIXED_OTP_ENABLED = 'true';
@@ -24,6 +28,9 @@ const emailModule = require.resolve('../src/utils/sendEmail');
 require(otpModule);
 require(smsModule);
 require(emailModule);
+const originalOtpExport = require.cache[otpModule].exports;
+const originalSmsExport = require.cache[smsModule].exports;
+const originalEmailExport = require.cache[emailModule].exports;
 require.cache[otpModule].exports = () => verificationCode;
 let smsDeliveryFailure = false;
 require.cache[smsModule].exports = async () => {
@@ -140,6 +147,12 @@ after(async () => {
   }
   if (models) await models.LegalDocumentVersion.destroy({ where: { id: legalDocumentIds } });
   try { await getSequelize().close(); } catch (_) {}
+  require.cache[otpModule].exports = originalOtpExport;
+  require.cache[smsModule].exports = originalSmsExport;
+  require.cache[emailModule].exports = originalEmailExport;
+  for (const [key, value] of Object.entries(originalEnvironment)) {
+    if (value === undefined) delete process.env[key]; else process.env[key] = value;
+  }
 });
 
 test('registration provider failure rolls back the account and returns a safe delivery failure', async () => {
