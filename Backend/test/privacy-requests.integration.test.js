@@ -1,6 +1,7 @@
 const assert = require('node:assert/strict');
 const { after, before, test } = require('node:test');
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
 
 require('../src/config/bootstrapEnv');
 const applicationDatabase = process.env.DB_NAME;
@@ -26,8 +27,8 @@ before(async () => {
   await migrate({ databaseName: testDatabase, quiet: true });
   await initializeDatabase();
   models = getModels();
-  owner = await models.User.create({ name: 'Privacy owner', email: `privacy-owner-${Date.now()}@test.invalid`, phoneNumber: '', authProvider: 'local', isVerified: true });
-  other = await models.User.create({ name: 'Privacy other', email: `privacy-other-${Date.now()}@test.invalid`, phoneNumber: '', authProvider: 'local', isVerified: true });
+  owner = await models.User.create({ name: 'Privacy owner', email: `privacy-owner-${Date.now()}@test.invalid`, phoneNumber: '', authProvider: 'local', passwordHash: await bcrypt.hash('PrivacyPass1!', 4), isVerified: true });
+  other = await models.User.create({ name: 'Privacy other', email: `privacy-other-${Date.now()}@test.invalid`, phoneNumber: '', authProvider: 'local', passwordHash: await bcrypt.hash('PrivacyPass1!', 4), isVerified: true });
   server = app.listen(0); await new Promise((resolve) => server.once('listening', resolve)); baseUrl = `http://127.0.0.1:${server.address().port}`;
 });
 
@@ -42,9 +43,9 @@ after(async () => {
 
 test('privacy request migration supports up, down, and up on the disposable test database', async () => {
   const reverted = await undo({ databaseName: testDatabase, quiet: true });
-  assert.equal(reverted, '202609090001-create-privacy-requests.js');
+  assert.equal(reverted, '202609100001-create-privacy-request-p12.js');
   const applied = await migrate({ databaseName: testDatabase, quiet: true });
-  assert.deepEqual(applied, ['202609090001-create-privacy-requests.js']);
+  assert.deepEqual(applied, ['202609100001-create-privacy-request-p12.js']);
   const schema = await getSequelize().getQueryInterface().describeTable('PrivacyRequests');
   for (const field of ['id', 'userId', 'requestType', 'status', 'requestedAt', 'identityVerifiedAt', 'processingStartedAt', 'completedAt', 'failedAt', 'failureCode', 'assignedAdminId', 'correlationId', 'metadata']) assert.ok(Object.hasOwn(schema, field));
   for (const forbidden of ['password', 'otp', 'token', 'authToken', 'aadhaar', 'kycDocument', 'smtpPassword']) assert.equal(Object.hasOwn(schema, forbidden), false);
@@ -121,4 +122,18 @@ test('failed historical requests also permit a new request and AccountDeletionRe
   assert.equal(replacement.status, 201);
   assert.equal(await models.AccountDeletionRequest.count({ where: { userId: [owner.id, other.id] } }), 0);
   assert.notEqual(models.PrivacyRequest.tableName, models.AccountDeletionRequest.tableName);
+});
+
+test('P1.2 step-up, bounded access, and manual DOB correction are owner-scoped', async () => {
+  const access = await post(other, { requestType: 'ACCESS' }); assert.equal(access.status, 201);
+  const id = access.body.data.request.id;
+  assert.equal((await request(`/api/privacy-requests/${id}/access`, { method:'POST', headers: headers(other) })).status, 409);
+  const issued = await request(`/api/privacy-requests/${id}/step-up/confirmations`, { method:'POST', headers:headers(other), body:JSON.stringify({password:'PrivacyPass1!'}) }); assert.equal(issued.status, 200);
+  const stored = await models.PrivacyRequestConfirmation.findOne({where:{privacyRequestId:id}}); assert.notEqual(stored.tokenHash, issued.body.data.confirmation); assert.equal(stored.purpose,'privacy_request_step_up');
+  assert.equal((await request(`/api/privacy-requests/${id}/step-up/verify`, {method:'POST',headers:headers(owner),body:JSON.stringify({confirmation:issued.body.data.confirmation})})).status,404);
+  const verified=await request(`/api/privacy-requests/${id}/step-up/verify`, {method:'POST',headers:headers(other),body:JSON.stringify({confirmation:issued.body.data.confirmation})}); assert.equal(verified.status,200); assert.equal(verified.body.data.request.status,'VERIFIED'); assert.ok(verified.body.data.request.identityVerifiedAt);
+  assert.equal((await request(`/api/privacy-requests/${id}/step-up/verify`, {method:'POST',headers:headers(other),body:JSON.stringify({confirmation:issued.body.data.confirmation})})).status,401);
+  const completed=await request(`/api/privacy-requests/${id}/access`, {method:'POST',headers:headers(other)});assert.equal(completed.status,200); const data=completed.body.data.result; assert.equal(completed.body.data.request.status,'COMPLETED');assert.ok(completed.body.data.request.processingStartedAt);assert.ok(completed.body.data.request.completedAt);assert.equal(Object.hasOwn(data.account,'passwordHash'),false);assert.equal(Object.hasOwn(data.account,'tokenVersion'),false);assert.equal(JSON.stringify(data).includes('PrivacyPass1!'),false);
+  assert.equal((await request(`/api/privacy-requests/${id}/access-result`,{headers:headers(owner)})).status,404);
+  const correction=await post(owner,{requestType:'CORRECTION'});const cid=correction.body.data.request.id;const conf=await request(`/api/privacy-requests/${cid}/step-up/confirmations`,{method:'POST',headers:headers(owner),body:JSON.stringify({password:'PrivacyPass1!'})});await request(`/api/privacy-requests/${cid}/step-up/verify`,{method:'POST',headers:headers(owner),body:JSON.stringify({confirmation:conf.body.data.confirmation})});const before=(await models.OnboardingProfile.findOne({where:{userId:owner.id}}))?.birthDate;const detail=await request(`/api/privacy-requests/${cid}/correction`,{method:'POST',headers:headers(owner),body:JSON.stringify({category:'DATE_OF_BIRTH',requestedBirthDate:'1990-01-01'})});assert.equal(detail.status,201);assert.equal(detail.body.data.request.status,'VERIFIED');assert.equal((await request(`/api/privacy-requests/${cid}/correction`,{method:'POST',headers:headers(owner),body:JSON.stringify({category:'DATE_OF_BIRTH',requestedBirthDate:'2015-01-01'})})).status,400);assert.equal((await request(`/api/privacy-requests/${cid}/correction`,{method:'POST',headers:headers(owner),body:JSON.stringify({category:'DATE_OF_BIRTH',requestedBirthDate:'1990-01-01',userId:other.id})})).status,400);assert.equal((await models.OnboardingProfile.findOne({where:{userId:owner.id}}))?.birthDate,before);
 });
