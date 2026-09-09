@@ -388,6 +388,12 @@ Only after Gate 1 through Gate 10 pass: `AMORAA READY FOR PRODUCTION RELEASE`.
 
 `DPDP STATUS: PARTIAL — P0 source/migrations are in current main and deployed; SMTP-backed live P0 verification plus DPDP P1/privacy/legal work remain`
 
+`DPDP P1.1 PRIVACY REQUEST LEDGER: IMPLEMENTED — durable authenticated ACCESS, EXPORT, CORRECTION, and WITHDRAWAL request evidence is available; each new request awaits a future approved privacy-request identity-verification workflow. No export, correction, or withdrawal processing is implemented.`
+
+`SMTP: DEFERRED / RELEASE BLOCKER`
+
+`PRODUCTION P0 VERIFICATION: PENDING`
+
 `MATCH ENGINE STATUS: PARTIAL — deterministic filter/compatibility feed exists; production ranking/analytics/safety completion remains`
 
 `AI SUGGESTION STATUS: NOT IMPLEMENTED — UI and deterministic compatibility exist, no AI provider implementation found`

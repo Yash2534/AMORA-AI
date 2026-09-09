@@ -9,6 +9,7 @@ const testDatabase = `${baseTestDatabase}_google_signup_consent`;
 if (!testDatabase || testDatabase === applicationDatabase || !/test/i.test(testDatabase)) {
   throw new Error('Google signup consent tests require an isolated TEST_DB_NAME containing "test".');
 }
+const originalEnvironment = Object.fromEntries(['DB_NAME', 'NODE_ENV', 'GOOGLE_CLIENT_IDS'].map((key) => [key, process.env[key]]));
 process.env.DB_NAME = testDatabase;
 process.env.NODE_ENV = 'test';
 process.env.GOOGLE_CLIENT_IDS = 'local-google-test-client';
@@ -94,6 +95,9 @@ after(async () => {
   try { await getSequelize().close(); } catch (_) {}
   if (originalGoogleLibrary) require.cache[googleLibraryPath] = originalGoogleLibrary;
   else delete require.cache[googleLibraryPath];
+  for (const [key, value] of Object.entries(originalEnvironment)) {
+    if (value === undefined) delete process.env[key]; else process.env[key] = value;
+  }
 });
 
 test('mocked Google signup records current Terms and Privacy evidence once', async () => {
