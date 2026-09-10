@@ -66,7 +66,7 @@ class PrivacyRequestService {
     return User.sequelize.transaction(async (transaction) => {
       const request=await PrivacyRequest.findOne({where:{id:requestId,userId},transaction,lock:transaction.LOCK.UPDATE});
       if(!request) { const e=new Error('Privacy request not found.');e.status=404;e.code='NOT_FOUND';throw e; }
-      if(!['ACCESS','CORRECTION'].includes(request.requestType)||request.status!=='IDENTITY_VERIFICATION_REQUIRED'){const e=new Error('Privacy request cannot be verified.');e.status=409;e.code='PRIVACY_REQUEST_NOT_VERIFIABLE';throw e;}
+      if(!['ACCESS','CORRECTION','EXPORT'].includes(request.requestType)||request.status!=='IDENTITY_VERIFICATION_REQUIRED'){const e=new Error('Privacy request cannot be verified.');e.status=409;e.code='PRIVACY_REQUEST_NOT_VERIFIABLE';throw e;}
       const user=await User.findByPk(userId,{transaction}); if(user.authProvider!=='local'||!password||!(await bcrypt.compare(password,user.passwordHash||''))){const e=new Error('Re-authentication failed.');e.status=401;e.code='REAUTHENTICATION_FAILED';throw e;}
       const g=PrivacyRequestService.confirmationToken(); await PrivacyRequestConfirmation.create({privacyRequestId:request.id,userId,tokenSelector:g.selector,tokenHash:g.hash,purpose:'privacy_request_step_up',expiresAt:new Date(Date.now()+300000)},{transaction}); return g.token;
     });
