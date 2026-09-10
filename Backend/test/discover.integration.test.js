@@ -209,6 +209,37 @@ test('minimum compatibility score is evaluated in the database query', async () 
   assert.ok(result.body.data.profiles.every((profile) => profile.score >= 85));
 });
 
+test('Discover applies reciprocal gender preference, account lifecycle, blocks, and existing-match exclusions', async () => {
+  const reciprocalMismatch = await createUser('reciprocal mismatch');
+  await createProfile(reciprocalMismatch, { interestedIn: ['Male'] });
+  const deactivated = await createUser('deactivated');
+  await createProfile(deactivated, {});
+  await deactivated.update({ accountStatus: 'deactivated' });
+  const blocked = await createUser('blocked');
+  await createProfile(blocked, {});
+  const matched = await createUser('matched');
+  await createProfile(matched, {});
+  const viewerId = Number(jwt.decode(accessToken).sub);
+  await models.Block.create({ blockerUserId: viewerId, blockedUserId: blocked.id });
+  await models.Match.create({ userOneId: Math.min(viewerId, matched.id), userTwoId: Math.max(viewerId, matched.id) });
+
+  const result = await authorized('/api/discover/feed?limit=30&minScore=0');
+  assert.equal(result.status, 200);
+  const ids = new Set(result.body.data.profiles.map((profile) => profile.id));
+  for (const user of [reciprocalMismatch, deactivated, blocked, matched]) assert.equal(ids.has(String(user.id)), false);
+});
+
+test('Discover response exposes deterministic additions but no account secrets or client-selected viewer', async () => {
+  const result = await authorized(`/api/discover/feed?limit=1&userId=${candidates.callOne.id}`);
+  assert.equal(result.status, 200);
+  const profile = result.body.data.profiles[0];
+  assert.equal(typeof profile.compatibilityScore, 'number');
+  assert.ok(Array.isArray(profile.compatibilityReasons));
+  for (const privateKey of ['email', 'phoneNumber', 'birthDate', 'passwordHash', 'tokenVersion', 'latitude', 'longitude']) {
+    assert.equal(Object.hasOwn(profile, privateKey), false);
+  }
+});
+
 test('onlineNow excludes fixture users without persisted presence', async () => {
   const result = await authorized('/api/discover/feed?onlineNow=true&limit=30&minScore=0');
   assert.equal(result.status, 200);

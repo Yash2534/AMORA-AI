@@ -1,6 +1,6 @@
 const { Op, fn, col, where, cast, literal } = require('sequelize');
 const { getModels } = require('../models');
-const computeCompatibilityScore = require('../utils/computeCompatibilityScore');
+const { SCORE_WEIGHTS } = require('../services/matchEngineService');
 const { areUsersBlocked, notBlockedUserSql } = require('../services/accessControlService');
 const { serializePublicProfile } = require('../services/publicProfileService');
 const { defaults, filtersFor, updateFilters: persistFilters } = require('../services/discoverPreferenceService');
@@ -35,8 +35,8 @@ async function requireCompleted(res, userId) {
   return profile;
 }
 
-function profileData(req, user, profile, viewer) {
-  return serializePublicProfile(req, user, profile, { viewer });
+function profileData(req, user, profile, viewer, score) {
+  return serializePublicProfile(req, user, profile, { viewer, ...(score === undefined ? {} : { score }) });
 }
 
 function jsonContainsAny(columnName, values) {
@@ -143,18 +143,30 @@ function compatibilityScoreSql(sequelize, viewer) {
       `CASE WHEN JSON_CONTAINS(LOWER(${profileColumn(name)}), ${sequelize.escape(JSON.stringify(value))}) = 1 THEN 1 ELSE 0 END`
     )).join(' + ');
   };
-  const interests = sharedCount('interests', viewer.interests);
-  const goals = sharedCount('relationshipGoals', viewer.relationshipGoals);
-  const languages = sharedCount('languages', viewer.languages);
-  const qualities = sharedCount('valuedQualities', viewer.valuedQualities);
-  return `LEAST(100, GREATEST(0, ROUND(55 + LEAST((${interests}) * 6, 24) + LEAST((${goals}) * 10, 10) + LEAST((${languages}) * 4, 6) + LEAST((${qualities}) * 3, 5))))`;
+  const factor = (name, values, weight) => {
+    const candidates = normalizedList(values);
+    if (!candidates.length) return { numerator: '0', available: '0' };
+    const column = profileColumn(name);
+    return {
+      numerator: `(${weight} * ((${sharedCount(name, values)}) / GREATEST(${candidates.length}, JSON_LENGTH(${column}))))`,
+      available: `(CASE WHEN JSON_LENGTH(${column}) > 0 THEN ${weight} ELSE 0 END)`,
+    };
+  };
+  const interests = factor('interests', viewer.interests, SCORE_WEIGHTS.interests);
+  const goals = factor('relationshipGoals', viewer.relationshipGoals, SCORE_WEIGHTS.relationshipGoals);
+  const style = String(viewer.communicationStyle || '').trim().toLowerCase();
+  const styleAvailable = style ? `(CASE WHEN ${profileColumn('communicationStyle')} IS NOT NULL AND ${profileColumn('communicationStyle')} <> '' THEN ${SCORE_WEIGHTS.communicationStyle} ELSE 0 END)` : '0';
+  const styleNumerator = style ? `(CASE WHEN LOWER(${profileColumn('communicationStyle')}) = ${sequelize.escape(style)} THEN ${SCORE_WEIGHTS.communicationStyle} ELSE 0 END)` : '0';
+  const numerator = `${interests.numerator} + ${goals.numerator} + ${styleNumerator}`;
+  const available = `${interests.available} + ${goals.available} + ${styleAvailable}`;
+  return `LEAST(100, GREATEST(0, ROUND(CASE WHEN (${available}) = 0 THEN 0 ELSE (100 * (${numerator}) / (${available})) END)))`;
 }
 
 exports.getFeed = async (req, res, next) => {
   try {
     const viewer = await requireCompleted(res, req.user.sub);
     if (!viewer) return;
-    const { User, OnboardingProfile, DiscoverAction, Subscription } = getModels();
+    const { User, OnboardingProfile, DiscoverAction, Match, Subscription } = getModels();
     const page = Number(req.query.page || 1);
     const limit = Number(req.query.limit || 10);
     const filters = await filtersFor(req.user.sub, req.query);
@@ -167,10 +179,16 @@ exports.getFeed = async (req, res, next) => {
     const sequelize = User.sequelize;
     const scoreSql = compatibilityScoreSql(sequelize, viewer);
     const excludedTargets = literal(`(SELECT ${sequelize.getQueryInterface().queryGenerator.quoteIdentifier('targetUserId')} FROM ${sequelize.getQueryInterface().queryGenerator.quoteIdentifier(DiscoverAction.getTableName())} WHERE ${sequelize.getQueryInterface().queryGenerator.quoteIdentifier('actorUserId')} = ${sequelize.escape(Number(req.user.sub))})`);
+    const quote = (value) => sequelize.getQueryInterface().queryGenerator.quoteIdentifier(value);
+    const viewerId = sequelize.escape(Number(req.user.sub));
+    const matchedTargets = literal(`(SELECT CASE WHEN ${quote('userOneId')} = ${viewerId} THEN ${quote('userTwoId')} ELSE ${quote('userOneId')} END FROM ${quote(Match.getTableName())} WHERE ${quote('userOneId')} = ${viewerId} OR ${quote('userTwoId')} = ${viewerId})`);
     const userWhere = {
       id: { [Op.ne]: Number(req.user.sub), [Op.notIn]: excludedTargets },
       accountStatus: 'active',
-      [Op.and]: [notBlockedUserSql(sequelize, req.user.sub)],
+      [Op.and]: [
+        notBlockedUserSql(sequelize, req.user.sub),
+        where(col('User.id'), { [Op.notIn]: matchedTargets }),
+      ],
     };
     if (filters.verifiedOnly) userWhere.identityVerifiedAt = { [Op.ne]: null };
     if (filters.onlineNow) {
@@ -179,7 +197,6 @@ exports.getFeed = async (req, res, next) => {
       userWhere.lastActiveAt = { [Op.gte]: new Date(Date.now() - thresholdMinutes * 60 * 1000) };
     }
     if (filters.hasEventInterest) {
-      const quote = (value) => sequelize.getQueryInterface().queryGenerator.quoteIdentifier(value);
       const registrations = quote(getModels().EventRegistration.getTableName());
       const candidate = `${quote('User')}.${quote('id')}`;
       userWhere[Op.and].push(literal(`EXISTS (SELECT 1 FROM ${registrations} AS ${quote('eventInterestRegistration')} WHERE ${quote('eventInterestRegistration')}.${quote('userId')} = ${candidate} AND ${quote('eventInterestRegistration')}.${quote('status')} = 'registered')`));
@@ -202,19 +219,17 @@ exports.getFeed = async (req, res, next) => {
         },
         attributes: { include: [[literal(scoreSql), 'compatibilityScore']] },
       }, { model: Subscription, as: 'subscription', required: false, attributes: ['status', 'currentPeriodEnd'] }],
-      order: [
-        [literal(scoreSql), 'DESC'],
-        ['id', 'ASC'],
-      ],
+      order: [[literal(scoreSql), 'DESC'], ['id', 'ASC']],
       offset: (page - 1) * limit,
       limit: limit + 1,
       subQuery: false,
     });
 
     const hasMore = users.length > limit;
-    const selected = hasMore ? users.slice(0, limit) : users;
+    const selected = (hasMore ? users.slice(0, limit) : users)
+      .map((user) => ({ user, score: Number(user.OnboardingProfile.getDataValue('compatibilityScore')) }));
     return success(res, selected.length ? 'Discover feed retrieved.' : 'No discover profiles found.', {
-      profiles: selected.map((user) => profileData(req, user, user.OnboardingProfile, viewer)),
+      profiles: selected.map(({ user, score }) => profileData(req, user, user.OnboardingProfile, viewer, score)),
       pagination: { page, limit, hasMore, nextPage: hasMore ? page + 1 : null },
     });
   } catch (error) {

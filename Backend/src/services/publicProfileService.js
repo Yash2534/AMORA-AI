@@ -44,6 +44,8 @@ function serializePublicProfile(req, user, profile, options = {}) {
     education: profile.education || '',
     distance: null,
     score,
+    compatibilityScore: score,
+    compatibilityReasons: compatibility.reasons.map((reason) => reason.label),
     compatibility,
     intent: list(profile.relationshipGoals)[0] || '',
     status: null,
