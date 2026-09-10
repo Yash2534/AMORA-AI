@@ -22,6 +22,8 @@ const { migrate } = require('../src/migrations/run');
 const { initializeDatabase, getSequelize } = require('../src/config/db');
 const { getModels } = require('../src/models');
 const { app } = require('../src/server');
+const { scoreCompatibility } = require('../src/services/matchEngineService');
+const { _test: discoverTest } = require('../src/controllers/discoverController');
 
 let server;
 let baseUrl;
@@ -237,6 +239,66 @@ test('Discover response exposes deterministic additions but no account secrets o
   assert.ok(Array.isArray(profile.compatibilityReasons));
   for (const privateKey of ['email', 'phoneNumber', 'birthDate', 'passwordHash', 'tokenVersion', 'latitude', 'longitude']) {
     assert.equal(Object.hasOwn(profile, privateKey), false);
+  }
+});
+
+test('60-candidate Discover pagination is eligible-first, stable, ordered, and duplicate-free', async () => {
+  const viewerId = Number(jwt.decode(accessToken).sub);
+  const scale = [];
+  for (let index = 0; index < 60; index += 1) {
+    const user = await createUser(`scale-${index}`);
+    await createProfile(user, {
+      interests: index % 3 === 0 ? ['hiking', 'music'] : index % 3 === 1 ? ['hiking'] : ['unrelated'],
+      relationshipGoals: index % 4 === 0 ? ['long_term'] : ['friendship'],
+      communicationStyle: index % 2 === 0 ? 'calls' : 'voice_notes',
+      languages: index % 2 === 0 ? ['Gujarati', 'English'] : ['Hindi'],
+      city: index % 2 === 0 ? 'Ahmedabad' : 'Surat',
+      smoking: index % 2 === 0 ? 'never' : 'often', drinking: 'never', weed: 'never',
+    });
+    scale.push(user);
+  }
+  const blockedByViewer = scale[0]; const blocksViewer = scale[1]; const acted = scale[2]; const matched = scale[3]; const tooOld = scale[4]; const reciprocalMismatch = scale[5];
+  await models.Block.create({ blockerUserId: viewerId, blockedUserId: blockedByViewer.id });
+  await models.Block.create({ blockerUserId: blocksViewer.id, blockedUserId: viewerId });
+  await models.DiscoverAction.create({ actorUserId: viewerId, targetUserId: acted.id, action: 'pass' });
+  await models.Match.create({ userOneId: Math.min(viewerId, matched.id), userTwoId: Math.max(viewerId, matched.id) });
+  await models.OnboardingProfile.update({ birthDate: birthDateForAge(60) }, { where: { userId: tooOld.id } });
+  await models.OnboardingProfile.update({ interestedIn: ['Male'] }, { where: { userId: reciprocalMismatch.id } });
+  const getPage = (page) => authorized(`/api/discover/feed?limit=10&page=${page}&minScore=0`);
+  const [first, second, third, repeatFirst, repeatSecond, repeatThird] = await Promise.all([getPage(1), getPage(2), getPage(3), getPage(1), getPage(2), getPage(3)]);
+  for (const result of [first, second, third]) assert.equal(result.status, 200);
+  const ids = [first, second, third].flatMap((result) => result.body.data.profiles.map((profile) => profile.id));
+  assert.equal(new Set(ids).size, ids.length);
+  assert.deepEqual(first.body.data.profiles.map((p) => p.id), repeatFirst.body.data.profiles.map((p) => p.id));
+  assert.deepEqual(second.body.data.profiles.map((p) => p.id), repeatSecond.body.data.profiles.map((p) => p.id));
+  assert.deepEqual(third.body.data.profiles.map((p) => p.id), repeatThird.body.data.profiles.map((p) => p.id));
+  for (const excluded of [blockedByViewer, blocksViewer, acted, matched, tooOld, reciprocalMismatch]) assert.equal(ids.includes(String(excluded.id)), false);
+  const ranked = [first, second, third].flatMap((result) => result.body.data.profiles);
+  for (let index = 1; index < ranked.length; index += 1) assert.ok(ranked[index - 1].score > ranked[index].score || (ranked[index - 1].score === ranked[index].score && Number(ranked[index - 1].id) < Number(ranked[index].id)));
+  assert.equal(first.body.data.pagination.limit, 10);
+  assert.equal(first.body.data.pagination.nextPage, 2);
+  const last = await getPage(100);
+  assert.equal(last.body.data.pagination.hasMore, false);
+  assert.equal(last.body.data.pagination.nextPage, null);
+  assert.equal((await authorized('/api/discover/feed?page=0')).status, 400);
+  assert.equal((await authorized('/api/discover/feed?limit=31')).status, 400);
+  assert.ok(ranked.some((profile) => profile.compatibilityCoverage < 100));
+});
+
+test('SQL ranking score exactly matches the deterministic service across rich and cold-start profiles', async () => {
+  const viewerId = Number(jwt.decode(accessToken).sub);
+  const viewer = await models.OnboardingProfile.findOne({ where: { userId: viewerId } });
+  const variants = [
+    { interests: ['hiking', 'music'], relationshipGoals: ['long_term'], communicationStyle: 'calls', languages: ['Gujarati', 'English'], city: 'Ahmedabad', smoking: 'never', drinking: 'never', weed: 'never' },
+    { interests: ['unrelated'], relationshipGoals: ['friendship'], communicationStyle: 'voice_notes', languages: ['Hindi'], city: 'Surat', smoking: 'often', drinking: 'often', weed: 'often' },
+    { relationshipGoals: ['long_term'] },
+    { interests: [], relationshipGoals: [], communicationStyle: null, languages: [], city: '', smoking: '', drinking: '', weed: '' },
+  ];
+  const sql = discoverTest.compatibilityScoreSql(models.User.sequelize, viewer);
+  for (const [index, values] of variants.entries()) {
+    const user = await createUser(`parity-${index}`); const profile = await createProfile(user, values);
+    const [rows] = await models.User.sequelize.query(`SELECT ${sql} AS score FROM OnboardingProfiles AS OnboardingProfile WHERE OnboardingProfile.id = ${Number(profile.id)}`);
+    assert.equal(Number(rows[0].score), scoreCompatibility(viewer, profile).score);
   }
 });
 

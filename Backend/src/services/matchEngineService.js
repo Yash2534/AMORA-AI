@@ -1,11 +1,6 @@
-// Phase 1 deterministic match-engine configuration.  These are the only
-// compatibility weights used by Discover; no account, message, KYC, report,
-// verification or subscription data participates in this calculation.
-const SCORE_WEIGHTS = Object.freeze({
-  interests: 55,
-  relationshipGoals: 30,
-  communicationStyle: 15,
-});
+const MATCH_ENGINE_VERSION = 'v2';
+const SCORE_WEIGHTS = Object.freeze({ interests: 35, relationshipGoals: 25, communicationStyle: 10, languages: 10, city: 5, smoking: 5, drinking: 5, weed: 5 });
+const TOTAL_WEIGHT = Object.values(SCORE_WEIGHTS).reduce((sum, value) => sum + value, 0);
 
 const normalise = (value) => (Array.isArray(value)
   ? [...new Set(value.map((item) => String(item).trim().toLowerCase()).filter(Boolean))]
@@ -15,35 +10,35 @@ const overlap = (left, right) => {
   return normalise(left).filter((item) => rightSet.has(item));
 };
 const clamp = (value) => Math.max(0, Math.min(100, Math.round(value)));
+const text = (value) => String(value || '').trim().toLowerCase();
+const listFactor = (key, weight, viewer, candidate) => {
+  const left = normalise(viewer); const right = normalise(candidate); const shared = overlap(left, right);
+  return { key, weight, available: Boolean(left.length && right.length), value: left.length && right.length ? shared.length / Math.max(left.length, right.length) : 0, shared };
+};
+const exactFactor = (key, weight, viewer, candidate) => {
+  const left = text(viewer); const right = text(candidate);
+  return { key, weight, available: Boolean(left && right), value: left && right && left === right ? 1 : 0, shared: left && left === right ? [left] : [] };
+};
 
 // Optional factors participate only when both profiles supplied comparable
 // data.  The resulting weighted score is normalised over available weights,
 // so a missing optional field never acts as a negative signal.
-function scoreCompatibility(viewer, candidate) {
-  const factors = [];
-  const interests = overlap(viewer?.interests, candidate?.interests);
-  const viewerInterests = normalise(viewer?.interests);
-  const candidateInterests = normalise(candidate?.interests);
-  if (viewerInterests.length && candidateInterests.length) {
-    factors.push({ key: 'interests', weight: SCORE_WEIGHTS.interests,
-      value: interests.length / Math.max(viewerInterests.length, candidateInterests.length), shared: interests });
-  }
-  const goals = overlap(viewer?.relationshipGoals, candidate?.relationshipGoals);
-  const viewerGoals = normalise(viewer?.relationshipGoals);
-  const candidateGoals = normalise(candidate?.relationshipGoals);
-  if (viewerGoals.length && candidateGoals.length) {
-    factors.push({ key: 'relationshipGoals', weight: SCORE_WEIGHTS.relationshipGoals,
-      value: goals.length / Math.max(viewerGoals.length, candidateGoals.length), shared: goals });
-  }
-  const viewerStyle = String(viewer?.communicationStyle || '').trim().toLowerCase();
-  const candidateStyle = String(candidate?.communicationStyle || '').trim().toLowerCase();
-  if (viewerStyle && candidateStyle) {
-    factors.push({ key: 'communicationStyle', weight: SCORE_WEIGHTS.communicationStyle,
-      value: viewerStyle === candidateStyle ? 1 : 0, shared: viewerStyle === candidateStyle ? [viewerStyle] : [] });
-  }
-  const availableWeight = factors.reduce((total, factor) => total + factor.weight, 0);
+function scoreCompatibility(viewer = {}, candidate = {}) {
+  const factors = [
+    listFactor('interests', SCORE_WEIGHTS.interests, viewer.interests, candidate.interests),
+    listFactor('relationshipGoals', SCORE_WEIGHTS.relationshipGoals, viewer.relationshipGoals, candidate.relationshipGoals),
+    exactFactor('communicationStyle', SCORE_WEIGHTS.communicationStyle, viewer.communicationStyle, candidate.communicationStyle),
+    listFactor('languages', SCORE_WEIGHTS.languages, viewer.languages, candidate.languages),
+    exactFactor('city', SCORE_WEIGHTS.city, viewer.city, candidate.city),
+    exactFactor('smoking', SCORE_WEIGHTS.smoking, viewer.smoking, candidate.smoking),
+    exactFactor('drinking', SCORE_WEIGHTS.drinking, viewer.drinking, candidate.drinking),
+    exactFactor('weed', SCORE_WEIGHTS.weed, viewer.weed, candidate.weed),
+  ];
+  const availableWeight = factors.filter((factor) => factor.available).reduce((total, factor) => total + factor.weight, 0);
   const weightedValue = factors.reduce((total, factor) => total + factor.weight * factor.value, 0);
-  return { score: availableWeight ? clamp((weightedValue / availableWeight) * 100) : 0, factors, availableWeight };
+  const rawScore = availableWeight ? (weightedValue / availableWeight) * 100 : 50;
+  const coverage = availableWeight / TOTAL_WEIGHT;
+  return { score: clamp(50 + ((rawScore - 50) * coverage)), rawScore: clamp(rawScore), coverage: clamp(coverage * 100), factors, availableWeight };
 }
 
 function compatibilityReasons(viewer, candidate) {
@@ -55,7 +50,11 @@ function compatibilityReasons(viewer, candidate) {
   if (goals?.shared.length) reasons.push('Both prefer the same relationship goal');
   const style = factors.find((factor) => factor.key === 'communicationStyle');
   if (style?.value) reasons.push('Compatible communication styles');
-  return reasons;
+  const languages = factors.find((factor) => factor.key === 'languages');
+  if (languages?.shared.length) reasons.push('Shared language');
+  if (factors.find((factor) => factor.key === 'city')?.value) reasons.push('Same city');
+  for (const key of ['smoking', 'drinking', 'weed']) if (factors.find((factor) => factor.key === key)?.value) reasons.push(`Similar ${key} preference`);
+  return reasons.slice(0, 6);
 }
 
-module.exports = { SCORE_WEIGHTS, normalise, overlap, scoreCompatibility, compatibilityReasons };
+module.exports = { MATCH_ENGINE_VERSION, SCORE_WEIGHTS, TOTAL_WEIGHT, normalise, overlap, scoreCompatibility, compatibilityReasons };
