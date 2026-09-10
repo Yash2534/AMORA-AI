@@ -22,7 +22,7 @@ const definitions = {
   ProfileTaxonomyCategory: require('./ProfileTaxonomyCategory'), ProfileTaxonomyOption: require('./ProfileTaxonomyOption'),
   AdminDiscoverSetting: require('./AdminDiscoverSetting'), AdminDiscoverFilterField: require('./AdminDiscoverFilterField'),
   PlatformSetting: require('./PlatformSetting'),
-  MatchingActionFailure: require('./MatchingActionFailure'),
+  MatchingActionFailure: require('./MatchingActionFailure'), MatchRecommendationEvent: require('./MatchRecommendationEvent'),
   AdminReportCase: require('./AdminReportCase'), AdminReportNote: require('./AdminReportNote'),
 };
 let models = {};

@@ -178,6 +178,7 @@ function compatibilityScoreSql(sequelize, viewer) {
 }
 
 exports.getFeed = async (req, res, next) => {
+  const startedAt = Date.now();
   try {
     const viewer = await requireCompleted(res, req.user.sub);
     if (!viewer) return;
@@ -243,8 +244,13 @@ exports.getFeed = async (req, res, next) => {
     const hasMore = users.length > limit;
     const selected = (hasMore ? users.slice(0, limit) : users)
       .map((user) => ({ user, score: Number(user.OnboardingProfile.getDataValue('compatibilityScore')) }));
+    const profiles = selected.map(({ user, score }) => profileData(req, user, user.OnboardingProfile, viewer, score));
+    const telemetry = require('../services/matchRecommendationTelemetryService');
+    const experiment = require('../services/matchRecommendationMetricsService').configuredAssignment(Number(req.user.sub));
+    await telemetry.recordDiscover({ viewerUserId: Number(req.user.sub), page, profiles, experiment }).catch(() => {});
+    require('../services/matchEngineObservabilityService').emitDiscoverDiagnostic({ page, limit, profiles, startedAt, telemetryEnabled: telemetry.enabled(), experiment });
     return success(res, selected.length ? 'Discover feed retrieved.' : 'No discover profiles found.', {
-      profiles: selected.map(({ user, score }) => profileData(req, user, user.OnboardingProfile, viewer, score)),
+      profiles,
       pagination: { page, limit, hasMore, nextPage: hasMore ? page + 1 : null },
     });
   } catch (error) {
