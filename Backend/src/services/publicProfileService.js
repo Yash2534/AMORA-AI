@@ -33,6 +33,7 @@ function serializePublicProfile(req, user, profile, options = {}) {
     && ['active', 'trialing', 'cancelled'].includes(subscription.status)
     && new Date(subscription.currentPeriodEnd) > new Date());
   const compatibility = compatibilityFor(options.viewer, profile, score);
+  const coverage = options.viewer ? require('./matchEngineService').scoreCompatibility(options.viewer, profile).coverage : 0;
   return {
     id: String(user.id),
     gender: profile.gender || '',
@@ -45,6 +46,7 @@ function serializePublicProfile(req, user, profile, options = {}) {
     distance: null,
     score,
     compatibilityScore: score,
+    compatibilityCoverage: coverage,
     compatibilityReasons: compatibility.reasons.map((reason) => reason.label),
     compatibility,
     intent: list(profile.relationshipGoals)[0] || '',

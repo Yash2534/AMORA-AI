@@ -154,12 +154,27 @@ function compatibilityScoreSql(sequelize, viewer) {
   };
   const interests = factor('interests', viewer.interests, SCORE_WEIGHTS.interests);
   const goals = factor('relationshipGoals', viewer.relationshipGoals, SCORE_WEIGHTS.relationshipGoals);
+  const languages = factor('languages', viewer.languages, SCORE_WEIGHTS.languages);
+  const exact = (name, weight) => {
+    const value = lower(viewer[name]);
+    if (!value) return { numerator: '0', available: '0' };
+    const column = profileColumn(name);
+    return {
+      numerator: `(CASE WHEN LOWER(${column}) = ${sequelize.escape(value)} THEN ${weight} ELSE 0 END)`,
+      available: `(CASE WHEN ${column} IS NOT NULL AND ${column} <> '' THEN ${weight} ELSE 0 END)`,
+    };
+  };
   const style = String(viewer.communicationStyle || '').trim().toLowerCase();
   const styleAvailable = style ? `(CASE WHEN ${profileColumn('communicationStyle')} IS NOT NULL AND ${profileColumn('communicationStyle')} <> '' THEN ${SCORE_WEIGHTS.communicationStyle} ELSE 0 END)` : '0';
   const styleNumerator = style ? `(CASE WHEN LOWER(${profileColumn('communicationStyle')}) = ${sequelize.escape(style)} THEN ${SCORE_WEIGHTS.communicationStyle} ELSE 0 END)` : '0';
-  const numerator = `${interests.numerator} + ${goals.numerator} + ${styleNumerator}`;
-  const available = `${interests.available} + ${goals.available} + ${styleAvailable}`;
-  return `LEAST(100, GREATEST(0, ROUND(CASE WHEN (${available}) = 0 THEN 0 ELSE (100 * (${numerator}) / (${available})) END)))`;
+  const city = exact('city', SCORE_WEIGHTS.city);
+  const smoking = exact('smoking', SCORE_WEIGHTS.smoking);
+  const drinking = exact('drinking', SCORE_WEIGHTS.drinking);
+  const weed = exact('weed', SCORE_WEIGHTS.weed);
+  const numerator = `${interests.numerator} + ${goals.numerator} + ${styleNumerator} + ${languages.numerator} + ${city.numerator} + ${smoking.numerator} + ${drinking.numerator} + ${weed.numerator}`;
+  const available = `${interests.available} + ${goals.available} + ${styleAvailable} + ${languages.available} + ${city.available} + ${smoking.available} + ${drinking.available} + ${weed.available}`;
+  const raw = `(CASE WHEN (${available}) = 0 THEN 50 ELSE (100 * (${numerator}) / (${available})) END)`;
+  return `LEAST(100, GREATEST(0, ROUND(50 + ((${raw}) - 50) * ((${available}) / 100))))`;
 }
 
 exports.getFeed = async (req, res, next) => {

@@ -16,7 +16,10 @@ function compatibilityFor(viewer, candidate, explicitScore) {
   const reasons = reasonLabels.map((label) => {
     if (label.includes('shared interest')) return { factor: 'interests', label: `You share ${label.replace(' shared', '')}`, score };
     if (label.includes('relationship')) return { factor: 'relationship_goal', label: 'You share a relationship goal', score };
-    return { factor: 'communication_style', label: 'Your communication styles align', score };
+    if (label.includes('communication')) return { factor: 'communication_style', label: 'Your communication styles align', score };
+    if (label.includes('language')) return { factor: 'languages', label, score };
+    if (label.includes('city')) return { factor: 'city', label, score };
+    return { factor: 'lifestyle', label, score };
   });
 
   return {
