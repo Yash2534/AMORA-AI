@@ -49,6 +49,7 @@ class DiscoverActionController extends ChangeNotifier {
   String? _matchedProfileId;
   String? _lastError;
   String? _matchId;
+  String? _lastLikeStatus;
   Map<String, dynamic>? _matchedProfile;
 
   bool get isTransitioning => _isTransitioning;
@@ -60,6 +61,7 @@ class DiscoverActionController extends ChangeNotifier {
   String? get matchId => _matchId;
   Map<String, dynamic>? get matchedProfile => _matchedProfile;
   String? get lastError => _lastError;
+  String? get lastLikeStatus => _lastLikeStatus;
   List<String> get remainingProfileIds => List.unmodifiable(_deck);
   List<DiscoverHistoryEntry> get history => List.unmodifiable(_history);
 
@@ -145,6 +147,7 @@ class DiscoverActionController extends ChangeNotifier {
       notifyListeners();
       return false;
     }
+    _lastLikeStatus = result.data!.likeStatus;
 
     _history.add(
       DiscoverHistoryEntry(

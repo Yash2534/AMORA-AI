@@ -72,12 +72,14 @@ class DiscoverSwipeResult {
     this.matchId,
     this.conversationId,
     this.matchedProfile,
+    this.likeStatus,
   });
 
   final bool matched;
   final String? matchId;
   final String? conversationId;
   final Map<String, dynamic>? matchedProfile;
+  final String? likeStatus;
 }
 
 class DiscoverApiService {
@@ -164,6 +166,7 @@ class DiscoverApiService {
         matchedProfile: matchedProfile is Map
             ? matchedProfile.cast<String, dynamic>()
             : null,
+        likeStatus: result.data!['likeStatus']?.toString(),
       ),
       statusCode: result.statusCode,
       message: result.message,

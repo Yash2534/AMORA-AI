@@ -40,6 +40,9 @@ class _SignupScreenState extends State<SignupScreen> {
   bool _obscurePassword = true;
   bool _obscureConfirmation = true;
   String? _error;
+  List<SignupLegalDocument>? _legalDocuments;
+  bool _legalLoading = true;
+  bool _legalLoadFailed = false;
 
   double get _progress {
     var completed = 0;
@@ -52,9 +55,41 @@ class _SignupScreenState extends State<SignupScreen> {
     return completed / 6;
   }
 
+  Future<void> _loadLegalDocuments() async {
+    setState(() {
+      _legalLoading = true;
+      _legalLoadFailed = false;
+    });
+    try {
+      final documents = await AuthService.instance
+          .requiredSignupLegalDocuments();
+      final keys = documents.map((item) => item.documentKey).toSet();
+      if (!keys.contains('TERMS_OF_SERVICE') ||
+          !keys.contains('PRIVACY_POLICY')) {
+        throw const AuthException('Required legal documents are unavailable.');
+      }
+      if (mounted)
+        setState(() {
+          _legalDocuments = documents;
+          _legalLoading = false;
+        });
+    } catch (_) {
+      if (mounted)
+        setState(() {
+          _legalDocuments = null;
+          _legalLoading = false;
+          _legalLoadFailed = true;
+        });
+    }
+  }
+
+  SignupLegalDocument? _document(String key) =>
+      _legalDocuments?.where((item) => item.documentKey == key).firstOrNull;
+
   @override
   void initState() {
     super.initState();
+    _loadLegalDocuments();
     for (final controller in [
       _nameController,
       _emailController,
@@ -198,11 +233,51 @@ class _SignupScreenState extends State<SignupScreen> {
               const SizedBox(height: AmoraSpacing.space20),
               _LegalConsentTile(
                 accepted: _terms && _privacy,
+                enabled: !_legalLoading && !_legalLoadFailed,
+                onTerms: () {
+                  final item = _document('TERMS_OF_SERVICE');
+                  if (item != null) _openLegalDocument(item);
+                },
+                onPrivacy: () {
+                  final item = _document('PRIVACY_POLICY');
+                  if (item != null) _openLegalDocument(item);
+                },
                 onChanged: (value) => setState(() {
                   _terms = value;
                   _privacy = value;
                 }),
               ),
+              if (_legalLoading)
+                const Padding(
+                  padding: EdgeInsets.only(top: AmoraSpacing.space8),
+                  child: Row(
+                    children: [
+                      SizedBox.square(
+                        dimension: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                      SizedBox(width: AmoraSpacing.space8),
+                      Text('Loading Terms & Privacy Policy…'),
+                    ],
+                  ),
+                ),
+              if (_legalLoadFailed)
+                Padding(
+                  padding: const EdgeInsets.only(top: AmoraSpacing.space8),
+                  child: Row(
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          'We couldn’t load the Terms & Privacy Policy. Please try again.',
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: _loadLegalDocuments,
+                        child: const Text('Retry'),
+                      ),
+                    ],
+                  ),
+                ),
               if (_error != null) ...[
                 const SizedBox(height: AmoraSpacing.space12),
                 AuthInlineAlert(message: _error!),
@@ -212,7 +287,9 @@ class _SignupScreenState extends State<SignupScreen> {
                 label: _loading ? 'Creating account…' : 'Create account',
                 icon: Icons.arrow_forward_rounded,
                 isLoading: _loading,
-                onPressed: _loading ? null : _submit,
+                onPressed: _loading || _legalLoading || _legalLoadFailed
+                    ? null
+                    : _submit,
               ),
               const SizedBox(height: AmoraSpacing.space20),
               const AuthDivider(),
@@ -220,7 +297,9 @@ class _SignupScreenState extends State<SignupScreen> {
               AmoraGoogleButton(
                 label: 'Sign up with Google',
                 isLoading: _googleLoading,
-                onPressed: _googleLoading ? null : _continueWithGoogle,
+                onPressed: _googleLoading || _legalLoading || _legalLoadFailed
+                    ? null
+                    : _continueWithGoogle,
               ),
             ],
           ),
@@ -241,8 +320,9 @@ class _SignupScreenState extends State<SignupScreen> {
       _error = null;
     });
     try {
-      final acceptedLegalDocuments =
-          await AuthService.instance.requiredSignupLegalDocuments();
+      final acceptedLegalDocuments = _legalDocuments!
+          .map((item) => item.acceptance)
+          .toList();
       await AuthService.instance.signUp(
         name: _nameController.text.trim(),
         email: _emailController.text.trim(),
@@ -269,8 +349,15 @@ class _SignupScreenState extends State<SignupScreen> {
       if (mounted) {
         setState(() {
           _loading = false;
-          _error = error.message;
+          _error = error.code == 'LEGAL_DOCUMENT_VERSION_OUTDATED'
+              ? 'The Terms or Privacy Policy was updated. Please review and accept the latest version.'
+              : error.userMessage;
         });
+        if (error.code == 'LEGAL_DOCUMENT_VERSION_OUTDATED') {
+          _terms = false;
+          _privacy = false;
+          _loadLegalDocuments();
+        }
       }
     } catch (_) {
       if (mounted) {
@@ -290,8 +377,9 @@ class _SignupScreenState extends State<SignupScreen> {
     }
     setState(() => _googleLoading = true);
     try {
-      final acceptedLegalDocuments =
-          await AuthService.instance.requiredSignupLegalDocuments();
+      final acceptedLegalDocuments = _legalDocuments!
+          .map((item) => item.acceptance)
+          .toList();
       await AuthService.instance.googleSignIn(
         acceptedLegalDocuments: acceptedLegalDocuments,
         platform: _consentPlatform,
@@ -313,6 +401,14 @@ class _SignupScreenState extends State<SignupScreen> {
         });
       }
     }
+  }
+
+  void _openLegalDocument(SignupLegalDocument document) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => VersionedLegalDocumentScreen(document: document),
+      ),
+    );
   }
 
   String? _requiredName(String? value) {
@@ -403,10 +499,19 @@ class _SignupProgress extends StatelessWidget {
 }
 
 class _LegalConsentTile extends StatelessWidget {
-  const _LegalConsentTile({required this.accepted, required this.onChanged});
+  const _LegalConsentTile({
+    required this.accepted,
+    required this.enabled,
+    required this.onChanged,
+    required this.onTerms,
+    required this.onPrivacy,
+  });
 
   final bool accepted;
+  final bool enabled;
   final ValueChanged<bool> onChanged;
+  final VoidCallback onTerms;
+  final VoidCallback onPrivacy;
 
   @override
   Widget build(BuildContext context) {
@@ -417,13 +522,13 @@ class _LegalConsentTile extends StatelessWidget {
         children: [
           Checkbox(
             value: accepted,
-            onChanged: (value) => onChanged(value ?? false),
+            onChanged: enabled ? (value) => onChanged(value ?? false) : null,
           ),
           const SizedBox(width: AmoraSpacing.space4),
           Expanded(
             child: Padding(
               padding: const EdgeInsets.only(top: AmoraSpacing.space12),
-              child: const _LegalConsentText(),
+              child: _LegalConsentText(onTerms: onTerms, onPrivacy: onPrivacy),
             ),
           ),
         ],
@@ -433,7 +538,9 @@ class _LegalConsentTile extends StatelessWidget {
 }
 
 class _LegalConsentText extends StatefulWidget {
-  const _LegalConsentText();
+  const _LegalConsentText({required this.onTerms, required this.onPrivacy});
+  final VoidCallback onTerms;
+  final VoidCallback onPrivacy;
 
   @override
   State<_LegalConsentText> createState() => _LegalConsentTextState();
@@ -446,10 +553,8 @@ class _LegalConsentTextState extends State<_LegalConsentText> {
   @override
   void initState() {
     super.initState();
-    _termsRecognizer = TapGestureRecognizer()
-      ..onTap = () => _openLegalDocument(TermsConditionsScreen.routeName);
-    _privacyRecognizer = TapGestureRecognizer()
-      ..onTap = () => _openLegalDocument(PrivacyPolicyScreen.routeName);
+    _termsRecognizer = TapGestureRecognizer()..onTap = widget.onTerms;
+    _privacyRecognizer = TapGestureRecognizer()..onTap = widget.onPrivacy;
   }
 
   @override
@@ -457,10 +562,6 @@ class _LegalConsentTextState extends State<_LegalConsentText> {
     _termsRecognizer.dispose();
     _privacyRecognizer.dispose();
     super.dispose();
-  }
-
-  void _openLegalDocument(String routeName) {
-    Navigator.of(context).pushNamed(routeName);
   }
 
   @override

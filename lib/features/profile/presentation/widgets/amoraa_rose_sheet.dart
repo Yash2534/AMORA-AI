@@ -141,9 +141,40 @@ class _AmoraaRoseSheetState extends State<AmoraaRoseSheet>
                       opacity: _sent ? 1 - (progress * .12) : 1,
                       child: Transform.translate(
                         offset: Offset(0, _sent ? -14 * progress : 0),
-                        child: Transform.scale(
-                          scale: _sent ? .92 + (.08 * progress) : 1,
-                          child: child,
+                        child: Stack(
+                          alignment: Alignment.center,
+                          clipBehavior: Clip.none,
+                          children: [
+                            if (_sent)
+                              for (var index = 0; index < 6; index++)
+                                Transform.translate(
+                                  offset: Offset(
+                                    (index - 2.5) * 13 * progress,
+                                    -18 - (index % 3) * 18 * progress,
+                                  ),
+                                  child: Opacity(
+                                    opacity: (1 - progress).clamp(0, 1),
+                                    child: Icon(
+                                      Icons.local_florist_rounded,
+                                      size: 13,
+                                      color: AppColors.secondary.withValues(
+                                        alpha: .72,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            Transform.scale(
+                              scale: _sent
+                                  ? .76 +
+                                        (.30 *
+                                            Curves.easeOutBack.transform(
+                                              (_roseController.value * .72)
+                                                  .clamp(0, 1),
+                                            ))
+                                  : 1,
+                              child: child,
+                            ),
+                          ],
                         ),
                       ),
                     );

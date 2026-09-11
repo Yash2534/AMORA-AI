@@ -537,33 +537,33 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     if (_openingProfile) return;
     setState(() => _openingProfile = true);
     try {
-      await Navigator.of(context).pushNamed(
-        ProfileDetailScreen.routeName,
-        arguments: _profile,
-      );
+      await Navigator.of(
+        context,
+      ).pushNamed(ProfileDetailScreen.routeName, arguments: _profile);
     } finally {
       if (mounted) setState(() => _openingProfile = false);
     }
   }
 
-  Future<_MuteChoice?> _chooseMuteDuration() => showAmoraBottomSheet<_MuteChoice>(
-    context: context,
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text('Mute conversation', style: AmoraTextStyles.titleMedium),
-        const SizedBox(height: 8),
-        for (final choice in _MuteChoice.values)
-          ListTile(
-            key: ValueKey('mute-duration-${choice.name}'),
-            contentPadding: EdgeInsets.zero,
-            title: Text(_muteLabel(choice)),
-            onTap: () => Navigator.of(context).pop(choice),
-          ),
-      ],
-    ),
-  );
+  Future<_MuteChoice?> _chooseMuteDuration() =>
+      showAmoraBottomSheet<_MuteChoice>(
+        context: context,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('Mute conversation', style: AmoraTextStyles.titleMedium),
+            const SizedBox(height: 8),
+            for (final choice in _MuteChoice.values)
+              ListTile(
+                key: ValueKey('mute-duration-${choice.name}'),
+                contentPadding: EdgeInsets.zero,
+                title: Text(_muteLabel(choice)),
+                onTap: () => Navigator.of(context).pop(choice),
+              ),
+          ],
+        ),
+      );
 
   DateTime? _muteUntil(_MuteChoice choice) {
     final now = DateTime.now();
@@ -587,7 +587,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   String _muteStatusLabel(DateTime? mutedUntil) {
     if (mutedUntil == null) return 'Unmute Conversation';
     final local = mutedUntil.toLocal();
-    final date = '${local.day.toString().padLeft(2, '0')}/${local.month.toString().padLeft(2, '0')}';
+    final date =
+        '${local.day.toString().padLeft(2, '0')}/${local.month.toString().padLeft(2, '0')}';
     final hour = local.hour % 12 == 0 ? 12 : local.hour % 12;
     final minute = local.minute.toString().padLeft(2, '0');
     final period = local.hour >= 12 ? 'PM' : 'AM';
@@ -599,9 +600,14 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Conversation?'),
-        content: const Text('Are you sure you want to delete this conversation?'),
+        content: const Text(
+          'Are you sure you want to delete this conversation?',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppColors.error),
             onPressed: () => Navigator.of(context).pop(true),
@@ -928,6 +934,10 @@ class MessageBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (message.type == 'rose' ||
+        message.context?.type == ChatMessageContextType.rose) {
+      return RoseMessageCard(message: message, profile: profile);
+    }
     final showMetadata = !groupedWithNext;
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0, end: 1),
@@ -1107,9 +1117,11 @@ class MessageBubble extends StatelessWidget {
     final sentAt = DateTime.fromMillisecondsSinceEpoch(
       message.createdAtEpochMs,
     ).toLocal();
-    final date = '${sentAt.day.toString().padLeft(2, '0')}/${sentAt.month.toString().padLeft(2, '0')}/${sentAt.year}';
+    final date =
+        '${sentAt.day.toString().padLeft(2, '0')}/${sentAt.month.toString().padLeft(2, '0')}/${sentAt.year}';
     final hour = sentAt.hour % 12 == 0 ? 12 : sentAt.hour % 12;
-    final time = '$hour:${sentAt.minute.toString().padLeft(2, '0')} ${sentAt.hour >= 12 ? 'PM' : 'AM'}';
+    final time =
+        '$hour:${sentAt.minute.toString().padLeft(2, '0')} ${sentAt.hour >= 12 ? 'PM' : 'AM'}';
     await showAmoraBottomSheet<void>(
       context: context,
       child: Column(
@@ -1169,6 +1181,157 @@ class MessageBubble extends StatelessWidget {
       topRight: large,
       bottomLeft: groupedWithNext ? grouped : tail,
       bottomRight: large,
+    );
+  }
+}
+
+/// A bounded, one-time session effect for the first presentation of a newly
+/// received Rose. The stable message id prevents ListView rebuilds and scroll
+/// recycling from replaying it.
+class RoseMessageCard extends StatefulWidget {
+  const RoseMessageCard({
+    super.key,
+    required this.message,
+    required this.profile,
+  });
+  final ChatMessage message;
+  final DummyProfile profile;
+
+  @override
+  State<RoseMessageCard> createState() => _RoseMessageCardState();
+}
+
+class _RoseMessageCardState extends State<RoseMessageCard>
+    with SingleTickerProviderStateMixin {
+  static final Set<String> _playedMessageIds = <String>{};
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1300),
+    );
+    if (!widget.message.mine && _playedMessageIds.add(widget.message.id)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && !MediaQuery.disableAnimationsOf(context))
+          _controller.forward();
+      });
+    } else {
+      _controller.value = 1;
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final mine = widget.message.mine;
+    final label = mine
+        ? 'You sent ${widget.profile.name} a Rose'
+        : '${widget.profile.name} sent you a Rose';
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        final bloom = Curves.easeOutBack.transform(
+          _controller.value.clamp(0, .55) / .55,
+        );
+        final glow = Curves.easeOut.transform(
+          (_controller.value * 1.4).clamp(0, 1),
+        );
+        return Semantics(
+          label: '$label at ${widget.message.time}',
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Align(
+              alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 360),
+                child: Transform.scale(
+                  scale: .94 + (.06 * bloom),
+                  child: Container(
+                    key: const ValueKey('rose-chat-message'),
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: mine ? AppColors.primary : AppColors.surface,
+                      borderRadius: BorderRadius.circular(22),
+                      border: Border.all(
+                        color: AppColors.secondary.withValues(alpha: .55),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.secondary.withValues(
+                            alpha: .10 + .16 * (1 - (glow - .5).abs() * 2),
+                          ),
+                          blurRadius: 22,
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.local_florist_rounded,
+                          color: mine ? AppColors.surface : AppColors.secondary,
+                          size: 30,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                label,
+                                style: TextStyle(
+                                  color: mine
+                                      ? AppColors.surface
+                                      : AppColors.text,
+                                  fontWeight: FontWeight.w800,
+                                  height: 1.2,
+                                ),
+                              ),
+                              if ((widget.message.text).trim().isNotEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 4),
+                                  child: Text(
+                                    widget.message.text,
+                                    style: TextStyle(
+                                      color: mine
+                                          ? AppColors.surface.withValues(
+                                              alpha: .85,
+                                            )
+                                          : AppColors.text.withValues(
+                                              alpha: .75,
+                                            ),
+                                    ),
+                                  ),
+                                ),
+                              const SizedBox(height: 5),
+                              Text(
+                                widget.message.time,
+                                style: TextStyle(
+                                  color: mine
+                                      ? AppColors.surface.withValues(alpha: .74)
+                                      : AppColors.text.withValues(alpha: .58),
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

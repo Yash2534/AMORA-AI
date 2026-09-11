@@ -35,11 +35,21 @@ class _RoseRemote implements RoseRemoteDataSource {
             'id': '101',
             'senderId': '1',
             'recipientId': body?['recipientId'].toString(),
+            'conversationId': body?['conversationId']?.toString(),
             'status': 'sent',
             'note': body?['note'],
             'createdAt': '2026-08-12T10:00:00.000Z',
           },
           'notification': {'id': '12'},
+          'conversationId': body?['conversationId']?.toString(),
+          'message': {
+            'id': 'rose-101',
+            'conversationId': body?['conversationId']?.toString(),
+            'senderId': '1',
+            'type': 'rose',
+            'text': body?['note'],
+            'createdAt': '2026-08-12T10:00:00.000Z',
+          },
         },
       };
     }
@@ -225,6 +235,7 @@ void main() {
     tester,
   ) async {
     await pumpProfile(tester, buildChat: true);
+    await repository.createConversationForProfile(profile);
     await revealFirstReply(tester);
     await tester.tap(firstReply());
     await tester.pumpAndSettle();
@@ -545,7 +556,7 @@ void main() {
   });
 
   testWidgets(
-    'confirmed Rose remains successful when optional chat card fails',
+    'confirmed Rose adds the server-confirmed structured card without a second message request',
     (tester) async {
       await pumpProfile(tester, buildChat: true);
       final conversationId = await repository.createConversationForProfile(
@@ -560,13 +571,12 @@ void main() {
           .conversation(conversationId)!
           .messages
           .length;
-      repository.failNextPersistenceForTesting();
       await tester.tap(find.byKey(const ValueKey('send-rose-button')));
       await finishRoseSend(tester);
 
       expect(
         repository.conversation(conversationId)!.messages,
-        hasLength(initialMessageCount),
+        hasLength(initialMessageCount + 1),
       );
       expect(roseRemote.sendCalls, 1);
     },

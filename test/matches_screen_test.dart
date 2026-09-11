@@ -500,10 +500,11 @@ class _RouteMarker extends StatelessWidget {
 
 class _EmptyMatchesApi extends PhaseTwoApiService {
   @override
-  Future<List<MatchApiItem>> matches() async => const [];
+  Future<List<MatchApiItem>> aiRecommendations() async => const [];
 }
 
 class _FailingMatchesApi extends PhaseTwoApiService {
   @override
-  Future<List<MatchApiItem>> matches() async => throw Exception('offline');
+  Future<List<MatchApiItem>> aiRecommendations() async =>
+      throw Exception('offline');
 }

@@ -46,10 +46,15 @@ class RoseTransactionResult {
 }
 
 class RoseSendResult {
-  const RoseSendResult({required this.transaction, this.notificationId});
+  const RoseSendResult({
+    required this.transaction,
+    this.notificationId,
+    this.message,
+  });
 
   final RoseTransactionResult transaction;
   final String? notificationId;
+  final Map<String, dynamic>? message;
 
   factory RoseSendResult.fromJson(Map<String, dynamic> json) {
     final transaction = json['roseTransaction'];
@@ -63,6 +68,9 @@ class RoseSendResult {
       ),
       notificationId: notification is Map
           ? notification['id']?.toString()
+          : null,
+      message: json['message'] is Map
+          ? (json['message'] as Map).cast<String, dynamic>()
           : null,
     );
   }

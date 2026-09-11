@@ -22,6 +22,7 @@ const messageJson = (message, viewerUserId, otherLastReadMessageId) => ({
   senderId: String(message.senderId),
   mine: Number(message.senderId) === Number(viewerUserId),
   type: message.type,
+  roseTransactionId: message.roseTransactionId == null ? null : String(message.roseTransactionId),
   text: message.deletedAt ? null : message.text,
   context: message.deletedAt ? null : message.context,
   deleted: Boolean(message.deletedAt),

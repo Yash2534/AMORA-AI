@@ -101,6 +101,8 @@ function initModels(sequelize) {
   RoseTransaction.belongsTo(User, { foreignKey: 'senderId', as: 'sender' });
   RoseTransaction.belongsTo(User, { foreignKey: 'recipientId', as: 'recipient' });
   RoseTransaction.belongsTo(Conversation, { foreignKey: 'conversationId', as: 'conversation' });
+  RoseTransaction.hasOne(Message, { foreignKey: 'roseTransactionId', as: 'message', onDelete: 'RESTRICT' });
+  Message.belongsTo(RoseTransaction, { foreignKey: 'roseTransactionId', as: 'roseTransaction', onDelete: 'RESTRICT' });
   Administrator.belongsToMany(AdminRole, {
     through: 'AdministratorRoles',
     foreignKey: 'administratorId',

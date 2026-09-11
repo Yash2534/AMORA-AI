@@ -7,6 +7,7 @@ const { defaults, filtersFor, updateFilters: persistFilters } = require('../serv
 const { createNotification } = require('../services/notificationService');
 const { ensureDirectConversation } = require('../services/conversationAccessService');
 const { emitConversationEvent } = require('../realtime/realtimeHub');
+const { rankCandidates } = require('../services/aiMatchProvider');
 
 const success = (res, message, data) => res.json({ success: true, message, data });
 const fail = (res, status, message, code, errors = []) => res.status(status).json({ success: false, message, code, errors });
@@ -243,6 +244,19 @@ exports.getFeed = async (req, res, next) => {
     const hasMore = users.length > limit;
     const selected = (hasMore ? users.slice(0, limit) : users)
       .map((user) => ({ user, score: Number(user.OnboardingProfile.getDataValue('compatibilityScore')) }));
+    if (req.aiMatches === true) {
+      const ranked = rankCandidates(viewer, selected.map(({ user, score }) => ({
+        userId: user.id, user, profile: user.OnboardingProfile, compatibility: { score, coverage: 100, factors: [] },
+      })));
+      return success(res, ranked.length ? 'AI recommendations retrieved.' : 'No AI recommendations found.', {
+        recommendations: ranked.map((item) => ({
+          id: String(item.user.id),
+          profile: profileData(req, item.user, item.profile, viewer, item.aiMatchScore),
+          compatibility: { score: item.aiMatchScore, confidence: item.aiConfidence, level: item.aiMatchLevel, highlights: item.aiHighlights, reasons: item.aiReasons },
+        })),
+        pagination: { page, limit, hasMore, nextPage: hasMore ? page + 1 : null },
+      });
+    }
     return success(res, selected.length ? 'Discover feed retrieved.' : 'No discover profiles found.', {
       profiles: selected.map(({ user, score }) => profileData(req, user, user.OnboardingProfile, viewer, score)),
       pagination: { page, limit, hasMore, nextPage: hasMore ? page + 1 : null },
@@ -280,6 +294,7 @@ exports.swipe = async (req, res, next) => {
     let match = null;
     let matchedRow = null;
     let conversationRow = null;
+    let createdAction = false;
     await User.sequelize.transaction(async (transaction) => {
       const participantIds = [Number(req.user.sub), targetUserId].sort((a, b) => a - b);
       await User.findAll({
@@ -288,13 +303,10 @@ exports.swipe = async (req, res, next) => {
         transaction,
         lock: transaction.LOCK.UPDATE,
       });
-      await DiscoverAction.upsert({
-        actorUserId: req.user.sub,
-        targetUserId,
-        action: req.body.action,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      }, { transaction });
+      const existingAction = await DiscoverAction.findOne({ where: { actorUserId: req.user.sub, targetUserId }, transaction, lock: transaction.LOCK.UPDATE });
+      if (existingAction && ['like', 'superLike'].includes(existingAction.action) && req.body.action === 'like') return;
+      createdAction = !existingAction;
+      await DiscoverAction.upsert({ actorUserId: req.user.sub, targetUserId, action: req.body.action, createdAt: existingAction?.createdAt || new Date(), updatedAt: new Date() }, { transaction });
       if (['like', 'superLike'].includes(req.body.action)) {
         const reciprocal = await DiscoverAction.findOne({
           where: {
@@ -348,6 +360,7 @@ exports.swipe = async (req, res, next) => {
     return success(res, 'Swipe saved.', {
       action: req.body.action,
       targetUserId: String(targetUserId),
+      likeStatus: req.body.action === 'like' ? (createdAction ? 'liked' : 'already_liked') : undefined,
       ...(match || { matched: false }),
     });
   } catch (error) {

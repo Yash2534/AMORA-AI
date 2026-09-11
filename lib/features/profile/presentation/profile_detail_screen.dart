@@ -452,33 +452,40 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
       context: context,
       recipientName: _profile.name,
       onSend: (note) async {
-        await RoseRepository.instance.send(
+        // The API atomically persists the Rose and its structured chat event.
+        // It returns the canonical conversation rather than creating a second
+        // best-effort text message from the client.
+        final result = await RoseRepository.instance.send(
           recipientId: _profile.id,
           idempotencyKey: roseKey,
           conversationId: conversationId,
           note: note,
         );
-        if (conversationId == null) {
-          try {
-            conversationId = await repository.createConversationForProfile(
-              _profile,
-            );
-          } catch (_) {
-            // A match is not required for a server-confirmed Rose.
-          }
-        }
-        final chatConversationId = conversationId;
-        if (chatConversationId != null) {
-          try {
-            await repository.sendMessage(
-              chatConversationId,
-              note.isEmpty ? 'Rose' : note,
+        conversationId = result.transaction.conversationId;
+        final message = result.message;
+        if (conversationId != null &&
+            message != null &&
+            repository.conversation(conversationId!) != null) {
+          final createdAt =
+              DateTime.tryParse(
+                message['createdAt']?.toString() ?? '',
+              )?.toLocal() ??
+              DateTime.now();
+          repository.receiveMessage(
+            conversationId!,
+            ChatMessage(
+              id: message['id']?.toString() ?? 'rose-${result.transaction.id}',
+              text: message['text']?.toString() ?? '',
+              mine: true,
+              time:
+                  '${createdAt.hour % 12 == 0 ? 12 : createdAt.hour % 12}:${createdAt.minute.toString().padLeft(2, '0')} ${createdAt.hour >= 12 ? 'PM' : 'AM'}',
+              createdAtEpochMs: createdAt.millisecondsSinceEpoch,
+              conversationId: conversationId!,
+              senderId: result.transaction.senderId,
               context: const ChatMessageContext.rose(),
-            );
-          } catch (_) {
-            // The server-confirmed Rose remains successful even if the
-            // optional conversation card cannot be created.
-          }
+              type: 'rose',
+            ),
+          );
         }
       },
     );

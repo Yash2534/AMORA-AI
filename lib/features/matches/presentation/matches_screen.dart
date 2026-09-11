@@ -85,7 +85,7 @@ class _MatchesScreenState extends State<MatchesScreen> {
       _loadError = null;
     });
     try {
-      final matches = await widget.api!.matches();
+      final matches = await widget.api!.aiRecommendations();
       if (mounted) {
         final availableIds = <String>{
           ...matches.map((item) => item.profile.profile.id),
@@ -178,7 +178,8 @@ class _MatchesScreenState extends State<MatchesScreen> {
                                   selectedCount: _selectedProfileIds.length,
                                   canSelectAll:
                                       !_bulkSubmitting &&
-                                      _eligibleVisibleRecommendations.isNotEmpty,
+                                      _eligibleVisibleRecommendations
+                                          .isNotEmpty,
                                   allEligibleSelected:
                                       _eligibleVisibleRecommendations.every(
                                         (profile) => _selectedProfileIds

@@ -86,6 +86,25 @@ class PhaseTwoApiService {
         .toList();
   }
 
+  Future<List<MatchApiItem>> aiRecommendations() async {
+    final response = await _auth.authenticatedRequest(
+      'GET',
+      '/api/discover/ai-matches',
+    );
+    final values = _data(response)['recommendations'] as List? ?? const [];
+    return values
+        .map((value) {
+          final item = (value as Map).cast<String, dynamic>();
+          return MatchApiItem(
+            id: item['id'].toString(),
+            profile: publicProfileFromJson(
+              (item['profile'] as Map).cast<String, dynamic>(),
+            ),
+          );
+        })
+        .toList(growable: false);
+  }
+
   Future<MatchApiItem> match(String matchId) async {
     final response = await _auth.authenticatedRequest(
       'GET',

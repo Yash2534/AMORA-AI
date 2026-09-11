@@ -4,7 +4,8 @@ module.exports = (sequelize) => sequelize.define('Message', {
   id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
   conversationId: { type: DataTypes.INTEGER, allowNull: false },
   senderId: { type: DataTypes.INTEGER, allowNull: false },
-  type: { type: DataTypes.ENUM('text', 'image'), allowNull: false, defaultValue: 'text' },
+  type: { type: DataTypes.ENUM('text', 'image', 'rose'), allowNull: false, defaultValue: 'text' },
+  roseTransactionId: { type: DataTypes.BIGINT.UNSIGNED, allowNull: true },
   text: { type: DataTypes.TEXT, allowNull: true },
   context: { type: DataTypes.JSON, allowNull: true },
   status: { type: DataTypes.ENUM('sent', 'delivered', 'read'), allowNull: false, defaultValue: 'sent' },
@@ -16,5 +17,6 @@ module.exports = (sequelize) => sequelize.define('Message', {
   indexes: [
     { fields: ['conversationId', 'id'] },
     { fields: ['conversationId', 'senderId', 'id'] },
+    { unique: true, fields: ['roseTransactionId'] },
   ],
 });

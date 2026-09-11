@@ -38,7 +38,14 @@ class ConsentService {
   async requiredSignupDocuments({ transaction } = {}) {
     return Promise.all(REQUIRED_SIGNUP_DOCUMENTS.map(async (requirement) => {
       const document = await this.getActiveLegalDocument(requirement.documentKey, { transaction });
-      return { documentKey: document.documentKey, documentVersionId: String(document.id), version: document.version, effectiveAt: document.effectiveAt };
+      return {
+        documentKey: document.documentKey,
+        documentVersionId: String(document.id),
+        version: document.version,
+        effectiveAt: document.effectiveAt,
+        title: document.documentKey === 'TERMS_OF_SERVICE' ? 'Terms & Conditions' : 'Privacy Policy',
+        content: document.content,
+      };
     }));
   }
 

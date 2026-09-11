@@ -37,6 +37,29 @@ class LegalDocumentAcceptance {
   };
 }
 
+class SignupLegalDocument {
+  const SignupLegalDocument({
+    required this.documentKey,
+    required this.documentVersionId,
+    required this.title,
+    required this.version,
+    required this.effectiveAt,
+    required this.content,
+  });
+
+  final String documentKey;
+  final int documentVersionId;
+  final String title;
+  final String version;
+  final DateTime? effectiveAt;
+  final String content;
+
+  LegalDocumentAcceptance get acceptance => LegalDocumentAcceptance(
+    documentKey: documentKey,
+    documentVersionId: documentVersionId,
+  );
+}
+
 class AuthException implements Exception {
   const AuthException(
     this.message, {
@@ -159,7 +182,7 @@ class AuthService {
     });
   }
 
-  Future<List<LegalDocumentAcceptance>> requiredSignupLegalDocuments() async {
+  Future<List<SignupLegalDocument>> requiredSignupLegalDocuments() async {
     final response = await _request('GET', '/api/auth/legal-documents/signup');
     final documents = _data(response)['documents'] as List? ?? const [];
     return documents.map((item) {
@@ -168,12 +191,21 @@ class AuthService {
         value['documentVersionId']?.toString() ?? '',
       );
       final key = value['documentKey']?.toString() ?? '';
-      if (versionId == null || key.isEmpty) {
+      final content = value['content']?.toString() ?? '';
+      if (versionId == null || key.isEmpty || content.trim().isEmpty) {
         throw const AuthException('Required legal documents are unavailable.');
       }
-      return LegalDocumentAcceptance(
+      return SignupLegalDocument(
         documentKey: key,
         documentVersionId: versionId,
+        title:
+            value['title']?.toString() ??
+            (key == 'TERMS_OF_SERVICE'
+                ? 'Terms & Conditions'
+                : 'Privacy Policy'),
+        version: value['version']?.toString() ?? '',
+        effectiveAt: DateTime.tryParse(value['effectiveAt']?.toString() ?? ''),
+        content: content,
       );
     }).toList();
   }

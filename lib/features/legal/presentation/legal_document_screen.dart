@@ -1,4 +1,5 @@
 import 'package:amora_ai/core/branding/amora_brand_assets.dart';
+import 'package:amora_ai/core/auth/auth_service.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
@@ -149,6 +150,37 @@ class LegalDocumentScreen extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// A read-only rendering of the exact version returned by the public signup
+/// endpoint. This deliberately does not fall back to the static help copy.
+class VersionedLegalDocumentScreen extends StatelessWidget {
+  const VersionedLegalDocumentScreen({super.key, required this.document});
+
+  final SignupLegalDocument document;
+
+  @override
+  Widget build(BuildContext context) {
+    final effective = document.effectiveAt;
+    final date = effective == null
+        ? 'Current version ${document.version}'
+        : 'Version ${document.version} · Effective ${effective.day.toString().padLeft(2, '0')}/${effective.month.toString().padLeft(2, '0')}/${effective.year}';
+    final sections = document.content
+        .split(RegExp(r'\n\s*\n'))
+        .where((part) => part.trim().isNotEmpty)
+        .map((part) {
+          final lines = part.trim().split('\n');
+          return LegalSection(lines.first, lines.skip(1).join('\n').trim());
+        })
+        .toList(growable: false);
+    return LegalDocumentScreen(
+      title: document.title,
+      updated: date,
+      introduction:
+          'This is the current version of the document you are reviewing for account creation.',
+      sections: sections,
     );
   }
 }

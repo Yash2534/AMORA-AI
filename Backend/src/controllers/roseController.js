@@ -3,6 +3,8 @@ const { UniqueConstraintError } = require('sequelize');
 const { areUsersBlocked } = require('../services/accessControlService');
 const { idempotencyKey, publicError } = require('../services/paymentService');
 const { createNotification } = require('../services/notificationService');
+const { activeMatch, ensureDirectConversation } = require('../services/conversationAccessService');
+const { emitConversationEvent } = require('../realtime/realtimeHub');
 
 const isRetryableTransactionError = (error) => ['ER_LOCK_DEADLOCK', 'ER_LOCK_WAIT_TIMEOUT'].includes(error?.code)
   || [1213, 1205].includes(Number(error?.errno));
@@ -52,7 +54,7 @@ exports.send = async (req, res, next) => {
       throw publicError('You cannot send a Rose to yourself.', 'SELF_ROSE_NOT_ALLOWED');
     }
 
-    const { User, OnboardingProfile, RoseTransaction, ConversationParticipant } = getModels();
+    const { User, OnboardingProfile, RoseTransaction, ConversationParticipant, Conversation, Message } = getModels();
     const recipient = await User.findOne({
       where: { id: recipientId, accountStatus: 'active' },
       include: [{ model: OnboardingProfile, required: true, where: { onboardingCompleted: true } }],
@@ -69,29 +71,54 @@ exports.send = async (req, res, next) => {
         throw publicError('The conversation is not available for this Rose.', 'CONVERSATION_NOT_ALLOWED', 403);
       }
     }
+    // Chat is a matched-member surface. Roses may not create a messaging
+    // bypass; a valid active match is required before a Rose chat event is
+    // persisted.
+    if (!(await activeMatch(senderId, recipientId))) {
+      throw publicError('A Rose can be sent in an existing match conversation.', 'CONVERSATION_NOT_ALLOWED', 403);
+    }
 
     let row;
     let notification;
+    let message;
+    let resolvedConversationId;
     let created = false;
     try {
       await withTransactionRetry(() => RoseTransaction.sequelize.transaction(async (transaction) => {
+        const conversation = conversationId
+          ? { conversation: { id: conversationId } }
+          : await ensureDirectConversation(senderId, recipientId, { transaction });
+        resolvedConversationId = Number(conversation.conversation.id);
         row = await RoseTransaction.findOne({
           where: { senderId, idempotencyKey: key },
           transaction,
           lock: transaction.LOCK.UPDATE,
         });
         if (row) {
-          assertRetryMatches(row, { recipientId, conversationId, note });
+          assertRetryMatches(row, { recipientId, conversationId: resolvedConversationId, note });
         } else {
           row = await RoseTransaction.create({
             senderId,
             recipientId,
-            conversationId,
+            conversationId: resolvedConversationId,
             idempotencyKey: key,
             status: 'sent',
             note,
           }, { transaction });
           created = true;
+        }
+        message = await Message.findOne({ where: { roseTransactionId: row.id }, transaction, lock: transaction.LOCK.UPDATE });
+        if (!message) {
+          message = await Message.create({
+            conversationId: resolvedConversationId,
+            senderId,
+            type: 'rose',
+            text: note,
+            roseTransactionId: row.id,
+            context: { type: 'rose', title: 'Rose', detail: 'A special AMORAA Rose' },
+            status: 'sent',
+          }, { transaction });
+          await Conversation.update({ lastMessageId: message.id, lastMessageAt: message.createdAt }, { where: { id: resolvedConversationId }, transaction });
         }
         notification = await createNotification({
           userId: recipientId,
@@ -101,10 +128,10 @@ exports.send = async (req, res, next) => {
           title: 'You received a Rose',
           message: `${req.authUser.name} sent you a Rose.`,
           data: {
-            route: conversationId ? '/chat-detail' : '/profile-detail',
+            route: '/chat-detail',
             targetUserId: String(senderId),
             roseTransactionId: String(row.id),
-            ...(conversationId ? { conversationId: String(conversationId) } : {}),
+            conversationId: String(resolvedConversationId),
           },
           conversationId,
           dedupeKey: `rose:${row.id}`,
@@ -115,15 +142,24 @@ exports.send = async (req, res, next) => {
       if (!(error instanceof UniqueConstraintError)) throw error;
       row = await RoseTransaction.findOne({ where: { senderId, idempotencyKey: key } });
       if (!row) throw error;
-      assertRetryMatches(row, { recipientId, conversationId, note });
+      assertRetryMatches(row, { recipientId, conversationId: resolvedConversationId, note });
       created = false;
     }
+
+    const messageData = {
+      id: String(message.id), conversationId: String(message.conversationId), senderId: String(message.senderId),
+      mine: true, type: 'rose', text: message.text, context: message.context,
+      roseTransactionId: String(row.id), status: message.status, createdAt: message.createdAt,
+    };
+    await emitConversationEvent(resolvedConversationId, 'message.created', { conversationId: String(resolvedConversationId), message: messageData }).catch(() => {});
 
     return res.status(created ? 201 : 200).json({
       success: true,
       message: created ? 'Rose sent successfully.' : 'Rose was already sent.',
       data: {
         roseTransaction: roseJson(row),
+        conversationId: String(resolvedConversationId),
+        message: messageData,
         notification: notification ? { id: String(notification.id) } : null,
       },
     });
