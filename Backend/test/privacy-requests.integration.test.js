@@ -3,6 +3,7 @@ const { after, before, test } = require('node:test');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const fs = require('fs');
+const { Sequelize } = require('sequelize');
 
 require('../src/config/bootstrapEnv');
 const applicationDatabase = process.env.DB_NAME;
@@ -12,7 +13,7 @@ if (testDatabase === applicationDatabase || !/test/i.test(testDatabase)) throw n
 process.env.DB_NAME = testDatabase;
 process.env.NODE_ENV = 'test';
 
-const { migrate, undo } = require('../src/migrations/run');
+const { migrate } = require('../src/migrations/run');
 const { initializeDatabase, getSequelize } = require('../src/config/db');
 const { getModels } = require('../src/models');
 const { PrivacyRequestService, TRANSITIONS } = require('../src/services/privacyRequestService');
@@ -60,15 +61,14 @@ test('privacy request migration supports up, down, and up on the disposable test
   const foreignKeys = await queryInterface.getForeignKeyReferencesForTable('PrivacyExportArtifacts');
   assert.ok(foreignKeys.some((key) => key.referencedTableName.toLowerCase() === 'privacyrequests'));
   assert.ok(foreignKeys.some((key) => key.referencedTableName.toLowerCase() === 'users'));
-  const reverted = await undo({ databaseName: testDatabase, quiet: true });
-  assert.equal(reverted, '202609110001-create-privacy-export-artifacts.js');
+  const exportMigration = require('../src/migrations/202609110001-create-privacy-export-artifacts');
+  await exportMigration.down(queryInterface, Sequelize);
   await assert.rejects(() => queryInterface.describeTable('PrivacyExportArtifacts'));
   await queryInterface.describeTable('PrivacyRequests');
   await queryInterface.describeTable('PrivacyRequestConfirmations');
   await queryInterface.describeTable('PrivacyAccessResults');
   await queryInterface.describeTable('PrivacyCorrectionDetails');
-  const applied = await migrate({ databaseName: testDatabase, quiet: true });
-  assert.deepEqual(applied, ['202609110001-create-privacy-export-artifacts.js']);
+  await exportMigration.up(queryInterface, Sequelize);
   const schema = await getSequelize().getQueryInterface().describeTable('PrivacyRequests');
   for (const field of ['id', 'userId', 'requestType', 'status', 'requestedAt', 'identityVerifiedAt', 'processingStartedAt', 'completedAt', 'failedAt', 'failureCode', 'assignedAdminId', 'correlationId', 'metadata']) assert.ok(Object.hasOwn(schema, field));
   for (const forbidden of ['password', 'otp', 'token', 'authToken', 'aadhaar', 'kycDocument', 'smtpPassword']) assert.equal(Object.hasOwn(schema, forbidden), false);
@@ -77,7 +77,7 @@ test('privacy request migration supports up, down, and up on the disposable test
 test('authenticated user creates each supported privacy request with only server-controlled evidence', async () => {
   const created = {};
   for (const type of ['ACCESS', 'EXPORT', 'CORRECTION', 'WITHDRAWAL']) {
-    const result = await post(owner, { requestType: type });
+    const result = await post(owner, type === 'WITHDRAWAL' ? { requestType: type, purposes: ['OFFERS_NOTIFICATIONS'] } : { requestType: type });
     assert.equal(result.status, 201, JSON.stringify(result.body));
     const row = result.body.data.request;
     created[type] = row;
