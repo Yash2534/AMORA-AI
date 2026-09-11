@@ -23,7 +23,10 @@ function contextFrom(request) {
   };
 }
 
-const GENESIS_HASH = 'GENESIS_AMORAA_AUDIT_CHAIN_v1_HASH_0000000000000000000000000000000';
+const GENESIS_HASH = crypto
+  .createHash('sha256')
+  .update('AMORAA_AUDIT_CHAIN_v1')
+  .digest('hex');
 
 function computePayloadHash(previousHash, payload) {
   const canonicalString = JSON.stringify({
