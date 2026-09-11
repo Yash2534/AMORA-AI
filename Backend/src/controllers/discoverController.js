@@ -245,8 +245,32 @@ exports.getFeed = async (req, res, next) => {
     const hasMore = users.length > limit;
     const selected = (hasMore ? users.slice(0, limit) : users)
       .map((user) => ({ user, score: Number(user.OnboardingProfile.getDataValue('compatibilityScore')) }));
+    if (req.aiMatches === true) {
+      const ranked = rankCandidates(viewer, selected.map(({ user, score }) => ({
+        userId: user.id,
+        user,
+        profile: user.OnboardingProfile,
+        // The SQL score already represents the authoritative eligible
+        // candidate calculation.  The local provider only ranks/presents it.
+        compatibility: { score, coverage: 100, factors: [] },
+      })));
+      return success(res, ranked.length ? 'AI recommendations retrieved.' : 'No AI recommendations found.', {
+        recommendations: ranked.map((item) => ({
+          id: String(item.user.id),
+          profile: profileData(req, item.user, item.profile, viewer, item.aiMatchScore),
+          compatibility: {
+            score: item.aiMatchScore,
+            confidence: item.aiConfidence,
+            level: item.aiMatchLevel,
+            highlights: item.aiHighlights,
+            reasons: item.aiReasons,
+          },
+        })),
+        pagination: { page, limit, hasMore, nextPage: hasMore ? page + 1 : null },
+      });
+    }
     return success(res, selected.length ? 'Discover feed retrieved.' : 'No discover profiles found.', {
-      profiles,
+      profiles: selected.map(({ user, score }) => profileData(req, user, user.OnboardingProfile, viewer, score)),
       pagination: { page, limit, hasMore, nextPage: hasMore ? page + 1 : null },
     });
   } catch (error) {
