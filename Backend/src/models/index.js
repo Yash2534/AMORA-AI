@@ -24,33 +24,14 @@ const definitions = {
   PlatformSetting: require('./PlatformSetting'),
   MatchingActionFailure: require('./MatchingActionFailure'), MatchRecommendationEvent: require('./MatchRecommendationEvent'),
   AdminReportCase: require('./AdminReportCase'), AdminReportNote: require('./AdminReportNote'),
+  UserConsent: require('./UserConsent'), PrivacyGrievance: require('./PrivacyGrievance'), DataAccessRequest: require('./DataAccessRequest'),
 };
 let models = {};
 function initModels(sequelize) {
   if (models.User) return models;
   const created = Object.fromEntries(Object.entries(definitions).map(([name, define]) => [name, define(sequelize)]));
-  const { User, RefreshToken, AccountDeletionConfirmation, AccountDeletionRequest, AccountDeletionFileTask, PrivacyRequest, PrivacyRequestConfirmation, PrivacyAccessResult, PrivacyCorrectionDetail, PrivacyExportArtifact, LegalDocumentVersion, ConsentEvent, OnboardingProfile, DiscoverAction, Match, DiscoverFilterPreference, Block, Report, Conversation, ConversationParticipant, Message, MessageMedia, Event, EventRegistration, EventWaitlist, SubscriptionPlan, Subscription, Payment, PaymentEvent, RoseTransaction, SavedProfile, NotificationPreference, Notification, IdentityVerification, IdentityVerificationReason, IdentityVerificationDecisionEvent, UserDevice, NotificationDelivery, UserLoginEvent, AdminUserNote, AdminUserNoteVersion, UserTimelineEvent, ProfileTaxonomyCategory, ProfileTaxonomyOption } = created;
-  AccountDeletionRequest.STATUSES = definitions.AccountDeletionRequest.STATUSES;
-  PrivacyRequest.REQUEST_TYPES = definitions.PrivacyRequest.REQUEST_TYPES;
-  PrivacyRequest.STATUSES = definitions.PrivacyRequest.STATUSES;
-  LegalDocumentVersion.DOCUMENT_KEYS = definitions.LegalDocumentVersion.DOCUMENT_KEYS;
-  LegalDocumentVersion.STATUSES = definitions.LegalDocumentVersion.STATUSES;
-  ConsentEvent.ACTIONS = definitions.ConsentEvent.ACTIONS;
-  ConsentEvent.SOURCES = definitions.ConsentEvent.SOURCES;
-  ConsentEvent.PLATFORMS = definitions.ConsentEvent.PLATFORMS;
-  ConsentEvent.PURPOSES = definitions.ConsentEvent.PURPOSES;
-  User.hasMany(AccountDeletionConfirmation, { foreignKey: 'userId', onDelete: 'CASCADE' }); AccountDeletionConfirmation.belongsTo(User, { foreignKey: 'userId' });
-  User.hasMany(AccountDeletionRequest, { foreignKey: 'userId', as: 'deletionRequests', onDelete: 'SET NULL' }); AccountDeletionRequest.belongsTo(User, { foreignKey: 'userId', as: 'user', onDelete: 'SET NULL' });
-  User.hasMany(PrivacyRequest, { foreignKey: 'userId', as: 'privacyRequests', onDelete: 'SET NULL' }); PrivacyRequest.belongsTo(User, { foreignKey: 'userId', as: 'user', onDelete: 'SET NULL' });
-  PrivacyRequest.hasMany(PrivacyRequestConfirmation,{foreignKey:'privacyRequestId',as:'confirmations',onDelete:'CASCADE'}); PrivacyRequestConfirmation.belongsTo(PrivacyRequest,{foreignKey:'privacyRequestId',as:'privacyRequest'}); User.hasMany(PrivacyRequestConfirmation,{foreignKey:'userId',onDelete:'CASCADE'}); PrivacyRequestConfirmation.belongsTo(User,{foreignKey:'userId'});
-  PrivacyRequest.hasOne(PrivacyAccessResult,{foreignKey:'privacyRequestId',as:'accessResult',onDelete:'CASCADE'}); PrivacyAccessResult.belongsTo(PrivacyRequest,{foreignKey:'privacyRequestId',as:'privacyRequest'}); User.hasMany(PrivacyAccessResult,{foreignKey:'userId',onDelete:'SET NULL'}); PrivacyAccessResult.belongsTo(User,{foreignKey:'userId'});
-  PrivacyRequest.hasOne(PrivacyCorrectionDetail,{foreignKey:'privacyRequestId',as:'correctionDetail',onDelete:'CASCADE'}); PrivacyCorrectionDetail.belongsTo(PrivacyRequest,{foreignKey:'privacyRequestId',as:'privacyRequest'});
-  PrivacyRequest.hasOne(PrivacyExportArtifact,{foreignKey:'privacyRequestId',as:'exportArtifact',onDelete:'CASCADE'}); PrivacyExportArtifact.belongsTo(PrivacyRequest,{foreignKey:'privacyRequestId',as:'privacyRequest'}); User.hasMany(PrivacyExportArtifact,{foreignKey:'userId',as:'privacyExportArtifacts',onDelete:'SET NULL'}); PrivacyExportArtifact.belongsTo(User,{foreignKey:'userId',as:'user'});
-  User.hasMany(ConsentEvent, { foreignKey: 'userId', as: 'consentEvents', onDelete: 'SET NULL' }); ConsentEvent.belongsTo(User, { foreignKey: 'userId', as: 'user', onDelete: 'SET NULL' });
-  LegalDocumentVersion.hasMany(ConsentEvent, { foreignKey: 'documentVersionId', as: 'consentEvents', onDelete: 'RESTRICT' }); ConsentEvent.belongsTo(LegalDocumentVersion, { foreignKey: 'documentVersionId', as: 'documentVersion', onDelete: 'RESTRICT' });
-  AccountDeletionRequest.hasMany(AccountDeletionFileTask, { foreignKey: 'accountDeletionRequestId', as: 'fileTasks', onDelete: 'RESTRICT' }); AccountDeletionFileTask.belongsTo(AccountDeletionRequest, { foreignKey: 'accountDeletionRequestId', as: 'deletionRequest', onDelete: 'RESTRICT' });
+  const { User, RefreshToken, OnboardingProfile, DiscoverAction, Match, DiscoverFilterPreference, Block, Report, Conversation, ConversationParticipant, Message, MessageMedia, Event, EventRegistration, EventWaitlist, SubscriptionPlan, Subscription, Payment, PaymentEvent, RoseTransaction, SavedProfile, NotificationPreference, Notification, IdentityVerification, IdentityVerificationReason, IdentityVerificationDecisionEvent, UserDevice, NotificationDelivery, UserLoginEvent, AdminUserNote, AdminUserNoteVersion, UserTimelineEvent, ProfileTaxonomyCategory, ProfileTaxonomyOption } = created;
   const { Administrator, AdminRole, AdminPermission, AdminRefreshToken, AdminAuditLog, AdminPasswordResetToken, AdminInvitation, AdminIdempotencyKey, AdminMfaCredential, AdminMfaRecoveryCode, AdminMfaChallenge, PlatformSetting, AdminReportCase, AdminReportNote } = created;
-  Administrator.hasMany(PrivacyRequest, { foreignKey: 'assignedAdminId', as: 'assignedPrivacyRequests', onDelete: 'SET NULL' }); PrivacyRequest.belongsTo(Administrator, { foreignKey: 'assignedAdminId', as: 'assignedAdmin', onDelete: 'SET NULL' });
   User.hasMany(RefreshToken, { foreignKey: 'userId', onDelete: 'CASCADE' }); RefreshToken.belongsTo(User, { foreignKey: 'userId' }); User.hasOne(OnboardingProfile, { foreignKey: 'userId', onDelete: 'CASCADE' }); OnboardingProfile.belongsTo(User, { foreignKey: 'userId' });
   User.hasMany(UserLoginEvent, { foreignKey: 'userId', as: 'loginEvents', onDelete: 'CASCADE' }); UserLoginEvent.belongsTo(User, { foreignKey: 'userId', as: 'user' });
   User.hasMany(AdminUserNote, { foreignKey: 'userId', as: 'adminNotes', onDelete: 'CASCADE' }); AdminUserNote.belongsTo(User, { foreignKey: 'userId', as: 'user' });

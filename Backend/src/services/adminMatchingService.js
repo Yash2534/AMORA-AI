@@ -188,26 +188,59 @@ async function actions(request, query) {
 }
 
 async function action(request, actionId) {
-  const [kind, idText] = String(actionId).split('_');
-  const id = Number(idText);
+  const str = String(actionId).trim();
+  let kind = '';
+  let id = NaN;
+
+  if (str.includes('_')) {
+    const parts = str.split('_');
+    kind = parts[0];
+    id = Number(parts[1]);
+  } else {
+    id = Number(str);
+  }
+
   if (!Number.isInteger(id) || id < 1) return null;
+
   if (kind === 'failure') {
     const row = await getModels().MatchingActionFailure.findByPk(id);
     if (!row) return null;
     if (!can(request, actionPermission[row.actionType]) || !can(request, 'matching.actions.failed.view')) return { permissionDenied: true };
     return failureActionJson(request, row);
   }
+
   if (kind === 'rose') {
     if (!can(request, actionPermission.rose)) return { permissionDenied: true };
     const row = await getModels().RoseTransaction.findByPk(id, { include: [userInclude('sender'), userInclude('recipient')] });
     return row ? roseActionJson(request, row) : null;
   }
-  if (kind !== 'discover') return null;
-  const row = await getModels().DiscoverAction.findByPk(id, { include: [userInclude('actor'), userInclude('target')] });
-  if (!row || row.action === 'pass') return null;
-  const permission = row.action === 'superLike' ? actionPermission.super_like : actionPermission.like;
-  if (!can(request, permission)) return { permissionDenied: true };
-  return discoverActionJson(request, row);
+
+  if (kind === 'discover' || kind === 'act' || kind === 'like' || kind === 'super_like' || !kind) {
+    const row = await getModels().DiscoverAction.findByPk(id, { include: [userInclude('actor'), userInclude('target')] });
+    if (row && row.action !== 'pass') {
+      const permission = row.action === 'superLike' ? actionPermission.super_like : actionPermission.like;
+      if (!can(request, permission)) return { permissionDenied: true };
+      return discoverActionJson(request, row);
+    }
+  }
+
+  if (!kind || kind === 'rose') {
+    const roseRow = await getModels().RoseTransaction.findByPk(id, { include: [userInclude('sender'), userInclude('recipient')] });
+    if (roseRow) {
+      if (!can(request, actionPermission.rose)) return { permissionDenied: true };
+      return roseActionJson(request, roseRow);
+    }
+  }
+
+  if (!kind || kind === 'failure') {
+    const failRow = await getModels().MatchingActionFailure.findByPk(id);
+    if (failRow) {
+      if (!can(request, actionPermission[failRow.actionType]) || !can(request, 'matching.actions.failed.view')) return { permissionDenied: true };
+      return failureActionJson(request, failRow);
+    }
+  }
+
+  return null;
 }
 
 function scoreFor(match) {

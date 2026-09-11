@@ -16,4 +16,25 @@ function requireAllAdminPermissions(...required) {
   };
 }
 
-module.exports = { requireAdminPermission, requireAllAdminPermissions };
+function attachRecordScopeFilter(moduleName) {
+  return (req, res, next) => {
+    const role = req.adminRole?.code || 'super_admin';
+    const isSuper = role === 'super_admin';
+
+    req.recordScope = {
+      role,
+      isSuper,
+      assignedOnly: role === 'support_agent',
+      verificationOnly: role === 'verification_officer',
+      financeOnly: role === 'finance_admin',
+      filterFor(userIdKey = 'assignedAdminId') {
+        if (isSuper) return {};
+        if (this.assignedOnly) return { [userIdKey]: req.admin.id };
+        return {};
+      },
+    };
+    next();
+  };
+}
+
+module.exports = { requireAdminPermission, requireAllAdminPermissions, attachRecordScopeFilter };

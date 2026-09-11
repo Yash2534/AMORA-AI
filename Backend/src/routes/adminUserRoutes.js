@@ -6,7 +6,7 @@ const requireRecentAdminMfa = require('../middleware/adminMfaMiddleware');
 const { failure } = require('../admin/responses');
 const controller = require('../controllers/adminUserController');
 
-const userId = () => param('userId').isInt({ min: 1 }).withMessage('A valid user ID is required.').toInt();
+const userId = () => param('userId').isString().trim().notEmpty().withMessage('A valid user ID is required.');
 const noteId = () => param('noteId').isInt({ min: 1 }).withMessage('A valid note ID is required.').toInt();
 const deletionReasons = ['found_someone', 'taking_a_break', 'not_finding_matches', 'privacy_concerns', 'too_many_notifications', 'app_experience_issues', 'other'];
 const page = () => [

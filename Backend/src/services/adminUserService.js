@@ -150,25 +150,34 @@ async function users(request, page) {
 
 async function userById(request, userId) {
   const { User } = getModels();
-  return User.findByPk(userId, { include: includes(request) });
+  const raw = String(userId || '').trim();
+  const numericId = raw.replace(/^\D+/, '');
+  const targetId = numericId && !isNaN(Number(numericId)) ? Number(numericId) : raw;
+  const found = await User.findByPk(targetId, { include: includes(request) });
+  if (found) return found;
+  if (targetId !== raw && !isNaN(Number(raw))) {
+    return User.findByPk(Number(raw), { include: includes(request) });
+  }
+  return null;
 }
 
 async function details(request, userId) {
   const { Report, RefreshToken, UserLoginEvent, UserTimelineEvent } = getModels();
   const user = await userById(request, userId);
   if (!user) return null;
+  const targetId = user.id;
   const [openReportCount, activeSessionCount, lastLogin, recentAdminEvent] = await Promise.all([
     can(request, 'reports.view')
-      ? Report.count({ where: { reportedUserId: userId, status: { [Op.in]: ['open', 'reviewing'] } } })
+      ? Report.count({ where: { reportedUserId: targetId, status: { [Op.in]: ['open', 'reviewing'] } } })
       : null,
     can(request, 'users.sessions.view')
-      ? RefreshToken.count({ where: { userId, expiresAt: { [Op.gt]: new Date() } } })
+      ? RefreshToken.count({ where: { userId: targetId, expiresAt: { [Op.gt]: new Date() } } })
       : null,
     can(request, 'users.loginHistory.view')
-      ? UserLoginEvent.findOne({ where: { userId, result: 'successful' }, order: [['occurredAt', 'DESC']] })
+      ? UserLoginEvent.findOne({ where: { userId: targetId, result: 'successful' }, order: [['occurredAt', 'DESC']] })
       : null,
     can(request, 'users.timeline.view')
-      ? UserTimelineEvent.findOne({ where: { userId, administratorId: { [Op.ne]: null } }, order: [['occurredAt', 'DESC']] })
+      ? UserTimelineEvent.findOne({ where: { userId: targetId, administratorId: { [Op.ne]: null } }, order: [['occurredAt', 'DESC']] })
       : null,
   ]);
   return {
@@ -203,8 +212,7 @@ async function details(request, userId) {
 }
 
 async function profile(request, userId) {
-  const { User, OnboardingProfile } = getModels();
-  const user = await User.findByPk(userId, { include: [{ model: OnboardingProfile, required: false }] });
+  const user = await userById(request, userId);
   if (!user) return null;
   const item = user.OnboardingProfile;
   if (!item) return { displayName: user.name, photos: [], isComplete: false, completionPercent: 0 };
@@ -229,10 +237,17 @@ async function profile(request, userId) {
   };
 }
 
+function cleanUserId(id) {
+  const raw = String(id || '').trim();
+  const num = raw.replace(/^\D+/, '');
+  return num || raw;
+}
+
 async function sessions(request, userId, page) {
   const { RefreshToken } = getModels();
+  const targetId = cleanUserId(userId);
   const result = await RefreshToken.findAndCountAll({
-    where: { userId },
+    where: { userId: targetId },
     limit: page.pageSize,
     offset: page.offset,
     order: [['createdAt', 'DESC'], ['id', 'DESC']],
@@ -251,8 +266,9 @@ async function sessions(request, userId, page) {
 
 async function loginHistory(request, userId, page) {
   const { UserLoginEvent } = getModels();
+  const targetId = cleanUserId(userId);
   const result = await UserLoginEvent.findAndCountAll({
-    where: { userId },
+    where: { userId: targetId },
     order: [['occurredAt', 'DESC'], ['id', 'DESC']],
     limit: page.pageSize,
     offset: page.offset,
@@ -272,8 +288,9 @@ async function loginHistory(request, userId, page) {
 
 async function notes(request, userId, page) {
   const { AdminUserNote, Administrator } = getModels();
+  const targetId = cleanUserId(userId);
   const result = await AdminUserNote.findAndCountAll({
-    where: { userId, deletedAt: null },
+    where: { userId: targetId, deletedAt: null },
     include: [{ model: Administrator, as: 'author', attributes: ['id', 'name'], required: false }],
     order: [['createdAt', 'DESC'], ['id', 'DESC']],
     limit: page.pageSize,
@@ -562,6 +579,78 @@ async function requestPasswordReset(request, userId) {
   return result.user;
 }
 
+async function suspend(request, userId, options = {}) {
+  const { User, RefreshToken } = getModels();
+  const reason = typeof options === 'string' ? options : options.reason;
+  const actionKey = options.action || 'freeze';
+  return User.sequelize.transaction(async (transaction) => {
+    const user = await User.findByPk(userId, { transaction, lock: transaction.LOCK.UPDATE });
+    if (!user) return null;
+    if (user.accountStatus === 'deleted') {
+      const error = new Error('Deleted accounts cannot be suspended.');
+      error.status = 409;
+      error.code = 'INVALID_STATE';
+      throw error;
+    }
+    const previous = user.accountStatus;
+    await user.update({
+      accountStatus: 'suspended',
+      deactivatedAt: new Date(),
+      tokenVersion: Number(user.tokenVersion || 0) + 1,
+    }, { transaction });
+    await RefreshToken.destroy({ where: { userId }, transaction });
+    await recordAudit({
+      request,
+      administratorId: request.admin.id,
+      action: 'admin.users.suspend',
+      targetType: 'user',
+      targetId: user.id,
+      reason,
+      metadata: { action: actionKey },
+      oldValue: { accountStatus: previous },
+      newValue: { accountStatus: user.accountStatus },
+      transaction,
+    });
+    await appendTimeline({
+      userId: user.id,
+      eventType: 'account_suspended',
+      title: `Account frozen / suspended (${actionKey})`,
+      description: reason || null,
+      status: user.accountStatus,
+      administratorId: request.admin.id,
+      transaction,
+    });
+    return user;
+  });
+}
+
+async function issueWarning(request, userId, reason) {
+  const { User } = getModels();
+  return User.sequelize.transaction(async (transaction) => {
+    const user = await User.findByPk(userId, { transaction, lock: transaction.LOCK.UPDATE });
+    if (!user) return null;
+    await recordAudit({
+      request,
+      administratorId: request.admin.id,
+      action: 'admin.users.warning_issued',
+      targetType: 'user',
+      targetId: user.id,
+      reason,
+      transaction,
+    });
+    await appendTimeline({
+      userId: user.id,
+      eventType: 'safety_warning_issued',
+      title: 'Safety Warning Issued',
+      description: reason || 'Issued official platform safety policy warning.',
+      status: user.accountStatus,
+      administratorId: request.admin.id,
+      transaction,
+    });
+    return user;
+  });
+}
+
 module.exports = {
   summary,
   users,
@@ -577,7 +666,10 @@ module.exports = {
   timeline,
   activate,
   deactivate,
+  suspend,
+  issueWarning,
   forceLogout,
   remove,
   requestPasswordReset,
 };
+
