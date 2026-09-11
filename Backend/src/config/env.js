@@ -14,25 +14,27 @@ const { configuredOrigins } = require('./originPolicy');
 function validateEnvironment(env = process.env) {
   const otp = resolveOtpTestConfig(env);
 
-  // Required backend environment variables.
+  // Required backend configuration.
   for (const key of required) {
     if (!env[key]) {
       throw new Error(`Missing required environment variable: ${key}`);
     }
   }
 
-  // JWT secrets must be sufficiently strong.
+  // JWT secrets must contain at least 32 characters.
   for (const key of [
     'JWT_SECRET',
     'JWT_REFRESH_SECRET',
     'ADMIN_JWT_SECRET',
   ]) {
     if (String(env[key]).length < 32) {
-      throw new Error(`${key} must contain at least 32 characters.`);
+      throw new Error(
+        `${key} must contain at least 32 characters.`,
+      );
     }
   }
 
-  // Each JWT secret must be unique.
+  // JWT secrets must be different from each other.
   if (
     new Set([
       env.JWT_SECRET,
@@ -45,13 +47,21 @@ function validateEnvironment(env = process.env) {
     );
   }
 
-  // SMTP is currently optional.
-  // The production backend is allowed to start while SMTP setup is pending.
+  // ---------------------------------------------------------------------------
+  // SMTP
+  //
+  // SMTP is currently optional while email configuration is pending.
+  // Do not prevent the entire backend from starting when SMTP is unavailable.
+  // Email-dependent features must handle smtpConfigured === false separately.
+  // ---------------------------------------------------------------------------
+
   const smtp = [
     'EMAIL_HOST',
     'EMAIL_USER',
     'EMAIL_PASS',
-  ].every((key) => Boolean(String(env[key] || '').trim()));
+  ].every(
+    (key) => Boolean(String(env[key] || '').trim()),
+  );
 
   if (env.NODE_ENV === 'production' && !smtp) {
     console.warn(
@@ -59,7 +69,10 @@ function validateEnvironment(env = process.env) {
     );
   }
 
-  // Production security requirements.
+  // ---------------------------------------------------------------------------
+  // Production security validation.
+  // ---------------------------------------------------------------------------
+
   if (env.NODE_ENV === 'production') {
     const mfaKey = String(
       env.ADMIN_MFA_ENCRYPTION_KEY || '',
