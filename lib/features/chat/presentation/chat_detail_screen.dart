@@ -1215,8 +1215,9 @@ class _RoseMessageCardState extends State<RoseMessageCard>
     );
     if (!widget.message.mine && _playedMessageIds.add(widget.message.id)) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && !MediaQuery.disableAnimationsOf(context))
+        if (mounted && !MediaQuery.disableAnimationsOf(context)) {
           _controller.forward();
+        }
       });
     } else {
       _controller.value = 1;

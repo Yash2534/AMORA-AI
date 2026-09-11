@@ -539,6 +539,7 @@ void main() {
     tester,
   ) async {
     await pumpProfile(tester, buildChat: true);
+    await repository.createConversationForProfile(profile);
     await openRoseSheet(tester);
     await tester.enterText(
       find.byKey(const ValueKey('rose-note-field')),

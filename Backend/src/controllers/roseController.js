@@ -74,9 +74,7 @@ exports.send = async (req, res, next) => {
     // Chat is a matched-member surface. Roses may not create a messaging
     // bypass; a valid active match is required before a Rose chat event is
     // persisted.
-    if (!(await activeMatch(senderId, recipientId))) {
-      throw publicError('A Rose can be sent in an existing match conversation.', 'CONVERSATION_NOT_ALLOWED', 403);
-    }
+    const matchedConversationAllowed = await activeMatch(senderId, recipientId);
 
     let row;
     let notification;
@@ -85,17 +83,17 @@ exports.send = async (req, res, next) => {
     let created = false;
     try {
       await withTransactionRetry(() => RoseTransaction.sequelize.transaction(async (transaction) => {
-        const conversation = conversationId
-          ? { conversation: { id: conversationId } }
-          : await ensureDirectConversation(senderId, recipientId, { transaction });
-        resolvedConversationId = Number(conversation.conversation.id);
+        const conversation = matchedConversationAllowed
+          ? (conversationId ? { conversation: { id: conversationId } } : await ensureDirectConversation(senderId, recipientId, { transaction }))
+          : null;
+        resolvedConversationId = conversation ? Number(conversation.conversation.id) : null;
         row = await RoseTransaction.findOne({
           where: { senderId, idempotencyKey: key },
           transaction,
           lock: transaction.LOCK.UPDATE,
         });
         if (row) {
-          assertRetryMatches(row, { recipientId, conversationId: resolvedConversationId, note });
+          assertRetryMatches(row, { recipientId, conversationId: row.conversationId == null ? null : Number(row.conversationId), note });
         } else {
           row = await RoseTransaction.create({
             senderId,
@@ -108,7 +106,7 @@ exports.send = async (req, res, next) => {
           created = true;
         }
         message = await Message.findOne({ where: { roseTransactionId: row.id }, transaction, lock: transaction.LOCK.UPDATE });
-        if (!message) {
+        if (resolvedConversationId != null && !message) {
           message = await Message.create({
             conversationId: resolvedConversationId,
             senderId,
@@ -131,9 +129,9 @@ exports.send = async (req, res, next) => {
             route: '/chat-detail',
             targetUserId: String(senderId),
             roseTransactionId: String(row.id),
-            conversationId: String(resolvedConversationId),
+            ...(resolvedConversationId != null ? { conversationId: String(resolvedConversationId) } : {}),
           },
-          conversationId,
+          conversationId: resolvedConversationId,
           dedupeKey: `rose:${row.id}`,
           transaction,
         });
@@ -146,19 +144,19 @@ exports.send = async (req, res, next) => {
       created = false;
     }
 
-    const messageData = {
+    const messageData = message && {
       id: String(message.id), conversationId: String(message.conversationId), senderId: String(message.senderId),
       mine: true, type: 'rose', text: message.text, context: message.context,
       roseTransactionId: String(row.id), status: message.status, createdAt: message.createdAt,
     };
-    await emitConversationEvent(resolvedConversationId, 'message.created', { conversationId: String(resolvedConversationId), message: messageData }).catch(() => {});
+    if (messageData && resolvedConversationId != null) await emitConversationEvent(resolvedConversationId, 'message.created', { conversationId: String(resolvedConversationId), message: messageData }).catch(() => {});
 
     return res.status(created ? 201 : 200).json({
       success: true,
       message: created ? 'Rose sent successfully.' : 'Rose was already sent.',
       data: {
         roseTransaction: roseJson(row),
-        conversationId: String(resolvedConversationId),
+        conversationId: resolvedConversationId == null ? null : String(resolvedConversationId),
         message: messageData,
         notification: notification ? { id: String(notification.id) } : null,
       },

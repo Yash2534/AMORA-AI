@@ -34,6 +34,7 @@ class AmoraCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = _colorsFor(context, variant);
     final content = Padding(padding: padding, child: child);
+
     return Semantics(
       button: onTap != null,
       label: semanticLabel,
@@ -59,17 +60,18 @@ class AmoraCard extends StatelessWidget {
     );
   }
 
-  (Color, Color) _colorsFor(BuildContext context, AmoraCardVariant value) => switch (value) {
-    AmoraCardVariant.premium ||
-    AmoraCardVariant.info ||
-    AmoraCardVariant.revenue ||
-    AmoraCardVariant.profile ||
-    AmoraCardVariant.event ||
-    AmoraCardVariant.statistic ||
-    AmoraCardVariant.settings ||
-    AmoraCardVariant.standard => (
-        AppColors.surfaceOf(context),
-        AppColors.borderOf(context),
-      ),
-  };
+  (Color, Color) _colorsFor(BuildContext context, AmoraCardVariant value) =>
+      switch (value) {
+        AmoraCardVariant.premium ||
+        AmoraCardVariant.info ||
+        AmoraCardVariant.revenue ||
+        AmoraCardVariant.profile ||
+        AmoraCardVariant.event ||
+        AmoraCardVariant.statistic ||
+        AmoraCardVariant.settings ||
+        AmoraCardVariant.standard => (
+          Theme.of(context).colorScheme.surface,
+          Theme.of(context).colorScheme.outline,
+        ),
+      };
 }

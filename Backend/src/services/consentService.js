@@ -7,6 +7,9 @@ const REQUIRED_SIGNUP_DOCUMENTS = Object.freeze([
   { documentKey: 'PRIVACY_POLICY', purpose: 'PRIVACY_POLICY_ACKNOWLEDGEMENT', action: 'ACKNOWLEDGED' },
 ]);
 const metadataKeys = new Set(['appVersion', 'locale', 'flowVersion']);
+const CONSENT_ACTIONS = new Set(['ACCEPTED', 'ACKNOWLEDGED', 'WITHDRAWN', 'RECONSENTED']);
+const CONSENT_SOURCES = new Set(['SIGNUP_EMAIL', 'SIGNUP_GOOGLE', 'SETTINGS', 'RECONSENT_FLOW', 'ONBOARDING']);
+const CONSENT_PLATFORMS = new Set(['ANDROID', 'IOS', 'WEB']);
 
 const serviceError = (code, message, status = 422) => Object.assign(new Error(message), { code, status });
 
@@ -71,7 +74,7 @@ class ConsentService {
     if (!document) throw serviceError('LEGAL_DOCUMENT_VERSION_INVALID', 'The legal document version is invalid.');
     const expectedKey = purpose === 'TERMS_OF_SERVICE_ACCEPTANCE' ? 'TERMS_OF_SERVICE' : 'PRIVACY_POLICY';
     if (document.documentKey !== expectedKey) throw serviceError('LEGAL_DOCUMENT_VERSION_INVALID', 'The legal document version is invalid.');
-    if (!Object.values(ConsentEvent.ACTIONS).includes(action) || !Object.values(ConsentEvent.SOURCES).includes(source) || !Object.values(ConsentEvent.PLATFORMS).includes(platform)) throw serviceError('CONSENT_EVENT_INVALID', 'Consent event is invalid.');
+    if (!CONSENT_ACTIONS.has(action) || !CONSENT_SOURCES.has(source) || !CONSENT_PLATFORMS.has(platform)) throw serviceError('CONSENT_EVENT_INVALID', 'Consent event is invalid.');
     return ConsentEvent.create({ userId, documentVersionId: document.id, purpose, action, source, platform, occurredAt: this.now(), metadata: safeMetadata(metadata) }, { transaction });
   }
 

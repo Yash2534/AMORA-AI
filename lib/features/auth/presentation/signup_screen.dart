@@ -68,18 +68,20 @@ class _SignupScreenState extends State<SignupScreen> {
           !keys.contains('PRIVACY_POLICY')) {
         throw const AuthException('Required legal documents are unavailable.');
       }
-      if (mounted)
+      if (mounted) {
         setState(() {
           _legalDocuments = documents;
           _legalLoading = false;
         });
+      }
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _legalDocuments = null;
           _legalLoading = false;
           _legalLoadFailed = true;
         });
+      }
     }
   }
 

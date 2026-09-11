@@ -11,7 +11,7 @@ const defineLegalDocumentVersion = (sequelize) => sequelize.define('LegalDocumen
   contentHash: { type: DataTypes.CHAR(64), allowNull: false, validate: { is: /^[a-f0-9]{64}$/i } },
   // Canonical, versioned content.  Consent must always be tied to the exact
   // document a member was shown, rather than to a mutable app screen.
-  content: { type: DataTypes.TEXT('long'), allowNull: false },
+  content: { type: DataTypes.TEXT('long'), allowNull: false, defaultValue: '' },
   publishedAt: { type: DataTypes.DATE, allowNull: false },
   effectiveAt: { type: DataTypes.DATE, allowNull: false },
   retiredAt: { type: DataTypes.DATE, allowNull: true },
