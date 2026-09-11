@@ -3,13 +3,15 @@ const { DataTypes } = require('sequelize');
 const ACTIONS = Object.freeze({ ACCEPTED: 'ACCEPTED', ACKNOWLEDGED: 'ACKNOWLEDGED', WITHDRAWN: 'WITHDRAWN', RECONSENTED: 'RECONSENTED' });
 const SOURCES = Object.freeze({ SIGNUP_EMAIL: 'SIGNUP_EMAIL', SIGNUP_GOOGLE: 'SIGNUP_GOOGLE', SETTINGS: 'SETTINGS', RECONSENT_FLOW: 'RECONSENT_FLOW', ONBOARDING: 'ONBOARDING' });
 const PLATFORMS = Object.freeze({ ANDROID: 'ANDROID', IOS: 'IOS', WEB: 'WEB' });
-const PURPOSES = Object.freeze({ TERMS_OF_SERVICE_ACCEPTANCE: 'TERMS_OF_SERVICE_ACCEPTANCE', PRIVACY_POLICY_ACKNOWLEDGEMENT: 'PRIVACY_POLICY_ACKNOWLEDGEMENT' });
+const PURPOSES = Object.freeze({ TERMS_OF_SERVICE_ACCEPTANCE: 'TERMS_OF_SERVICE_ACCEPTANCE', PRIVACY_POLICY_ACKNOWLEDGEMENT: 'PRIVACY_POLICY_ACKNOWLEDGEMENT', OFFERS_NOTIFICATIONS: 'OFFERS_NOTIFICATIONS' });
 const values = (object) => Object.values(object);
 
 const defineConsentEvent = (sequelize) => sequelize.define('ConsentEvent', {
   id: { type: DataTypes.BIGINT.UNSIGNED, autoIncrement: true, primaryKey: true },
   userId: { type: DataTypes.INTEGER, allowNull: true },
-  documentVersionId: { type: DataTypes.BIGINT.UNSIGNED, allowNull: false },
+  // Optional-consent evidence is not a legal-document acceptance and therefore
+  // intentionally has no document version. Historical legal evidence remains required.
+  documentVersionId: { type: DataTypes.BIGINT.UNSIGNED, allowNull: true },
   purpose: { type: DataTypes.ENUM(...values(PURPOSES)), allowNull: false, validate: { isIn: [values(PURPOSES)] } },
   action: { type: DataTypes.ENUM(...values(ACTIONS)), allowNull: false, validate: { isIn: [values(ACTIONS)] } },
   source: { type: DataTypes.ENUM(...values(SOURCES)), allowNull: false, validate: { isIn: [values(SOURCES)] } },
