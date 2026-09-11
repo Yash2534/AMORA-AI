@@ -41,7 +41,7 @@ router.get('/matching/actions', [
   query('includeFailureDetails').optional().isBoolean(),
 ], validate, actionAccess, controller.actions);
 router.get('/matching/actions/:actionId', [
-  param('actionId').matches(/^(discover|rose|failure)_[1-9][0-9]*$/),
+  param('actionId').isString().trim().notEmpty().withMessage('A valid action ID is required.'),
   query('includeFailureDetails').optional().isBoolean(),
 ], validate, requireAdminPermission('matching.actions.details.view'), controller.action);
 router.get('/matches', [

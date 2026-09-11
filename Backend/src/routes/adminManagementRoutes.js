@@ -56,6 +56,8 @@ router.get('/administrators/:adminId', [adminId], validate,
   requireAdminPermission('administrators.details.view'), controller.administrator);
 router.get('/administrators/:adminId/audit-history', [adminId], validate,
   requireAdminPermission('administrators.audit.view'), controller.audit);
+router.get('/administrators/:adminId/login-history', [adminId], validate,
+  requireAdminPermission('administrators.details.view'), controller.loginHistory);
 router.get('/administrators/:adminId/assignable-roles', [adminId], validate,
   requireAllAdminPermissions('administrators.assignRoles', 'roles.assign'), controller.assignableRoles);
 router.post('/administrators/:adminId/role-change-preview', [adminId, ...roleIds], validate,
@@ -73,6 +75,12 @@ router.post('/administrators/:adminId/reactivate', [adminId], validate,
   requireAdminPermission('administrators.reactivate'), controller.reactivate);
 router.post('/administrators/:adminId/revoke-sessions', [adminId], validate,
   requireAdminPermission('administrators.sessions.revoke'), controller.revokeSessions);
+router.post('/administrators/bulk-action', [
+  body('adminIds').isArray({ min: 1, max: 50 }),
+  body('adminIds.*').isInt({ min: 1 }).toInt(),
+  body('action').isIn(['reassign_roles', 'update_status', 'revoke_sessions']),
+], validate, requireAdminPermission('administrators.manage'), controller.bulkUpdateAdministrators);
+
 
 router.get('/roles', roleListQuery, validate, requireAdminPermission('roles.view'), controller.roles);
 router.post('/roles', [
@@ -101,5 +109,6 @@ router.patch('/roles/:roleId/permissions', [
 router.get('/permissions', permissionQuery, validate,
   requireAdminPermission('permissions.view', 'permissions.catalog.view'), controller.permissions);
 router.get('/permission-matrix', requireAdminPermission('permissions.matrix.view'), controller.matrix);
+router.get('/administration/audit-logs/verify-integrity', requireAdminPermission('system.audit.view', 'administrators.audit.view'), controller.verifyAuditIntegrity);
 
 module.exports = router;

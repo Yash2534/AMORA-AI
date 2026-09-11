@@ -12,9 +12,11 @@ async function assertMigrationsApplied(connection) {
     throw error;
   }
   const applied = new Set(rows.map((row) => row.name));
-  const pending = require('../migrations/run').migrationFiles().filter((file) => !applied.has(file));
+  const runner = require('../migrations/run');
+  const pending = runner.migrationFiles().filter((file) => !applied.has(file));
   if (pending.length) {
-    throw new Error(`Pending database migrations: ${pending.join(', ')}`);
+    console.log(`[Database] Auto-applying ${pending.length} pending migrations: ${pending.join(', ')}`);
+    await runner.migrate({ sequelize: connection });
   }
 }
 

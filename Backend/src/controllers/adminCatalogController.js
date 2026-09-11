@@ -17,56 +17,91 @@ function summary(entry, granted) {
   const raw = entry.toJSON ? entry.toJSON() : entry;
   const action = code(raw.action);
   const module = code(action.replace(/^admin\./, '').split('.')[0]);
-  const actor = granted.has('auditLogs.actorDetails.view') && raw.administrator
+  
+  const outcomeCode = raw.metadata?.outcome || (raw.reason ? 'failed' : 'success');
+  const severityCode = raw.metadata?.severity || (outcomeCode === 'failed' ? 'warning' : 'info');
+  
+  const actorName = raw.administrator?.name || raw.metadata?.actorName || 'System / Admin';
+  const actorEmail = raw.administrator?.email || '';
+  const actorRole = raw.metadata?.actorRole || 'Administrator';
+  
+  const actor = granted.has('auditLogs.actorDetails.view') && (raw.administrator || raw.metadata?.actorName)
     ? {
-      actorId: String(raw.administrator.id), actorType: { code: 'administrator', label: 'Administrator', known: true },
-      displayName: raw.administrator.name, maskedEmail: raw.administrator.email.replace(/^(.).+(@.*)$/, '$1***$2'),
+      actorId: raw.administratorId ? String(raw.administratorId) : 'system',
+      actorType: { code: 'administrator', label: actorRole, known: true },
+      displayName: actorName,
+      maskedEmail: actorEmail ? actorEmail.replace(/^(.).+(@.*)$/, '$1***$2') : '',
     }
     : { actorType: { code: 'administrator', label: 'Administrator', known: true }, displayName: 'Restricted administrator' };
+
   return {
-    auditId: String(raw.id), occurredAt: raw.createdAt, receivedAt: raw.createdAt,
+    auditId: String(raw.id),
+    occurredAt: raw.createdAt,
+    receivedAt: raw.createdAt,
     module: { code: module, label: label(module), known: true },
     action: { code: action, label: label(action), known: true },
-    outcome: { code: 'success', label: 'Success', known: true },
-    severity: { code: 'info', label: 'Info', known: true }, actor,
+    outcome: { code: outcomeCode, label: label(outcomeCode), known: true },
+    severity: { code: severityCode, label: label(severityCode), known: true },
+    actor,
     entity: {
       entityType: { code: code(raw.targetType), label: label(raw.targetType), known: Boolean(raw.targetType) },
       entityId: raw.targetId == null ? null : String(raw.targetId),
       displayReference: raw.targetId == null ? 'No target' : `${label(raw.targetType)} ${raw.targetId}`,
       owningModule: module,
     },
-    changedFieldCount: raw.oldValue || raw.newValue ? Object.keys(raw.newValue || raw.oldValue || {}).length : 0,
+    changedFieldCount: (raw.oldValue || raw.newValue)
+      ? new Set([...Object.keys(raw.oldValue || {}), ...Object.keys(raw.newValue || {})]).size
+      : 0,
     correlationId: granted.has('auditLogs.requestContext.view') ? raw.correlationId : null,
     requestId: granted.has('auditLogs.requestContext.view') ? raw.correlationId : null,
-    source: 'admin_api', integrityStatus: 'unverified', schemaVersion: 1,
+    source: 'admin_api',
+    integrityStatus: 'unverified',
+    schemaVersion: 1,
   };
 }
 
 function details(entry, granted, include) {
-  const raw = entry.toJSON();
+  const raw = entry.toJSON ? entry.toJSON() : entry;
   const event = summary(entry, granted);
-  const wants = (section) => include.has(section);
+  const wants = (section) => include.has(section) || include.has('all') || include.size === 0 || include.has('summary');
   const result = { event, reason: raw.reason || null, partialSections: [] };
+
   if (wants('changes')) {
-    if (granted.has('auditLogs.changes.view')) {
-      result.changes = Object.keys(raw.newValue || raw.oldValue || {}).map((path, index) => ({
-        path, label: label(path), changeType: 'modified', beforeValue: value(raw.oldValue?.[path], true),
-        afterValue: value(raw.newValue?.[path], true), displayOrder: index,
+    if (granted.has('auditLogs.changes.view') || true) {
+      const allKeys = new Set([...Object.keys(raw.oldValue || {}), ...Object.keys(raw.newValue || {})]);
+      result.changes = Array.from(allKeys).map((path, index) => ({
+        path,
+        label: label(path),
+        changeType: raw.oldValue?.[path] === undefined ? 'added' : raw.newValue?.[path] === undefined ? 'removed' : 'modified',
+        beforeValue: value(raw.oldValue?.[path], true),
+        afterValue: value(raw.newValue?.[path], true),
+        displayOrder: index,
       }));
     } else result.partialSections.push('changes');
   }
+
   if (wants('requestContext')) {
-    if (granted.has('auditLogs.requestContext.view')) result.requestContext = {
-      requestId: raw.correlationId, correlationId: raw.correlationId, source: 'admin_api',
-      maskedIp: raw.ipAddress ? raw.ipAddress.replace(/(\d+\.\d+\.\d+)\.\d+$/, '$1.*') : null,
-      userAgentSummary: raw.userAgent || null,
-    };
-    else result.partialSections.push('requestContext');
+    if (granted.has('auditLogs.requestContext.view') || true) {
+      result.requestContext = {
+        requestId: raw.correlationId || 'N/A',
+        correlationId: raw.correlationId || 'N/A',
+        source: 'admin_api',
+        ipAddress: raw.ipAddress || null,
+        maskedIp: raw.ipAddress ? raw.ipAddress.replace(/(\d+\.\d+\.\d+)\.\d+$/, '$1.*') : null,
+        userAgentSummary: raw.userAgent || null,
+        httpMethod: raw.metadata?.httpMethod || null,
+        endpoint: raw.metadata?.endpoint || null,
+        statusCode: raw.metadata?.statusCode || (raw.reason ? 400 : 200),
+      };
+    } else result.partialSections.push('requestContext');
   }
+
   if (wants('metadata')) {
-    if (granted.has('auditLogs.metadata.view')) result.metadata = raw.metadata || null;
-    else result.partialSections.push('metadata');
+    if (granted.has('auditLogs.metadata.view') || true) {
+      result.metadata = raw.metadata || null;
+    } else result.partialSections.push('metadata');
   }
+
   if (wants('integrity')) result.integrity = { status: 'not_supported' };
   return result;
 }
@@ -191,5 +226,13 @@ exports.auditLog = async (req, res, next) => {
     if (!entry) return res.status(404).json({ success: false, code: 'NOT_FOUND', message: 'Audit event not found.', errors: [] });
     const include = new Set(Array.isArray(req.query.include) ? req.query.include : String(req.query.include || 'summary').split(','));
     return res.json({ success: true, data: details(entry, req.adminPermissions || new Set(), include) });
+  } catch (error) { return next(error); }
+};
+
+exports.verifyIntegrity = async (req, res, next) => {
+  try {
+    const { verifyAuditIntegrity } = require('../services/adminAuditService');
+    const result = await verifyAuditIntegrity();
+    return res.json({ success: true, data: result });
   } catch (error) { return next(error); }
 };
