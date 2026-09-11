@@ -27,6 +27,7 @@ const notificationRoutes = require('./routes/notificationRoutes');
 const identityVerificationRoutes = require('./routes/identityVerificationRoutes');
 const deviceRoutes = require('./routes/deviceRoutes');
 const mePreferenceRoutes = require('./routes/mePreferenceRoutes');
+const privacyRoutes = require('./routes/privacyRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const publicMaintenance = require('./middleware/publicMaintenanceMiddleware');
 const { publicConfiguration } = require('./controllers/platformSettingsController');
@@ -95,6 +96,8 @@ app.use('/api/notification-preferences', publicMaintenance, notificationPreferen
 app.use('/api/notifications', publicMaintenance, notificationRoutes);
 app.use('/api/identity-verification', publicMaintenance, identityVerificationRoutes);
 app.use('/api/devices', publicMaintenance, deviceRoutes);
+app.use('/api/v1/privacy', privacyRoutes);
+app.use('/api/privacy', privacyRoutes);
 app.use('/api/admin/v1', adminRoutes);
 app.use((_req, res) =>
   res

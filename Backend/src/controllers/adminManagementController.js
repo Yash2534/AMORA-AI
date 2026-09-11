@@ -1,4 +1,5 @@
 const management = require('../services/adminManagementService');
+const { verifyAuditIntegrity } = require('../services/adminAuditService');
 const { success } = require('../admin/responses');
 
 const handle = (fn, message, status = 200) => async (req, res, next) => {
@@ -14,6 +15,7 @@ exports.configuration = handle(() => management.configuration(), 'Administrator 
 exports.administrators = handle((req) => management.listAdministrators(req), 'Administrators retrieved.');
 exports.administrator = handle((req) => management.getAdministrator(req, req.params.adminId), 'Administrator retrieved.');
 exports.audit = handle((req) => management.administratorAudit(req, req.params.adminId), 'Administrator audit history retrieved.');
+exports.loginHistory = handle((req) => management.administratorLoginHistory(req, req.params.adminId), 'Administrator login history retrieved.');
 exports.assignableRoles = handle((req) => management.assignableRoles(req, req.params.adminId), 'Assignable roles retrieved.');
 exports.roles = handle((req) => management.roles(req), 'Administrator roles retrieved.');
 exports.role = handle((req) => management.role(req, req.params.roleId), 'Administrator role retrieved.');
@@ -25,9 +27,12 @@ exports.assignRoles = handle((req) => management.assignRoles(req, req.params.adm
 exports.suspend = handle((req) => management.suspend(req, req.params.adminId), 'Administrator suspended.');
 exports.reactivate = handle((req) => management.reactivate(req, req.params.adminId), 'Administrator reactivated.');
 exports.revokeSessions = handle((req) => management.revokeSessions(req, req.params.adminId), 'Administrator sessions revoked.');
+exports.bulkUpdateAdministrators = handle((req) => management.bulkUpdateAdministrators(req), 'Bulk administrator operation completed.');
 exports.previewPermissions = handle((req) => management.permissionPreview(req, req.params.roleId), 'Permission change preview retrieved.');
+
 exports.savePermissions = handle((req) => management.savePermissions(req, req.params.roleId), 'Role permissions updated.');
 exports.createRole = handle((req) => management.createRole(req), 'Administrator role created.', 201);
 
 exports.invitationStatus = handle((req) => management.invitationStatus(req.body.token), 'Administrator invitation status retrieved.');
 exports.acceptInvitation = handle((req) => management.acceptInvitation(req.body.token, req.body.newPassword, req), 'Administrator invitation accepted.');
+exports.verifyAuditIntegrity = handle(() => verifyAuditIntegrity(), 'Audit integrity verification executed.');

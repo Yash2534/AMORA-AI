@@ -13,4 +13,7 @@ module.exports = (sequelize) => sequelize.define('AdminAuditLog', {
   ipAddress: { type: DataTypes.STRING(64), allowNull: true },
   userAgent: { type: DataTypes.STRING(500), allowNull: true },
   correlationId: { type: DataTypes.STRING(80), allowNull: true },
+  sequence: { type: DataTypes.BIGINT.UNSIGNED, allowNull: true },
+  previousHash: { type: DataTypes.STRING(64), allowNull: true },
+  currentHash: { type: DataTypes.STRING(64), allowNull: true },
 }, { tableName: 'AdminAuditLogs', updatedAt: false });

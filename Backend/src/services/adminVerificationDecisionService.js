@@ -248,6 +248,8 @@ async function decide(request, action) {
       });
       return responseSnapshot;
     });
+    const { emitAdminEvent } = require('../realtime/realtimeHub');
+    emitAdminEvent('admin.verification.updated', { verificationId: String(data.verificationId || request.params.verificationId), action, status: data.status }, 'verification.review');
     return { data, replayed: false };
   } catch (error) {
     const racedReplay = await replayFor(key, hash);

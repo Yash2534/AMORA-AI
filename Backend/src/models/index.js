@@ -24,13 +24,18 @@ const definitions = {
   PlatformSetting: require('./PlatformSetting'),
   MatchingActionFailure: require('./MatchingActionFailure'),
   AdminReportCase: require('./AdminReportCase'), AdminReportNote: require('./AdminReportNote'),
+  UserConsent: require('./UserConsent'), PrivacyGrievance: require('./PrivacyGrievance'), DataAccessRequest: require('./DataAccessRequest'),
 };
 let models = {};
 function initModels(sequelize) {
   if (models.User) return models;
   const created = Object.fromEntries(Object.entries(definitions).map(([name, define]) => [name, define(sequelize)]));
-  const { User, RefreshToken, OnboardingProfile, DiscoverAction, Match, DiscoverFilterPreference, Block, Report, Conversation, ConversationParticipant, Message, MessageMedia, Event, EventRegistration, EventWaitlist, SubscriptionPlan, Subscription, Payment, PaymentEvent, RoseTransaction, SavedProfile, NotificationPreference, Notification, IdentityVerification, IdentityVerificationReason, IdentityVerificationDecisionEvent, UserDevice, NotificationDelivery, UserLoginEvent, AdminUserNote, AdminUserNoteVersion, UserTimelineEvent, ProfileTaxonomyCategory, ProfileTaxonomyOption } = created;
+  const { User, RefreshToken, OnboardingProfile, DiscoverAction, Match, DiscoverFilterPreference, Block, Report, Conversation, ConversationParticipant, Message, MessageMedia, Event, EventRegistration, EventWaitlist, SubscriptionPlan, Subscription, Payment, PaymentEvent, RoseTransaction, SavedProfile, NotificationPreference, Notification, IdentityVerification, IdentityVerificationReason, IdentityVerificationDecisionEvent, UserDevice, NotificationDelivery, UserLoginEvent, AdminUserNote, AdminUserNoteVersion, UserTimelineEvent, ProfileTaxonomyCategory, ProfileTaxonomyOption, UserConsent, PrivacyGrievance, DataAccessRequest } = created;
   const { Administrator, AdminRole, AdminPermission, AdminRefreshToken, AdminAuditLog, AdminPasswordResetToken, AdminInvitation, AdminIdempotencyKey, AdminMfaCredential, AdminMfaRecoveryCode, AdminMfaChallenge, PlatformSetting, AdminReportCase, AdminReportNote } = created;
+  User.hasMany(UserConsent, { foreignKey: 'userId', as: 'consents', onDelete: 'CASCADE' }); UserConsent.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+  User.hasMany(PrivacyGrievance, { foreignKey: 'userId', as: 'grievances', onDelete: 'SET NULL' }); PrivacyGrievance.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+  Administrator.hasMany(PrivacyGrievance, { foreignKey: 'assignedAdministratorId', as: 'assignedGrievances', onDelete: 'SET NULL' }); PrivacyGrievance.belongsTo(Administrator, { foreignKey: 'assignedAdministratorId', as: 'assignedAdministrator' });
+  User.hasMany(DataAccessRequest, { foreignKey: 'userId', as: 'dataAccessRequests', onDelete: 'CASCADE' }); DataAccessRequest.belongsTo(User, { foreignKey: 'userId', as: 'user' });
   User.hasMany(RefreshToken, { foreignKey: 'userId', onDelete: 'CASCADE' }); RefreshToken.belongsTo(User, { foreignKey: 'userId' }); User.hasOne(OnboardingProfile, { foreignKey: 'userId', onDelete: 'CASCADE' }); OnboardingProfile.belongsTo(User, { foreignKey: 'userId' });
   User.hasMany(UserLoginEvent, { foreignKey: 'userId', as: 'loginEvents', onDelete: 'CASCADE' }); UserLoginEvent.belongsTo(User, { foreignKey: 'userId', as: 'user' });
   User.hasMany(AdminUserNote, { foreignKey: 'userId', as: 'adminNotes', onDelete: 'CASCADE' }); AdminUserNote.belongsTo(User, { foreignKey: 'userId', as: 'user' });

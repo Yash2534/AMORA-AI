@@ -56,6 +56,22 @@ async function emitPresence(userId, online) {
   for (const recipient of recipients) io.to(userRoom(recipient)).emit('presence.updated', { userId: String(userId), online });
 }
 
+function emitAdminEvent(eventName, payload = {}, requiredPermission = null) {
+  if (!io) return;
+  const eventId = `evt_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+  const enrichedPayload = {
+    eventId,
+    timestamp: new Date().toISOString(),
+    event: eventName,
+    data: payload,
+  };
+  if (requiredPermission) {
+    io.to(`admin:perm:${requiredPermission}`).emit(eventName, enrichedPayload);
+  } else {
+    io.to('admin:all').emit(eventName, enrichedPayload);
+  }
+}
+
 function attachRealtimeServer(httpServer) {
   if (io) return io;
   io = new Server(httpServer, {
@@ -64,8 +80,39 @@ function attachRealtimeServer(httpServer) {
   });
   io.use(async (socket, next) => {
     try {
-      const token = socket.handshake.auth?.token;
-      const payload = jwt.verify(token, process.env.JWT_SECRET);
+      const rawToken = socket.handshake.auth?.token || socket.handshake.headers?.authorization?.replace(/^Bearer\s+/i, '');
+      if (!rawToken) throw new Error('Token missing.');
+
+      // 1. Check if token is Admin access token
+      if (process.env.ADMIN_JWT_SECRET) {
+        try {
+          const adminPayload = jwt.verify(rawToken, process.env.ADMIN_JWT_SECRET);
+          if (adminPayload.typ === 'admin_access') {
+            const { Administrator, AdminRole, AdminPermission } = getModels();
+            const admin = await Administrator.findByPk(adminPayload.sub, {
+              include: [{
+                model: AdminRole,
+                as: 'roles',
+                where: { isActive: true },
+                required: false,
+                include: [{ model: AdminPermission, as: 'permissions' }],
+              }],
+            });
+            if (admin && admin.status === 'active') {
+              socket.data.isAdmin = true;
+              socket.data.adminId = Number(admin.id);
+              const perms = new Set((admin.roles || []).flatMap((r) => (r.permissions || []).map((p) => p.key)));
+              socket.data.permissions = perms;
+              return next();
+            }
+          }
+        } catch (_) {
+          // Not an admin token, fall through to user token verification
+        }
+      }
+
+      // 2. User token verification
+      const payload = jwt.verify(rawToken, process.env.JWT_SECRET);
       const { User } = getModels();
       const user = await User.findByPk(payload.sub, { attributes: ['id', 'accountStatus', 'tokenVersion'] });
       if (!user || user.accountStatus !== 'active' || Number(payload.ver || 0) !== Number(user.tokenVersion || 0)) throw new Error('Realtime session is unavailable.');
@@ -76,6 +123,16 @@ function attachRealtimeServer(httpServer) {
     }
   });
   io.on('connection', async (socket) => {
+    if (socket.data.isAdmin) {
+      socket.join('admin:all');
+      if (socket.data.permissions) {
+        for (const perm of socket.data.permissions) {
+          socket.join(`admin:perm:${perm}`);
+        }
+      }
+      return;
+    }
+
     const userId = socket.data.userId;
     await getModels().User.update({ lastActiveAt: new Date() }, { where: { id: userId } });
     socket.join(userRoom(userId));
@@ -93,6 +150,7 @@ function attachRealtimeServer(httpServer) {
       }
     });
     socket.on('disconnect', async () => {
+      if (socket.data.isAdmin) return;
       const remaining = Math.max(0, (connections.get(userId) || 1) - 1);
       if (remaining) connections.set(userId, remaining); else connections.delete(userId);
       if (remaining === 0) await emitPresence(userId, false);
@@ -110,4 +168,4 @@ function closeRealtimeServer() {
   return new Promise((resolve) => current.close(resolve));
 }
 
-module.exports = { attachRealtimeServer, closeRealtimeServer, emitConversationEvent, isUserOnline };
+module.exports = { attachRealtimeServer, closeRealtimeServer, emitConversationEvent, emitAdminEvent, isUserOnline };

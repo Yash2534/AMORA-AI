@@ -69,6 +69,8 @@ exports.submit = async (req, res, next) => {
       if (user.identityVerifiedAt) await user.update({ identityVerifiedAt: null }, { transaction });
     });
     await Promise.all(previousPaths.map(removeStored));
+    const { emitAdminEvent } = require('../realtime/realtimeHub');
+    emitAdminEvent('admin.verification.submitted', { verificationId: String(row.id), userId: String(req.user.sub) }, 'verification.review');
     return res.status(202).json({ success: true, message: 'Identity verification submitted for review.', data: { verification: statusJson(row) } });
   } catch (error) {
     if (stored) await Promise.all([removeStored(stored.aadhaar.storagePath), removeStored(stored.selfie.storagePath)]);

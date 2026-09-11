@@ -198,7 +198,7 @@ after(async () => {
     await role.setPermissions([]);
     await AdminRole.destroy({ where: { id: role.id } });
   }
-  if (verificationStoragePath) await fs.promises.unlink(absolutePathFor(verificationStoragePath)).catch(() => {});
+  if (verificationStoragePath) await fs.promises.unlink(absolutePathFor(verificationStoragePath)).catch(() => { });
   await getSequelize().close();
 });
 
