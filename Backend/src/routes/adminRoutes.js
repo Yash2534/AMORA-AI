@@ -84,7 +84,19 @@ router.get('/chat/reports/:id', adminChat.reportDetail);
 
 // Events Routes
 router.get('/events', adminEvent.events);
+router.get('/events/options', adminEvent.options);
+router.get('/events/cancellation-reasons', adminEvent.cancellationReasons);
+router.post('/events', adminEvent.createEvent);
 router.get('/events/:id', adminEvent.eventDetail);
+router.patch('/events/:id', adminEvent.updateEvent);
+router.post('/events/:id/publish', adminEvent.publishEvent);
+router.post('/events/:id/cancel', adminEvent.cancelEvent);
+router.post('/events/:id/capacity', adminEvent.capacityEvent);
+router.post('/events/:id/featured', adminEvent.featuredEvent);
+router.get('/events/:id/attendees', adminEvent.attendees);
+router.get('/events/:id/waitlist', adminEvent.waitlist);
+router.get('/events/:id/reminders', adminEvent.reminders);
+router.get('/events/:id/analytics', adminEvent.analytics);
 
 // Safe Fallback Route Handlers for Optional Admin Modules
 const safeEmptyResponse = (req, res) => res.json({

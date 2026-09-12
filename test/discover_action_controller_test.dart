@@ -3,17 +3,26 @@ import 'package:amora_ai/features/discover/presentation/discover_action_controll
 import 'package:flutter_test/flutter_test.dart';
 
 class _FakeDiscoverApi extends DiscoverApiService {
+  String? lastTargetUserId;
+  String? lastAction;
+  int swipeCalls = 0;
+
   @override
   Future<DiscoverApiResult<DiscoverSwipeResult>> swipe({
     required String targetUserId,
     required String action,
-  }) async => DiscoverApiResult.success(
-    DiscoverSwipeResult(
-      matched: targetUserId == 'profile-2',
-      conversationId: targetUserId == 'profile-2' ? 'conversation-2' : null,
-    ),
-    statusCode: 200,
-  );
+  }) async {
+    swipeCalls++;
+    lastTargetUserId = targetUserId;
+    lastAction = action;
+    return DiscoverApiResult.success(
+      DiscoverSwipeResult(
+        matched: targetUserId == '102',
+        conversationId: targetUserId == '102' ? 'conversation-2' : null,
+      ),
+      statusCode: 200,
+    );
+  }
 
   @override
   Future<DiscoverApiResult<Map<String, dynamic>>> rewind() async =>
@@ -21,35 +30,45 @@ class _FakeDiscoverApi extends DiscoverApiService {
 }
 
 void main() {
+  late _FakeDiscoverApi api;
   late DiscoverActionController controller;
   late int chatRefreshes;
+
   setUp(() {
     chatRefreshes = 0;
+    api = _FakeDiscoverApi();
     controller = DiscoverActionController(
-      profileIds: const ['profile-1', 'profile-2', 'profile-3'],
-      mutualLikeProfileIds: const ['profile-2'],
+      profileIds: const ['101', '102', '103'],
+      mutualLikeProfileIds: const ['102'],
       transitionDuration: Duration.zero,
-      apiService: _FakeDiscoverApi(),
+      apiService: api,
       refreshChats: () async => chatRefreshes++,
     );
   });
+
   tearDown(() => controller.dispose());
 
   test('pass advances and rewind restores profile and image index', () async {
-    controller.setImageIndex('profile-1', 2);
-    await controller.passProfile();
-    expect(controller.currentProfileId, 'profile-2');
+    controller.setImageIndex('101', 2);
+    final result = await controller.passProfile();
+    expect(result, isTrue);
+    expect(api.lastTargetUserId, '101');
+    expect(api.lastAction, 'pass');
+    expect(controller.currentProfileId, '102');
     expect(controller.canRewind, isTrue);
     await controller.rewindProfile();
-    expect(controller.currentProfileId, 'profile-1');
-    expect(controller.imageIndexFor('profile-1'), 2);
+    expect(controller.currentProfileId, '101');
+    expect(controller.imageIndexFor('101'), 2);
   });
 
-  test('like exposes deterministic mutual match', () async {
+  test('like exposes deterministic mutual match with numeric ID', () async {
     await controller.passProfile();
-    await controller.likeProfile();
-    expect(controller.likedProfileIds, contains('profile-2'));
-    expect(controller.matchedProfileId, 'profile-2');
+    final result = await controller.likeProfile();
+    expect(result, isTrue);
+    expect(api.lastTargetUserId, '102');
+    expect(api.lastAction, 'like');
+    expect(controller.likedProfileIds, contains('102'));
+    expect(controller.matchedProfileId, '102');
     expect(chatRefreshes, 1);
   });
 
@@ -58,5 +77,18 @@ void main() {
     await controller.passProfile();
     await controller.passProfile();
     expect(controller.isEmpty, isTrue);
+  });
+
+  test('non-numeric profile ID blocks API call and sets lastError', () async {
+    final invalidController = DiscoverActionController(
+      profileIds: const ['female-1'],
+      transitionDuration: Duration.zero,
+      apiService: api,
+    );
+    final result = await invalidController.likeProfile();
+    expect(result, isFalse);
+    expect(invalidController.lastError, 'Unable to process this profile right now. Please try again.');
+    expect(api.swipeCalls, 0);
+    invalidController.dispose();
   });
 }

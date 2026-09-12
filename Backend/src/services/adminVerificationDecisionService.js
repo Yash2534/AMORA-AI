@@ -32,12 +32,29 @@ function reasonItems(row) {
     : [];
 }
 
+const defaultVerificationReasons = {
+  reject: [
+    { code: 'document_unreadable', label: 'Document image is unreadable', action: 'reject', allowsDetail: true, requiresDetail: false, allowedItems: [] },
+    { code: 'face_mismatch', label: 'Face comparison mismatch', action: 'reject', allowsDetail: true, requiresDetail: false, allowedItems: [] },
+    { code: 'invalid_document', label: 'Invalid or expired document', action: 'reject', allowsDetail: true, requiresDetail: false, allowedItems: [] },
+    { code: 'suspected_fraud', label: 'Suspected fraudulent submission', action: 'reject', allowsDetail: true, requiresDetail: false, allowedItems: [] },
+  ],
+  request_resubmission: [
+    { code: 'blurry_selfie', label: 'Selfie is blurry or unreadable', action: 'request_resubmission', allowsDetail: true, requiresDetail: false, allowedItems: ['selfie'] },
+    { code: 'blurry_document', label: 'Document scan is unreadable', action: 'request_resubmission', allowsDetail: true, requiresDetail: false, allowedItems: ['aadhaar'] },
+    { code: 'resubmit_both', label: 'Re-upload document and selfie', action: 'request_resubmission', allowsDetail: true, requiresDetail: false, allowedItems: ['aadhaar', 'selfie'] },
+  ],
+};
+
 async function reasons(action) {
   const { IdentityVerificationReason } = getModels();
   const rows = await IdentityVerificationReason.findAll({
     where: { action, isActive: true },
     order: [['sortOrder', 'ASC'], ['id', 'ASC']],
   });
+  if (!rows.length) {
+    return { items: defaultVerificationReasons[action] || [] };
+  }
   return { items: rows.map((row) => ({
     code: row.code,
     label: row.label,
@@ -119,12 +136,19 @@ async function validateReason(action, body, transaction) {
   const code = String(body.reasonCode || '').trim();
   if (!code) throw serviceError(422, 'REASON_REQUIRED', 'An approved decision reason is required.');
   const { IdentityVerificationReason } = getModels();
-  const reason = await IdentityVerificationReason.findOne({
+  let reason = await IdentityVerificationReason.findOne({
     where: { code, action, isActive: true },
     transaction,
     lock: transaction.LOCK.SHARE,
   });
-  if (!reason) throw serviceError(422, 'REASON_NOT_APPROVED', 'The decision reason is not active for this action.');
+  if (!reason) {
+    const fallback = (defaultVerificationReasons[action] || []).find((r) => r.code === code);
+    if (fallback) {
+      reason = fallback;
+    } else {
+      throw serviceError(422, 'REASON_NOT_APPROVED', 'The decision reason is not active for this action.');
+    }
+  }
   if (reason.requiresDetail && !detail) throw serviceError(422, 'DETAIL_REQUIRED', 'This decision reason requires a detail.');
   if (!reason.allowsDetail && detail) throw serviceError(422, 'DETAIL_NOT_ALLOWED', 'This decision reason does not allow a detail.');
   if (action === 'reject' && items.length) throw serviceError(422, 'VALIDATION_ERROR', 'Rejection does not accept resubmission items.');

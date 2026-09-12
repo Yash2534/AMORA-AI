@@ -7,7 +7,7 @@ r.post('/safety/reports/:reportId/notes',[id(),body('text').isString().trim().is
 r.patch('/safety/reports/:reportId/status',[id(),body('status').isIn(['open','under_review','action_required','resolved','dismissed']),body('resolution').optional().isString().trim().isLength({max:2000})],v,requireAdminPermission('safety.cases.update'),c.status);
 r.post('/safety/reports/:reportId/actions',[id(),body('action').isIn(['deactivate','reactivate','warning','freeze_24h','freeze_7d','freeze_30d','freeze','permanent_ban']),body('reason').optional().isString().trim().isLength({max:500})],v,requireAdminPermission('safety.actions.suspend'),c.action);
 r.get('/chat/reports/counts', requireAdminPermission('reports.view'), c.reportCounts);
-r.get('/safety/moderation-queue', requireAdminPermission('safety.reports.view'), c.list);
-r.get('/safety/cases', requireAdminPermission('safety.reports.view'), c.list);
+r.get('/safety/moderation-queue', requireAdminPermission('safety.queue.view'), c.moderationQueue);
+r.get('/safety/cases', requireAdminPermission('safety.cases.view'), c.cases);
 r.get('/support/tickets', requireAdminPermission('reports.view'), c.supportTickets);
 module.exports=r;

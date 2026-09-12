@@ -33,6 +33,8 @@ async function initializeDatabase() {
     await assertMigrationsApplied(sequelize);
     require('../models').initModels(sequelize);
     console.log(`[Database] Connected to MySQL schema '${dbName}'`);
+    const { ensureDefaultAdminAccount } = require('./seedDefaultAdmin');
+    await ensureDefaultAdminAccount();
     return sequelize;
   } catch (error) {
     if (sequelize) await sequelize.close().catch(() => {});
