@@ -34,8 +34,7 @@ exports.signup = async (req, res, next) => {
   const email = emailOf(req.body.email);
   const phoneNumber = phoneOf(req.body.phoneNumber);
   let user;
-  let code;
-  let otpDeliveryInProgress = false;
+  let pendingOtp;
   try {
     await User.sequelize.transaction(async (transaction) => {
       const existing = await User.findOne({
@@ -68,22 +67,49 @@ exports.signup = async (req, res, next) => {
         metadata: req.body.consentMetadata,
         transaction,
       });
-      otpDeliveryInProgress = true;
-      ({ code } = await createPhoneOtp(phoneNumber, 'account_verification', { transaction }));
+      // The database work must commit before calling an external provider.  The
+      // OTP is deliberately created without delivery here; delivery below is
+      // the acknowledgement gate for the successful signup response.
+      pendingOtp = await createPhoneOtp(phoneNumber, 'account_verification', {
+        transaction,
+        deliver: false,
+      });
     });
   } catch (error) {
-    if (otpDeliveryInProgress) {
-      error.status = 503;
-      error.code = 'OTP_DELIVERY_FAILED';
-      error.message = "We couldn't send the verification code. Please try again.";
-    }
     return next(error);
   }
+
+  try {
+    await deliverPhoneOtp(
+      phoneNumber,
+      'account_verification',
+      pendingOtp.code,
+      pendingOtp.expiresAt,
+    );
+  } catch (_) {
+    // Do not leave an account that the user cannot verify after a provider
+    // rejection.  This is compensating cleanup after the committed provider
+    // boundary; it never turns a failed delivery into a successful response.
+    await User.sequelize.transaction(async (transaction) => {
+      const { ConsentEvent, OtpToken } = getModels();
+      await OtpToken.destroy({ where: { id: pendingOtp.otp.id }, transaction });
+      await ConsentEvent.destroy({ where: { userId: user.id }, transaction });
+      await User.destroy({ where: { id: user.id }, transaction });
+    }).catch(() => {});
+    console.error('[OTP] Registration SMS delivery failed.');
+    return res.status(503).json({
+      success: false,
+      message: "We couldn't send the verification code. Please try again.",
+      code: 'OTP_DELIVERY_FAILED',
+      errors: [],
+    });
+  }
+
   return success(res, 'Account created. Verification code sent.', {
     userId: user.id,
     email,
     phoneNumber,
-  }, code);
+  }, pendingOtp.code);
 };
 exports.verifyAccount = async (req, res) => {
   const { User } = getModels();

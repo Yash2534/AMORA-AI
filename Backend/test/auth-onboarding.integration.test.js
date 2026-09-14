@@ -33,8 +33,10 @@ const originalSmsExport = require.cache[smsModule].exports;
 const originalEmailExport = require.cache[emailModule].exports;
 require.cache[otpModule].exports = () => verificationCode;
 let smsDeliveryFailure = false;
-require.cache[smsModule].exports = async () => {
+const sentSms = [];
+require.cache[smsModule].exports = async (to, message, meta) => {
   if (smsDeliveryFailure) throw new Error('SMS provider delivery failed.');
+  sentSms.push({ to, message, meta });
 };
 const sentEmails = [];
 let emailDeliveryFailure = false;
@@ -206,6 +208,10 @@ test('fresh account verifies, completes a persisted profile, reloads it, and log
     },
   });
   assert.equal(signup.status, 200, JSON.stringify(signup.body));
+  assert.equal(sentSms.at(-1).to, phoneNumber);
+  assert.equal(sentSms.at(-1).meta.purpose, 'account_verification');
+  assert.equal(sentSms.at(-1).message.includes(verificationCode), true);
+  assert.equal(JSON.stringify(signup.body).includes(verificationCode), false);
   user = await models.User.findOne({ where: { email } });
   assert.ok(user);
   assert.equal(user.isVerified, false);
