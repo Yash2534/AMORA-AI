@@ -9,11 +9,11 @@ const { sendAdminPasswordReset } = require('../src/services/adminPasswordMailer'
 
 const productionEnv = () => ({ NODE_ENV: 'production', DB_HOST: 'db', DB_PORT: '3306', DB_NAME: 'db', DB_USER: 'user', JWT_SECRET: 'a'.repeat(32), JWT_REFRESH_SECRET: 'b'.repeat(32), ADMIN_JWT_SECRET: 'c'.repeat(32), ADMIN_MFA_ENCRYPTION_KEY: 'd'.repeat(64), EMAIL_HOST: 'smtp.example', EMAIL_USER: 'user', EMAIL_PASS: 'pass' });
 
-test('production startup keeps SMTP mandatory but does not require admin reset URL or CORS origin', () => {
-  assert.doesNotThrow(() => validateEnvironment(productionEnv()));
+test('production startup reports unavailable SMTP without blocking non-email features', () => {
+  assert.equal(validateEnvironment(productionEnv()).smtpConfigured, true);
   for (const key of ['EMAIL_HOST', 'EMAIL_USER', 'EMAIL_PASS']) {
     const env = productionEnv(); delete env[key];
-    assert.throws(() => validateEnvironment(env), /EMAIL_HOST, EMAIL_USER, and EMAIL_PASS/);
+    assert.equal(validateEnvironment(env).smtpConfigured, false);
   }
 });
 
@@ -24,6 +24,35 @@ test('production validates optional admin reset URL and preserves OTP production
   assert.doesNotThrow(() => validateEnvironment(secure));
   const unsafeOtp = productionEnv(); unsafeOtp.TEST_FIXED_OTP = '111111';
   assert.throws(() => validateEnvironment(unsafeOtp), /Production must not configure/);
+});
+
+test('production enables restricted live OTP testing only with a valid temporary allowlist', () => {
+  const originalInfo = console.info;
+  const messages = [];
+  console.info = (message) => messages.push(message);
+  try {
+    const enabled = validateEnvironment({
+      ...productionEnv(),
+      LIVE_TEST_OTP_ENABLED: 'true',
+      LIVE_TEST_OTP_VALUE: '111111',
+      LIVE_TEST_OTP_PHONE_ALLOWLIST: '+919876543210',
+      LIVE_TEST_OTP_EXPIRES_AT: new Date(Date.now() + 60_000).toISOString(),
+    });
+    assert.equal(enabled.liveTestOtp.enabled, true);
+    assert.match(messages[0], /1 allowlisted test account/);
+    assert.equal(messages[0].includes('111111'), false);
+
+    const expired = validateEnvironment({
+      ...productionEnv(),
+      LIVE_TEST_OTP_ENABLED: 'true',
+      LIVE_TEST_OTP_VALUE: '111111',
+      LIVE_TEST_OTP_PHONE_ALLOWLIST: '+919876543210',
+      LIVE_TEST_OTP_EXPIRES_AT: '2000-01-01T00:00:00.000Z',
+    });
+    assert.equal(expired.liveTestOtp.enabled, false);
+  } finally {
+    console.info = originalInfo;
+  }
 });
 
 test('administrator reset fails closed when no reset URL is configured', async () => {

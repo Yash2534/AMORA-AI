@@ -14,7 +14,7 @@ const originalGetModels = modelsModule.getModels;
 const originalSmsModule = require.cache[smsPath];
 const originalEmailModule = require.cache[emailPath];
 const originalEnvironment = Object.fromEntries(
-  ['NODE_ENV', 'TEST_FIXED_OTP_ENABLED', 'TEST_FIXED_OTP', 'TEST_OTP_SKIP_DELIVERY']
+  ['NODE_ENV', 'TEST_FIXED_OTP_ENABLED', 'TEST_FIXED_OTP', 'TEST_OTP_SKIP_DELIVERY', 'LIVE_TEST_OTP_ENABLED', 'LIVE_TEST_OTP_VALUE', 'LIVE_TEST_OTP_PHONE_ALLOWLIST', 'LIVE_TEST_OTP_EXPIRES_AT']
     .map((key) => [key, process.env[key]]),
 );
 
@@ -195,6 +195,53 @@ test('production gives the configured test value no special treatment', async ()
   assert.equal(result.error[0], 'OTP_INVALID');
   assert.equal(active.attempts, 1);
   assert.equal(active.consumed, false);
+});
+
+test('restricted production live test OTP still requires a valid, unused challenge', async () => {
+  setEnvironment({
+    nodeEnv: 'production',
+    enabled: 'false',
+    fixedOtp: '',
+    skipDelivery: 'false',
+  });
+  process.env.LIVE_TEST_OTP_ENABLED = 'true';
+  process.env.LIVE_TEST_OTP_VALUE = '111111';
+  process.env.LIVE_TEST_OTP_PHONE_ALLOWLIST = '+919876543210';
+  process.env.LIVE_TEST_OTP_EXPIRES_AT = new Date(Date.now() + 60_000).toISOString();
+
+  const active = await makeChallenge({
+    phoneNumber: '+919876543210',
+    purpose: 'account_verification',
+  });
+  const accepted = await verifyPhoneOtp('+919876543210', '111111', 'account_verification');
+  assert.equal(accepted.otp, active);
+  assert.equal(active.consumed, true);
+
+  const reused = await verifyPhoneOtp('+919876543210', '111111', 'account_verification');
+  assert.equal(reused.error[0], 'OTP_EXPIRED');
+
+  const expired = await makeChallenge({
+    phoneNumber: '+919876543210',
+    purpose: 'account_verification',
+    expiresAt: new Date(Date.now() - 1_000),
+  });
+  const expiredResult = await verifyPhoneOtp('+919876543210', '111111', 'account_verification');
+  assert.equal(expiredResult.error[0], 'OTP_EXPIRED');
+  assert.equal(expired.consumed, true);
+
+  await makeChallenge({ phoneNumber: '+919876543211', purpose: 'account_verification' });
+  const nonAllowlisted = await verifyPhoneOtp('+919876543211', '111111', 'account_verification');
+  assert.equal(nonAllowlisted.error[0], 'OTP_INVALID');
+
+  assert.deepEqual(
+    await deliverPhoneOtp('+919876543210', 'account_verification', '246810', new Date(Date.now() + 60_000)),
+    { skipped: true, restrictedLiveTest: true },
+  );
+  assert.deepEqual(
+    await deliverPhoneOtp('+919876543211', 'account_verification', '246810', new Date(Date.now() + 60_000)),
+    { skipped: false },
+  );
+  assert.equal(smsDeliveries, 1);
 });
 
 test('test delivery skipping preserves success without calling SMS or email providers', async () => {

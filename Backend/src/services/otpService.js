@@ -1,6 +1,7 @@
 const bcrypt = require('bcrypt');
 
 const { resolveOtpTestConfig, matchesFixedOtp } = require('../config/otpTestConfig');
+const { matchesLiveTestOtp, maskedPhone, skipsLiveTestOtpDelivery } = require('../config/liveTestOtpConfig');
 const { getModels } = require('../models');
 const generateOtp = require('../utils/generateOtp');
 const sendEmail = require('../utils/sendEmail');
@@ -9,8 +10,12 @@ const sendSms = require('../utils/sendSms');
 const OTP_EXPIRY_MS = 10 * 60 * 1000;
 const OTP_MAX_ATTEMPTS = 5;
 
-async function deliverPhoneOtp(phoneNumber, purpose, code, expiresAt) {
+async function deliverPhoneOtp(phoneNumber, purpose, code, expiresAt, { correlationId } = {}) {
   if (resolveOtpTestConfig().skipDelivery) return { skipped: true };
+  if (skipsLiveTestOtpDelivery(phoneNumber)) {
+    console.info(`[OTP_AUDIT] event=restricted_live_test_delivery_skipped phone=${maskedPhone(phoneNumber)} correlationId=${correlationId || 'unavailable'}`);
+    return { skipped: true, restrictedLiveTest: true };
+  }
   await sendSms(
     phoneNumber,
     `Your Amora AI verification code is ${code}. It expires in 10 minutes.`,
@@ -64,7 +69,7 @@ async function createEmailOtp(email, purpose, options) {
   return createOtp('email', email, purpose, options);
 }
 
-async function verifyOtp(identifierField, identifier, code, purpose) {
+async function verifyOtp(identifierField, identifier, code, purpose, { correlationId } = {}) {
   const { OtpToken } = getModels();
   const otp = await OtpToken.findOne({
     where: { [identifierField]: identifier, purpose, consumed: false },
@@ -86,7 +91,9 @@ async function verifyOtp(identifierField, identifier, code, purpose) {
     };
   }
 
-  const accepted = matchesFixedOtp(code) || await bcrypt.compare(code, otp.codeHash);
+  const restrictedLiveTestMatch = identifierField === 'phoneNumber'
+    && matchesLiveTestOtp(identifier, code);
+  const accepted = matchesFixedOtp(code) || restrictedLiveTestMatch || await bcrypt.compare(code, otp.codeHash);
   if (!accepted) {
     otp.attempts += 1;
     if (otp.attempts >= OTP_MAX_ATTEMPTS) otp.consumed = true;
@@ -104,11 +111,14 @@ async function verifyOtp(identifierField, identifier, code, purpose) {
 
   otp.consumed = true;
   await otp.save();
+  if (restrictedLiveTestMatch) {
+    console.info(`[OTP_AUDIT] event=restricted_live_test_verified phone=${maskedPhone(identifier)} correlationId=${correlationId || 'unavailable'}`);
+  }
   return { otp };
 }
 
-async function verifyPhoneOtp(phoneNumber, code, purpose) {
-  return verifyOtp('phoneNumber', phoneNumber, code, purpose);
+async function verifyPhoneOtp(phoneNumber, code, purpose, options) {
+  return verifyOtp('phoneNumber', phoneNumber, code, purpose, options);
 }
 
 async function verifyEmailOtp(email, code, purpose) {

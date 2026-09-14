@@ -12,7 +12,7 @@ if (!testDatabase || testDatabase === applicationDatabase || !/test/i.test(testD
   throw new Error('Auth integration tests require an isolated TEST_DB_NAME containing "test".');
 }
 const originalEnvironment = Object.fromEntries(
-  ['DB_NAME', 'NODE_ENV', 'TEST_FIXED_OTP_ENABLED', 'TEST_FIXED_OTP', 'TEST_OTP_SKIP_DELIVERY']
+  ['DB_NAME', 'NODE_ENV', 'TEST_FIXED_OTP_ENABLED', 'TEST_FIXED_OTP', 'TEST_OTP_SKIP_DELIVERY', 'LIVE_TEST_OTP_ENABLED', 'LIVE_TEST_OTP_VALUE', 'LIVE_TEST_OTP_PHONE_ALLOWLIST', 'LIVE_TEST_OTP_EXPIRES_AT']
     .map((key) => [key, process.env[key]]),
 );
 process.env.DB_NAME = testDatabase;
@@ -67,6 +67,9 @@ const legalDocumentIds = [];
 const deliveryFailureUserIds = [];
 const deliveryFailureEmails = [];
 const deliveryFailurePhones = [];
+const liveTestUserIds = [];
+const liveTestEmails = [];
+const liveTestPhones = [];
 const documentHash = (value) => crypto.createHash('sha256').update(value).digest('hex');
 const signupLegalDocuments = () => [
   { documentKey: 'TERMS_OF_SERVICE', documentVersionId: termsDocument.id },
@@ -147,6 +150,12 @@ after(async () => {
     await models.OtpToken.destroy({ where: { email: deliveryFailureEmails } });
     await models.User.destroy({ where: { id: deliveryFailureUserIds } });
   }
+  if (models && liveTestUserIds.length) {
+    await models.ConsentEvent.destroy({ where: { userId: liveTestUserIds } });
+    await models.RefreshToken.destroy({ where: { userId: liveTestUserIds } });
+    await models.OtpToken.destroy({ where: { phoneNumber: liveTestPhones } });
+    await models.User.destroy({ where: { id: liveTestUserIds } });
+  }
   if (models) await models.LegalDocumentVersion.destroy({ where: { id: legalDocumentIds } });
   try { await getSequelize().close(); } catch (_) {}
   require.cache[otpModule].exports = originalOtpExport;
@@ -184,6 +193,61 @@ test('registration provider failure rolls back the account and returns a safe de
     assert.equal(await models.User.count({ where: { email: failedEmail } }), 0);
   } finally {
     smsDeliveryFailure = false;
+  }
+});
+
+test('restricted live test signup skips SMS only for the allowlisted phone and never exposes its OTP', async () => {
+  const suffix = `${Date.now()}${Math.floor(Math.random() * 1000)}`;
+  const testPhone = `+916${suffix.slice(-9)}`;
+  const testEmail = `restricted-live-${suffix}@auth-flow.test`;
+  const sentBefore = sentSms.length;
+  process.env.NODE_ENV = 'production';
+  process.env.TEST_FIXED_OTP_ENABLED = 'false';
+  process.env.TEST_FIXED_OTP = '';
+  process.env.TEST_OTP_SKIP_DELIVERY = 'false';
+  process.env.LIVE_TEST_OTP_ENABLED = 'true';
+  process.env.LIVE_TEST_OTP_VALUE = '111111';
+  process.env.LIVE_TEST_OTP_PHONE_ALLOWLIST = testPhone;
+  process.env.LIVE_TEST_OTP_EXPIRES_AT = new Date(Date.now() + 60_000).toISOString();
+
+  try {
+    const response = await request('/api/auth/signup', {
+      method: 'POST',
+      token: null,
+      body: {
+        name: 'Restricted Live Test',
+        email: testEmail,
+        phoneNumber: testPhone,
+        password: 'RestrictedLive123!',
+        confirmPassword: 'RestrictedLive123!',
+        acceptedTerms: true,
+        acceptedLegalDocuments: signupLegalDocuments(),
+        platform: 'WEB',
+      },
+    });
+    assert.equal(response.status, 200, JSON.stringify(response.body));
+    assert.equal(sentSms.length, sentBefore);
+    assert.equal(JSON.stringify(response.body).includes('111111'), false);
+
+    const created = await models.User.findOne({ where: { email: testEmail } });
+    liveTestUserIds.push(created.id);
+    liveTestEmails.push(testEmail);
+    liveTestPhones.push(testPhone);
+
+    const verification = await request('/api/auth/verify-account', {
+      method: 'POST', token: null, body: { phoneNumber: testPhone, code: '111111' },
+    });
+    assert.equal(verification.status, 200, JSON.stringify(verification.body));
+    assert.equal(JSON.stringify(verification.body).includes('111111'), false);
+  } finally {
+    process.env.NODE_ENV = 'test';
+    process.env.TEST_FIXED_OTP_ENABLED = 'true';
+    process.env.TEST_FIXED_OTP = '111111';
+    process.env.TEST_OTP_SKIP_DELIVERY = 'false';
+    delete process.env.LIVE_TEST_OTP_ENABLED;
+    delete process.env.LIVE_TEST_OTP_VALUE;
+    delete process.env.LIVE_TEST_OTP_PHONE_ALLOWLIST;
+    delete process.env.LIVE_TEST_OTP_EXPIRES_AT;
   }
 });
 

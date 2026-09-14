@@ -7,6 +7,10 @@ const consentService = require('../services/consentService');
 const googleIds = (process.env.GOOGLE_CLIENT_IDS || '').split(',').map((id) => id.trim()).filter((id) => id && id !== 'skip-for-now');
 const googleClient = googleIds.length ? new OAuth2Client() : null;
 const OTP_RESEND_COOLDOWN_MS = 45 * 1000;
+const otpCorrelationId = (req) => {
+  const supplied = String(req.headers['x-request-id'] || '');
+  return /^[A-Za-z0-9_-]{8,128}$/.test(supplied) ? supplied : crypto.randomUUID();
+};
 const profile = (user) => ({ id: user.id, name: user.name, email: user.email, phoneNumber: user.phoneNumber, isVerified: user.isVerified, accountStatus: user.accountStatus, authProvider: user.authProvider });
 const emailOf = (value) => String(value || '').trim().toLowerCase();
 const phoneOf = (value) => { const digits = String(value || '').replace(/\D/g, ''); const national = digits.length === 12 && digits.startsWith('91') ? digits.slice(2) : digits; return /^\d{10}$/.test(national) ? `+91${national}` : ''; };
@@ -85,6 +89,7 @@ exports.signup = async (req, res, next) => {
       'account_verification',
       pendingOtp.code,
       pendingOtp.expiresAt,
+      { correlationId: otpCorrelationId(req) },
     );
   } catch (_) {
     // Do not leave an account that the user cannot verify after a provider
@@ -119,7 +124,7 @@ exports.verifyAccount = async (req, res) => {
     order: [['createdAt', 'DESC']],
   });
   if (!user) return res.status(400).json({ success: false, message: 'Account not found.', code: 'OTP_INVALID', errors: [] });
-  const checked = await verifyPhoneOtp(phoneNumber, req.body.code, 'account_verification');
+  const checked = await verifyPhoneOtp(phoneNumber, req.body.code, 'account_verification', { correlationId: otpCorrelationId(req) });
   if (checked.error) return res.status(400).json({ success: false, message: checked.error[1], code: checked.error[0], errors: checked.error[2] !== undefined ? [{ remainingAttempts: checked.error[2] }] : [] });
   user.isVerified = true;
   await user.save();
@@ -153,7 +158,7 @@ exports.resendVerification = async (req, res) => {
   let deliveredCode;
   if (pendingOtp) {
     try {
-      await deliverPhoneOtp(phoneNumber, 'account_verification', pendingOtp.code, pendingOtp.expiresAt);
+      await deliverPhoneOtp(phoneNumber, 'account_verification', pendingOtp.code, pendingOtp.expiresAt, { correlationId: otpCorrelationId(req) });
       deliveredCode = pendingOtp.code;
     } catch (_) {
       await OtpToken.update({ consumed: true }, { where: { id: pendingOtp.otp.id } }).catch(() => {});
