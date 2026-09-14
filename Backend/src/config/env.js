@@ -9,10 +9,12 @@ const required = [
 ];
 
 const { resolveOtpTestConfig } = require('./otpTestConfig');
+const { resolveLiveTestOtpConfig } = require('./liveTestOtpConfig');
 const { configuredOrigins } = require('./originPolicy');
 
 function validateEnvironment(env = process.env) {
   const otp = resolveOtpTestConfig(env);
+  const liveTestOtp = resolveLiveTestOtpConfig(env);
 
   // Required backend configuration.
   for (const key of required) {
@@ -110,20 +112,29 @@ function validateEnvironment(env = process.env) {
     configuredOrigins(env);
   }
 
+  if (liveTestOtp.enabled) {
+    console.info(
+      `[Environment] Restricted live OTP testing is enabled for ${liveTestOtp.allowlist.size} allowlisted test account(s) until ${liveTestOtp.expiresAt.toISOString()}.`,
+    );
+  }
+
   return {
     smtpConfigured: smtp,
     otpTestConfig: otp,
+    liveTestOtp,
   };
 }
 
 const {
   smtpConfigured,
   otpTestConfig,
+  liveTestOtp,
 } = validateEnvironment(process.env);
 
 module.exports = {
   port: Number(process.env.PORT || 5000),
   smtpConfigured,
   otpTestConfig,
+  liveTestOtp,
   validateEnvironment,
 };
