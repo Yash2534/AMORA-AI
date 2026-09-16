@@ -444,7 +444,7 @@ void main() {
           app(
             home: AccountVerificationScreen(
               arguments: const EmailVerificationArguments(
-                email: 'new.member@amora.ai',
+                email: 'new.member@amoraa.ai',
               ),
               requestCode: (email) async => requestedEmail = email,
               verifyCode: (email, code) async {
@@ -460,9 +460,9 @@ void main() {
         );
         await settleEntrance(tester);
 
-        expect(requestedEmail, 'new.member@amora.ai');
+        expect(requestedEmail, 'new.member@amoraa.ai');
         expect(find.text('Verify your email'), findsOneWidget);
-        expect(find.text('new.member@amora.ai'), findsOneWidget);
+        expect(find.text('new.member@amoraa.ai'), findsOneWidget);
         expect(
           tester
               .widget<AuthPrimaryButton>(
@@ -502,7 +502,7 @@ void main() {
 
         await tester.tap(find.byKey(const ValueKey('verify-account-button')));
         await tester.pump();
-        expect(verifiedPayload, 'new.member@amora.ai:123456');
+        expect(verifiedPayload, 'new.member@amoraa.ai:123456');
         expect(find.text('Email verified'), findsOneWidget);
         await tester.pump(const Duration(milliseconds: 301));
         await tester.pump(const Duration(milliseconds: 400));

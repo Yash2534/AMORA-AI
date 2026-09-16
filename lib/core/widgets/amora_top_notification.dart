@@ -6,7 +6,7 @@ import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 
-/// Notification categories supported by the AMORA top glass notification system.
+/// Notification categories supported by the AMORAA top glass notification system.
 enum AmoraTopNotificationType {
   match,
   message,

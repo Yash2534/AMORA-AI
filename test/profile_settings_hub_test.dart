@@ -143,7 +143,7 @@ void main() {
     ]) {
       expect(find.text(label), findsOneWidget);
     }
-    expect(find.text('support@amora.ai'), findsOneWidget);
+    expect(find.text('support@amoraa.ai'), findsOneWidget);
     expect(find.text('Contact'), findsOneWidget);
 
     final profileSource = File(

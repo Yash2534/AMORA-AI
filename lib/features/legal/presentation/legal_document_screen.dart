@@ -124,7 +124,7 @@ class LegalDocumentScreen extends StatelessWidget {
                     const SizedBox(height: AmoraSpacing.space20),
                     Text(
                       'Questions about these documents can be sent to '
-                      'support@amora.ai.',
+                      'support@amoraa.ai.',
                       textAlign: TextAlign.center,
                       style: AmoraTextStyles.bodySmall.copyWith(
                         color: AppColors.textSecondary,
@@ -299,7 +299,7 @@ const _privacySections = <LegalSection>[
   LegalSection(
     'Updates and contact',
     'Material policy changes will be communicated through an appropriate '
-        'in-app or account channel. Contact support@amora.ai with privacy '
+        'in-app or account channel. Contact support@amoraa.ai with privacy '
         'questions or requests.',
   ),
 ];

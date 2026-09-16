@@ -237,14 +237,14 @@ class DiscoverApiService {
       } on AuthException catch (error) {
         developer.log(
           '$method $path failed with ${error.statusCode ?? 0}: ${error.message}',
-          name: 'AmoraDiscover',
+          name: 'AmoraaDiscover',
         );
         return DiscoverApiResult.failure(
           error.userMessage,
           statusCode: error.statusCode ?? 0,
         );
       } catch (error) {
-        developer.log('$method $path failed: $error', name: 'AmoraDiscover');
+        developer.log('$method $path failed: $error', name: 'AmoraaDiscover');
         return const DiscoverApiResult.failure(
           'Unable to reach Discover right now.',
           statusCode: 0,
@@ -255,7 +255,7 @@ class DiscoverApiService {
     if (setup == null) {
       developer.log(
         '$method $path was not sent because the authenticated session is missing.',
-        name: 'AmoraDiscover',
+        name: 'AmoraaDiscover',
       );
       return const DiscoverApiResult.failure(
         'Discover is unavailable because the session is missing.',
@@ -272,13 +272,13 @@ class DiscoverApiService {
       );
       return _parse(method, path, response);
     } on TimeoutException {
-      developer.log('$method $path timed out.', name: 'AmoraDiscover');
+      developer.log('$method $path timed out.', name: 'AmoraaDiscover');
       return const DiscoverApiResult.failure(
         'The Discover request timed out.',
         statusCode: 408,
       );
     } catch (error) {
-      developer.log('$method $path failed: $error', name: 'AmoraDiscover');
+      developer.log('$method $path failed: $error', name: 'AmoraaDiscover');
       return const DiscoverApiResult.failure(
         'Unable to reach Discover right now.',
         statusCode: 0,
@@ -305,7 +305,7 @@ class DiscoverApiService {
     } catch (error) {
       developer.log(
         'Could not prepare Discover request: $error',
-        name: 'AmoraDiscover',
+        name: 'AmoraaDiscover',
       );
       return null;
     }
@@ -333,7 +333,7 @@ class DiscoverApiService {
       final message = body['message'] as String? ?? 'Discover request failed.';
       developer.log(
         '$method $path failed with ${response.statusCode}: $message',
-        name: 'AmoraDiscover',
+        name: 'AmoraaDiscover',
       );
       return DiscoverApiResult.failure(
         message,
@@ -342,7 +342,7 @@ class DiscoverApiService {
     } catch (error) {
       developer.log(
         '$method $path returned an unreadable response: $error',
-        name: 'AmoraDiscover',
+        name: 'AmoraaDiscover',
       );
       return DiscoverApiResult.failure(
         'Unable to read the Discover service response.',

@@ -323,7 +323,7 @@ exports.getFeed = async (req, res, next) => {
     const matchedTargets = literal(`(SELECT CASE WHEN ${quote('userOneId')} = ${viewerId} THEN ${quote('userTwoId')} ELSE ${quote('userOneId')} END FROM ${quote(Match.getTableName())} WHERE ${quote('userOneId')} = ${viewerId} OR ${quote('userTwoId')} = ${viewerId})`);
     const userWhere = {
       id: { [Op.ne]: Number(req.user.sub), [Op.notIn]: excludedTargets },
-      accountStatus: { [Op.ne]: 'disabled' },
+      accountStatus: 'active',
       [Op.and]: [
         notBlockedUserSql(sequelize, req.user.sub),
         where(col('User.id'), { [Op.notIn]: matchedTargets }),
@@ -367,7 +367,7 @@ exports.getFeed = async (req, res, next) => {
     if (!users.length && page === 1) {
       const fallbackUserWhere = {
         id: { [Op.ne]: Number(req.user.sub) },
-        accountStatus: { [Op.ne]: 'disabled' },
+        accountStatus: 'active',
         [Op.and]: [
           notBlockedUserSql(sequelize, req.user.sub),
           where(col('User.id'), { [Op.notIn]: matchedTargets }),

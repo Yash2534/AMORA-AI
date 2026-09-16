@@ -219,7 +219,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 
-    await tester.enterText(find.byType(TextFormField).at(0), 'member@amora.ai');
+    await tester.enterText(find.byType(TextFormField).at(0), 'member@amoraa.ai');
     await tester.enterText(find.byType(TextFormField).at(1), 'Amora123!');
     await tester.ensureVisible(find.text('Sign in'));
     await tester.pump();
@@ -249,7 +249,7 @@ void main() {
 
     final fields = find.byType(TextFormField);
     await tester.enterText(fields.at(0), 'AMORAA Member');
-    await tester.enterText(fields.at(1), 'new.member@amora.ai');
+    await tester.enterText(fields.at(1), 'new.member@amoraa.ai');
     await tester.enterText(fields.at(2), '9876543210');
     await tester.enterText(fields.at(3), 'Amora123!');
     await tester.enterText(fields.at(4), 'Amora123!');

@@ -927,7 +927,7 @@ const _defaultProfile = _clearedProfile;
 // the application startup, signup, login, or profile-loading paths.
 const _testProfile = UserProfile(
   name: 'Yash Andrapiya',
-  email: 'member@amora.ai',
+  email: 'member@amoraa.ai',
   phoneNumber: '+91 98765 43210',
   birthdate: '14/02/1998',
   gender: 'Man',

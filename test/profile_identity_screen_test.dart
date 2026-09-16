@@ -55,7 +55,7 @@ void main() {
     for (final section in [
       'Who liked you',
       'Profile visitors',
-      'AI conversation coach',
+      'Support Center',
       'Safety & verification',
       'Notifications',
       'Security & Sessions',

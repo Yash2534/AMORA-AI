@@ -404,7 +404,7 @@ class LocalOnboardingRepository extends ChangeNotifier
     _syncQueue = _syncQueue.then((_) => _syncState(state)).catchError((error) {
       developer.log(
         'Onboarding sync queue failed.',
-        name: 'AmoraOnboarding',
+        name: 'AmoraaOnboarding',
         error: error,
       );
     });
@@ -720,7 +720,7 @@ class LocalOnboardingRepository extends ChangeNotifier
     _syncFailureCount++;
     developer.log(
       'Onboarding $operation sync failed: $message',
-      name: 'AmoraOnboarding',
+      name: 'AmoraaOnboarding',
     );
     syncError.value = message;
   }

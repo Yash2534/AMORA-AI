@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 abstract final class SupportContact {
-  static const email = 'support@amora.ai';
+  static const email = 'support@amoraa.ai';
 
   static const subject = 'AMORAA Support Request';
 

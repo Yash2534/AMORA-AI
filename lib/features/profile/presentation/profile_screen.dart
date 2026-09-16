@@ -163,6 +163,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             slivers: [
               AmoraaPinnedMainPageHeader(
+                pinned: false,
                 child: AmoraaMainPageHeader(
                   title: 'Profile',
                   actions: [
@@ -251,6 +252,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         },
                       ),
                     ),
+                    if (profile.presentationCompletionPercent < 100) ...[
+                      const SizedBox(height: 16),
+                      FadeUp(
+                        child: _CompleteProfileBannerCard(
+                          profile: profile,
+                          onTap: () => _open(ProfileEditScreen.routeName),
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 16),
                     FadeUp(
                       child: _AuraPremiumBannerCard(
@@ -1155,35 +1165,31 @@ class _ProfileCompletionSheet extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: AppColors.surface,
-                  minimumSize: const Size(double.infinity, 50),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(99),
+              if (!is100Percent) ...[
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: AppColors.surface,
+                    minimumSize: const Size(double.infinity, 50),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                    elevation: 0,
                   ),
-                  elevation: 0,
-                ),
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  if (is100Percent) {
-                    onEdit();
-                  } else {
+                  onPressed: () {
+                    Navigator.of(context).pop();
                     onComplete();
-                  }
-                },
-                child: Text(
-                  is100Percent
-                      ? 'Edit Complete Profile'
-                      : 'Finish Your Profile ($percent%)',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 15,
+                  },
+                  child: const Text(
+                    'Complete your Profile',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                    ),
                   ),
                 ),
-              ),
+              ],
             ],
           ),
         ),
@@ -1434,6 +1440,189 @@ class _LiveAnimatedMembershipBackgroundState
   }
 }
 
+class _CompleteProfileBannerCard extends StatelessWidget {
+  const _CompleteProfileBannerCard({
+    super.key,
+    required this.profile,
+    required this.onTap,
+  });
+
+  final LocalProfileDraft profile;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final percent = profile.presentationCompletionPercent;
+    final remainingPercent = (100 - percent).clamp(0, 100);
+    final pending = profile.pendingFields;
+    final nextAction = pending.isNotEmpty
+        ? pending.first.actionLabel
+        : 'Complete your profile details';
+    final energeticTagline = pending.isNotEmpty
+        ? '⚡ $nextAction • Get 3x more matches!'
+        : '🚀 Complete your profile & get 3x more matches!';
+
+    return Semantics(
+      button: true,
+      label:
+          'Complete your profile details. $percent% complete. Tap to edit profile.',
+      child: Container(
+        key: const ValueKey('complete-profile-banner'),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: isDark
+                  ? Colors.black.withValues(alpha: 0.25)
+                  : AppColors.primary.withValues(alpha: 0.08),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: BackdropFilter(
+            filter: ui.ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: onTap,
+                borderRadius: BorderRadius.circular(24),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 16,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? const Color(0xFF23182E).withValues(alpha: 0.85)
+                        : Colors.white.withValues(alpha: 0.88),
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.16)
+                          : AppColors.primary.withValues(alpha: 0.16),
+                      width: 1.0,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      SizedBox.square(
+                        dimension: 52,
+                        child: CustomPaint(
+                          painter: _CircularProgressPainter(
+                            progress: percent / 100.0,
+                            trackColor: isDark
+                                ? Colors.white.withValues(alpha: 0.12)
+                                : AppColors.primary.withValues(alpha: 0.14),
+                            progressColor: AppColors.primary,
+                            strokeWidth: 3.5,
+                          ),
+                          child: Center(
+                            child: Text(
+                              '$percent%',
+                              style: AmoraTextStyles.titleMedium.copyWith(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 13,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    'Complete profile',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: AmoraTextStyles.titleMedium.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 15,
+                                      color: AppColors.textPrimary,
+                                    ),
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 3,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary.withValues(
+                                      alpha: 0.10,
+                                    ),
+                                    borderRadius: BorderRadius.circular(99),
+                                  ),
+                                  child: Text(
+                                    '$remainingPercent% left',
+                                    style: AmoraTextStyles.labelSmall.copyWith(
+                                      color: AppColors.primary,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              energeticTagline,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AmoraTextStyles.bodySmall.copyWith(
+                                color: isDark
+                                    ? const Color(0xFFD68BF2)
+                                    : AppColors.primary,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.primary.withValues(alpha: 0.3),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.arrow_forward_rounded,
+                          color: Colors.white,
+                          size: 16,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _AuraPremiumBannerCard extends StatelessWidget {
   const _AuraPremiumBannerCard({
     super.key,
@@ -1607,8 +1796,8 @@ class _ProfileMenuList extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         _ProfileMenuItemRow(
-          icon: Icons.auto_awesome_outlined,
-          title: 'AI conversation coach',
+          icon: Icons.help_outline_rounded,
+          title: 'Support Center',
           onTap: onAiCoach,
         ),
         const SizedBox(height: 12),

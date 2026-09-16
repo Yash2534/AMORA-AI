@@ -163,49 +163,67 @@ class _MatchesScreenState extends State<MatchesScreen> {
           child: LayoutBuilder(
             builder: (context, constraints) {
               final desktop = constraints.maxWidth >= 760;
+              final headerSliver = AmoraaPinnedMainPageHeader(
+                pinned: false,
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 220),
+                  switchInCurve: Curves.easeOutCubic,
+                  switchOutCurve: Curves.easeInCubic,
+                  child: _selectionMode
+                      ? AmoraaMainPageHeaderFrame(
+                          child: AiMatchesSelectionToolbar(
+                            key: const ValueKey(
+                              'ai-matches-selection-toolbar',
+                            ),
+                            selectedCount: _selectedProfileIds.length,
+                            canSelectAll:
+                                !_bulkSubmitting &&
+                                _eligibleVisibleRecommendations.isNotEmpty,
+                            allEligibleSelected:
+                                _eligibleVisibleRecommendations.every(
+                                  (profile) => _selectedProfileIds.contains(
+                                    profile.id,
+                                  ),
+                                ),
+                            editingLocked: _bulkSubmitting,
+                            onClose: _exitSelectionMode,
+                            onSelectAll: _toggleSelectAllVisible,
+                            onClearAll: _clearSelection,
+                          ),
+                        )
+                      : AiMatchesAppBar(
+                          key: const ValueKey('ai-matches-default-app-bar'),
+                          onInfo: _showRecommendationInfo,
+                          onSelect: _enterSelectionMode,
+                        ),
+                ),
+              );
+
               return Stack(
                 children: [
-                  Column(
-                    children: [
-                      AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 220),
-                        switchInCurve: Curves.easeOutCubic,
-                        switchOutCurve: Curves.easeInCubic,
-                        child: _selectionMode
-                            ? AmoraaMainPageHeaderFrame(
-                                child: AiMatchesSelectionToolbar(
-                                  key: const ValueKey(
-                                    'ai-matches-selection-toolbar',
-                                  ),
-                                  selectedCount: _selectedProfileIds.length,
-                                  canSelectAll:
-                                      !_bulkSubmitting &&
-                                      _eligibleVisibleRecommendations
-                                          .isNotEmpty,
-                                  allEligibleSelected:
-                                      _eligibleVisibleRecommendations.every(
-                                        (profile) => _selectedProfileIds
-                                            .contains(profile.id),
-                                      ),
-                                  editingLocked: _bulkSubmitting,
-                                  onClose: _exitSelectionMode,
-                                  onSelectAll: _toggleSelectAllVisible,
-                                  onClearAll: _clearSelection,
-                                ),
-                              )
-                            : AiMatchesAppBar(
-                                key: const ValueKey(
-                                  'ai-matches-default-app-bar',
-                                ),
-                                onInfo: _showRecommendationInfo,
-                                onSelect: _enterSelectionMode,
+                  _loading
+                      ? CustomScrollView(
+                          physics: const BouncingScrollPhysics(
+                            parent: AlwaysScrollableScrollPhysics(),
+                          ),
+                          slivers: [
+                            headerSliver,
+                            const SliverFillRemaining(
+                              child: Center(
+                                child: CircularProgressIndicator(),
                               ),
-                      ),
-                      Expanded(
-                        child: _loading
-                            ? const Center(child: CircularProgressIndicator())
-                            : _loadError != null
-                            ? Center(
+                            ),
+                          ],
+                        )
+                      : _loadError != null
+                      ? CustomScrollView(
+                          physics: const BouncingScrollPhysics(
+                            parent: AlwaysScrollableScrollPhysics(),
+                          ),
+                          slivers: [
+                            headerSliver,
+                            SliverFillRemaining(
+                              child: Center(
                                 child: Column(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
@@ -217,22 +235,36 @@ class _MatchesScreenState extends State<MatchesScreen> {
                                     ),
                                   ],
                                 ),
-                              )
-                            : _recommendations.isEmpty
-                            ? AiMatchesEmptyState(
+                              ),
+                            ),
+                          ],
+                        )
+                      : _recommendations.isEmpty
+                      ? CustomScrollView(
+                          physics: const BouncingScrollPhysics(
+                            parent: AlwaysScrollableScrollPhysics(),
+                          ),
+                          slivers: [
+                            headerSliver,
+                            SliverFillRemaining(
+                              child: AiMatchesEmptyState(
                                 onCompleteProfile: () => Navigator.of(
                                   context,
                                 ).pushNamed(ProfileCompletionScreen.routeName),
-                              )
-                            : CustomScrollView(
-                                key: const PageStorageKey<String>(
-                                  'ai-matches-scroll',
-                                ),
-                                physics: const BouncingScrollPhysics(
-                                  parent: AlwaysScrollableScrollPhysics(),
-                                ),
-                                slivers: [
-                                  SliverPadding(
+                              ),
+                            ),
+                          ],
+                        )
+                      : CustomScrollView(
+                          key: const PageStorageKey<String>(
+                            'ai-matches-scroll',
+                          ),
+                          physics: const BouncingScrollPhysics(
+                            parent: AlwaysScrollableScrollPhysics(),
+                          ),
+                          slivers: [
+                            headerSliver,
+                            SliverPadding(
                                     padding: const EdgeInsets.fromLTRB(
                                       AmoraaMainPageHeader
                                           .contentHorizontalInset,
@@ -446,9 +478,6 @@ class _MatchesScreenState extends State<MatchesScreen> {
                                   ],
                                 ],
                               ),
-                      ),
-                    ],
-                  ),
                   if (widget.showNavigation)
                     const Align(
                       alignment: Alignment.bottomCenter,

@@ -108,8 +108,11 @@ class AmoraaPinnedMainPageHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (!pinned) {
+      return SliverToBoxAdapter(child: child);
+    }
     return SliverPersistentHeader(
-      pinned: pinned,
+      pinned: true,
       delegate: _AmoraaMainPageHeaderDelegate(
         extent: AmoraaMainPageHeader.extentFor(context),
         child: child,
@@ -156,15 +159,19 @@ class _HeaderText extends StatelessWidget {
   Widget build(BuildContext context) {
     return Semantics(
       header: true,
-      child: Text(
-        title,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: AmoraaMainPageHeader.titleStyle.copyWith(
-          fontWeight: FontWeight.w800,
-          letterSpacing: -0.4,
-          fontSize: 26,
-          color: AppColors.primary,
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Text(
+          title,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: AmoraaMainPageHeader.titleStyle.copyWith(
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.4,
+            fontSize: 26,
+            height: 1.15,
+            color: AppColors.primary,
+          ),
         ),
       ),
     );
@@ -186,8 +193,8 @@ class AmoraaMainPageHeaderAction extends StatefulWidget {
     required this.semanticLabel,
     required this.icon,
     required this.onPressed,
-    this.size = 34.0,
-    this.iconSize = 16.0,
+    this.size = 40.0,
+    this.iconSize = 22.0,
   });
 
   @override

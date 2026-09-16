@@ -657,6 +657,7 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
     if (!mounted) return;
     setState(() {
       _photoIndices.remove(profile.id);
+      _profiles = _profiles.where((p) => p.id != profile.id).toList(growable: false);
     });
     _dragOffsetX.value = 0;
     if (action == DiscoverAction.like && saved) {
