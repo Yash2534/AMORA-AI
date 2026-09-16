@@ -547,7 +547,7 @@ class ProfileHero extends StatelessWidget {
       child: BackdropFilter(
         filter: ui.ImageFilter.blur(sigmaX: 16, sigmaY: 16),
         child: Container(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
           decoration: BoxDecoration(
             color: isDark
                 ? const Color(0xFF1E1428).withValues(alpha: 0.55)
@@ -573,12 +573,13 @@ class ProfileHero extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Stack(
                     children: [
                       Container(
-                        width: 82,
-                        height: 82,
+                        width: 86,
+                        height: 86,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           border: Border.all(
@@ -619,94 +620,122 @@ class ProfileHero extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: 24),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
-                        Text(
-                          '${profile.name}${profile.age != null ? ', ${profile.age}' : ''}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AmoraTextStyles.headlineLarge.copyWith(
-                            fontFamily: 'serif',
-                            fontSize: 24,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
-                          ),
+                        _InstaStatColumn(
+                          value: matchesCount,
+                          label: 'Matches',
+                          onTap: onMatchesTap,
                         ),
-                        const SizedBox(height: 2),
-                        Text(
-                          locationText.isNotEmpty
-                              ? locationText
-                              : 'Ahmedabad, India',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AmoraTextStyles.bodyMedium.copyWith(
-                            color: AppColors.textSecondary,
-                            fontSize: 14,
-                          ),
+                        _InstaStatColumn(
+                          value: likesCount,
+                          label: 'Likes',
+                          onTap: onLikesTap,
                         ),
-                        const SizedBox(height: 6),
-                        InkWell(
-                          onTap: onEdit,
-                          borderRadius: BorderRadius.circular(6),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 2),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  'Edit profile',
-                                  style: AmoraTextStyles.labelMedium.copyWith(
-                                    color: AppColors.primary,
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                                const SizedBox(width: 2),
-                                const Icon(
-                                  Icons.chevron_right_rounded,
-                                  size: 18,
-                                  color: AppColors.primary,
-                                ),
-                              ],
-                            ),
-                          ),
+                        _InstaStatColumn(
+                          value: '${profile.presentationCompletionPercent}%',
+                          label: 'Strength',
+                          onTap: onOpenCompletionSheet ?? onComplete,
                         ),
                       ],
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 22),
-              Row(
-                children: [
-                  Expanded(
-                    child: _ProfileStatCircle(
-                      value: matchesCount,
-                      label: 'Matches',
-                      onTap: onMatchesTap,
+              const SizedBox(height: 16),
+              Text(
+                '${profile.name}${profile.age != null ? ', ${profile.age}' : ''}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AmoraTextStyles.headlineMedium.copyWith(
+                  fontFamily: 'serif',
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              if (locationText.isNotEmpty) ...[
+                const SizedBox(height: 2),
+                Text(
+                  locationText,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AmoraTextStyles.bodyMedium.copyWith(
+                    color: AppColors.textSecondary,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: onEdit,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: isDark ? const Color(0xFF333333) : const Color(0xFFF1F1F1),
+                    foregroundColor: isDark ? Colors.white : Colors.black87,
+                    elevation: 0,
+                    minimumSize: const Size.fromHeight(40),
+                    padding: const EdgeInsets.symmetric(vertical: 0),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _ProfileStatCircle(
-                      value: likesCount,
-                      label: 'Likes',
-                      onTap: onLikesTap,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _ProfileStatCircle(
-                      value: '${profile.presentationCompletionPercent}%',
-                      label: 'Strength',
-                      progress: profile.presentationCompletionPercent / 100.0,
-                      onTap: onOpenCompletionSheet ?? onComplete,
-                    ),
-                  ),
-                ],
+                  child: const Text('Edit profile', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _InstaStatColumn extends StatelessWidget {
+  const _InstaStatColumn({
+    required this.value,
+    required this.label,
+    this.onTap,
+  });
+
+  final String value;
+  final String label;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: SizedBox(
+        height: 58,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                value,
+                style: AmoraTextStyles.headlineSmall.copyWith(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 15,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                label,
+                style: AmoraTextStyles.labelMedium.copyWith(
+                  color: isDark ? Colors.white70 : Colors.black54,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ],
           ),
@@ -789,20 +818,19 @@ class _ProfileStatCircle extends StatelessWidget {
                       children: [
                         Text(
                           value,
-                          style: AmoraTextStyles.headlineMedium.copyWith(
-                            fontFamily: 'serif',
-                            fontSize: 19,
-                            fontWeight: FontWeight.w700,
+                          style: AmoraTextStyles.headlineSmall.copyWith(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 15,
                             color: AppColors.textPrimary,
                           ),
                         ),
-                        const SizedBox(height: 1),
+                        const SizedBox(height: 2),
                         Text(
                           label,
-                          style: AmoraTextStyles.bodySmall.copyWith(
-                            color: AppColors.textSecondary,
+                          style: AmoraTextStyles.labelMedium.copyWith(
+                            color: isDark ? Colors.white70 : Colors.black54,
                             fontSize: 11,
-                            fontWeight: FontWeight.w500,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ],
@@ -1766,19 +1794,12 @@ class _SheetItem extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             child: Row(
               children: [
-                Container(
+                SizedBox(
                   width: 40,
                   height: 40,
-                  decoration: BoxDecoration(
-                    color: isDanger
-                        ? AppColors.errorRed.withValues(alpha: 0.12)
-                        : (isDark
-                            ? Colors.white.withValues(alpha: 0.10)
-                            : AppColors.accentSoft.withValues(alpha: 0.60)),
-                    shape: BoxShape.circle,
+                  child: Center(
+                    child: Icon(icon, color: color, size: 20),
                   ),
-                  alignment: Alignment.center,
-                  child: Icon(icon, color: color, size: 20),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -1871,17 +1892,12 @@ class _ProfileMenuItemRow extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 child: Row(
                   children: [
-                    Container(
+                    SizedBox(
                       width: 44,
                       height: 44,
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? Colors.white.withValues(alpha: 0.10)
-                            : AppColors.accentSoft.withValues(alpha: 0.60),
-                        shape: BoxShape.circle,
+                      child: Center(
+                        child: Icon(icon, color: AppColors.primary, size: 20),
                       ),
-                      alignment: Alignment.center,
-                      child: Icon(icon, color: AppColors.primary, size: 20),
                     ),
                     const SizedBox(width: 14),
                     Expanded(

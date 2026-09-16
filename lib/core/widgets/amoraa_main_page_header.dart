@@ -242,36 +242,14 @@ class _AmoraaMainPageHeaderActionState
               scale: _pressed ? 0.94 : 1.0,
               duration: const Duration(milliseconds: 140),
               curve: Curves.easeOutCubic,
-              child: Container(
+              child: SizedBox(
                 width: widget.size,
                 height: widget.size,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  boxShadow: shadows,
-                ),
-                child: ClipOval(
-                  clipBehavior: Clip.antiAlias,
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-                    child: Container(
-                      width: widget.size,
-                      height: widget.size,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: backgroundColor,
-                        border: Border.all(
-                          color: borderColor,
-                          width: 1.1,
-                        ),
-                      ),
-                      child: Center(
-                        child: Icon(
-                          widget.icon,
-                          size: widget.iconSize,
-                          color: iconColor,
-                        ),
-                      ),
-                    ),
+                child: Center(
+                  child: Icon(
+                    widget.icon,
+                    size: widget.iconSize,
+                    color: iconColor,
                   ),
                 ),
               ),

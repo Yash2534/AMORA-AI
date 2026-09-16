@@ -90,18 +90,18 @@ class FloatingBottomNav extends StatelessWidget {
     final isDark = theme.brightness == Brightness.dark;
 
     final Color surfaceColor = isDark
-        ? const Color(0xFF1E1428).withValues(alpha: 0.52)
-        : Colors.white.withValues(alpha: 0.32);
+        ? AppColors.plumBlack.withValues(alpha: 0.52)
+        : AppColors.white.withValues(alpha: 0.32);
 
     final Color borderColor = isDark
-        ? Colors.white.withValues(alpha: 0.22)
-        : Colors.white.withValues(alpha: 0.45);
+        ? AppColors.white.withValues(alpha: 0.22)
+        : AppColors.white.withValues(alpha: 0.45);
 
     final List<BoxShadow> shadows = [
       BoxShadow(
         color: isDark
-            ? Colors.black.withValues(alpha: 0.35)
-            : const Color(0xFF6B4E71).withValues(alpha: 0.12),
+            ? AppColors.plumBlack.withValues(alpha: 0.35)
+            : AppColors.glassShadow.withValues(alpha: 0.12),
         blurRadius: 22,
         spreadRadius: 0,
         offset: const Offset(0, 8),
@@ -225,15 +225,15 @@ class _BottomNavButtonState extends State<_BottomNavButton> {
 
     final Color selectedIndicatorColor = isDark
         ? AppColors.primary.withValues(alpha: 0.35)
-        : const Color(0xFFF6E4F0);
+        : AppColors.softLavender;
 
     final Color activeColor = isDark
-        ? Colors.white
-        : const Color(0xFF713F62);
+        ? AppColors.white
+        : AppColors.primary;
 
     final Color inactiveColor = isDark
-        ? Colors.white.withValues(alpha: 0.65)
-        : const Color(0xFF735F70);
+        ? AppColors.white.withValues(alpha: 0.65)
+        : AppColors.secondaryText;
 
     return Semantics(
       button: true,
@@ -279,7 +279,7 @@ class _BottomNavButtonState extends State<_BottomNavButton> {
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
                           color: _focused
-                              ? const Color(0xFF8F5A88)
+                              ? AppColors.primaryLight
                               : AppColors.transparent,
                           width: _focused ? 1.5 : 1,
                         ),
@@ -336,7 +336,7 @@ class _BottomNavButtonState extends State<_BottomNavButton> {
                               maxLines: 1,
                               softWrap: false,
                               textAlign: TextAlign.center,
-                              overflow: TextOverflow.fade,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ),
