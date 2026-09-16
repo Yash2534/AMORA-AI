@@ -4,6 +4,8 @@ import 'package:amora_ai/core/theme/amora_shadows.dart';
 import 'package:amora_ai/core/widgets/premium_motion.dart';
 import 'package:flutter/material.dart';
 
+import 'dart:ui' as ui;
+
 class AmoraBottomSheet extends StatelessWidget {
   const AmoraBottomSheet({super.key, required this.child, this.padding});
 
@@ -12,35 +14,50 @@ class AmoraBottomSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return SafeArea(
       top: false,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: AmoraRadius.sheet,
-          border: Border(
-            top: BorderSide(color: AppColors.borderGray.withValues(alpha: .7)),
-          ),
-          boxShadow: AmoraShadows.bottomSheet,
-        ),
-        child: Material(
-          color: AppColors.transparent,
-          child: Padding(
-            padding: padding ?? AmoraSpacing.bottomSheet,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: AmoraSpacing.space32,
-                  height: AmoraSpacing.space4,
-                  margin: const EdgeInsets.only(bottom: AmoraSpacing.x4),
-                  decoration: BoxDecoration(
-                    color: AppColors.borderGray,
-                    borderRadius: AmoraRadius.pillBorder,
-                  ),
+      child: ClipRRect(
+        borderRadius: AmoraRadius.sheet,
+        child: BackdropFilter(
+          filter: ui.ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+          child: Container(
+            decoration: BoxDecoration(
+              color: isDark
+                  ? const Color(0xFF1E1428).withValues(alpha: 0.82)
+                  : Colors.white.withValues(alpha: 0.82),
+              borderRadius: AmoraRadius.sheet,
+              border: Border.all(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.15)
+                    : Colors.white.withValues(alpha: 0.6),
+                width: 1.2,
+              ),
+              boxShadow: AmoraShadows.bottomSheet,
+            ),
+            child: Material(
+              color: AppColors.transparent,
+              child: Padding(
+                padding: padding ?? AmoraSpacing.bottomSheet,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: AmoraSpacing.space32,
+                      height: AmoraSpacing.space4,
+                      margin: const EdgeInsets.only(bottom: AmoraSpacing.x4),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.3)
+                            : AppColors.borderGray,
+                        borderRadius: AmoraRadius.pillBorder,
+                      ),
+                    ),
+                    child,
+                  ],
                 ),
-                child,
-              ],
+              ),
             ),
           ),
         ),

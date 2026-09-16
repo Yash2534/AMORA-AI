@@ -140,14 +140,15 @@ class DiscoverActionController extends ChangeNotifier {
         _ => 'pass',
       },
     );
-    if (!result.success) {
+    if (!result.success || result.data == null) {
       _activeAction = null;
       _isTransitioning = false;
-      _lastError = result.message;
+      _lastError = result.message ?? 'Action failed';
       notifyListeners();
       return false;
     }
-    _lastLikeStatus = result.data!.likeStatus;
+    final responseData = result.data!;
+    _lastLikeStatus = responseData.likeStatus;
 
     _history.add(
       DiscoverHistoryEntry(
@@ -173,8 +174,8 @@ class DiscoverActionController extends ChangeNotifier {
     _activeAction = null;
     _isTransitioning = false;
     notifyListeners();
-    if (result.data!.matched) {
-      if (result.data!.conversationId != null) {
+    if (responseData.matched) {
+      if (responseData.conversationId != null) {
         try {
           await _refreshChats();
         } catch (_) {
@@ -182,8 +183,8 @@ class DiscoverActionController extends ChangeNotifier {
         }
       }
       _matchedProfileId = profileId;
-      _matchId = result.data!.matchId;
-      _matchedProfile = result.data!.matchedProfile;
+      _matchId = responseData.matchId;
+      _matchedProfile = responseData.matchedProfile;
       notifyListeners();
     }
     return true;

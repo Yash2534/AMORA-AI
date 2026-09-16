@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:amora_ai/core/config/app_feature_flags.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
@@ -10,23 +12,26 @@ class FloatingBottomNav extends StatelessWidget {
   const FloatingBottomNav({
     super.key,
     required this.activeTab,
+    this.isCollapsed = false,
     this.onTabSelected,
   });
 
   final AmoraNavTab activeTab;
+  final bool isCollapsed;
   final ValueChanged<AmoraNavTab>? onTabSelected;
 
   static const double barHeight = 68;
+  static const double compactBarHeight = 52;
   static const double contentSpacing = 8;
   static const double contentBottomPadding =
       barHeight + minimumBottomSpacing + contentSpacing;
   static const double assistantBottomPadding = 86;
   static const double maxBarWidth = 480;
   static const double itemHeight = 60;
-  static const double iconSize = 23;
-  static const double selectedIconSize = 23;
-  static const double iconContainerWidth = 36;
-  static const double iconContainerHeight = 28;
+  static const double iconSize = 22;
+  static const double selectedIconSize = 22;
+  static const double iconContainerWidth = 40;
+  static const double iconContainerHeight = 29;
   static const double labelSize = 11;
   static const double horizontalMargin = 16;
   static const double minimumBottomSpacing = 6;
@@ -51,7 +56,7 @@ class FloatingBottomNav extends StatelessWidget {
     AmoraNavigationDestination(
       icon: Icons.chat_bubble_outline_rounded,
       selectedIcon: Icons.chat_bubble_rounded,
-      label: 'Chat',
+      label: 'Chats',
       tab: AmoraNavTab.chats,
       routeName: '/chats',
     ),
@@ -81,9 +86,33 @@ class FloatingBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final Color surfaceColor = isDark
+        ? const Color(0xFF1E1428).withValues(alpha: 0.52)
+        : Colors.white.withValues(alpha: 0.32);
+
+    final Color borderColor = isDark
+        ? Colors.white.withValues(alpha: 0.22)
+        : Colors.white.withValues(alpha: 0.45);
+
+    final List<BoxShadow> shadows = [
+      BoxShadow(
+        color: isDark
+            ? Colors.black.withValues(alpha: 0.35)
+            : const Color(0xFF6B4E71).withValues(alpha: 0.12),
+        blurRadius: 22,
+        spreadRadius: 0,
+        offset: const Offset(0, 8),
+      ),
+    ];
+
     return Material(
       key: const ValueKey('floating-bottom-nav-transparent-outer'),
       type: MaterialType.transparency,
+      color: Colors.transparent,
+      elevation: 0,
       child: SafeArea(
         key: const ValueKey('floating-bottom-nav-safe-area'),
         top: false,
@@ -94,40 +123,51 @@ class FloatingBottomNav extends StatelessWidget {
             heightFactor: 1,
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: maxBarWidth),
-              child: SizedBox(
+              child: AnimatedContainer(
                 key: const ValueKey('floating-bottom-nav-bar'),
-                height: barHeight,
+                duration: const Duration(milliseconds: 280),
+                curve: Curves.easeOutCubic,
+                height: isCollapsed ? compactBarHeight : barHeight,
                 child: DecoratedBox(
-                  key: const ValueKey('floating-bottom-nav-container-surface'),
                   decoration: BoxDecoration(
-                    color: AppColors.surface.withValues(alpha: .96),
-                    borderRadius: BorderRadius.circular(28),
-                    border: Border.all(
-                      color: AppColors.textSecondary.withValues(alpha: .14),
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.primary.withValues(alpha: .1),
-                        blurRadius: 20,
-                        spreadRadius: -7,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
+                    borderRadius: BorderRadius.circular(40),
+                    boxShadow: shadows,
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(AmoraSpacing.space4),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        for (final item in items)
-                          Expanded(
-                            child: _BottomNavButton(
-                              item: item,
-                              selected: item.tab == activeTab,
-                              onTap: () => _handleTap(context, item),
-                            ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(40),
+                    clipBehavior: Clip.antiAlias,
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                      child: DecoratedBox(
+                        key: const ValueKey('floating-bottom-nav-container-surface'),
+                        decoration: BoxDecoration(
+                          color: surfaceColor,
+                          borderRadius: BorderRadius.circular(40),
+                          border: Border.all(
+                            color: borderColor,
+                            width: 1.2,
                           ),
-                      ],
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AmoraSpacing.space2,
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              for (final item in items)
+                                Expanded(
+                                  child: _BottomNavButton(
+                                    item: item,
+                                    selected: item.tab == activeTab,
+                                    isCollapsed: isCollapsed,
+                                    onTap: () => _handleTap(context, item),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -153,11 +193,13 @@ class _BottomNavButton extends StatefulWidget {
   const _BottomNavButton({
     required this.item,
     required this.selected,
+    required this.isCollapsed,
     required this.onTap,
   });
 
   final AmoraNavigationDestination item;
   final bool selected;
+  final bool isCollapsed;
   final VoidCallback onTap;
 
   @override
@@ -171,12 +213,28 @@ class _BottomNavButtonState extends State<_BottomNavButton> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     final reduceMotion = MediaQuery.disableAnimationsOf(context);
     final duration = reduceMotion
         ? Duration.zero
         : const Duration(milliseconds: 220);
     final selected = widget.selected;
     final item = widget.item;
+
+    final Color selectedIndicatorColor = isDark
+        ? AppColors.primary.withValues(alpha: 0.35)
+        : const Color(0xFFF6E4F0);
+
+    final Color activeColor = isDark
+        ? Colors.white
+        : const Color(0xFF713F62);
+
+    final Color inactiveColor = isDark
+        ? Colors.white.withValues(alpha: 0.65)
+        : const Color(0xFF735F70);
+
     return Semantics(
       button: true,
       selected: selected,
@@ -187,8 +245,8 @@ class _BottomNavButtonState extends State<_BottomNavButton> {
         child: SizedBox(
           height: FloatingBottomNav.itemHeight,
           child: Material(
-            color: _hovered ? AppColors.background : AppColors.transparent,
-            borderRadius: AmoraRadius.pillBorder,
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(40),
             clipBehavior: Clip.antiAlias,
             child: InkWell(
               key: ValueKey('bottom-nav-${item.label}'),
@@ -196,11 +254,11 @@ class _BottomNavButtonState extends State<_BottomNavButton> {
               onHighlightChanged: (value) => setState(() => _pressed = value),
               onHover: (value) => setState(() => _hovered = value),
               onFocusChange: (value) => setState(() => _focused = value),
-              focusColor: AppColors.background,
-              hoverColor: AppColors.background,
-              highlightColor: AppColors.tertiary.withValues(alpha: .28),
-              splashColor: AppColors.secondary.withValues(alpha: .18),
-              borderRadius: AmoraRadius.pillBorder,
+              focusColor: Colors.transparent,
+              hoverColor: Colors.transparent,
+              highlightColor: AppColors.accentSoft.withValues(alpha: .3),
+              splashColor: AppColors.accentSoft.withValues(alpha: .3),
+              borderRadius: BorderRadius.circular(40),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -216,12 +274,12 @@ class _BottomNavButtonState extends State<_BottomNavButton> {
                       height: FloatingBottomNav.iconContainerHeight,
                       decoration: BoxDecoration(
                         color: selected
-                            ? AppColors.tertiary.withValues(alpha: .42)
+                            ? selectedIndicatorColor
                             : AppColors.transparent,
-                        borderRadius: AmoraRadius.pillBorder,
+                        borderRadius: BorderRadius.circular(20),
                         border: Border.all(
                           color: _focused
-                              ? AppColors.secondary
+                              ? const Color(0xFF8F5A88)
                               : AppColors.transparent,
                           width: _focused ? 1.5 : 1,
                         ),
@@ -235,9 +293,7 @@ class _BottomNavButtonState extends State<_BottomNavButton> {
                         child: Icon(
                           selected ? item.selectedIcon : item.icon,
                           key: ValueKey('$selected-${item.label}'),
-                          color: selected
-                              ? AppColors.primary
-                              : AppColors.text.withValues(alpha: .68),
+                          color: selected ? activeColor : inactiveColor,
                           size: selected
                               ? FloatingBottomNav.selectedIconSize
                               : FloatingBottomNav.iconSize,
@@ -245,31 +301,45 @@ class _BottomNavButtonState extends State<_BottomNavButton> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: AmoraSpacing.space4),
-                  MediaQuery.withClampedTextScaling(
-                    maxScaleFactor: 1.08,
-                    child: AnimatedDefaultTextStyle(
+                  AnimatedContainer(
+                    duration: duration,
+                    curve: Curves.easeOutCubic,
+                    height: widget.isCollapsed ? 0 : AmoraSpacing.space4,
+                  ),
+                  ClipRect(
+                    child: AnimatedContainer(
                       duration: duration,
                       curve: Curves.easeOutCubic,
-                      style: AmoraTextStyles.labelSmall.copyWith(
-                        color: selected
-                            ? AppColors.primary
-                            : AppColors.text.withValues(alpha: .68),
-                        fontSize: FloatingBottomNav.labelSize,
-                        fontFamily: AmoraTextStyles.fontFamily,
-                        height: 1,
-                        letterSpacing: -.35,
-                        fontWeight: selected
-                            ? FontWeight.w600
-                            : FontWeight.w400,
-                      ),
-                      child: Text(
-                        item.label,
-                        key: ValueKey('bottom-nav-label-${item.label}'),
-                        maxLines: 1,
-                        softWrap: false,
-                        textAlign: TextAlign.center,
-                        overflow: TextOverflow.fade,
+                      height: widget.isCollapsed ? 0 : 16,
+                      child: AnimatedOpacity(
+                        duration: duration,
+                        curve: Curves.easeOutCubic,
+                        opacity: widget.isCollapsed ? 0 : 1,
+                        child: MediaQuery.withClampedTextScaling(
+                          maxScaleFactor: 1.08,
+                          child: AnimatedDefaultTextStyle(
+                            duration: duration,
+                            curve: Curves.easeOutCubic,
+                            style: AmoraTextStyles.labelSmall.copyWith(
+                              color: selected ? activeColor : inactiveColor,
+                              fontSize: FloatingBottomNav.labelSize,
+                              fontFamily: AmoraTextStyles.fontFamily,
+                              height: 1,
+                              letterSpacing: -.35,
+                              fontWeight: selected
+                                  ? FontWeight.w700
+                                  : FontWeight.w400,
+                            ),
+                            child: Text(
+                              item.label,
+                              key: ValueKey('bottom-nav-label-${item.label}'),
+                              maxLines: 1,
+                              softWrap: false,
+                              textAlign: TextAlign.center,
+                              overflow: TextOverflow.fade,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ),

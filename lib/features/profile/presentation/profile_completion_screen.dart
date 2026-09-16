@@ -5,6 +5,7 @@ import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/amora_app_bar.dart';
+import 'package:amora_ai/core/widgets/amora_snackbar.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
@@ -460,11 +461,11 @@ class _ProfileCompletionScreenState extends State<ProfileCompletionScreen> {
         _showValidation.remove(id);
         _saveErrors.remove(id);
       });
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(content: Text('${section.title} saved successfully.')),
-        );
+      showAmoraSnackBar(
+        context,
+        message: '${section.title} saved successfully.',
+        tone: AmoraSnackBarTone.success,
+      );
     } on AuthException catch (error) {
       if (!mounted) return;
       setState(() {

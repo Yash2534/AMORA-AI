@@ -1,6 +1,7 @@
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/auth/auth_service.dart';
+import 'package:amora_ai/core/widgets/amora_snackbar.dart';
 import 'package:amora_ai/core/widgets/amora_dob_field.dart';
 import 'package:amora_ai/core/widgets/amora_app_bar.dart';
 import 'package:amora_ai/core/widgets/amoraa_select_field.dart';
@@ -364,16 +365,18 @@ class _ProfileBasicDetailsScreenState extends State<ProfileBasicDetailsScreen> {
       if (mounted) Navigator.of(context).pop(true);
     } on AuthException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(
+        showAmoraSnackBar(
           context,
-        ).showSnackBar(SnackBar(content: Text(error.userMessage)));
+          message: error.userMessage,
+          tone: AmoraSnackBarTone.error,
+        );
       }
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Could not save profile details. Please try again.'),
-          ),
+        showAmoraSnackBar(
+          context,
+          message: 'Could not save profile details. Please try again.',
+          tone: AmoraSnackBarTone.error,
         );
       }
     }

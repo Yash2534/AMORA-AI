@@ -3,6 +3,7 @@ import 'package:amora_ai/core/api/phase_two_api_service.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
+import 'package:amora_ai/core/widgets/amora_top_notification.dart';
 import 'package:amora_ai/core/widgets/amora_profile_image.dart';
 import 'package:amora_ai/core/widgets/amora_filter_chip.dart';
 import 'package:amora_ai/core/widgets/amoraa_main_page_header.dart';
@@ -153,9 +154,10 @@ class _MatchesScreenState extends State<MatchesScreen> {
               .toList(growable: false);
 
     return Scaffold(
+      extendBody: true,
       backgroundColor: AppColors.background,
       body: SafeArea(
-        bottom: !widget.showNavigation,
+        bottom: false,
         child: ResponsiveMobileFrame(
           maxWidth: 1080,
           child: LayoutBuilder(
@@ -437,14 +439,8 @@ class _MatchesScreenState extends State<MatchesScreen> {
                                                 (_selectedProfileIds
                                                         .isNotEmpty ||
                                                     _bulkSubmitting)
-                                            ? (widget.showNavigation
-                                                  ? 224
-                                                  : 132)
-                                            : widget.showNavigation
-                                            ? FloatingBottomNav.contentBottomPaddingFor(
-                                                context,
-                                              )
-                                            : FloatingBottomNav.contentSpacing,
+                                            ? FloatingBottomNav.navigationHeightFor(context) + 124.0
+                                            : FloatingBottomNav.navigationHeightFor(context) + 24.0,
                                       ),
                                     ),
                                   ],
@@ -463,9 +459,7 @@ class _MatchesScreenState extends State<MatchesScreen> {
                     right: desktop
                         ? AmoraSpacing.space24
                         : AmoraSpacing.space12,
-                    bottom: widget.showNavigation
-                        ? FloatingBottomNav.contentBottomPaddingFor(context)
-                        : AmoraSpacing.space8,
+                    bottom: FloatingBottomNav.contentBottomPaddingFor(context),
                     child: AnimatedSwitcher(
                       duration: const Duration(milliseconds: 240),
                       switchInCurve: Curves.easeOutBack,
@@ -722,10 +716,10 @@ class _MatchesScreenState extends State<MatchesScreen> {
           selected = (await widget.api!.match(item.id)).profile.profile;
         } catch (_) {
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('This match is no longer available.'),
-              ),
+            AmoraTopNotificationManager.show(
+              context,
+              message: 'This match is no longer available.',
+              type: AmoraTopNotificationType.system,
             );
           }
           await _loadMatches();
@@ -747,8 +741,10 @@ class _MatchesScreenState extends State<MatchesScreen> {
           .createConversationForProfile(profile);
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Chat is no longer available.')),
+        AmoraTopNotificationManager.show(
+          context,
+          message: 'Chat is no longer available.',
+          type: AmoraTopNotificationType.message,
         );
       }
       return;

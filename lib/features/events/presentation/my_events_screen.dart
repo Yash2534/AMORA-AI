@@ -2,6 +2,7 @@ import 'package:amora_ai/core/auth/auth_service.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/amora_app_bar.dart';
+import 'package:amora_ai/core/widgets/amora_snackbar.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/events/domain/event_models.dart';
 import 'package:amora_ai/features/events/domain/my_event_category.dart';
@@ -146,7 +147,6 @@ class _MyEventsScreenState extends State<MyEventsScreen>
               label: 'Cancel booking',
               variant: AppPrimaryButtonVariant.outlined,
               onPressed: () async {
-                final messenger = ScaffoldMessenger.of(context);
                 Navigator.pop(sheetContext);
                 if (widget.controller != null) {
                   _controller.cancelEvent(registration.event);
@@ -154,27 +154,21 @@ class _MyEventsScreenState extends State<MyEventsScreen>
                   try {
                     await _controller.cancelRemote(registration.event);
                   } catch (error) {
-                    messenger.showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          userFacingErrorMessage(
-                            error,
-                            fallback:
-                                'Could not cancel this booking. Please try again.',
-                          ),
-                        ),
+                    showAmoraSnackBar(
+                      context,
+                      message: userFacingErrorMessage(
+                        error,
+                        fallback: 'Could not cancel this booking. Please try again.',
                       ),
+                      tone: AmoraSnackBarTone.error,
                     );
                     return;
                   }
                 }
                 if (!mounted) return;
-                messenger.showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      '${registration.event.title} booking cancelled',
-                    ),
-                  ),
+                showAmoraSnackBar(
+                  context,
+                  message: '${registration.event.title} booking cancelled',
                 );
               },
             ),

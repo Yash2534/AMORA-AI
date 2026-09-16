@@ -1,4 +1,5 @@
 import 'package:amora_ai/core/branding/amora_brand_assets.dart';
+import 'package:amora_ai/core/branding/amora_logo.dart';
 import 'package:amora_ai/core/auth/auth_service.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
@@ -89,23 +90,9 @@ class LegalDocumentScreen extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
-                            children: [
-                              Image.asset(
-                                AmoraBrandAssets.icon,
-                                width: 40,
-                                height: 40,
-                                semanticLabel: 'AMORAA',
-                              ),
-                              const SizedBox(width: AmoraSpacing.space12),
-                              Expanded(
-                                child: Image.asset(
-                                  AmoraBrandAssets.wordmark,
-                                  height: 20,
-                                  alignment: Alignment.centerLeft,
-                                ),
-                              ),
-                            ],
+                          const AmoraLogo(
+                            iconSize: 40,
+                            wordmarkHeight: 20,
                           ),
                           const SizedBox(height: AmoraSpacing.space20),
                           Text(

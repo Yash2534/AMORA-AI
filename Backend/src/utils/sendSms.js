@@ -5,7 +5,9 @@ async function sendSms(to, message, meta = {}) {
       console.log(`============================================\n[DEV MODE] SMS not configured — OTP for ${to}:\nCODE: ${meta.code}\nPurpose: ${meta.purpose}\nExpires: ${meta.expiresAt.toISOString()}\n============================================`);
       return;
     }
-    throw new Error('SMS is not configured. Set SMS_PROVIDER, TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_FROM_NUMBER.');
+    const error = new Error('SMS is not configured. Set SMS_PROVIDER, TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_FROM_NUMBER.');
+    error.code = 'OTP_CONFIG_ERROR';
+    throw error;
   }
   if (process.env.SMS_PROVIDER.toLowerCase() !== 'twilio') throw new Error(`Unsupported SMS provider: ${process.env.SMS_PROVIDER}`);
   const client = require('twilio')(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);

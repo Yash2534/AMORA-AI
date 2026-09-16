@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
+import 'package:amora_ai/core/widgets/amora_dialog.dart';
 import 'package:flutter/material.dart';
 
 enum AmoraaProfileAction { unlike, removeSuperLike, unsave, block, unblock }
@@ -80,7 +81,7 @@ Future<bool?> showAmoraaProfileActionConfirmation({
   required FutureOr<void> Function() onConfirm,
 }) {
   final safeName = amoraaProfileActionName(profileName);
-  return showDialog<bool>(
+  return showAmoraGlassDialog<bool>(
     context: context,
     barrierDismissible: true,
     builder: (_) => AmoraaConfirmActionSheet(

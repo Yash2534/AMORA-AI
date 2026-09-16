@@ -5,6 +5,7 @@ import 'package:amora_ai/core/auth/auth_service.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
+import 'package:amora_ai/core/widgets/amora_snackbar.dart';
 import 'package:amora_ai/core/widgets/amora_dob_field.dart';
 import 'package:amora_ai/core/widgets/amora_app_bar.dart';
 import 'package:amora_ai/core/widgets/amoraa_select_field.dart';
@@ -347,16 +348,18 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     } on AuthException catch (error) {
       if (!mounted) return;
       setState(() => _loading = false);
-      ScaffoldMessenger.of(
+      showAmoraSnackBar(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.userMessage)));
+        message: error.userMessage,
+        tone: AmoraSnackBarTone.error,
+      );
     } catch (_) {
       if (!mounted) return;
       setState(() => _loading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Profile could not be saved. Please try again.'),
-        ),
+      showAmoraSnackBar(
+        context,
+        message: 'Profile could not be saved. Please try again.',
+        tone: AmoraSnackBarTone.error,
       );
     }
   }

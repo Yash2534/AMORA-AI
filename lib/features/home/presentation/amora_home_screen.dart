@@ -13,6 +13,7 @@ import 'package:amora_ai/core/widgets/amora_profile_image.dart';
 import 'package:amora_ai/core/widgets/amora_filter_chip.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/floating_bottom_nav.dart';
+import 'package:amora_ai/core/widgets/amora_snackbar.dart';
 import 'package:amora_ai/core/widgets/premium_banner_card.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/premium_image.dart';
@@ -39,6 +40,7 @@ import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
 import 'package:amora_ai/features/profile/domain/profile_form_options.dart';
 import 'package:amora_ai/features/profile/domain/profile_interest_policy.dart';
 import 'package:amora_ai/features/subscription/presentation/subscription_screen.dart';
+import 'package:amora_ai/features/home/presentation/widgets/amora_profile_card_stack.dart';
 import 'package:flutter/material.dart';
 
 class AmoraHomeScreen extends StatefulWidget {
@@ -160,11 +162,13 @@ class _AmoraHomeScreenState extends State<AmoraHomeScreen> {
                               const SizedBox(height: AmoraSpacing.space20),
                               FadeUp(
                                 delay: const Duration(milliseconds: 80),
-                                child: _HeroMatchCard(
-                                  profile: _heroProfile,
+                                child: AmoraProfileCardStack(
+                                  profiles: _heroProfiles,
+                                  currentIndex: _heroIndex,
                                   height: heroHeight,
-                                  onOpen: () =>
-                                      _openProfile(context, _heroProfile),
+                                  lastProfile: _lastProfile,
+                                  onOpen: (profile) =>
+                                      _openProfile(context, profile),
                                   onLike: () => isGuest
                                       ? _requireAuth(
                                           () => _advanceHero(
@@ -342,9 +346,7 @@ class _AmoraHomeScreenState extends State<AmoraHomeScreen> {
   }
 
   static void _scrollSnack(BuildContext context, String message) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
+    showAmoraSnackBar(context, message: message);
   }
 }
 
@@ -698,190 +700,7 @@ class _ExploreAiPreview extends StatelessWidget {
   }
 }
 
-class _HeroMatchCard extends StatelessWidget {
-  const _HeroMatchCard({
-    required this.profile,
-    required this.height,
-    required this.onOpen,
-    required this.onLike,
-    required this.onPass,
-    required this.onChat,
-    required this.onMatch,
-    required this.onUndo,
-  });
 
-  final AmoraProfileCardData profile;
-  final double height;
-  final VoidCallback onOpen;
-  final VoidCallback onLike;
-  final VoidCallback onPass;
-  final VoidCallback onChat;
-  final VoidCallback onMatch;
-  final VoidCallback onUndo;
-
-  @override
-  Widget build(BuildContext context) {
-    final visibleInterests = ProfileInterestPolicy.visible(profile.interests);
-    return Semantics(
-      button: true,
-      label: 'Best match ${profile.name}, ${profile.score}% AI match',
-      child: InkWell(
-        onTap: onOpen,
-        borderRadius: BorderRadius.circular(AmoraRadius.xxxl),
-        child: SizedBox(
-          height: height,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(AmoraRadius.xxxl),
-              boxShadow: AmoraShadows.floating,
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(AmoraRadius.xxxl),
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  AmoraProfileImage(
-                    imageUrl: profile.imageUrl,
-                    assetPath:
-                        profile.fallbackAsset ?? AppImages.fallbackProfile,
-                    initials:
-                        profile.initials ??
-                        AppImages.initialsForName(profile.name),
-                    fit: BoxFit.cover,
-                    alignment: Alignment.topCenter,
-                    borderRadius: BorderRadius.circular(AmoraRadius.xxxl),
-                  ),
-                  DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: .40),
-                    ),
-                  ),
-                  Positioned(
-                    top: AmoraSpacing.space16,
-                    left: AmoraSpacing.space16,
-                    right: AmoraSpacing.space16,
-                    child: Wrap(
-                      spacing: AmoraSpacing.space8,
-                      runSpacing: AmoraSpacing.space8,
-                      alignment: WrapAlignment.spaceBetween,
-                      children: [
-                        _SolidOverlayBadge(
-                          icon: Icons.auto_awesome_rounded,
-                          label: '${profile.score}% AI Match',
-                          strong: true,
-                        ),
-                        if (profile.isVerified)
-                          const _SolidOverlayBadge(
-                            icon: Icons.verified_rounded,
-                            label: 'Verified',
-                          ),
-                        if (profile.isOnline)
-                          const _SolidOverlayBadge(
-                            icon: Icons.circle_rounded,
-                            label: 'Online now',
-                            iconColor: AppColors.successGreen,
-                          ),
-                      ],
-                    ),
-                  ),
-                  Positioned(
-                    left: AmoraSpacing.space20,
-                    right: AmoraSpacing.space20,
-                    bottom: 156,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          '${profile.name}, ${profile.age}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style:
-                              (MediaQuery.sizeOf(context).width < 360
-                                      ? AmoraTextStyles.headlineLarge
-                                      : AmoraTextStyles.displaySmall)
-                                  .copyWith(color: AppColors.surface),
-                        ),
-                        const SizedBox(height: AmoraSpacing.space8),
-                        Text(
-                          '${profile.profession ?? profile.city} - ${profile.distance} away',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AmoraTextStyles.bodyLarge.copyWith(
-                            color: AppColors.surface,
-                          ),
-                        ),
-                        const SizedBox(height: AmoraSpacing.space12),
-                        Wrap(
-                          spacing: AmoraSpacing.space8,
-                          runSpacing: AmoraSpacing.space8,
-                          children: [
-                            _SolidOverlayPill(text: profile.intent),
-                            if (visibleInterests.isNotEmpty)
-                              _SolidOverlayPill(text: visibleInterests.first),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  Positioned(
-                    left: AmoraSpacing.space16,
-                    right: AmoraSpacing.space16,
-                    bottom: AmoraSpacing.space20,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(AmoraRadius.xxxl),
-                        border: Border.all(color: AppColors.borderGray),
-                        boxShadow: AmoraShadows.level2,
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(AmoraSpacing.space12),
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          alignment: Alignment.center,
-                          child: SizedBox(
-                            width: 262,
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                _CircleAction(
-                                  icon: Icons.undo_rounded,
-                                  label: 'Undo',
-                                  onTap: onUndo,
-                                ),
-                                _CircleAction(
-                                  icon: Icons.close_rounded,
-                                  label: 'Next',
-                                  onTap: onPass,
-                                ),
-                                _CircleAction(
-                                  icon: Icons.favorite_rounded,
-                                  label: 'Match',
-                                  emphasis: true,
-                                  onTap: onMatch,
-                                ),
-                                _CircleAction(
-                                  icon: Icons.chat_bubble_rounded,
-                                  label: 'Chat',
-                                  onTap: onChat,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 class _DailyPicksRail extends StatelessWidget {
   const _DailyPicksRail({required this.profiles, required this.onOpen});
@@ -1583,11 +1402,12 @@ class _IconBubble extends StatelessWidget {
       message: label,
       child: IconButton.filledTonal(
         onPressed: onTap,
-        icon: Icon(icon),
+        icon: Icon(icon, size: 18),
         color: AppColors.deepWine,
         style: IconButton.styleFrom(
           backgroundColor: AppColors.surface,
-          minimumSize: const Size(48, 48),
+          minimumSize: const Size(38, 38),
+          padding: EdgeInsets.zero,
         ),
       ),
     );

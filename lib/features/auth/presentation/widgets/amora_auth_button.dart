@@ -27,7 +27,7 @@ class AuthPrimaryButton extends StatelessWidget {
     final background = switch (style) {
       AuthButtonStyle.primary => AppColors.primary,
       AuthButtonStyle.outlined => AppColors.surface,
-      AuthButtonStyle.soft => AppColors.tertiary,
+      AuthButtonStyle.soft => AppColors.primaryContainer,
     };
     final foreground = style == AuthButtonStyle.primary
         ? AppColors.surface
@@ -45,7 +45,7 @@ class AuthPrimaryButton extends StatelessWidget {
           style: ButtonStyle(
             backgroundColor: WidgetStateProperty.resolveWith((states) {
               if (states.contains(WidgetState.disabled)) {
-                return AppColors.tertiary;
+                return AppColors.border.withValues(alpha: .5);
               }
               return background;
             }),
@@ -62,7 +62,7 @@ class AuthPrimaryButton extends StatelessWidget {
               BorderSide(
                 color: style == AuthButtonStyle.primary
                     ? AppColors.primary
-                    : AppColors.tertiary,
+                    : AppColors.border,
               ),
             ),
             shape: WidgetStatePropertyAll(
@@ -128,7 +128,7 @@ class AmoraGoogleButton extends StatelessWidget {
                 backgroundColor: AppColors.surface,
                 foregroundColor: AppColors.text,
                 disabledForegroundColor: AppColors.text.withValues(alpha: .56),
-                side: const BorderSide(color: AppColors.tertiary),
+                side: const BorderSide(color: AppColors.border),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(18),
                 ),
@@ -139,7 +139,7 @@ class AmoraGoogleButton extends StatelessWidget {
                   }
                   if (states.contains(WidgetState.hovered) ||
                       states.contains(WidgetState.focused)) {
-                    return AppColors.tertiary.withValues(alpha: .34);
+                    return AppColors.primary.withValues(alpha: .04);
                   }
                   return AppColors.transparent;
                 }),

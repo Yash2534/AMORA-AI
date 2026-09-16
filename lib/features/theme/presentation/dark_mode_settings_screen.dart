@@ -2,6 +2,7 @@ import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/amora_theme_controller.dart';
 import 'package:amora_ai/core/widgets/amora_app_bar.dart';
+import 'package:amora_ai/core/widgets/amora_snackbar.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:flutter/material.dart';
@@ -71,10 +72,6 @@ class DarkModeSettingsScreen extends StatelessWidget {
 
   void _save(BuildContext context) {
     AmoraThemeController.instance.update(ThemeMode.light);
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        const SnackBar(content: Text('Appearance preference saved')),
-      );
+    showAmoraSnackBar(context, message: 'Appearance preference saved');
   }
 }

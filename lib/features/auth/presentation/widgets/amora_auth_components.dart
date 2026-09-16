@@ -13,7 +13,7 @@ class AuthDivider extends StatelessWidget {
     return Row(
       children: [
         Expanded(
-          child: Divider(color: AppColors.tertiary.withValues(alpha: .8)),
+          child: Divider(color: AppColors.border),
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: AmoraSpacing.space12),
@@ -25,7 +25,7 @@ class AuthDivider extends StatelessWidget {
           ),
         ),
         Expanded(
-          child: Divider(color: AppColors.tertiary.withValues(alpha: .8)),
+          child: Divider(color: AppColors.border),
         ),
       ],
     );
@@ -51,7 +51,7 @@ class AuthTrustNote extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.background,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.tertiary.withValues(alpha: .72)),
+          border: Border.all(color: AppColors.border),
         ),
         child: Row(
           children: [
@@ -92,7 +92,7 @@ class AuthInlineAlert extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.background,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.secondary),
+          border: Border.all(color: AppColors.primary.withValues(alpha: .32)),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -135,7 +135,7 @@ class AmoraPasswordRules extends StatelessWidget {
           Icon(
             valid ? Icons.check_circle_outline_rounded : Icons.info_outline,
             size: 18,
-            color: valid ? AppColors.primary : AppColors.secondary,
+            color: valid ? AppColors.primary : AppColors.textSecondary,
           ),
           const SizedBox(width: AmoraSpacing.space8),
           Expanded(

@@ -72,30 +72,21 @@ class AmoraaPublicProfileView extends StatelessWidget {
               horizontalPadding,
               desktop ? AmoraSpacing.space24 : 0,
               horizontalPadding,
-              _showsInteractions ? AmoraSpacing.space16 : AmoraSpacing.space40,
+              _showsInteractions ? 100.0 : AmoraSpacing.space40,
             ),
             child: content,
           );
-          final page = _showsInteractions
-              ? Column(
-                  children: [
-                    Expanded(child: scrollView),
-                    Padding(
-                      padding: EdgeInsets.fromLTRB(
-                        horizontalPadding,
-                        AmoraSpacing.space8,
-                        horizontalPadding,
-                        AmoraSpacing.space8,
-                      ),
-                      child: interactionBar!,
-                    ),
-                  ],
-                )
-              : scrollView;
           return Stack(
             fit: StackFit.expand,
             children: [
-              page,
+              scrollView,
+              if (_showsInteractions)
+                Positioned(
+                  left: horizontalPadding,
+                  right: horizontalPadding,
+                  bottom: AmoraSpacing.space12,
+                  child: interactionBar!,
+                ),
               if (mode == PublicProfileViewMode.otherUser &&
                   interactionOverlay != null)
                 Positioned.fill(child: interactionOverlay!),

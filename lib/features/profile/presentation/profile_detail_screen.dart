@@ -7,7 +7,9 @@ import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/amora_app_bar.dart';
+import 'package:amora_ai/core/widgets/amora_snackbar.dart';
 import 'package:amora_ai/core/widgets/amora_super_like_animation.dart';
+import 'package:amora_ai/core/widgets/amora_top_notification.dart';
 import 'package:amora_ai/core/widgets/amoraa_confirm_action_sheet.dart';
 import 'package:amora_ai/core/widgets/amoraa_identity_badge.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
@@ -308,7 +310,14 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
     }
     try {
       await relationships.likeProfilePersisted(_profile);
-      if (mounted) _snack('Profile liked successfully');
+      if (mounted) {
+        AmoraTopNotificationManager.show(
+          context,
+          title: 'Liked ❤️',
+          message: 'Liked ${_profile.name}',
+          type: AmoraTopNotificationType.like,
+        );
+      }
     } on AuthException catch (error) {
       if (mounted) _snack(error.message);
     }
@@ -355,10 +364,22 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
       }
       ProfileRelationshipController.instance.superLikeProfile(_profile);
       if (reduceMotion) {
-        _snack('Super Like sent');
+        AmoraTopNotificationManager.show(
+          context,
+          title: 'Super Liked ⭐',
+          message: 'You Super Liked ${_profile.name}',
+          type: AmoraTopNotificationType.superLike,
+        );
       } else {
         await _superLikeAnimation.forward(from: 0);
-        if (mounted) _snack('Super Like sent');
+        if (mounted) {
+          AmoraTopNotificationManager.show(
+            context,
+            title: 'Super Liked ⭐',
+            message: 'You Super Liked ${_profile.name}',
+            type: AmoraTopNotificationType.superLike,
+          );
+        }
       }
     } on AuthException catch (error) {
       if (mounted) {
@@ -634,17 +655,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
   }
 
   void _snack(String message) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          backgroundColor: AppColors.primary,
-          content: Text(
-            message,
-            style: const TextStyle(color: AppColors.surface),
-          ),
-        ),
-      );
+    showAmoraSnackBar(context, message: message);
   }
 
   Future<void> _showBlockDialog() async {
@@ -813,7 +824,17 @@ class _MediaReadabilityOverlay extends StatelessWidget {
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: AppColors.primary.withValues(alpha: .42),
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Colors.black.withValues(alpha: .45),
+            Colors.transparent,
+            Colors.transparent,
+            Colors.black.withValues(alpha: .65),
+          ],
+          stops: const [0.0, 0.22, 0.62, 1.0],
+        ),
       ),
     );
   }
@@ -2080,69 +2101,87 @@ class ProfileActionBar extends StatelessWidget {
       height: height,
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: AppColors.surface.withValues(alpha: .96),
-          borderRadius: BorderRadius.circular(30),
-          border: Border.all(color: AppColors.tertiary.withValues(alpha: .72)),
+          borderRadius: BorderRadius.circular(35),
           boxShadow: [
             BoxShadow(
-              color: AppColors.primary.withValues(alpha: .14),
-              blurRadius: 28,
-              spreadRadius: -10,
-              offset: const Offset(0, 12),
+              color: const Color(0xFF6B4E71).withValues(alpha: .12),
+              blurRadius: 24,
+              spreadRadius: 0,
+              offset: const Offset(0, 8),
             ),
           ],
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(AmoraSpacing.space4),
-          child: Row(
-            children: [
-              Expanded(
-                child: _ProfileActionButton(
-                  key: const ValueKey('profile-rose-button'),
-                  label: 'Rose',
-                  semanticLabel: 'Send a Rose',
-                  icon: Icons.local_florist_rounded,
-                  loading: roseSending,
-                  onTap: onRose,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(35),
+          clipBehavior: Clip.antiAlias,
+          child: BackdropFilter(
+            filter: ui.ImageFilter.blur(sigmaX: 25, sigmaY: 25),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEFCFF).withValues(alpha: .52),
+                borderRadius: BorderRadius.circular(35),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: .75),
+                  width: 1.2,
                 ),
               ),
-              Expanded(
-                child: _ProfileActionButton(
-                  key: const ValueKey('profile-super-like-button'),
-                  label: 'Super Like',
-                  semanticLabel: superLiked
-                      ? AmoraaProfileAction.removeSuperLike.semanticLabel(
-                          safeName,
-                        )
-                      : 'Super Like $safeName',
-                  icon: Icons.star_rounded,
-                  selected: superLiked,
-                  loading: superLikeSending,
-                  onTap: onSuperLike,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AmoraSpacing.space2,
+                  vertical: AmoraSpacing.space2,
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _ProfileActionButton(
+                        key: const ValueKey('profile-rose-button'),
+                        label: 'Rose',
+                        semanticLabel: 'Send a Rose',
+                        icon: Icons.local_florist_rounded,
+                        loading: roseSending,
+                        onTap: onRose,
+                      ),
+                    ),
+                    Expanded(
+                      child: _ProfileActionButton(
+                        key: const ValueKey('profile-super-like-button'),
+                        label: 'Super Like',
+                        semanticLabel: superLiked
+                            ? AmoraaProfileAction.removeSuperLike.semanticLabel(
+                                safeName,
+                              )
+                            : 'Super Like $safeName',
+                        icon: Icons.star_rounded,
+                        selected: superLiked,
+                        loading: superLikeSending,
+                        onTap: onSuperLike,
+                      ),
+                    ),
+                    Expanded(
+                      child: _ProfileActionButton(
+                        key: const ValueKey('profile-message-button'),
+                        label: 'Message',
+                        semanticLabel: 'Message this profile',
+                        icon: Icons.chat_bubble_rounded,
+                        onTap: onMessage,
+                      ),
+                    ),
+                    Expanded(
+                      child: _ProfileActionButton(
+                        key: const ValueKey('profile-like-button'),
+                        label: 'Like',
+                        semanticLabel: liked
+                            ? AmoraaProfileAction.unlike.semanticLabel(safeName)
+                            : 'Like $safeName',
+                        icon: Icons.favorite_rounded,
+                        selected: liked,
+                        onTap: onLike,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              Expanded(
-                child: _ProfileActionButton(
-                  key: const ValueKey('profile-message-button'),
-                  label: 'Message',
-                  semanticLabel: 'Message this profile',
-                  icon: Icons.chat_bubble_rounded,
-                  onTap: onMessage,
-                ),
-              ),
-              Expanded(
-                child: _ProfileActionButton(
-                  key: const ValueKey('profile-like-button'),
-                  label: 'Like',
-                  semanticLabel: liked
-                      ? AmoraaProfileAction.unlike.semanticLabel(safeName)
-                      : 'Like $safeName',
-                  icon: Icons.favorite_rounded,
-                  selected: liked,
-                  onTap: onLike,
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -2202,6 +2241,49 @@ class _ProfileActionButtonState extends State<_ProfileActionButton>
   @override
   Widget build(BuildContext context) {
     final filled = widget.selected;
+    final isSuperLike =
+        widget.label == 'Super Like' || widget.icon == Icons.star_rounded;
+    final isLike =
+        widget.label == 'Like' || widget.icon == Icons.favorite_rounded;
+
+    final Color normalBg = (isSuperLike || isLike)
+        ? AppColors.primary.withValues(alpha: 0.12)
+        : AppColors.accentSoft;
+
+    final Color filledBg = (isSuperLike || isLike)
+        ? AppColors.primary
+        : AppColors.primaryDark;
+
+    final Color normalBorder = (isSuperLike || isLike)
+        ? AppColors.primary.withValues(alpha: 0.35)
+        : AppColors.border;
+
+    final Color filledBorder = (isSuperLike || isLike)
+        ? AppColors.primary
+        : AppColors.primaryDark;
+
+    final Color normalIconColor = (isSuperLike || isLike)
+        ? AppColors.primary
+        : AppColors.primary;
+
+    final List<BoxShadow>? shadows = filled
+        ? [
+            BoxShadow(
+              color: AppColors.primary.withValues(alpha: .45),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ]
+        : ((isSuperLike || isLike)
+            ? [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: .15),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ]
+            : null);
+
     return Semantics(
       button: true,
       enabled: !widget.loading,
@@ -2209,13 +2291,13 @@ class _ProfileActionButtonState extends State<_ProfileActionButton>
       child: Tooltip(
         message: widget.label,
         child: Listener(
-          onPointerDown: (_) => _animate(.92),
+          onPointerDown: (_) => _animate(.95),
           onPointerUp: (_) => _animate(1),
           onPointerCancel: (_) => _animate(1),
           child: ScaleTransition(
             scale: _scale,
             child: Material(
-              color: AppColors.surface,
+              color: Colors.transparent,
               borderRadius: BorderRadius.circular(24),
               clipBehavior: Clip.antiAlias,
               child: InkWell(
@@ -2230,30 +2312,29 @@ class _ProfileActionButtonState extends State<_ProfileActionButton>
                         width: 36,
                         height: 36,
                         decoration: BoxDecoration(
-                          color: filled
-                              ? AppColors.secondary
-                              : AppColors.surface,
+                          color: filled ? filledBg : normalBg,
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: filled
-                                ? AppColors.secondary
-                                : AppColors.tertiary,
+                            color: filled ? filledBorder : normalBorder,
                           ),
+                          boxShadow: shadows,
                         ),
                         child: widget.loading
-                            ? const Padding(
-                                padding: EdgeInsets.all(9),
+                            ? Padding(
+                                padding: const EdgeInsets.all(9),
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
-                                  color: AppColors.secondary,
+                                  color: filled 
+                                      ? (isSuperLike ? AppColors.textPrimary : Colors.white) 
+                                      : normalIconColor,
                                 ),
                               )
                             : Icon(
                                 widget.icon,
-                                color: filled
-                                    ? AppColors.surface
-                                    : AppColors.primary,
-                                size: 19,
+                                color: filled 
+                                    ? (isSuperLike ? AppColors.textPrimary : Colors.white) 
+                                    : normalIconColor,
+                                size: 18,
                               ),
                       ),
                       const SizedBox(height: AmoraSpacing.space4),

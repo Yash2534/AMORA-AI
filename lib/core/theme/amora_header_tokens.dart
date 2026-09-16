@@ -20,9 +20,9 @@ abstract final class AmoraHeaderTokens {
   static const double scaledMainHeight = AmoraSpacing.controlHeight;
   static const double chatDetailHeight = 72;
 
-  static const double touchTarget = AmoraSpacing.minimumTouchTarget;
-  static const double actionVisualSize = 44;
-  static const double iconSize = 20;
+  static const double touchTarget = 34;
+  static const double actionVisualSize = 34;
+  static const double iconSize = 16;
   static const double chatIconSize = 21;
   static const double backTitleGap = AmoraSpacing.space8;
   static const double actionGap = AmoraSpacing.space0;

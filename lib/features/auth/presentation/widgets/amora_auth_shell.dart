@@ -1,8 +1,10 @@
 import 'package:amora_ai/core/branding/amora_brand_assets.dart';
+import 'package:amora_ai/core/branding/amora_logo.dart';
 import 'package:amora_ai/core/theme/amora_shadows.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
+import 'package:amora_ai/core/widgets/glass_container.dart';
 import 'package:flutter/material.dart';
 
 class AmoraAuthShell extends StatelessWidget {
@@ -143,56 +145,8 @@ class _AuthAmbientBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return IgnorePointer(
-      child: ClipRect(
-        child: Stack(
-          children: [
-            const ColoredBox(color: AppColors.background),
-            Positioned(
-              right: -170,
-              top: -210,
-              child: Opacity(
-                opacity: .12,
-                child: Container(
-                  width: 430,
-                  height: 430,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        AppColors.secondary,
-                        AppColors.tertiary,
-                        AppColors.primary,
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            Positioned(
-              left: -220,
-              bottom: -300,
-              child: Opacity(
-                opacity: .72,
-                child: Container(
-                  width: 480,
-                  height: 480,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      begin: Alignment.topRight,
-                      end: Alignment.bottomLeft,
-                      colors: [AppColors.background, AppColors.surface],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+    return const IgnorePointer(
+      child: ColoredBox(color: AppColors.background),
     );
   }
 }
@@ -250,25 +204,9 @@ class AuthBrandHeader extends StatelessWidget {
             flex: 5,
             child: Row(
               children: [
-                Image.asset(
-                  AmoraBrandAssets.icon,
-                  width: 32,
-                  height: 32,
-                  fit: BoxFit.contain,
-                  semanticLabel: 'AMORAA icon',
-                ),
-                const SizedBox(width: AmoraSpacing.space8),
-                Expanded(
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Image.asset(
-                      AmoraBrandAssets.wordmark,
-                      height: 16.5,
-                      fit: BoxFit.contain,
-                      alignment: Alignment.centerLeft,
-                      semanticLabel: 'AMORAA',
-                    ),
-                  ),
+                const AmoraLogo(
+                  iconSize: 32,
+                  wordmarkHeight: 16.5,
                 ),
               ],
             ),
@@ -301,7 +239,7 @@ class AuthBrandHeader extends StatelessWidget {
                 style: IconButton.styleFrom(
                   backgroundColor: AppColors.surface.withValues(alpha: .82),
                   foregroundColor: AppColors.primary,
-                  side: const BorderSide(color: AppColors.tertiary),
+                  side: const BorderSide(color: AppColors.border),
                 ),
                 icon: const Icon(Icons.arrow_back_rounded),
               ),
@@ -309,24 +247,10 @@ class AuthBrandHeader extends StatelessWidget {
           ),
           const SizedBox(width: AmoraSpacing.space12),
         ],
-        Image.asset(
-          AmoraBrandAssets.icon,
-          width: compact ? 32 : 34,
-          height: compact ? 32 : 34,
-          fit: BoxFit.contain,
-          semanticLabel: 'AMORAA icon',
-        ),
-        const SizedBox(width: AmoraSpacing.space8),
         Expanded(
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: Image.asset(
-              AmoraBrandAssets.wordmark,
-              height: compact ? 16.5 : 19,
-              fit: BoxFit.contain,
-              alignment: Alignment.centerLeft,
-              semanticLabel: 'AMORAA',
-            ),
+          child: AmoraLogo(
+            iconSize: compact ? 32 : 34,
+            wordmarkHeight: compact ? 16.5 : 19,
           ),
         ),
         if (stepBadge != null) ...[
@@ -408,35 +332,28 @@ class AuthFormSurface extends StatelessWidget {
     final screenWidth = MediaQuery.sizeOf(context).width;
     final veryNarrow = screenWidth < 320;
     final narrow = screenWidth < 360;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: AppColors.surface.withValues(alpha: .96),
-        borderRadius: BorderRadius.circular(
-          compact
+    return GlassContainer(
+      level: AmoraGlassLevel.strong,
+      color: AppColors.surface.withValues(alpha: .75),
+      borderColor: AppColors.border.withValues(alpha: compact ? .64 : .78),
+      borderRadius: compact
               ? (veryNarrow
                     ? 18
                     : narrow
                     ? 20
                     : 24)
               : (narrow ? 22 : 26),
-        ),
-        border: Border.all(
-          color: AppColors.tertiary.withValues(alpha: compact ? .64 : .78),
-        ),
-        boxShadow: compact ? AmoraShadows.level1 : AmoraShadows.level2,
+      boxShadow: compact ? AmoraShadows.level1 : AmoraShadows.level2,
+      padding: EdgeInsets.all(
+        compact && veryNarrow
+            ? AmoraSpacing.space12
+            : narrow
+            ? AmoraSpacing.space16
+            : compact
+            ? AmoraSpacing.space20
+            : AmoraSpacing.space24,
       ),
-      child: Padding(
-        padding: EdgeInsets.all(
-          compact && veryNarrow
-              ? AmoraSpacing.space12
-              : narrow
-              ? AmoraSpacing.space16
-              : compact
-              ? AmoraSpacing.space20
-              : AmoraSpacing.space24,
-        ),
-        child: child,
-      ),
+      child: child,
     );
   }
 }

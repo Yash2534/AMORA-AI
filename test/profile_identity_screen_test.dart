@@ -45,28 +45,23 @@ void main() {
 
     expect(find.text('Profile'), findsOneWidget);
     expect(find.textContaining(original.name), findsOneWidget);
-    expect(find.text('Edit Profile'), findsOneWidget);
-    expect(find.text('Preview'), findsOneWidget);
+    expect(find.text('Edit profile'), findsOneWidget);
     expect(
       find.byKey(const ValueKey('profile-settings-button')),
       findsOneWidget,
     );
-    expect(
-      find.byKey(const ValueKey('profile-notifications-button')),
-      findsNothing,
-    );
-    // Overflow assertions are checked after the responsive scroll pass below.
 
     final scrollable = find.byType(Scrollable).first;
     for (final section in [
-      '❤️ About Me',
-      'Photo Gallery',
-      '🎯 Interests',
-      '🧳 Lifestyle',
-      '💬 Profile prompts',
-      'Verification & trust',
-      'Premium membership',
-      'Quick Actions',
+      'Who liked you',
+      'Profile visitors',
+      'AI conversation coach',
+      'Safety & verification',
+      'Notifications',
+      'Security & Sessions',
+      'Account Actions',
+      'Legal & Policies',
+      'Sign out',
     ]) {
       for (
         var attempt = 0;
@@ -82,31 +77,8 @@ void main() {
         isNull,
         reason: 'Overflow while revealing $section',
       );
-      if (section == 'Premium membership') {
-        await tester.scrollUntilVisible(
-          find.byKey(const ValueKey('premium-membership-section')),
-          240,
-          scrollable: scrollable,
-        );
-        await tester.pumpAndSettle();
-        expect(find.text('AMORAA Premium'), findsOneWidget);
-        expect(find.text('See likes'), findsOneWidget);
-        expect(find.text('Advanced filters'), findsOneWidget);
-        expect(find.text('Priority visibility'), findsOneWidget);
-        expect(find.text('Exclusive features'), findsOneWidget);
-        expect(find.text('View premium'), findsOneWidget);
-        expect(find.text('Manage'), findsOneWidget);
-      }
     }
 
-    for (final action in const [
-      'Likes & Super Likes',
-      'Saved Profiles',
-      'Blocked Profiles',
-      'Support',
-    ]) {
-      expect(find.text(action), findsOneWidget);
-    }
     expect(find.text('Log out'), findsNothing);
     expect(find.text('Delete account'), findsNothing);
 
@@ -175,16 +147,6 @@ void main() {
 
     tester.state<NavigatorState>(find.byType(Navigator)).pop();
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(
-      find.byKey(const ValueKey('profile-manage-membership-button')),
-      420,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.tap(
-      find.byKey(const ValueKey('profile-manage-membership-button')),
-    );
-    await tester.pumpAndSettle();
-    expect(openedRoute?.name, SubscriptionScreen.manageRoute);
     expect(tester.takeException(), isNull);
   });
 

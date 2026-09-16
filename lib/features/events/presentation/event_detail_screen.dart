@@ -4,6 +4,7 @@ import 'package:amora_ai/core/access/amora_access.dart';
 import 'package:amora_ai/core/auth/auth_service.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
+import 'package:amora_ai/core/widgets/amora_snackbar.dart';
 import 'package:amora_ai/core/widgets/amoraa_identity_badge.dart';
 import 'package:amora_ai/core/widgets/premium_avatar.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
@@ -491,7 +492,6 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
               label: 'Leave Event',
               variant: AppPrimaryButtonVariant.outlined,
               onPressed: () async {
-                final messenger = ScaffoldMessenger.of(context);
                 Navigator.pop(sheetContext);
                 if (membershipTestMode) {
                   MembershipTestFlowController.instance.leaveEvent(event.id);
@@ -499,16 +499,13 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                 try {
                   await _controller.cancelRemote(event);
                 } catch (error) {
-                  messenger.showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        userFacingErrorMessage(
-                          error,
-                          fallback:
-                              'Could not leave this event. Please try again.',
-                        ),
-                      ),
+                  showAmoraSnackBar(
+                    context,
+                    message: userFacingErrorMessage(
+                      error,
+                      fallback: 'Could not leave this event. Please try again.',
                     ),
+                    tone: AmoraSnackBarTone.error,
                   );
                   return;
                 }
@@ -517,8 +514,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                   _actionBusy = false;
                   _celebrateJoin = false;
                 });
-                messenger.showSnackBar(
-                  SnackBar(content: Text('You left ${event.title}')),
+                showAmoraSnackBar(
+                  context,
+                  message: 'You left ${event.title}',
                 );
               },
             ),

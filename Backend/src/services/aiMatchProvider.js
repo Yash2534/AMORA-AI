@@ -25,14 +25,14 @@ const levelFor = (score) => {
 };
 
 const labelFor = Object.freeze({
+  intent: 'Relationship goals',
+  values: 'Core values',
+  lifestyle: 'Lifestyle preferences',
+  communication: 'Communication style',
   interests: 'Shared interests',
-  relationshipGoals: 'Relationship goals',
-  communicationStyle: 'Communication style',
-  languages: 'Shared language',
-  city: 'Same city',
-  smoking: 'Lifestyle preference',
-  drinking: 'Lifestyle preference',
-  weed: 'Lifestyle preference',
+  personality: 'Personality traits',
+  preferences: 'Partner preferences',
+  behavior: 'Behavioral compatibility',
 });
 
 function localAiMatch(viewer, candidate, compatibility = null) {
@@ -42,23 +42,35 @@ function localAiMatch(viewer, candidate, compatibility = null) {
     .sort((left, right) => (right.weight * right.value) - (left.weight * left.value) || left.key.localeCompare(right.key))
     .slice(0, MAX_HIGHLIGHTS)
     .map((factor) => ({ type: factor.key.toUpperCase(), label: labelFor[factor.key], strength: clamp(factor.value * 100) }));
+  
   const reasons = highlights.map((highlight) => {
+    if (highlight.type === 'INTENT') return 'You appear aligned on relationship goals.';
+    if (highlight.type === 'VALUES') return 'You share similar core values.';
+    if (highlight.type === 'LIFESTYLE') return 'Your lifestyle preferences are broadly aligned.';
+    if (highlight.type === 'COMMUNICATION') return 'Your communication preferences are compatible.';
     if (highlight.type === 'INTERESTS') return 'You both share several interests.';
-    if (highlight.type === 'RELATIONSHIPGOALS') return 'You appear aligned on relationship goals.';
-    if (highlight.type === 'COMMUNICATIONSTYLE') return 'Your communication preferences are compatible.';
-    if (highlight.type === 'LANGUAGES') return 'You share a common language.';
-    return 'Your lifestyle preferences are broadly aligned.';
+    if (highlight.type === 'PERSONALITY') return 'You have compatible personality traits.';
+    if (highlight.type === 'PREFERENCES') return 'You meet each other\'s partner preferences.';
+    if (highlight.type === 'BEHAVIOR') return 'Your behavioral patterns align well.';
+    return 'You have compatible traits.';
   });
+
+  if (reasons.length === 0) {
+    reasons.push('Potential match based on shared platform presence.');
+  }
+
   // The AI score is an explainable presentation score. It never changes the
   // certified compatibility score or eligibility result.
   const score = clamp(base.score + Math.round((base.coverage - 50) * 0.08));
-  const confidence = clamp(Math.round((base.coverage * 0.8) + (highlights.length / MAX_HIGHLIGHTS) * 20));
-  return { aiMatchScore: score, aiConfidence: confidence, aiMatchLevel: levelFor(score), aiHighlights: highlights, aiReasons: reasons, provider: PROVIDER };
+  const confidenceScore = clamp(Math.round((base.coverage * 0.8) + (highlights.length / MAX_HIGHLIGHTS) * 20));
+  const confidenceLevel = base.confidence;
+
+  return { aiMatchScore: score, aiConfidenceScore: confidenceScore, aiConfidenceLevel: confidenceLevel, aiMatchLevel: levelFor(score), aiHighlights: highlights, aiReasons: reasons, provider: PROVIDER };
 }
 
 function rankCandidates(viewer, candidates) {
   return candidates.map((candidate) => ({ ...candidate, ...localAiMatch(viewer, candidate.profile || candidate, candidate.compatibility) }))
-    .sort((left, right) => right.aiMatchScore - left.aiMatchScore || right.aiConfidence - left.aiConfidence || Number(left.userId || left.id) - Number(right.userId || right.id));
+    .sort((left, right) => right.aiMatchScore - left.aiMatchScore || right.aiConfidenceScore - left.aiConfidenceScore || Number(left.userId || left.id) - Number(right.userId || right.id));
 }
 
 module.exports = { PROVIDER, configuredProvider, localAiMatch, rankCandidates, levelFor };

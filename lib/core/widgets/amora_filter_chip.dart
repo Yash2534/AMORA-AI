@@ -1,10 +1,12 @@
+import 'dart:ui';
+
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
-import 'package:amora_ai/core/theme/amora_icon_sizes.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/physics.dart';
 
-class AmoraFilterChip extends StatelessWidget {
+class AmoraFilterChip extends StatefulWidget {
   const AmoraFilterChip({
     super.key,
     required this.label,
@@ -12,6 +14,7 @@ class AmoraFilterChip extends StatelessWidget {
     required this.onSelected,
     this.icon,
     this.showCheckmark = false,
+    this.onTap,
   });
 
   final String label;
@@ -19,48 +22,205 @@ class AmoraFilterChip extends StatelessWidget {
   final ValueChanged<bool> onSelected;
   final IconData? icon;
   final bool showCheckmark;
+  final VoidCallback? onTap;
+
+  @override
+  State<AmoraFilterChip> createState() => _AmoraFilterChipState();
+}
+
+class _AmoraFilterChipState extends State<AmoraFilterChip>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _scaleController;
+
+  @override
+  void initState() {
+    super.initState();
+    _scaleController = AnimationController.unbounded(vsync: this, value: 1.0);
+  }
+
+  @override
+  void dispose() {
+    _scaleController.dispose();
+    super.dispose();
+  }
+
+  void _animate(double target, {double velocity = 0}) {
+    _scaleController.animateWith(
+      SpringSimulation(
+        const SpringDescription(mass: .75, stiffness: 520, damping: 30),
+        _scaleController.value,
+        target,
+        velocity,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final selected = widget.selected;
+
+    final Color backgroundColor;
+    final Color borderColor;
+    final List<BoxShadow> shadows;
+    final Color contentColor;
+    final Color iconColor;
+
+    if (isDark) {
+      if (selected) {
+        backgroundColor = AppColors.primary.withValues(alpha: 0.32);
+        borderColor = AppColors.primaryLight.withValues(alpha: 0.65);
+        contentColor = Colors.white;
+        iconColor = AppColors.primaryLight;
+        shadows = [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.25),
+            blurRadius: 14,
+            spreadRadius: 0,
+            offset: const Offset(0, 4),
+          ),
+        ];
+      } else {
+        backgroundColor = const Color(0xFF1E1428).withValues(alpha: 0.48);
+        borderColor = Colors.white.withValues(alpha: 0.20);
+        contentColor = Colors.white.withValues(alpha: 0.85);
+        iconColor = Colors.white.withValues(alpha: 0.70);
+        shadows = [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.18),
+            blurRadius: 10,
+            spreadRadius: 0,
+            offset: const Offset(0, 3),
+          ),
+        ];
+      }
+    } else {
+      if (selected) {
+        backgroundColor = AppColors.primary.withValues(alpha: 0.14);
+        borderColor = AppColors.primary.withValues(alpha: 0.55);
+        contentColor = AppColors.primary;
+        iconColor = AppColors.primary;
+        shadows = [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.16),
+            blurRadius: 12,
+            spreadRadius: 0,
+            offset: const Offset(0, 4),
+          ),
+        ];
+      } else {
+        backgroundColor = Colors.white.withValues(alpha: 0.45);
+        borderColor = Colors.white.withValues(alpha: 0.65);
+        contentColor = AppColors.textPrimary;
+        iconColor = AppColors.primary.withValues(alpha: 0.75);
+        shadows = [
+          BoxShadow(
+            color: const Color(0xFF6B4E71).withValues(alpha: 0.08),
+            blurRadius: 10,
+            spreadRadius: 0,
+            offset: const Offset(0, 4),
+          ),
+        ];
+      }
+    }
+
+    void handleTap() {
+      if (widget.onTap != null) {
+        widget.onTap!();
+      } else {
+        widget.onSelected(!selected);
+      }
+    }
+
     return Semantics(
       container: true,
       button: true,
       selected: selected,
-      label: '$label, ${selected ? 'selected' : 'unselected'}',
-      onTap: () => onSelected(!selected),
+      label: '${widget.label}, ${selected ? 'selected' : 'unselected'}',
+      onTap: handleTap,
       child: ExcludeSemantics(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 48),
-          child: FilterChip(
-            selected: selected,
-            onSelected: onSelected,
-            showCheckmark: showCheckmark,
-            checkmarkColor: AppColors.onActive,
-            avatar: icon == null
-                ? null
-                : Icon(
-                    icon,
-                    size: AmoraIconSizes.small,
-                    color: selected ? AppColors.onActive : AppColors.secondary,
-                  ),
-            label: Text(
-              label,
-              maxLines: 1,
-              style: AmoraTextStyles.caption.copyWith(
-                color: selected ? AppColors.onActive : AppColors.text,
-                fontWeight: FontWeight.w700,
-                height: 1.1,
+        child: Listener(
+          onPointerDown: (_) => _animate(0.96, velocity: -1),
+          onPointerUp: (_) => _animate(1.0, velocity: 1),
+          onPointerCancel: (_) => _animate(1.0),
+          child: ScaleTransition(
+            scale: _scaleController,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOutCubic,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(22),
+                boxShadow: shadows,
               ),
-            ),
-            selectedColor: AppColors.active,
-            backgroundColor: AppColors.surface,
-            side: BorderSide(
-              color: selected ? AppColors.active : AppColors.borderGray,
-            ),
-            shape: const StadiumBorder(),
-            padding: const EdgeInsets.symmetric(
-              horizontal: AmoraSpacing.x3,
-              vertical: AmoraSpacing.x2,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(22),
+                clipBehavior: Clip.antiAlias,
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    curve: Curves.easeOutCubic,
+                    decoration: BoxDecoration(
+                      color: backgroundColor,
+                      borderRadius: BorderRadius.circular(22),
+                      border: Border.all(
+                        color: borderColor,
+                        width: selected ? 1.4 : 1.1,
+                      ),
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: handleTap,
+                        borderRadius: BorderRadius.circular(22),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 8,
+                          ),
+                          constraints: const BoxConstraints(minHeight: 40),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              if (widget.showCheckmark && selected) ...[
+                                Icon(
+                                  Icons.check_rounded,
+                                  size: 15,
+                                  color: iconColor,
+                                ),
+                                const SizedBox(width: 5),
+                              ] else if (widget.icon != null) ...[
+                                Icon(
+                                  widget.icon,
+                                  size: 16,
+                                  color: iconColor,
+                                ),
+                                const SizedBox(width: 6),
+                              ],
+                              Text(
+                                widget.label,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: AmoraTextStyles.caption.copyWith(
+                                  color: contentColor,
+                                  fontWeight: selected
+                                      ? FontWeight.w700
+                                      : FontWeight.w600,
+                                  letterSpacing: 0.1,
+                                  height: 1.1,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ),
           ),
         ),
@@ -94,7 +254,7 @@ class AmoraaHorizontalFilterBar<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 48,
+      height: 44,
       child: ListView.separated(
         key: ValueKey('$optionKeyPrefix-scroll'),
         scrollDirection: Axis.horizontal,

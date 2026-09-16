@@ -27,6 +27,8 @@ class MainShell extends StatefulWidget {
 
 class _MainShellState extends State<MainShell> {
   late AmoraNavTab _activeTab;
+  bool _isCollapsed = false;
+  double _scrollDelta = 0;
 
   static const _tabs = <AmoraNavTab>[
     AmoraNavTab.discover,
@@ -44,6 +46,38 @@ class _MainShellState extends State<MainShell> {
         : AmoraNavTab.discover;
   }
 
+  bool _handleScrollNotification(ScrollUpdateNotification notification) {
+    // Only react to the main scroll axis, ignore minor internal scrolling
+    if (notification.depth == 0) {
+      if (notification.scrollDelta != null) {
+        final delta = notification.scrollDelta!;
+        // If scrolling direction changes, reset the accumulator
+        if ((delta > 0 && _scrollDelta < 0) || (delta < 0 && _scrollDelta > 0)) {
+          _scrollDelta = 0;
+        }
+        _scrollDelta += delta;
+
+        // Scroll down (delta > 0) -> collapse
+        if (_scrollDelta > 30 && !_isCollapsed) {
+          setState(() => _isCollapsed = true);
+          _scrollDelta = 0;
+        }
+        // Scroll up (delta < 0) -> expand
+        else if (_scrollDelta < -30 && _isCollapsed) {
+          setState(() => _isCollapsed = false);
+          _scrollDelta = 0;
+        }
+
+        // If we hit the absolute top or bottom bounds, force expand/collapse
+        if (notification.metrics.pixels <= notification.metrics.minScrollExtent && _isCollapsed) {
+          setState(() => _isCollapsed = false);
+          _scrollDelta = 0;
+        }
+      }
+    }
+    return false; // Allow other listeners to intercept
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -52,25 +86,34 @@ class _MainShellState extends State<MainShell> {
       // With extendBody enabled, Scaffold exposes the occupied navigation
       // extent through MediaQuery.padding. Each tab's existing SafeArea then
       // consumes that one inset, without a second shell-level override.
-      body: IndexedStack(
-        index: _tabs.indexOf(_activeTab),
-        children: [
-          const BrowseGridScreen(showNavigation: false),
-          const ChatListScreen(showNavigation: false),
-          MatchesScreen(
-            showNavigation: false,
-            api: PhaseTwoApiService.instance,
-          ),
-          if (AppFeatureFlags.eventsEnabled)
-            const EventsScreen(showNavigation: false),
-          const ProfileScreen(showNavigation: false),
-        ],
+      body: NotificationListener<ScrollUpdateNotification>(
+        onNotification: _handleScrollNotification,
+        child: IndexedStack(
+          index: _tabs.indexOf(_activeTab),
+          children: [
+            const BrowseGridScreen(showNavigation: false),
+            const ChatListScreen(showNavigation: false),
+            MatchesScreen(
+              showNavigation: false,
+              api: PhaseTwoApiService.instance,
+            ),
+            if (AppFeatureFlags.eventsEnabled)
+              const EventsScreen(showNavigation: false),
+            const ProfileScreen(showNavigation: false),
+          ],
+        ),
       ),
       bottomNavigationBar: FloatingBottomNav(
         activeTab: _activeTab,
+        isCollapsed: _isCollapsed,
         onTabSelected: (tab) {
-          if (tab == _activeTab) return;
-          setState(() => _activeTab = tab);
+          setState(() {
+            _isCollapsed = false; // Always expand on tap
+            _scrollDelta = 0;
+            if (tab != _activeTab) {
+              _activeTab = tab;
+            }
+          });
         },
       ),
     );

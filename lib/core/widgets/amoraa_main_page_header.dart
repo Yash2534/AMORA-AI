@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/theme/amora_header_tokens.dart';
 import 'package:flutter/material.dart';
@@ -137,7 +139,7 @@ class _AmoraaMainPageHeaderDelegate extends SliverPersistentHeaderDelegate {
     double shrinkOffset,
     bool overlapsContent,
   ) {
-    return ColoredBox(color: AppColors.background, child: child);
+    return child;
   }
 
   @override
@@ -158,47 +160,121 @@ class _HeaderText extends StatelessWidget {
         title,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: AmoraaMainPageHeader.titleStyle,
+        style: AmoraaMainPageHeader.titleStyle.copyWith(
+          fontWeight: FontWeight.w800,
+          letterSpacing: -0.4,
+          fontSize: 26,
+          color: AppColors.primary,
+        ),
       ),
     );
   }
 }
 
 /// A visually light action with an accessible 48 dp hit target.
-class AmoraaMainPageHeaderAction extends StatelessWidget {
+class AmoraaMainPageHeaderAction extends StatefulWidget {
+  final String tooltip;
+  final String semanticLabel;
+  final IconData icon;
+  final VoidCallback onPressed;
+  final double size;
+  final double iconSize;
+
   const AmoraaMainPageHeaderAction({
     super.key,
     required this.tooltip,
     required this.semanticLabel,
     required this.icon,
     required this.onPressed,
+    this.size = 34.0,
+    this.iconSize = 16.0,
   });
 
-  final String tooltip;
-  final String semanticLabel;
-  final IconData icon;
-  final VoidCallback onPressed;
+  @override
+  State<AmoraaMainPageHeaderAction> createState() =>
+      _AmoraaMainPageHeaderActionState();
+}
+
+class _AmoraaMainPageHeaderActionState
+    extends State<AmoraaMainPageHeaderAction> {
+  bool _pressed = false;
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final Color backgroundColor = isDark
+        ? const Color(0xFF1E1428).withValues(alpha: 0.48)
+        : Colors.white.withValues(alpha: 0.45);
+
+    final Color borderColor = isDark
+        ? Colors.white.withValues(alpha: 0.20)
+        : Colors.white.withValues(alpha: 0.65);
+
+    final Color iconColor = isDark
+        ? Colors.white.withValues(alpha: 0.90)
+        : AppColors.primary;
+
+    final List<BoxShadow> shadows = [
+      BoxShadow(
+        color: isDark
+            ? Colors.black.withValues(alpha: 0.22)
+            : const Color(0xFF6B4E71).withValues(alpha: 0.08),
+        blurRadius: 10,
+        spreadRadius: 0,
+        offset: const Offset(0, 3),
+      ),
+    ];
+
     return Semantics(
       button: true,
-      label: semanticLabel,
+      label: widget.semanticLabel,
       child: ExcludeSemantics(
         child: Tooltip(
-          message: tooltip,
-          child: SizedBox.square(
-            dimension: AmoraaMainPageHeader.actionSize,
-            child: IconButton(
-              onPressed: onPressed,
-              style: IconButton.styleFrom(
-                foregroundColor: AppColors.primary,
-                backgroundColor: AppColors.transparent,
-                hoverColor: AppColors.tertiary.withValues(alpha: .24),
-                focusColor: AppColors.tertiary.withValues(alpha: .28),
-                highlightColor: AppColors.tertiary.withValues(alpha: .2),
+          message: widget.tooltip,
+          child: GestureDetector(
+            onTapDown: (_) => setState(() => _pressed = true),
+            onTapUp: (_) => setState(() => _pressed = false),
+            onTapCancel: () => setState(() => _pressed = false),
+            onTap: widget.onPressed,
+            child: AnimatedScale(
+              scale: _pressed ? 0.94 : 1.0,
+              duration: const Duration(milliseconds: 140),
+              curve: Curves.easeOutCubic,
+              child: Container(
+                width: widget.size,
+                height: widget.size,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  boxShadow: shadows,
+                ),
+                child: ClipOval(
+                  clipBehavior: Clip.antiAlias,
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                    child: Container(
+                      width: widget.size,
+                      height: widget.size,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: backgroundColor,
+                        border: Border.all(
+                          color: borderColor,
+                          width: 1.1,
+                        ),
+                      ),
+                      child: Center(
+                        child: Icon(
+                          widget.icon,
+                          size: widget.iconSize,
+                          color: iconColor,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
               ),
-              icon: Icon(icon, size: AmoraaMainPageHeader.actionIconSize),
             ),
           ),
         ),

@@ -5,6 +5,7 @@ import 'package:amora_ai/core/constants/app_images.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
+import 'package:amora_ai/core/widgets/amora_top_notification.dart';
 import 'package:amora_ai/core/widgets/amora_app_bar.dart';
 import 'package:amora_ai/core/widgets/amora_filter_chip.dart';
 import 'package:amora_ai/core/widgets/premium_image.dart';
@@ -329,17 +330,11 @@ class _NotificationsHubScreenState extends State<NotificationsHubScreen> {
   }
 
   void _showMessage(String message) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          backgroundColor: AppColors.primary,
-          content: Text(
-            message,
-            style: const TextStyle(color: AppColors.surface),
-          ),
-        ),
-      );
+    AmoraTopNotificationManager.show(
+      context,
+      message: message,
+      type: AmoraTopNotificationType.system,
+    );
   }
 }
 

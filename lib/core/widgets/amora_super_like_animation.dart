@@ -43,10 +43,10 @@ class AmoraSuperLikeAnimation extends StatelessWidget {
                       height: 150 * pulse,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: AppColors.tertiary.withValues(alpha: .18),
+                        color: AppColors.superLikeContainer.withValues(alpha: .5),
                         boxShadow: [
                           BoxShadow(
-                            color: AppColors.secondary.withValues(alpha: .34),
+                            color: AppColors.superLike.withValues(alpha: .34),
                             blurRadius: 42,
                             spreadRadius: 10 * t,
                           ),
@@ -59,7 +59,7 @@ class AmoraSuperLikeAnimation extends StatelessWidget {
                         width: 78,
                         height: 78,
                         decoration: const BoxDecoration(
-                          color: AppColors.secondary,
+                          color: AppColors.superLike,
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(
@@ -84,8 +84,8 @@ class AmoraSuperLikeAnimation extends StatelessWidget {
                           child: Icon(
                             particle.$2,
                             color: particle.$2 == Icons.favorite_rounded
-                                ? AppColors.secondary
-                                : AppColors.primary,
+                                ? AppColors.primary
+                                : AppColors.superLike,
                             size: 18,
                           ),
                         ),
@@ -100,10 +100,10 @@ class AmoraSuperLikeAnimation extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: AppColors.surface,
                           borderRadius: BorderRadius.circular(99),
-                          border: Border.all(color: AppColors.tertiary),
+                          border: Border.all(color: AppColors.superLikeContainer),
                           boxShadow: [
                             BoxShadow(
-                              color: AppColors.primary.withValues(alpha: .14),
+                              color: AppColors.superLike.withValues(alpha: .14),
                               blurRadius: 20,
                               offset: const Offset(0, 8),
                             ),
@@ -114,14 +114,14 @@ class AmoraSuperLikeAnimation extends StatelessWidget {
                           children: [
                             Icon(
                               Icons.star_rounded,
-                              color: AppColors.secondary,
+                              color: AppColors.superLike,
                               size: 18,
                             ),
                             SizedBox(width: 7),
                             Text(
                               'Super Like sent',
                               style: TextStyle(
-                                color: AppColors.primary,
+                                color: AppColors.textPrimary,
                                 fontSize: 14,
                                 fontWeight: FontWeight.w700,
                               ),

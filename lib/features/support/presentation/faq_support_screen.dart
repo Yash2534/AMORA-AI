@@ -2,6 +2,7 @@ import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/amora_app_bar.dart';
+import 'package:amora_ai/core/widgets/amora_snackbar.dart';
 import 'package:amora_ai/core/widgets/amoraa_select_field.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/legal/presentation/community_guidelines_screen.dart';
@@ -200,16 +201,11 @@ class _FaqSupportScreenState extends State<FaqSupportScreen> {
     if (!mounted) return;
     setState(() => _launchingEmail = false);
     if (!launched) {
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          const SnackBar(
-            content: Text(
-              'No email app was available. You can write to '
-              '${SupportContact.email}.',
-            ),
-          ),
-        );
+      showAmoraSnackBar(
+        context,
+        message: 'No email app was available. You can write to ${SupportContact.email}.',
+        tone: AmoraSnackBarTone.warning,
+      );
     }
   }
 }

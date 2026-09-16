@@ -30,13 +30,20 @@ class PremiumBannerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final background = gradient.isEmpty ? AppColors.primary : gradient.first;
+    final useGradient = gradient.length > 1;
     return Semantics(
       button: true,
       label: '$title. $cta',
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: background,
+          color: useGradient ? null : (gradient.isEmpty ? AppColors.primary : gradient.first),
+          gradient: useGradient
+              ? LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: gradient,
+                )
+              : null,
           borderRadius: AmoraRadius.card,
           boxShadow: AmoraShadows.premiumCard,
         ),

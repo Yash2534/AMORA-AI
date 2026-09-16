@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:amora_ai/core/theme/amora_icons.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
@@ -120,279 +121,319 @@ class _AmoraChatComposerState extends State<AmoraChatComposer> {
         ? 8
         : 10;
 
-    return Material(
-      color: AppColors.surface,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (!widget.enabled &&
-              (widget.disabledReason?.trim().isNotEmpty ?? false))
-            Semantics(
-              liveRegion: true,
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 10,
-                ),
-                color: AppColors.tertiary.withValues(alpha: .42),
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.info_outline_rounded,
-                      size: 18,
-                      color: AppColors.primary,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        widget.disabledReason!,
-                        style: const TextStyle(
-                          color: AppColors.text,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          if (widget.contextTitle?.trim().isNotEmpty == true)
-            _ComposerContextPreview(
-              label: widget.contextLabel ?? 'Replying to',
-              title: widget.contextTitle!,
-              detail: widget.contextDetail,
-              onRemove: widget.onRemoveContext,
-            ),
-          Container(
-            padding: compactHeight
-                ? const EdgeInsets.fromLTRB(8, 4, 10, 4)
-                : const EdgeInsets.fromLTRB(8, 8, 10, 10),
-            decoration: BoxDecoration(
-              border: Border(
-                top: BorderSide(
-                  color: AppColors.tertiary.withValues(alpha: .52),
-                ),
-              ),
-            ),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return SafeArea(
+      top: false,
+      bottom: true,
+      child: Padding(
+        padding: const EdgeInsets.only(
+          left: 14,
+          right: 14,
+          bottom: 8,
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(26),
+          child: BackdropFilter(
+            filter: ui.ImageFilter.blur(sigmaX: 16, sigmaY: 16),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 180),
-              constraints: const BoxConstraints(minHeight: 58),
-              padding: const EdgeInsets.fromLTRB(2, 4, 5, 4),
               decoration: BoxDecoration(
-                color: widget.enabled
-                    ? AppColors.surface
-                    : AppColors.tertiary.withValues(alpha: .22),
-                borderRadius: BorderRadius.circular(25),
+                color: isDark
+                    ? const Color(0xFF1E1428).withValues(alpha: 0.52)
+                    : Colors.white.withValues(alpha: 0.65),
+                borderRadius: BorderRadius.circular(26),
                 border: Border.all(
                   color: focused || _showEmojiPicker
-                      ? AppColors.secondary
-                      : AppColors.tertiary,
-                  width: focused || _showEmojiPicker ? 1.5 : 1,
+                      ? AppColors.primary.withValues(alpha: 0.40)
+                      : (isDark
+                          ? Colors.white.withValues(alpha: 0.16)
+                          : Colors.white.withValues(alpha: 0.70)),
+                  width: focused || _showEmojiPicker ? 1.4 : 1.0,
                 ),
+                boxShadow: [
+                  BoxShadow(
+                    color: isDark
+                        ? Colors.black.withValues(alpha: 0.22)
+                        : const Color(0xFF6B4E71).withValues(alpha: 0.08),
+                    blurRadius: 14,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (widget.onAttach != null)
-                    SizedBox.square(
-                      dimension: 44,
-                      child: IconButton(
-                        key: const ValueKey('chat-attach-button'),
-                        tooltip: 'Send photo',
-                        onPressed: widget.enabled && !widget.sending
-                            ? widget.onAttach
-                            : null,
-                        icon: const Icon(Icons.image_outlined),
-                      ),
-                    ),
-                  Semantics(
-                    button: true,
-                    enabled: widget.enabled,
-                    label: _showEmojiPicker
-                        ? 'Show keyboard'
-                        : 'Show emoji picker',
-                    child: SizedBox.square(
-                      dimension: 48,
-                      child: IconButton(
-                        tooltip: _showEmojiPicker ? 'Keyboard' : 'Emoji',
-                        onPressed: widget.enabled ? _toggleEmojiPicker : null,
-                        icon: Icon(
-                          _showEmojiPicker
-                              ? Icons.keyboard_rounded
-                              : AmoraIcons.emoji,
+                  if (!widget.enabled &&
+                      (widget.disabledReason?.trim().isNotEmpty ?? false))
+                    Semantics(
+                      liveRegion: true,
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 10,
+                        ),
+                        color: AppColors.tertiary.withValues(alpha: .42),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.info_outline_rounded,
+                              size: 18,
+                              color: AppColors.primary,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                widget.disabledReason!,
+                                style: const TextStyle(
+                                  color: AppColors.text,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
-                  ),
-                  Expanded(
-                    child: TextFormField(
-                      key: const ValueKey('chat-message-field'),
-                      controller: widget.controller,
-                      focusNode: _focusNode,
-                      enabled: widget.enabled,
-                      minLines: 1,
-                      maxLines: 4,
-                      maxLength: AmoraChatComposer.maximumMessageLength,
-                      maxLengthEnforcement: MaxLengthEnforcement.enforced,
-                      inputFormatters: [
-                        LengthLimitingTextInputFormatter(
-                          AmoraChatComposer.maximumMessageLength,
-                        ),
-                      ],
-                      keyboardType: TextInputType.multiline,
-                      textCapitalization: TextCapitalization.sentences,
-                      textInputAction: TextInputAction.newline,
-                      onChanged: widget.onDraftChanged,
-                      onTap: () {
-                        if (_showEmojiPicker) {
-                          _setEmojiPickerVisible(false);
-                        }
-                      },
-                      style: const TextStyle(
-                        color: AppColors.text,
-                        fontSize: 16,
-                        height: 1.35,
-                      ),
-                      decoration: InputDecoration(
-                        hintText: widget.enabled
-                            ? widget.contextTitle?.trim().isNotEmpty == true
-                                  ? 'Write a reply…'
-                                  : 'Write a message…'
-                            : 'Messaging unavailable',
-                        border: InputBorder.none,
-                        enabledBorder: InputBorder.none,
-                        focusedBorder: InputBorder.none,
-                        disabledBorder: InputBorder.none,
-                        counterText: '',
-                        isDense: true,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 4,
-                          vertical: 12,
-                        ),
-                      ),
+                  if (widget.contextTitle?.trim().isNotEmpty == true)
+                    _ComposerContextPreview(
+                      label: widget.contextLabel ?? 'Replying to',
+                      title: widget.contextTitle!,
+                      detail: widget.contextDetail,
+                      onRemove: widget.onRemoveContext,
                     ),
-                  ),
-                  Semantics(
-                    button: true,
-                    enabled: canSend,
-                    label: widget.sending ? 'Sending message' : 'Send message',
-                    hint: canSend ? null : 'Enter a message before sending',
-                    child: SizedBox.square(
-                      dimension: 48,
-                      child: IconButton.filled(
-                        key: const ValueKey('chat-send-button'),
-                        tooltip: 'Send',
-                        onPressed: canSend ? widget.onSend : null,
-                        style: IconButton.styleFrom(
-                          backgroundColor: canSend
-                              ? AppColors.primary
-                              : AppColors.tertiary,
-                          foregroundColor: canSend
-                              ? AppColors.surface
-                              : AppColors.primary.withValues(alpha: .55),
-                          disabledBackgroundColor: AppColors.tertiary,
-                          disabledForegroundColor: AppColors.primary.withValues(
-                            alpha: .55,
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(4, 3, 6, 3),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        if (widget.onAttach != null)
+                          SizedBox.square(
+                            dimension: 38,
+                            child: IconButton(
+                              key: const ValueKey('chat-attach-button'),
+                              tooltip: 'Send photo',
+                              onPressed: widget.enabled && !widget.sending
+                                  ? widget.onAttach
+                                  : null,
+                              icon: Icon(
+                                Icons.image_outlined,
+                                size: 22,
+                                color: isDark
+                                    ? Colors.white70
+                                    : AppColors.primary.withValues(alpha: 0.70),
+                              ),
+                            ),
+                          ),
+                        Semantics(
+                          button: true,
+                          enabled: widget.enabled,
+                          label: _showEmojiPicker
+                              ? 'Show keyboard'
+                              : 'Show emoji picker',
+                          child: SizedBox.square(
+                            dimension: 38,
+                            child: IconButton(
+                              tooltip: _showEmojiPicker ? 'Keyboard' : 'Emoji',
+                              onPressed: widget.enabled ? _toggleEmojiPicker : null,
+                              icon: Icon(
+                                _showEmojiPicker
+                                    ? Icons.keyboard_rounded
+                                    : AmoraIcons.emoji,
+                                size: 22,
+                                color: isDark
+                                    ? Colors.white70
+                                    : AppColors.primary.withValues(alpha: 0.70),
+                              ),
+                            ),
                           ),
                         ),
-                        icon: widget.sending
-                            ? const SizedBox.square(
-                                dimension: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: AppColors.surface,
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: TextFormField(
+                            key: const ValueKey('chat-message-field'),
+                            controller: widget.controller,
+                            focusNode: _focusNode,
+                            enabled: widget.enabled,
+                            minLines: 1,
+                            maxLines: 4,
+                            maxLength: AmoraChatComposer.maximumMessageLength,
+                            maxLengthEnforcement: MaxLengthEnforcement.enforced,
+                            inputFormatters: [
+                              LengthLimitingTextInputFormatter(
+                                AmoraChatComposer.maximumMessageLength,
+                              ),
+                            ],
+                            keyboardType: TextInputType.multiline,
+                            textCapitalization: TextCapitalization.sentences,
+                            textInputAction: TextInputAction.newline,
+                            onChanged: widget.onDraftChanged,
+                            onTap: () {
+                              if (_showEmojiPicker) {
+                                _setEmojiPickerVisible(false);
+                              }
+                            },
+                            cursorColor: AppColors.primary,
+                            style: const TextStyle(
+                              color: AppColors.text,
+                              fontSize: 15,
+                              height: 1.3,
+                            ),
+                            decoration: InputDecoration(
+                              filled: false,
+                              fillColor: Colors.transparent,
+                              hintText: widget.enabled
+                                  ? widget.contextTitle?.trim().isNotEmpty == true
+                                        ? 'Write a reply…'
+                                        : 'Write a message…'
+                                  : 'Messaging unavailable',
+                              hintStyle: TextStyle(
+                                color: isDark
+                                    ? Colors.white38
+                                    : AppColors.text.withValues(alpha: 0.45),
+                                fontSize: 15,
+                              ),
+                              border: InputBorder.none,
+                              enabledBorder: InputBorder.none,
+                              focusedBorder: InputBorder.none,
+                              disabledBorder: InputBorder.none,
+                              counterText: '',
+                              isDense: true,
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 4,
+                                vertical: 8,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Semantics(
+                          button: true,
+                          enabled: canSend,
+                          label: widget.sending ? 'Sending message' : 'Send message',
+                          hint: canSend ? null : 'Enter a message before sending',
+                          child: SizedBox.square(
+                            dimension: 36,
+                            child: AnimatedScale(
+                              scale: canSend ? 1.0 : 0.92,
+                              duration: const Duration(milliseconds: 180),
+                              child: IconButton(
+                                key: const ValueKey('chat-send-button'),
+                                tooltip: 'Send',
+                                onPressed: canSend ? widget.onSend : null,
+                                style: IconButton.styleFrom(
+                                  backgroundColor: canSend
+                                      ? AppColors.primary
+                                      : (isDark
+                                          ? Colors.white.withValues(alpha: 0.08)
+                                          : AppColors.primary.withValues(alpha: 0.08)),
+                                  foregroundColor: canSend
+                                      ? AppColors.surface
+                                      : AppColors.primary.withValues(alpha: .40),
+                                  disabledBackgroundColor: isDark
+                                      ? Colors.white.withValues(alpha: 0.05)
+                                      : AppColors.primary.withValues(alpha: 0.05),
+                                  disabledForegroundColor: AppColors.primary.withValues(
+                                    alpha: .30,
+                                  ),
+                                  shape: const CircleBorder(),
                                 ),
-                              )
-                            : const Icon(Icons.arrow_upward_rounded),
-                      ),
+                                icon: widget.sending
+                                    ? const SizedBox.square(
+                                        dimension: 16,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: AppColors.surface,
+                                        ),
+                                      )
+                                    : const Icon(Icons.arrow_upward_rounded, size: 19),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
+                  if (_showEmojiPicker)
+                    SizedBox(
+                      height: pickerHeight,
+                      child: compactHeight
+                          ? _CompactEmojiTray(
+                              controller: widget.controller,
+                              onChanged: widget.onDraftChanged,
+                            )
+                          : EmojiPicker(
+                              textEditingController: widget.controller,
+                              onEmojiSelected: (_, _) {
+                                widget.onDraftChanged(widget.controller.text);
+                              },
+                              onBackspacePressed: () {
+                                widget.onDraftChanged(widget.controller.text);
+                              },
+                              config: Config(
+                                height: pickerHeight,
+                                emojiViewConfig: EmojiViewConfig(
+                                  columns: columns,
+                                  emojiSizeMax: 30,
+                                  backgroundColor: Colors.transparent,
+                                  gridPadding: const EdgeInsets.symmetric(
+                                    vertical: 8,
+                                  ),
+                                  noRecents: const Center(
+                                    child: Text(
+                                      'Recently used emoji will appear here.',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(color: AppColors.text),
+                                    ),
+                                  ),
+                                  loadingIndicator: const Center(
+                                    child: CircularProgressIndicator(),
+                                  ),
+                                ),
+                                categoryViewConfig: CategoryViewConfig(
+                                  initCategory: Category.SMILEYS,
+                                  tabBarHeight: compactHeight ? 40 : 46,
+                                  extraTab: compactHeight
+                                      ? CategoryExtraTab.BACKSPACE
+                                      : CategoryExtraTab.NONE,
+                                  backgroundColor: Colors.transparent,
+                                  indicatorColor: AppColors.secondary,
+                                  iconColor: AppColors.text,
+                                  iconColorSelected: AppColors.primary,
+                                  backspaceColor: AppColors.primary,
+                                  dividerColor: AppColors.tertiary,
+                                ),
+                                bottomActionBarConfig: BottomActionBarConfig(
+                                  enabled: !compactHeight,
+                                  backgroundColor: Colors.transparent,
+                                  buttonColor: AppColors.primary,
+                                  buttonIconColor: AppColors.surface,
+                                  showBackspaceButton: true,
+                                  showSearchViewButton: true,
+                                ),
+                                searchViewConfig: const SearchViewConfig(
+                                  backgroundColor: Colors.transparent,
+                                  buttonIconColor: AppColors.primary,
+                                  inputTextStyle: TextStyle(
+                                    color: AppColors.text,
+                                  ),
+                                  hintTextStyle: TextStyle(color: AppColors.text),
+                                ),
+                                skinToneConfig: const SkinToneConfig(
+                                  dialogBackgroundColor: Colors.transparent,
+                                  indicatorColor: AppColors.primary,
+                                  rememberSkinTone: true,
+                                ),
+                              ),
+                            ),
+                    ),
                 ],
               ),
             ),
           ),
-          AnimatedSize(
-            duration: const Duration(milliseconds: 180),
-            curve: Curves.easeOutCubic,
-            child: _showEmojiPicker
-                ? SizedBox(
-                    key: const ValueKey('chat-emoji-picker'),
-                    height: pickerHeight,
-                    child: compactHeight
-                        ? _CompactEmojiTray(
-                            controller: widget.controller,
-                            onChanged: widget.onDraftChanged,
-                          )
-                        : EmojiPicker(
-                            textEditingController: widget.controller,
-                            onEmojiSelected: (_, _) {
-                              widget.onDraftChanged(widget.controller.text);
-                            },
-                            onBackspacePressed: () {
-                              widget.onDraftChanged(widget.controller.text);
-                            },
-                            config: Config(
-                              height: pickerHeight,
-                              emojiViewConfig: EmojiViewConfig(
-                                columns: columns,
-                                emojiSizeMax: 30,
-                                backgroundColor: AppColors.surface,
-                                gridPadding: const EdgeInsets.symmetric(
-                                  vertical: 8,
-                                ),
-                                noRecents: const Center(
-                                  child: Text(
-                                    'Recently used emoji will appear here.',
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(color: AppColors.text),
-                                  ),
-                                ),
-                                loadingIndicator: const Center(
-                                  child: CircularProgressIndicator(),
-                                ),
-                              ),
-                              categoryViewConfig: CategoryViewConfig(
-                                initCategory: Category.SMILEYS,
-                                tabBarHeight: compactHeight ? 40 : 46,
-                                extraTab: compactHeight
-                                    ? CategoryExtraTab.BACKSPACE
-                                    : CategoryExtraTab.NONE,
-                                backgroundColor: AppColors.surface,
-                                indicatorColor: AppColors.secondary,
-                                iconColor: AppColors.text,
-                                iconColorSelected: AppColors.primary,
-                                backspaceColor: AppColors.primary,
-                                dividerColor: AppColors.tertiary,
-                              ),
-                              bottomActionBarConfig: BottomActionBarConfig(
-                                enabled: !compactHeight,
-                                backgroundColor: AppColors.surface,
-                                buttonColor: AppColors.primary,
-                                buttonIconColor: AppColors.surface,
-                                showBackspaceButton: true,
-                                showSearchViewButton: true,
-                              ),
-                              searchViewConfig: const SearchViewConfig(
-                                backgroundColor: AppColors.surface,
-                                buttonIconColor: AppColors.primary,
-                                inputTextStyle: TextStyle(
-                                  color: AppColors.text,
-                                ),
-                                hintTextStyle: TextStyle(color: AppColors.text),
-                              ),
-                              skinToneConfig: const SkinToneConfig(
-                                dialogBackgroundColor: AppColors.surface,
-                                indicatorColor: AppColors.primary,
-                                rememberSkinTone: true,
-                              ),
-                            ),
-                          ),
-                  )
-                : const SizedBox.shrink(),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -502,7 +543,7 @@ class _CompactEmojiTray extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       key: const ValueKey('chat-compact-emoji-tray'),
-      color: AppColors.surface,
+      color: Colors.transparent,
       child: ListView(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 import 'package:amora_ai/core/data/image_repository.dart';
 import 'package:amora_ai/core/media/amora_media_picker.dart';
@@ -144,24 +145,10 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         onRetry: _loadConversation,
       );
     }
-    return Column(
+    final showHeader = !(compactHeight && _emojiPickerVisible);
+    return Stack(
       children: [
-        if (!(compactHeight && _emojiPickerVisible))
-          ChatHeader(
-            profile: _profile,
-            online: _online,
-            status: _online
-                ? 'Online'
-                : _profile.status.trim().isEmpty
-                ? 'Offline'
-                : _profile.status.trim(),
-            onBack: _goBack,
-            onMore: _showMoreSheet,
-            onProfileTap: () => Navigator.of(
-              context,
-            ).pushNamed(ProfileDetailScreen.routeName, arguments: _profile),
-          ),
-        Expanded(
+        Positioned.fill(
           child: _ChatTimeline(
             messages: _messages,
             profile: _profile,
@@ -172,33 +159,60 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             hasMore: _conversation!.hasMoreMessages,
             loadingOlder: _loadingOlder,
             onLoadOlder: _loadOlder,
+            topPadding: showHeader ? 78.0 : 16.0,
+            bottomPadding: 84.0,
           ),
         ),
-        AmoraChatComposer(
-          controller: _controller,
-          sending: _sending,
-          onSend: _send,
-          onAttach: _sendPhoto,
-          onDraftChanged: _saveDraft,
-          enabled: _conversation!.canMessage,
-          disabledReason:
-              _conversation!.unavailableReason ??
-              'This conversation is no longer available.',
-          compactHeight: compactHeight,
-          contextLabel:
-              _pendingContext?.type == ChatMessageContextType.profilePrompt
-              ? 'Replying to profile prompt'
-              : null,
-          contextTitle: _pendingContext?.title,
-          contextDetail: _pendingContext?.detail,
-          onRemoveContext: _pendingContext == null
-              ? null
-              : () => setState(() => _pendingContext = null),
-          onEmojiPickerVisibilityChanged: (visible) {
-            if (mounted && _emojiPickerVisible != visible) {
-              setState(() => _emojiPickerVisible = visible);
-            }
-          },
+        if (showHeader)
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: ChatHeader(
+              profile: _profile,
+              online: _online,
+              status: _online
+                  ? 'Online'
+                  : _profile.status.trim().isEmpty
+                  ? 'Offline'
+                  : _profile.status.trim(),
+              onBack: _goBack,
+              onMore: _showMoreSheet,
+              onProfileTap: () => Navigator.of(
+                context,
+              ).pushNamed(ProfileDetailScreen.routeName, arguments: _profile),
+            ),
+          ),
+        Positioned(
+          bottom: 0,
+          left: 0,
+          right: 0,
+          child: AmoraChatComposer(
+            controller: _controller,
+            sending: _sending,
+            onSend: _send,
+            onAttach: _sendPhoto,
+            onDraftChanged: _saveDraft,
+            enabled: _conversation!.canMessage,
+            disabledReason:
+                _conversation!.unavailableReason ??
+                'This conversation is no longer available.',
+            compactHeight: compactHeight,
+            contextLabel:
+                _pendingContext?.type == ChatMessageContextType.profilePrompt
+                ? 'Replying to profile prompt'
+                : null,
+            contextTitle: _pendingContext?.title,
+            contextDetail: _pendingContext?.detail,
+            onRemoveContext: _pendingContext == null
+                ? null
+                : () => setState(() => _pendingContext = null),
+            onEmojiPickerVisibilityChanged: (visible) {
+              if (mounted && _emojiPickerVisible != visible) {
+                setState(() => _emojiPickerVisible = visible);
+              }
+            },
+          ),
         ),
       ],
     );
@@ -272,6 +286,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     if (!mounted) return;
     Navigator.of(context).pushReplacementNamed(ChatListScreen.routeName);
   }
+
 
   Future<void> _send() async {
     final text = _controller.text.trim();
@@ -680,113 +695,137 @@ class ChatHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.surface,
-      shadowColor: AppColors.primary.withValues(alpha: .08),
-      elevation: 1,
-      child: SizedBox(
-        height: AmoraHeaderTokens.chatDetailHeight,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AmoraHeaderTokens.pageHorizontalInset,
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              _HeaderIconButton(
-                key: const ValueKey('chat-header-back'),
-                tooltip: 'Back',
-                icon: Icons.arrow_back_rounded,
-                onPressed: onBack,
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AmoraHeaderTokens.pageHorizontalInset,
+        12,
+        AmoraHeaderTokens.pageHorizontalInset,
+        12,
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: BackdropFilter(
+          filter: ui.ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+          child: Container(
+            height: 60,
+            padding: const EdgeInsets.symmetric(horizontal: 6),
+            decoration: BoxDecoration(
+              color: isDark 
+                  ? const Color(0xFF1E1428).withValues(alpha: 0.5)
+                  : Colors.white.withValues(alpha: 0.6),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.15)
+                    : Colors.white.withValues(alpha: 0.8),
+                width: 1.2,
               ),
-              const SizedBox(width: AmoraHeaderTokens.backTitleGap),
-              Expanded(
-                child: Semantics(
-                  container: true,
-                  explicitChildNodes: true,
-                  button: true,
-                  label:
-                      'Open ${profile.name} profile${profile.verified ? ', verified' : ''}, $status',
-                  child: InkWell(
-                    key: const ValueKey('chat-header-identity'),
-                    excludeFromSemantics: true,
-                    onTap: onProfileTap,
-                    borderRadius: BorderRadius.circular(18),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Semantics(
-                          image: true,
-                          label: 'Chat profile picture for ${profile.name}',
-                          excludeSemantics: true,
-                          child: ChatPresenceAvatar(
-                            key: const ValueKey('chat-header-avatar'),
-                            profile: profile,
-                            radius: 20,
-                            online: online,
-                            showVerified: false,
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: 0.05),
+                  blurRadius: 16,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                _HeaderIconButton(
+                  key: const ValueKey('chat-header-back'),
+                  tooltip: 'Back',
+                  icon: Icons.arrow_back_rounded,
+                  onPressed: onBack,
+                ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Semantics(
+                    container: true,
+                    explicitChildNodes: true,
+                    button: true,
+                    label:
+                        'Open ${profile.name} profile${profile.verified ? ', verified' : ''}, $status',
+                    child: InkWell(
+                      key: const ValueKey('chat-header-identity'),
+                      excludeFromSemantics: true,
+                      onTap: onProfileTap,
+                      borderRadius: BorderRadius.circular(20),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Semantics(
+                            image: true,
+                            label: 'Chat profile picture for ${profile.name}',
+                            excludeSemantics: true,
+                            child: ChatPresenceAvatar(
+                              key: const ValueKey('chat-header-avatar'),
+                              profile: profile,
+                              radius: 18,
+                              online: online,
+                              showVerified: false,
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            key: const ValueKey('chat-header-name-status'),
-                            mainAxisSize: MainAxisSize.min,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Flexible(
-                                    child: Text(
-                                      profile.name,
-                                      key: const ValueKey('chat-header-name'),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      textAlign: TextAlign.left,
-                                      style: AmoraTextStyles.titleMedium
-                                          .copyWith(
-                                            color: AppColors.text,
-                                            fontWeight: FontWeight.w700,
-                                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              key: const ValueKey('chat-header-name-status'),
+                              mainAxisSize: MainAxisSize.min,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Flexible(
+                                      child: Text(
+                                        profile.name,
+                                        key: const ValueKey('chat-header-name'),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        textAlign: TextAlign.left,
+                                        style: AmoraTextStyles.titleSmall.copyWith(
+                                          color: AppColors.text,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
                                     ),
-                                  ),
-                                  if (profile.verified) ...[
-                                    const SizedBox(width: 4),
-                                    const AmoraaVerifiedIcon(
-                                      key: ValueKey('chat-header-verified'),
-                                    ),
+                                    if (profile.verified) ...[
+                                      const SizedBox(width: 4),
+                                      const AmoraaVerifiedIcon(
+                                        key: ValueKey('chat-header-verified'),
+                                      ),
+                                    ],
                                   ],
-                                ],
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                status,
-                                key: const ValueKey('chat-header-status'),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                textAlign: TextAlign.left,
-                                style: AmoraTextStyles.bodySmall.copyWith(
-                                  color: AppColors.text.withValues(alpha: .66),
-                                  fontWeight: FontWeight.w500,
                                 ),
-                              ),
-                            ],
+                                Text(
+                                  status,
+                                  key: const ValueKey('chat-header-status'),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  textAlign: TextAlign.left,
+                                  style: AmoraTextStyles.bodySmall.copyWith(
+                                    color: AppColors.text.withValues(alpha: .66),
+                                    fontWeight: FontWeight.w500,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: AmoraHeaderTokens.actionGap),
-              _HeaderIconButton(
-                key: const ValueKey('chat-header-more'),
-                tooltip: 'More chat options',
-                icon: Icons.more_horiz_rounded,
-                onPressed: onMore,
-              ),
-            ],
+                _HeaderIconButton(
+                  key: const ValueKey('chat-header-more'),
+                  tooltip: 'More chat options',
+                  icon: Icons.more_horiz_rounded,
+                  onPressed: onMore,
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -808,26 +847,39 @@ class _HeaderIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox.square(
-      dimension: AmoraHeaderTokens.touchTarget,
-      child: Center(
-        child: IconButton(
-          tooltip: tooltip,
-          onPressed: onPressed,
-          constraints: const BoxConstraints.tightFor(
-            width: AmoraHeaderTokens.actionVisualSize,
-            height: AmoraHeaderTokens.actionVisualSize,
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Semantics(
+      button: true,
+      label: tooltip,
+      child: Tooltip(
+        message: tooltip,
+        child: Container(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: isDark 
+                ? Colors.white.withValues(alpha: 0.08)
+                : AppColors.primary.withValues(alpha: 0.06),
           ),
-          padding: EdgeInsets.zero,
-          style: IconButton.styleFrom(
-            foregroundColor: AppColors.primary,
-            backgroundColor: AppColors.background,
-            hoverColor: AppColors.tertiary.withValues(alpha: .24),
-            focusColor: AppColors.tertiary.withValues(alpha: .28),
-            highlightColor: AppColors.tertiary.withValues(alpha: .2),
-            side: BorderSide(color: AppColors.secondary.withValues(alpha: .16)),
+          child: Material(
+            color: Colors.transparent,
+            shape: const CircleBorder(),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: onPressed,
+              child: SizedBox(
+                width: 40,
+                height: 40,
+                child: Center(
+                  child: Icon(
+                    icon,
+                    size: 20,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+            ),
           ),
-          icon: Icon(icon, size: AmoraHeaderTokens.chatIconSize),
         ),
       ),
     );
@@ -845,6 +897,8 @@ class _ChatTimeline extends StatelessWidget {
     required this.hasMore,
     required this.loadingOlder,
     required this.onLoadOlder,
+    this.topPadding = 78.0,
+    this.bottomPadding = 84.0,
   });
 
   final List<ChatMessage> messages;
@@ -856,6 +910,8 @@ class _ChatTimeline extends StatelessWidget {
   final bool hasMore;
   final bool loadingOlder;
   final VoidCallback onLoadOlder;
+  final double topPadding;
+  final double bottomPadding;
 
   @override
   Widget build(BuildContext context) {
@@ -870,7 +926,7 @@ class _ChatTimeline extends StatelessWidget {
       physics: const BouncingScrollPhysics(
         parent: AlwaysScrollableScrollPhysics(),
       ),
-      padding: const EdgeInsets.fromLTRB(14, 16, 14, 14),
+      padding: EdgeInsets.fromLTRB(14, topPadding, 14, bottomPadding),
       itemCount: itemCount,
       itemBuilder: (context, index) {
         if (index == 0) {
@@ -938,7 +994,149 @@ class MessageBubble extends StatelessWidget {
         message.context?.type == ChatMessageContextType.rose) {
       return RoseMessageCard(message: message, profile: profile);
     }
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final showMetadata = !groupedWithNext;
+    
+    Widget bubbleContent = Container(
+      constraints: const BoxConstraints(maxWidth: 440),
+      padding: EdgeInsets.fromLTRB(
+        15,
+        11,
+        15,
+        showMetadata ? 8 : 11,
+      ),
+      decoration: BoxDecoration(
+        color: message.mine
+            ? AppColors.primary
+            : (isDark
+                ? const Color(0xFF1E1428).withValues(alpha: 0.5)
+                : Colors.white.withValues(alpha: 0.6)),
+        borderRadius: _bubbleRadius,
+        border: message.mine
+            ? null
+            : Border.all(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.1)
+                    : Colors.white.withValues(alpha: 0.8),
+                width: 1.2,
+              ),
+        boxShadow: message.mine
+            ? [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: .15),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ]
+            : [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: .04),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+      ),
+      child: Column(
+        crossAxisAlignment: message.mine
+            ? CrossAxisAlignment.end
+            : CrossAxisAlignment.start,
+        children: [
+          if (message.context != null) ...[
+            _MessageContextCard(
+              context: message.context!,
+              mine: message.mine,
+            ),
+            if (!_isRoseWithoutNote) const SizedBox(height: 8),
+          ],
+          if (message.deleted)
+            Text(
+              'Message deleted',
+              style: TextStyle(
+                color: message.mine
+                    ? AppColors.surface.withValues(alpha: .75)
+                    : AppColors.text.withValues(alpha: .65),
+                fontStyle: FontStyle.italic,
+              ),
+            )
+          else if (message.type == 'image' && message.mediaUrl != null) ...[
+            FutureBuilder<Uint8List>(
+              future: ChatRepository.instance.mediaBytes(message.mediaUrl!),
+              builder: (context, snapshot) => ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: snapshot.hasData
+                    ? Image.memory(
+                        snapshot.data!,
+                        width: 240,
+                        height: 220,
+                        fit: BoxFit.cover,
+                      )
+                    : const SizedBox(
+                        width: 240,
+                        height: 160,
+                        child: Center(
+                          child: CircularProgressIndicator(),
+                        ),
+                      ),
+              ),
+            ),
+            if (message.text.isNotEmpty) const SizedBox(height: 8),
+            if (message.text.isNotEmpty)
+              Text(
+                message.text,
+                style: TextStyle(
+                  color: message.mine ? AppColors.surface : AppColors.text,
+                  fontSize: 16,
+                ),
+              ),
+          ] else if (!_isRoseWithoutNote)
+            Text(
+              message.text,
+              style: TextStyle(
+                color: message.mine ? AppColors.surface : AppColors.text,
+                fontSize: 16,
+                height: 1.38,
+                fontWeight: FontWeight.w400,
+              ),
+            ),
+          if (showMetadata) ...[
+            const SizedBox(height: 5),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  message.time,
+                  style: TextStyle(
+                    color: message.mine
+                        ? AppColors.surface.withValues(alpha: .78)
+                        : AppColors.text.withValues(alpha: .62),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                if (message.mine && showReadReceipt) ...[
+                  const SizedBox(width: 4),
+                  _MessageDeliveryState(
+                    status: message.status,
+                    onRetry: onRetry,
+                  ),
+                ],
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+
+    if (!message.mine) {
+      bubbleContent = ClipRRect(
+        borderRadius: _bubbleRadius,
+        child: BackdropFilter(
+          filter: ui.ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+          child: bubbleContent,
+        ),
+      );
+    }
+
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0, end: 1),
       duration: AmoraMotion.fast,
@@ -974,136 +1172,12 @@ class MessageBubble extends StatelessWidget {
                       imageUrl: profile.imageUrl,
                       fallbackAsset: profile.fallbackAsset,
                       initials: profile.initials,
-                      radius: 14,
+                      radius: 12,
                       semanticLabel: '${profile.name} profile photo',
                     ),
                   const SizedBox(width: 8),
                 ],
-                Flexible(
-                  child: Container(
-                    constraints: const BoxConstraints(maxWidth: 440),
-                    padding: EdgeInsets.fromLTRB(
-                      15,
-                      11,
-                      15,
-                      showMetadata ? 8 : 11,
-                    ),
-                    decoration: BoxDecoration(
-                      color: message.mine
-                          ? AppColors.primary
-                          : AppColors.surface,
-                      borderRadius: _bubbleRadius,
-                      border: message.mine
-                          ? null
-                          : Border.all(color: AppColors.tertiary),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.primary.withValues(alpha: .07),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: message.mine
-                          ? CrossAxisAlignment.end
-                          : CrossAxisAlignment.start,
-                      children: [
-                        if (message.context != null) ...[
-                          _MessageContextCard(
-                            context: message.context!,
-                            mine: message.mine,
-                          ),
-                          if (!_isRoseWithoutNote) const SizedBox(height: 8),
-                        ],
-                        if (message.deleted)
-                          Text(
-                            'Message deleted',
-                            style: TextStyle(
-                              color: message.mine
-                                  ? AppColors.surface.withValues(alpha: .75)
-                                  : AppColors.text.withValues(alpha: .65),
-                              fontStyle: FontStyle.italic,
-                            ),
-                          )
-                        else if (message.type == 'image' &&
-                            message.mediaUrl != null) ...[
-                          FutureBuilder<Uint8List>(
-                            future: ChatRepository.instance.mediaBytes(
-                              message.mediaUrl!,
-                            ),
-                            builder: (context, snapshot) => ClipRRect(
-                              borderRadius: BorderRadius.circular(14),
-                              child: snapshot.hasData
-                                  ? Image.memory(
-                                      snapshot.data!,
-                                      width: 240,
-                                      height: 220,
-                                      fit: BoxFit.cover,
-                                    )
-                                  : const SizedBox(
-                                      width: 240,
-                                      height: 160,
-                                      child: Center(
-                                        child: CircularProgressIndicator(),
-                                      ),
-                                    ),
-                            ),
-                          ),
-                          if (message.text.isNotEmpty)
-                            const SizedBox(height: 8),
-                          if (message.text.isNotEmpty)
-                            Text(
-                              message.text,
-                              style: TextStyle(
-                                color: message.mine
-                                    ? AppColors.surface
-                                    : AppColors.text,
-                                fontSize: 16,
-                              ),
-                            ),
-                        ] else if (!_isRoseWithoutNote)
-                          Text(
-                            message.text,
-                            style: TextStyle(
-                              color: message.mine
-                                  ? AppColors.surface
-                                  : AppColors.text,
-                              fontSize: 16,
-                              height: 1.38,
-                              fontWeight: FontWeight.w400,
-                            ),
-                          ),
-                        if (showMetadata) ...[
-                          const SizedBox(height: 5),
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                message.time,
-                                style: TextStyle(
-                                  color: message.mine
-                                      ? AppColors.surface.withValues(alpha: .78)
-                                      : AppColors.text.withValues(alpha: .62),
-                                  fontSize: 12,
-                                  height: 1.2,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              if (message.mine && showReadReceipt) ...[
-                                const SizedBox(width: 5),
-                                _MessageDeliveryState(
-                                  status: message.status,
-                                  onRetry: onRetry,
-                                ),
-                              ],
-                            ],
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ),
+                Flexible(child: bubbleContent),
                 if (message.mine) const SizedBox(width: 2),
               ],
             ),
@@ -1769,13 +1843,14 @@ class _SheetAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final color = danger ? AppColors.secondary : AppColors.primary;
     return ListTile(
       minTileHeight: 56,
       onTap: onTap,
       leading: DecoratedBox(
-        decoration: const BoxDecoration(
-          color: AppColors.background,
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: isDark ? 0.18 : 0.08),
           shape: BoxShape.circle,
         ),
         child: SizedBox.square(
@@ -1791,9 +1866,9 @@ class _SheetAction extends StatelessWidget {
           fontWeight: FontWeight.w600,
         ),
       ),
-      trailing: const Icon(
+      trailing: Icon(
         Icons.chevron_right_rounded,
-        color: AppColors.primary,
+        color: color.withValues(alpha: 0.6),
       ),
     );
   }

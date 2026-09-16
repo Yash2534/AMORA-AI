@@ -311,6 +311,7 @@ class _SignupScreenState extends State<SignupScreen> {
   }
 
   Future<void> _submit() async {
+    if (_loading || _googleLoading) return;
     FocusScope.of(context).unfocus();
     if (!_terms || !_privacy) {
       _snack('Please accept Terms and Privacy');
@@ -351,9 +352,13 @@ class _SignupScreenState extends State<SignupScreen> {
       if (mounted) {
         setState(() {
           _loading = false;
-          _error = error.code == 'LEGAL_DOCUMENT_VERSION_OUTDATED'
-              ? 'The Terms or Privacy Policy was updated. Please review and accept the latest version.'
-              : error.userMessage;
+          _error = switch (error.code) {
+            'LEGAL_DOCUMENT_VERSION_OUTDATED' => 'The Terms or Privacy Policy was updated. Please review and accept the latest version.',
+            'RATE_LIMITED' => 'Too many attempts. Please wait a moment and try again.',
+            'NETWORK_ERROR' => 'Unable to connect. Please check your internet connection and try again.',
+            'INVALID_PHONE_NUMBER' => 'Please enter a valid phone number.',
+            _ => error.userMessage,
+          };
         });
         if (error.code == 'LEGAL_DOCUMENT_VERSION_OUTDATED') {
           _terms = false;
@@ -373,6 +378,7 @@ class _SignupScreenState extends State<SignupScreen> {
   }
 
   Future<void> _continueWithGoogle() async {
+    if (_loading || _googleLoading) return;
     if (!_terms || !_privacy) {
       _snack('Please accept Terms and Privacy');
       return;
@@ -392,7 +398,10 @@ class _SignupScreenState extends State<SignupScreen> {
       if (mounted) {
         setState(() {
           _googleLoading = false;
-          _error = error.message;
+          _error = switch (error.code) {
+            'NETWORK_ERROR' => 'Unable to connect. Please check your internet connection and try again.',
+            _ => error.message,
+          };
         });
       }
     } catch (_) {
@@ -492,7 +501,7 @@ class _SignupProgress extends StatelessWidget {
             value: progress.clamp(0, 1),
             minHeight: 6,
             color: AppColors.primary,
-            backgroundColor: AppColors.tertiary.withValues(alpha: .5),
+            backgroundColor: AppColors.border,
           ),
         ),
       ],

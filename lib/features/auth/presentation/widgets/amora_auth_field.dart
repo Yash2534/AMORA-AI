@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
@@ -100,64 +102,70 @@ class _AmoraAuthFieldState extends State<AmoraAuthField> {
           curve: Curves.easeOutCubic,
           decoration: BoxDecoration(
             color: widget.enabled
-                ? AppColors.surface
-                : AppColors.tertiary.withValues(alpha: .26),
+                ? AppColors.surface.withValues(alpha: 0.65)
+                : AppColors.background.withValues(alpha: 0.65),
             borderRadius: BorderRadius.circular(18),
             border: Border.all(
               color: focused
-                  ? AppColors.secondary
+                  ? AppColors.primary
                   : filled
                   ? AppColors.primary.withValues(alpha: .42)
-                  : AppColors.tertiary,
+                  : AppColors.border.withValues(alpha: 0.6),
               width: focused ? 1.5 : 1,
             ),
             boxShadow: focused
                 ? [
                     BoxShadow(
-                      color: AppColors.secondary.withValues(alpha: .10),
+                      color: AppColors.primary.withValues(alpha: .08),
                       blurRadius: 16,
                       spreadRadius: 1,
                     ),
                   ]
                 : null,
           ),
-          child: TextFormField(
-            controller: widget.controller,
-            focusNode: _focusNode,
-            validator: widget.validator,
-            keyboardType: widget.keyboardType,
-            obscureText: widget.obscureText,
-            enabled: widget.enabled,
-            textInputAction: widget.textInputAction,
-            onChanged: widget.onChanged,
-            onFieldSubmitted: widget.onSubmitted,
-            autofillHints: widget.autofillHints,
-            inputFormatters: widget.inputFormatters,
-            maxLength: widget.maxLength,
-            style: AmoraTextStyles.bodyLarge,
-            cursorColor: AppColors.secondary,
-            decoration: InputDecoration(
-              hintText: widget.hint,
-              prefixText: widget.prefixText,
-              prefixIcon: widget.icon == null
-                  ? null
-                  : Icon(widget.icon, color: AppColors.primary, size: 21),
-              suffixIcon: widget.suffix,
-              counterText: '',
-              border: InputBorder.none,
-              enabledBorder: InputBorder.none,
-              focusedBorder: InputBorder.none,
-              disabledBorder: InputBorder.none,
-              errorBorder: InputBorder.none,
-              focusedErrorBorder: InputBorder.none,
-              filled: false,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: AmoraSpacing.space16,
-                vertical: 17,
-              ),
-              errorStyle: AmoraTextStyles.bodySmall.copyWith(
-                color: AppColors.primary,
-                fontWeight: FontWeight.w600,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(18),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+              child: TextFormField(
+                controller: widget.controller,
+                focusNode: _focusNode,
+                validator: widget.validator,
+                keyboardType: widget.keyboardType,
+                obscureText: widget.obscureText,
+                enabled: widget.enabled,
+                textInputAction: widget.textInputAction,
+                onChanged: widget.onChanged,
+                onFieldSubmitted: widget.onSubmitted,
+                autofillHints: widget.autofillHints,
+                inputFormatters: widget.inputFormatters,
+                maxLength: widget.maxLength,
+                style: AmoraTextStyles.bodyLarge,
+                cursorColor: AppColors.primary,
+                decoration: InputDecoration(
+                  hintText: widget.hint,
+                  prefixText: widget.prefixText,
+                  prefixIcon: widget.icon == null
+                      ? null
+                      : Icon(widget.icon, color: AppColors.primary, size: 21),
+                  suffixIcon: widget.suffix,
+                  counterText: '',
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  disabledBorder: InputBorder.none,
+                  errorBorder: InputBorder.none,
+                  focusedErrorBorder: InputBorder.none,
+                  filled: false,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: AmoraSpacing.space16,
+                    vertical: 17,
+                  ),
+                  errorStyle: AmoraTextStyles.bodySmall.copyWith(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
             ),
           ),

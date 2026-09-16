@@ -1,4 +1,5 @@
 import 'package:amora_ai/core/auth/auth_service.dart';
+import 'package:amora_ai/core/widgets/amora_top_notification.dart';
 import 'package:flutter/foundation.dart';
 
 class InboxNotificationActor {
@@ -106,6 +107,7 @@ class NotificationInboxRepository extends ChangeNotifier {
   final NotificationInboxRemoteDataSource _remote;
 
   final List<InboxNotification> _notifications = <InboxNotification>[];
+  final Set<String> _seenNotificationIds = <String>{};
   List<InboxNotification> get notifications =>
       List.unmodifiable(_notifications);
   bool loading = false;
@@ -118,6 +120,7 @@ class NotificationInboxRepository extends ChangeNotifier {
 
   void clearSessionState() {
     _notifications.clear();
+    _seenNotificationIds.clear();
     loading = false;
     loadingMore = false;
     error = null;
@@ -135,6 +138,43 @@ class NotificationInboxRepository extends ChangeNotifier {
     notifyListeners();
     try {
       final page = await _page(1, filter);
+      if (_notifications.isNotEmpty) {
+        final newUnreads = page.notifications
+            .where((item) => !item.isRead && _seenNotificationIds.add(item.id))
+            .toList();
+        for (final notif in newUnreads) {
+          final t = notif.type;
+          final actorName = notif.actor?.name.trim() ?? '';
+          if (t == 'superLike' || t == 'new_super_like') {
+            AmoraTopNotificationManager.showGlobal(
+              title: 'You received a Super Like ⭐',
+              message: actorName.isNotEmpty
+                  ? '$actorName Super Liked your profile'
+                  : notif.displayTitle,
+              type: AmoraTopNotificationType.superLike,
+            );
+          } else if (t == 'like' || t == 'new_like') {
+            AmoraTopNotificationManager.showGlobal(
+              title: 'Someone liked you ❤️',
+              message: actorName.isNotEmpty
+                  ? '$actorName liked your profile'
+                  : notif.displayTitle,
+              type: AmoraTopNotificationType.like,
+            );
+          } else if (t == 'match' || t == 'new_match') {
+            AmoraTopNotificationManager.showGlobal(
+              title: 'New Match! 🎉',
+              message: notif.message.isNotEmpty
+                  ? notif.message
+                  : 'You have a new match',
+              type: AmoraTopNotificationType.match,
+            );
+          }
+        }
+      }
+      for (final n in page.notifications) {
+        _seenNotificationIds.add(n.id);
+      }
       _notifications
         ..clear()
         ..addAll(page.notifications);
@@ -243,6 +283,40 @@ class NotificationInboxRepository extends ChangeNotifier {
     unreadCount = (data?['unreadCount'] as num?)?.toInt() ?? unreadCount;
     error = null;
     notifyListeners();
+  }
+
+  Future<bool> registerPushToken(String token, {String? platform}) async {
+    final cleanToken = token.trim();
+    if (cleanToken.isEmpty) return false;
+    try {
+      final response = await _remote.request(
+        'POST',
+        '/api/notifications/register-token',
+        body: <String, dynamic>{
+          'token': cleanToken,
+          'platform': platform ?? defaultTargetPlatform.name,
+        },
+      );
+      final data = (response['data'] as Map?)?.cast<String, dynamic>();
+      return response['success'] == true || data?['registered'] == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> unregisterPushToken(String token) async {
+    final cleanToken = token.trim();
+    if (cleanToken.isEmpty) return false;
+    try {
+      final response = await _remote.request(
+        'POST',
+        '/api/notifications/unregister-token',
+        body: <String, dynamic>{'token': cleanToken},
+      );
+      return response['success'] == true;
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<_NotificationPage> _page(int page, String filter) async {

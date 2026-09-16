@@ -495,6 +495,7 @@ class AuthService {
     } catch (_) {
       throw const AuthException(
         'Unable to reach the service. Check your connection and try again.',
+        code: 'NETWORK_ERROR',
       );
     }
   }
@@ -560,6 +561,7 @@ class AuthService {
     } catch (_) {
       throw const AuthException(
         'Unable to reach the service. Check your connection and try again.',
+        code: 'NETWORK_ERROR',
       );
     }
   }

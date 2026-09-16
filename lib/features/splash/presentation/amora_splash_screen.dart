@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:amora_ai/core/branding/amora_brand_assets.dart';
+import 'package:amora_ai/core/branding/amora_logo.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -175,11 +176,9 @@ class _SplashCanvas extends StatelessWidget {
                             scale: reduceMotion
                                 ? 1
                                 : 0.92 + (0.08 * iconReveal),
-                            child: Image.asset(
-                              AmoraBrandAssets.icon,
-                              width: iconWidth,
-                              fit: BoxFit.contain,
-                              filterQuality: FilterQuality.high,
+                            child: AmoraLogo.icon(
+                              iconSize: iconWidth,
+                              alignment: Alignment.center,
                             ),
                           ),
                         ),
@@ -191,11 +190,9 @@ class _SplashCanvas extends StatelessWidget {
                           offset: reduceMotion
                               ? Offset.zero
                               : Offset(0, 9 * (1 - wordmarkReveal)),
-                          child: Image.asset(
-                            AmoraBrandAssets.wordmark,
+                          child: AmoraLogo.wordmark(
                             width: compositionWidth,
-                            fit: BoxFit.contain,
-                            filterQuality: FilterQuality.high,
+                            alignment: Alignment.center,
                           ),
                         ),
                       ),
@@ -211,6 +208,8 @@ class _SplashCanvas extends StatelessWidget {
                             width: compositionWidth * 0.88,
                             fit: BoxFit.contain,
                             filterQuality: FilterQuality.high,
+                            color: AppColors.logoSecondary,
+                            colorBlendMode: BlendMode.srcIn,
                           ),
                         ),
                       ),

@@ -276,7 +276,7 @@ abstract final class AmoraTheme {
       navigationBarTheme: NavigationBarThemeData(
         height: AmoraSpacing.navigationBarHeight,
         elevation: 0,
-        backgroundColor: AppColors.surfaceContainerLowest,
+        backgroundColor: AppColors.transparent,
         surfaceTintColor: AppColors.transparent,
         indicatorColor: AppColors.activeContainer,
         indicatorShape: const StadiumBorder(),
@@ -307,7 +307,7 @@ abstract final class AmoraTheme {
       ),
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
         elevation: 0,
-        backgroundColor: AppColors.surface,
+        backgroundColor: AppColors.transparent,
         selectedItemColor: AppColors.active,
         unselectedItemColor: AppColors.text.withValues(alpha: .60),
         selectedLabelStyle: AmoraTextStyles.navigation,
@@ -461,7 +461,7 @@ abstract final class AmoraTheme {
         textColor: AppColors.primary,
       ),
       bottomAppBarTheme: const BottomAppBarThemeData(
-        color: AppColors.surface,
+        color: AppColors.transparent,
         surfaceTintColor: AppColors.transparent,
         elevation: 0,
       ),

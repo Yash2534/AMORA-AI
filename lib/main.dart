@@ -60,6 +60,8 @@ import 'package:amora_ai/features/support/presentation/faq_support_screen.dart';
 import 'package:amora_ai/features/theme/presentation/dark_mode_settings_screen.dart';
 import 'package:flutter/material.dart';
 
+import 'package:amora_ai/core/widgets/amora_top_notification.dart';
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await AuthService.instance.initialize();
@@ -108,6 +110,7 @@ class _MyAppState extends State<MyApp> {
       valueListenable: AmoraThemeController.instance.mode,
       builder: (context, themeMode, _) => MaterialApp(
         title: 'AMORAA',
+        navigatorKey: AmoraTopNotificationManager.navigatorKey,
         debugShowCheckedModeBanner: false,
         theme: AmoraTheme.light(),
         themeMode: themeMode,

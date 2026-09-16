@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:amora_ai/core/widgets/amora_snackbar.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -252,7 +253,10 @@ void showAmoraMediaResult(
       ? SnackBarAction(label: 'Retry', onPressed: onRetry)
       : null;
 
-  ScaffoldMessenger.of(context)
-    ..hideCurrentSnackBar()
-    ..showSnackBar(SnackBar(content: Text(message), action: action));
+  showAmoraSnackBar(
+    context,
+    message: message,
+    actionLabel: action?.label,
+    onAction: action?.onPressed,
+  );
 }

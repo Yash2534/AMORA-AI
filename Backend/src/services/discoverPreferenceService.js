@@ -1,6 +1,8 @@
 const { getModels } = require('../models');
 const { parseCommunicationStyles } = require('../constants/communicationStyles');
 
+const HARD_FILTERS = new Set(['minAge', 'maxAge', 'maxDistanceKm', 'blockedUsers', 'reportedUsers', 'verifiedOnly']);
+
 const defaults = {
   minAge: 18,
   maxAge: 45,
@@ -29,6 +31,7 @@ const defaults = {
   onlineNow: false,
   hasPrompts: false,
   hasEventInterest: false,
+  preferenceImportance: {}, // maps preference key -> 'must_match', 'very_important', 'prefer', 'flexible'
 };
 
 const arrayFilters = new Set([
@@ -62,11 +65,16 @@ async function filtersFor(userId, overrides = {}) {
         : typeof overrides[key] === 'string'
           ? overrides[key].split(',').map((value) => value.trim()).filter(Boolean)
           : overrides[key];
+    } else if (key === 'preferenceImportance') {
+      values[key] = typeof overrides[key] === 'string' ? JSON.parse(overrides[key]) : (overrides[key] || {});
     } else {
       values[key] = overrides[key];
     }
   }
   for (const key of Object.keys(effectiveDefaults)) if (!runtime.enabledFilters.has(key)) values[key] = effectiveDefaults[key];
+  
+  // Enforce strict separation: Behavioral rankers must never override hard filters.
+  // We expose HARD_FILTERS separately so discoverEngine can apply them strictly.
   return Object.fromEntries(Object.keys(effectiveDefaults).map((key) => [key, values[key]]));
 }
 
@@ -81,4 +89,4 @@ async function updateFilters(userId, body) {
   return filtersFor(userId);
 }
 
-module.exports = { defaults, filtersFor, updateFilters };
+module.exports = { HARD_FILTERS, defaults, filtersFor, updateFilters };

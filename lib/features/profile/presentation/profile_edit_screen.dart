@@ -1,3 +1,4 @@
+import 'package:amora_ai/core/widgets/amora_snackbar.dart';
 import 'package:amora_ai/features/profile/domain/profile_completion_calculator.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_form.dart';
 import 'package:flutter/material.dart';
@@ -18,9 +19,11 @@ class ProfileEditScreen extends StatelessWidget {
           initialField ??
           (routeArgument is ProfileFormFieldId ? routeArgument : null),
       onSaved: (context, profile) async {
-        ScaffoldMessenger.of(
+        showAmoraSnackBar(
           context,
-        ).showSnackBar(const SnackBar(content: Text('Profile changes saved')));
+          message: 'Profile changes saved',
+          tone: AmoraSnackBarTone.success,
+        );
       },
     );
   }

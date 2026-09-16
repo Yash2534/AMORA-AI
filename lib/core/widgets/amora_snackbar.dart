@@ -1,6 +1,4 @@
-import 'package:amora_ai/core/theme/amora_icons.dart';
-import 'package:amora_ai/core/theme/amora_spacing.dart';
-import 'package:amora_ai/core/theme/app_colors.dart';
+import 'package:amora_ai/core/widgets/amora_top_notification.dart';
 import 'package:flutter/material.dart';
 
 enum AmoraSnackBarTone { neutral, success, warning, error, info }
@@ -11,36 +9,21 @@ void showAmoraSnackBar(
   AmoraSnackBarTone tone = AmoraSnackBarTone.neutral,
   String? actionLabel,
   VoidCallback? onAction,
+  String? title,
 }) {
-  final color = switch (tone) {
-    AmoraSnackBarTone.neutral => AppColors.onSurface,
-    AmoraSnackBarTone.success => AppColors.success,
-    AmoraSnackBarTone.warning => AppColors.warning,
-    AmoraSnackBarTone.error => AppColors.error,
-    AmoraSnackBarTone.info => AppColors.info,
+  final notifType = switch (tone) {
+    AmoraSnackBarTone.neutral => AmoraTopNotificationType.system,
+    AmoraSnackBarTone.success => AmoraTopNotificationType.verification,
+    AmoraSnackBarTone.warning => AmoraTopNotificationType.system,
+    AmoraSnackBarTone.error => AmoraTopNotificationType.system,
+    AmoraSnackBarTone.info => AmoraTopNotificationType.system,
   };
-  final icon = switch (tone) {
-    AmoraSnackBarTone.neutral => AmoraIcons.message,
-    AmoraSnackBarTone.success => AmoraIcons.check,
-    AmoraSnackBarTone.warning => Icons.warning_amber_rounded,
-    AmoraSnackBarTone.error => Icons.error_outline_rounded,
-    AmoraSnackBarTone.info => Icons.info_outline_rounded,
-  };
-  ScaffoldMessenger.of(context)
-    ..hideCurrentSnackBar()
-    ..showSnackBar(
-      SnackBar(
-        backgroundColor: color,
-        content: Row(
-          children: [
-            Icon(icon, color: AppColors.surface),
-            const SizedBox(width: AmoraSpacing.space12),
-            Expanded(child: Text(message)),
-          ],
-        ),
-        action: actionLabel == null || onAction == null
-            ? null
-            : SnackBarAction(label: actionLabel, onPressed: onAction),
-      ),
-    );
+
+  AmoraTopNotificationManager.show(
+    context,
+    message: message,
+    title: title,
+    type: notifType,
+    onTap: onAction,
+  );
 }

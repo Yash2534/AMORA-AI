@@ -406,6 +406,9 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
         _isResendingOtp = false;
         _error = _messageFor(error, sending: true, resend: resend);
       });
+      if (error is AuthException && error.code == 'RATE_LIMITED') {
+        _startCountdown();
+      }
     }
   }
 
@@ -508,24 +511,25 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
         : null;
     return switch (code) {
       'INVALID_PHONE_NUMBER' =>
-        'Invalid mobile number. Check the number and try again.',
+        'Please enter a valid phone number.',
       'OTP_INVALID' => "Incorrect code. That code doesn't match. Try again.",
       'OTP_EXPIRED' => 'Code expired. Request a new verification code.',
       'OTP_ATTEMPTS_EXCEEDED' ||
       'OTP_MAX_ATTEMPTS' => 'Too many attempts. Please request a new code.',
-      'RATE_LIMITED' => 'Too many requests. Please try again shortly.',
+      'RATE_LIMITED' => 'Too many attempts. Please wait a moment and try again.',
       'NETWORK_ERROR' =>
         resend
-            ? "Couldn't resend the code. Please try again."
-            : 'Check your connection and try again.',
+            ? "Unable to connect. Please check your internet connection and try again."
+            : 'Unable to connect. Please check your internet connection and try again.',
       'SERVICE_UNAVAILABLE' =>
         'Verification unavailable. Please try again shortly.',
-      _ =>
-        sending
-            ? (resend
-                  ? "Couldn't resend the code. Please try again."
-                  : "Couldn't send the code. Please try again.")
-            : 'Verification unavailable. Please try again shortly.',
+      _ => error is AuthException 
+          ? error.userMessage 
+          : (sending
+              ? (resend
+                    ? "Couldn't resend the code. Please try again."
+                    : "Couldn't send the code. Please try again.")
+              : 'Verification unavailable. Please try again shortly.'),
     };
   }
 }
@@ -637,12 +641,12 @@ class _UnifiedMobileNumberFieldState extends State<_UnifiedMobileNumberField> {
     final focused = _focusNode.hasFocus;
     final filled = widget.controller.text.isNotEmpty;
     final borderColor = widget.hasError
-        ? AppColors.primary
+        ? AppColors.error
         : focused
-        ? AppColors.secondary
+        ? AppColors.primary
         : filled
         ? AppColors.primary.withValues(alpha: .42)
-        : AppColors.tertiary;
+        : AppColors.border;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -668,7 +672,7 @@ class _UnifiedMobileNumberFieldState extends State<_UnifiedMobileNumberField> {
               decoration: BoxDecoration(
                 color: widget.enabled
                     ? AppColors.surface
-                    : AppColors.tertiary.withValues(alpha: .26),
+                    : AppColors.background,
                 borderRadius: AmoraRadius.input,
                 border: Border.all(
                   color: borderColor,
@@ -677,7 +681,7 @@ class _UnifiedMobileNumberFieldState extends State<_UnifiedMobileNumberField> {
                 boxShadow: focused
                     ? [
                         BoxShadow(
-                          color: AppColors.secondary.withValues(alpha: .10),
+                          color: AppColors.primary.withValues(alpha: .08),
                           blurRadius: 14,
                           spreadRadius: 1,
                         ),

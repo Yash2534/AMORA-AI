@@ -5,6 +5,7 @@ import 'package:amora_ai/core/permissions/amoraa_permission_service.dart';
 import 'package:amora_ai/core/auth/auth_service.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/amora_app_bar.dart';
+import 'package:amora_ai/core/widgets/amora_snackbar.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:flutter/material.dart';
@@ -318,14 +319,11 @@ class _NotificationPreferencesScreenState
       });
       _apply(canonical);
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          const SnackBar(
-            content: Text('Notification preferences saved'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+      showAmoraSnackBar(
+        context,
+        message: 'Notification preferences saved',
+        tone: AmoraSnackBarTone.success,
+      );
     } on AuthException catch (error) {
       if (mounted) setState(() => _error = error.message);
     } finally {

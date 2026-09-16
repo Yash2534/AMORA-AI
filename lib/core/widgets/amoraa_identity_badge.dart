@@ -47,8 +47,11 @@ class AmoraaIdentityBadge extends StatelessWidget {
       AmoraaIdentityBadgeType.none => '',
     };
     final background = resolved == AmoraaIdentityBadgeType.verified
-        ? AppColors.secondary
+        ? AppColors.surface.withValues(alpha: .94)
         : AppColors.primary;
+    final contentColor = resolved == AmoraaIdentityBadgeType.verified
+        ? AppColors.primary
+        : AppColors.surface;
     return Semantics(
       container: true,
       label: semanticLabel,
@@ -56,10 +59,22 @@ class AmoraaIdentityBadge extends StatelessWidget {
         key: ValueKey('amoraa-identity-badge-${resolved.name}'),
         height: 28,
         constraints: const BoxConstraints(maxWidth: 112),
-        padding: const EdgeInsets.symmetric(horizontal: 9),
+        padding: const EdgeInsets.symmetric(horizontal: 10),
         decoration: BoxDecoration(
           color: background,
           borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: resolved == AmoraaIdentityBadgeType.verified
+                ? AppColors.border
+                : AppColors.primary,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.shadow.withValues(alpha: .06),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -68,7 +83,7 @@ class AmoraaIdentityBadge extends StatelessWidget {
               premiumOnly
                   ? Icons.workspace_premium_rounded
                   : Icons.verified_rounded,
-              color: AppColors.surface,
+              color: contentColor,
               size: 15,
             ),
             const SizedBox(width: 4),
@@ -78,7 +93,7 @@ class AmoraaIdentityBadge extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: AmoraTextStyles.labelSmall.copyWith(
-                  color: AppColors.surface,
+                  color: contentColor,
                   fontWeight: premiumVerified
                       ? FontWeight.w700
                       : FontWeight.w600,

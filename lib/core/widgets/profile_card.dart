@@ -90,7 +90,17 @@ class ProfileCard extends StatelessWidget {
               ),
               DecoratedBox(
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: .42),
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      AppColors.textPrimary.withValues(alpha: .10),
+                      AppColors.textPrimary.withValues(alpha: .70),
+                      AppColors.textPrimary.withValues(alpha: .88),
+                    ],
+                    stops: const [0.35, 0.58, 0.82, 1.0],
+                  ),
                 ),
               ),
               Positioned(
@@ -130,7 +140,10 @@ class ProfileCard extends StatelessWidget {
                           (compact
                                   ? AmoraTextStyles.titleMedium
                                   : AmoraTextStyles.headlineSmall)
-                              .copyWith(color: AppColors.surface),
+                              .copyWith(
+                                color: AppColors.surface,
+                                fontWeight: FontWeight.w700,
+                              ),
                     ),
                     const SizedBox(height: AmoraSpacing.space8),
                     Text(
@@ -138,7 +151,8 @@ class ProfileCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: AmoraTextStyles.bodySmall.copyWith(
-                        color: AppColors.surface,
+                        color: AppColors.surface.withValues(alpha: .92),
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                     if (!compact && bio != null && bio.isNotEmpty) ...[
@@ -148,7 +162,7 @@ class ProfileCard extends StatelessWidget {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: AmoraTextStyles.bodySmall.copyWith(
-                          color: AppColors.surface,
+                          color: AppColors.surface.withValues(alpha: .90),
                         ),
                       ),
                     ],
@@ -183,8 +197,16 @@ class _AuraMatchBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: AppColors.secondary,
+        color: AppColors.surface.withValues(alpha: .92),
         borderRadius: AmoraRadius.pillBorder,
+        border: Border.all(color: AppColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.shadow.withValues(alpha: .08),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Padding(
         padding: EdgeInsets.symmetric(
@@ -196,7 +218,7 @@ class _AuraMatchBadge extends StatelessWidget {
           children: [
             const Icon(
               Icons.auto_awesome_rounded,
-              color: AppColors.surface,
+              color: AppColors.primary,
               size: AmoraIconSizes.small,
             ),
             const SizedBox(width: AmoraSpacing.space4),
@@ -206,7 +228,8 @@ class _AuraMatchBadge extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: AmoraTextStyles.labelMedium.copyWith(
-                  color: AppColors.surface,
+                  color: AppColors.textPrimary,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ),
@@ -226,20 +249,28 @@ class _VerifiedPill extends StatelessWidget {
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppColors.surface.withValues(alpha: .92),
         borderRadius: AmoraRadius.pillBorder,
+        border: Border.all(color: AppColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.shadow.withValues(alpha: .08),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(
           horizontal: AmoraSpacing.space8,
-          vertical: AmoraSpacing.space8,
+          vertical: AmoraSpacing.space4,
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             const Icon(
               Icons.verified_rounded,
-              color: AppColors.primaryPurple,
+              color: AppColors.primary,
               size: AmoraIconSizes.small,
             ),
             if (!compact) ...[
@@ -247,7 +278,8 @@ class _VerifiedPill extends StatelessWidget {
               Text(
                 'Verified',
                 style: AmoraTextStyles.labelMedium.copyWith(
-                  color: AppColors.textDark,
+                  color: AppColors.textPrimary,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ],

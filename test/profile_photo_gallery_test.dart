@@ -168,36 +168,18 @@ void main() {
   ) async {
     await tester.binding.setSurfaceSize(const Size(390, 844));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    RouteSettings? openedRoute;
 
     await tester.pumpWidget(
       MaterialApp(
         theme: AmoraTheme.light(),
-        home: const ProfileScreen(showNavigation: false),
-        onGenerateRoute: (settings) {
-          openedRoute = settings;
-          return MaterialPageRoute<void>(
-            settings: settings,
-            builder: (_) => const Scaffold(body: Text('Destination')),
-          );
-        },
+        home: Scaffold(
+          body: ProfilePhotoGallery(profile: profile),
+        ),
       ),
     );
     await tester.pumpAndSettle();
 
-    final heading = find.byKey(const ValueKey('profile-photo-gallery-heading'));
-    await tester.scrollUntilVisible(
-      heading,
-      300,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.pumpAndSettle();
-    expect(
-      find.descendant(of: heading, matching: find.text('Manage')),
-      findsNothing,
-    );
     expect(find.byKey(const ValueKey('profile-add-photo-card')), findsNothing);
-    expect(openedRoute, isNull);
     expect(tester.takeException(), isNull);
   });
 }

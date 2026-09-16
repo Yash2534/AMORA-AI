@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:ui';
 
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
@@ -214,12 +215,12 @@ class _OtpCell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final border = hasError
-        ? AppColors.primary
+        ? AppColors.error
         : focused
-        ? AppColors.secondary
+        ? AppColors.primary
         : digit.isNotEmpty
         ? AppColors.primary.withValues(alpha: .5)
-        : AppColors.tertiary;
+        : AppColors.border;
     return Semantics(
       button: true,
       label: semanticLabel,
@@ -231,26 +232,41 @@ class _OtpCell extends StatelessWidget {
           duration: const Duration(milliseconds: 180),
           width: size,
           height: math.max(48, size),
-          alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            color: AppColors.surface.withValues(alpha: 0.65),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: border, width: focused ? 2 : 1.25),
+            border: Border.all(
+              color: digit.isNotEmpty && !focused && !hasError
+                  ? AppColors.primary.withValues(alpha: .5)
+                  : border == AppColors.border
+                  ? AppColors.border.withValues(alpha: 0.6)
+                  : border,
+              width: focused ? 2 : 1.25,
+            ),
             boxShadow: focused
                 ? [
                     BoxShadow(
-                      color: AppColors.secondary.withValues(alpha: .12),
+                      color: AppColors.primary.withValues(alpha: .08),
                       blurRadius: 12,
                       spreadRadius: 1,
                     ),
                   ]
                 : null,
           ),
-          child: Text(
-            digit,
-            style: AmoraTextStyles.titleLarge.copyWith(
-              color: AppColors.primary,
-              fontFeatures: const [FontFeature.tabularFigures()],
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+              child: Align(
+                alignment: Alignment.center,
+                child: Text(
+                  digit,
+                  style: AmoraTextStyles.titleLarge.copyWith(
+                    color: AppColors.primary,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
+                ),
+              ),
             ),
           ),
         ),

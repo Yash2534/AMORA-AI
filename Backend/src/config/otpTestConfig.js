@@ -14,7 +14,10 @@ function booleanValue(env, key) {
 function resolveOtpTestConfig(env = process.env) {
   const environment = String(env.NODE_ENV || '').trim().toLowerCase();
   const enabled = booleanValue(env, 'TEST_FIXED_OTP_ENABLED');
-  const skipDelivery = booleanValue(env, 'TEST_OTP_SKIP_DELIVERY');
+  const skipDeliveryRaw = env.TEST_OTP_SKIP_DELIVERY;
+  const skipDelivery = skipDeliveryRaw !== undefined && skipDeliveryRaw !== '' 
+    ? booleanValue(env, 'TEST_OTP_SKIP_DELIVERY') 
+    : enabled;
   const fixedOtp = String(env.TEST_FIXED_OTP || '').trim();
 
   if (environment === 'production' && (enabled || skipDelivery || fixedOtp)) {

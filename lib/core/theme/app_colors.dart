@@ -1,54 +1,74 @@
 import 'package:flutter/material.dart';
 
-/// Original approved AMORA AI pink/purple colour palette.
+/// Amoraa Premium Plum Theme palette.
 ///
-/// Do not replace these colours during Git conflict resolution.
+/// Centralized brand color definitions based on official Amoraa design specs.
 abstract final class AppColors {
-  static const Color primary = Color(0xFF3D0B3F);
-  static const Color secondary = Color(0xFFEC5FA8);
-  static const Color tertiary = Color(0xFFF4A9CE);
-  static const Color background = Color(0xFFFDF1F7);
-  static const Color surface = Color(0xFFFFFFFF);
-  static const Color text = Color(0xFF2B2B2B);
+  // Amoraa Core Brand Colors
+  static const Color primary = Color(0xFF713F62); // Deep Plum
+  static const Color primaryDark = Color(0xFF5F2F63); // Dark Berry Plum
+  static const Color primaryLight = Color(0xFF8F5A88); // Soft Mauve
+  static const Color accent = Color(0xFFCFAFC4); // Dusty Rose
+  static const Color accentSoft = Color(0xFFF6E4F0); // Blush Lavender
+  static const Color background = Color(0xFFFEFCFF); // Warm Off-White
+  static const Color surface = Color(0xFFFFFFFF); // Pure White
+  static const Color textPrimary = Color(0xFF35152F); // Deep Plum Black
+  static const Color textSecondary = Color(0xFF735F70); // Muted Mauve
+  static const Color border = Color(0xFFE9DFE7); // Soft Lavender Gray
+  static const Color success = Color(0xFF18C98A); // Fresh Mint Green
+  static const Color error = Color(0xFFD9535F); // Soft Red
 
   static const Color transparent = Colors.transparent;
 
+  // Base aliases & Flutter theme shortcuts
+  static const Color primaryColor = primary;
+  static const Color secondary = accent;
+  static const Color tertiary = accentSoft;
+  static const Color text = textPrimary;
+
+  // Logo Brand Tokens (Primary Plum + Supporting Soft Lavender)
+  static const Color logoPrimary = primary; // 1. Deep Amoraa Plum (#713F62) [Dominant 50%]
+  static const Color logoSecondary = accent; // 2. Soft Lavender / Dusty Rose (#CFAFC4) [Supporting 25%]
+  static const Color logoHighlight = surface; // 3. Warm Off-White / Pure White (#FFFFFF) [Light Detail 10%]
+  static const Color logoGlow = textPrimary; // 4. Deep Plum Black (#35152F) [Dark Contrast Detail 15%]
+
+
+
   // Material 3 roles.
   static const Color onPrimary = surface;
-  static const Color primaryContainer = tertiary;
-  static const Color onPrimaryContainer = primary;
+  static const Color primaryContainer = accentSoft;
+  static const Color onPrimaryContainer = textPrimary;
 
   static const Color onSecondary = surface;
-  static const Color secondaryContainer = tertiary;
-  static const Color onSecondaryContainer = primary;
+  static const Color secondaryContainer = accentSoft;
+  static const Color onSecondaryContainer = textPrimary;
 
   static const Color onTertiary = primary;
   static const Color tertiaryContainer = background;
   static const Color onTertiaryContainer = primary;
 
-  static const Color error = primary;
   static const Color onError = surface;
-  static const Color errorContainer = tertiary;
-  static const Color onErrorContainer = primary;
+  static const Color errorContainer = accentSoft;
+  static const Color onErrorContainer = error;
 
-  static const Color outline = tertiary;
-  static const Color outlineVariant = tertiary;
-  static const Color shadow = text;
-  static const Color scrim = text;
+  static const Color outline = border;
+  static const Color outlineVariant = border;
+  static const Color shadow = Color(0x1A35152F);
+  static const Color scrim = textPrimary;
 
   // Interaction.
-  static const Color active = secondary;
+  static const Color active = primary;
   static const Color onActive = surface;
-  static const Color activeContainer = tertiary;
-  static const Color selectedContainer = tertiary;
-  static const Color focus = secondary;
-  static const Color hover = background;
-  static const Color pressed = tertiary;
-  static const Color disabled = tertiary;
+  static const Color activeContainer = accentSoft;
+  static const Color selectedContainer = accentSoft;
+  static const Color focus = primary;
+  static const Color hover = accentSoft;
+  static const Color pressed = primaryDark;
+  static const Color disabled = border;
 
   // Surfaces.
-  static const Color onBackground = text;
-  static const Color onSurface = text;
+  static const Color onBackground = textPrimary;
+  static const Color onSurface = textPrimary;
   static const Color surfaceSoft = background;
   static const Color surfaceDim = background;
   static const Color surfaceBright = surface;
@@ -56,88 +76,89 @@ abstract final class AppColors {
   static const Color surfaceContainerLow = surface;
   static const Color surfaceContainer = surface;
   static const Color surfaceContainerHigh = background;
-  static const Color surfaceContainerHighest = tertiary;
+  static const Color surfaceContainerHighest = accentSoft;
   static const Color cardBackground = surface;
   static const Color inputBackground = surface;
   static const Color chipBackground = surface;
   static const Color splashBackground = background;
-  static const Color splashGlow = tertiary;
+  static const Color splashGlow = accentSoft;
 
   // Content.
-  static const Color textPrimary = text;
-  static const Color textSecondary = text;
-  static const Color textMuted = text;
-  static const Color textDisabled = text;
-  static const Color border = tertiary;
-  static const Color borderStrong = tertiary;
-  static const Color divider = tertiary;
-  static const Color overlayDark = text;
+  static const Color textMuted = textSecondary;
+  static const Color textDisabled = Color(0x80735F70);
+  static const Color borderStrong = primary;
+  static const Color divider = border;
+  static const Color overlayDark = textPrimary;
   static const Color overlayLight = surface;
 
   // Status.
-  static const Color success = primary;
   static const Color onSuccess = surface;
-  static const Color successContainer = tertiary;
-  static const Color onSuccessContainer = primary;
+  static const Color successContainer = Color(0x2618C98A);
+  static const Color onSuccessContainer = textPrimary;
 
-  static const Color warning = secondary;
+  static const Color warning = Color(0xFFFFB74D);
   static const Color onWarning = surface;
-  static const Color warningContainer = tertiary;
+  static const Color warningContainer = accentSoft;
   static const Color onWarningContainer = primary;
 
-  static const Color info = secondary;
+  static const Color info = primaryLight;
   static const Color onInfo = surface;
-  static const Color infoContainer = tertiary;
+  static const Color infoContainer = accentSoft;
   static const Color onInfoContainer = primary;
 
-  static const Color online = primary;
-  static const Color offline = text;
+  static const Color online = success;
+  static const Color offline = textSecondary;
   static const Color unread = primary;
 
+  // Super Like.
+  static const Color superLike = primary;
+  static const Color onSuperLike = surface;
+  static const Color superLikeContainer = accentSoft;
+  static const Color onSuperLikeContainer = primary;
+
   // Premium.
-  static const Color premium = secondary;
+  static const Color premium = primary;
   static const Color onPremium = surface;
-  static const Color premiumContainer = tertiary;
+  static const Color premiumContainer = accentSoft;
   static const Color onPremiumContainer = primary;
 
   // Existing compatibility aliases.
-  static const Color textNeutral = text;
-  static const Color roseQuartz = tertiary;
-  static const Color blush = background;
+  static const Color textNeutral = textPrimary;
+  static const Color roseQuartz = accent;
+  static const Color blush = accentSoft;
   static const Color mist = background;
   static const Color plum = primary;
-  static const Color mauve = text;
-  static const Color champagneGold = secondary;
-  static const Color sage = primary;
-  static const Color amber = secondary;
-  static const Color coral = secondary;
-  static const Color gradientEnd = primary;
-  static const Color primaryLight = tertiary;
-  static const Color tertiarySoft = background;
+  static const Color mauve = textSecondary;
+  static const Color champagneGold = primaryLight;
+  static const Color sage = success;
+  static const Color amber = warning;
+  static const Color coral = error;
+  static const Color gradientEnd = primaryLight;
+  static const Color tertiarySoft = accentSoft;
   static const Color primaryPurple = primary;
-  static const Color deepWine = primary;
-  static const Color primaryRose = secondary;
-  static const Color roseRed = secondary;
-  static const Color softPink = tertiary;
+  static const Color deepWine = primaryDark;
+  static const Color primaryRose = accent;
+  static const Color roseRed = error;
+  static const Color softPink = accentSoft;
   static const Color lavenderBackground = background;
   static const Color lightPinkBackground = background;
   static const Color porcelain = surface;
-  static const Color warmIvory = surface;
+  static const Color warmIvory = background;
   static const Color blushMist = background;
-  static const Color mutedPlum = text;
-  static const Color deepNavy = primary;
-  static const Color charcoal = text;
-  static const Color ink = text;
-  static const Color champagne = tertiary;
+  static const Color mutedPlum = textSecondary;
+  static const Color deepNavy = textPrimary;
+  static const Color charcoal = textPrimary;
+  static const Color ink = textPrimary;
+  static const Color champagne = accent;
   static const Color white = surface;
-  static const Color black = text;
-  static const Color premiumGold = tertiary;
-  static const Color successGreen = primary;
-  static const Color errorRed = primary;
-  static const Color warningAmber = secondary;
-  static const Color textDark = text;
-  static const Color textGray = text;
-  static const Color grey = text;
-  static const Color borderGray = tertiary;
+  static const Color black = textPrimary;
+  static const Color premiumGold = accent;
+  static const Color successGreen = success;
+  static const Color errorRed = error;
+  static const Color warningAmber = warning;
+  static const Color textDark = textPrimary;
+  static const Color textGray = textSecondary;
+  static const Color grey = textSecondary;
+  static const Color borderGray = border;
   static const Color lightGray = background;
 }

@@ -273,6 +273,7 @@ class _ReactionSegment extends StatelessWidget {
               key: const ValueKey('likes-tab'),
               label: 'Likes ($likes)',
               icon: Icons.favorite_rounded,
+              isSuperLike: false,
               selected: selected == ProfileReactionType.like,
               onTap: () => onSelected(ProfileReactionType.like),
             ),
@@ -282,6 +283,7 @@ class _ReactionSegment extends StatelessWidget {
               key: const ValueKey('super-likes-tab'),
               label: 'Super Likes ($superLikes)',
               icon: Icons.star_rounded,
+              isSuperLike: true,
               selected: selected == ProfileReactionType.superLike,
               onTap: () => onSelected(ProfileReactionType.superLike),
             ),
@@ -297,23 +299,31 @@ class _ReactionSegmentItem extends StatelessWidget {
     super.key,
     required this.label,
     required this.icon,
+    required this.isSuperLike,
     required this.selected,
     required this.onTap,
   });
 
   final String label;
   final IconData icon;
+  final bool isSuperLike;
   final bool selected;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final selectedColor = isSuperLike ? AppColors.superLike : AppColors.secondary;
+    final containerColor = isSuperLike 
+        ? (isDark ? AppColors.superLike.withValues(alpha: 0.15) : AppColors.superLikeContainer)
+        : AppColors.tertiary;
+
     return Semantics(
       button: true,
       selected: selected,
       label: label,
       child: Material(
-        color: selected ? AppColors.tertiary : AppColors.transparent,
+        color: selected ? containerColor : AppColors.transparent,
         borderRadius: BorderRadius.circular(14),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
@@ -328,7 +338,7 @@ class _ReactionSegmentItem extends StatelessWidget {
                   Icon(
                     icon,
                     size: 18,
-                    color: selected ? AppColors.secondary : AppColors.primary,
+                    color: selected ? selectedColor : AppColors.primary,
                   ),
                   const SizedBox(width: 6),
                   Flexible(
@@ -384,7 +394,7 @@ class _ReactionEmptyState extends StatelessWidget {
                 isLike
                     ? Icons.favorite_border_rounded
                     : Icons.star_border_rounded,
-                color: AppColors.primary,
+                color: isLike ? AppColors.primary : AppColors.superLike,
                 size: 42,
               ),
               const SizedBox(height: AmoraSpacing.space16),

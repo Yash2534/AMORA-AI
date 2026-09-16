@@ -26,12 +26,13 @@ class EventsBrowseScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBody: true,
       backgroundColor: AppColors.background,
       bottomNavigationBar: showNavigation
           ? const FloatingBottomNav(activeTab: AmoraNavTab.events)
           : null,
       body: SafeArea(
-        bottom: !showNavigation,
+        bottom: false,
         child: ResponsiveMobileFrame(
           maxWidth: 1120,
           child: const EventsMemberExperience(),

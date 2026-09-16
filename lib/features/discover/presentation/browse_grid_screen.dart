@@ -1,15 +1,18 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:ui';
 
 import 'package:amora_ai/core/access/amora_access.dart';
 import 'package:amora_ai/core/api/phase_two_api_service.dart';
 import 'package:amora_ai/core/branding/amora_brand_assets.dart';
+import 'package:amora_ai/core/branding/amora_logo.dart';
 import 'package:amora_ai/core/constants/app_images.dart';
 import 'package:amora_ai/core/data/image_repository.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_header_tokens.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
+import 'package:amora_ai/core/widgets/amora_filter_chip.dart';
 import 'package:amora_ai/core/widgets/amora_profile_image.dart';
 import 'package:amora_ai/core/widgets/amora_super_like_animation.dart';
 import 'package:amora_ai/core/widgets/amoraa_identity_badge.dart';
@@ -19,6 +22,7 @@ import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/floating_bottom_nav.dart';
 import 'package:amora_ai/core/widgets/premium_motion.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
+import 'package:amora_ai/core/widgets/amora_top_notification.dart';
 import 'package:amora_ai/features/discover/presentation/advanced_filters_screen.dart';
 import 'package:amora_ai/features/discover/presentation/discover_action_controller.dart';
 import 'package:amora_ai/features/discover/data/discover_api_service.dart';
@@ -263,14 +267,26 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      bottomNavigationBar: widget.showNavigation
-          ? const FloatingBottomNav(activeTab: AmoraNavTab.discover)
-          : null,
-      body: SafeArea(
-        bottom: !widget.showNavigation,
-        child: ResponsiveMobileFrame(
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Color(0xFFF9F5FF),
+            Color(0xFFECE5F8),
+          ],
+        ),
+      ),
+      child: Scaffold(
+        extendBody: true,
+        backgroundColor: Colors.transparent,
+        bottomNavigationBar: widget.showNavigation
+            ? const FloatingBottomNav(activeTab: AmoraNavTab.discover)
+            : null,
+        body: SafeArea(
+          bottom: false,
+          child: ResponsiveMobileFrame(
           maxWidth: 560,
           child: Stack(
             fit: StackFit.expand,
@@ -289,11 +305,11 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
                     ),
                     Expanded(
                       child: Padding(
-                        padding: const EdgeInsets.fromLTRB(
+                        padding: EdgeInsets.fromLTRB(
                           AmoraaMainPageHeader.contentHorizontalInset,
                           AmoraaMainPageHeader.contentSpacing,
                           AmoraaMainPageHeader.contentHorizontalInset,
-                          10,
+                          FloatingBottomNav.contentBottomPaddingFor(context),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -325,8 +341,9 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildExperience() {
     if (_loading) return const _DiscoverSkeleton();
@@ -336,64 +353,182 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
     return AnimatedBuilder(
       animation: _actions,
       builder: (context, _) {
-        final profile = _profileFor(_actions.currentProfileId);
-        if (profile == null) {
+        final remainingIds = _actions.remainingProfileIds;
+        final currentProfile = _profileFor(_actions.currentProfileId);
+        if (currentProfile == null) {
           return _DiscoverEmpty(
             onFilters: _openFilters,
             onRefresh: _resetFiltersAndDeck,
           );
         }
-        final reduceMotion = MediaQuery.disableAnimationsOf(context);
-        return AnimatedSwitcher(
-          duration: reduceMotion
-              ? Duration.zero
-              : const Duration(milliseconds: 260),
-          reverseDuration: reduceMotion
-              ? Duration.zero
-              : const Duration(milliseconds: 220),
-          switchInCurve: Curves.easeOutCubic,
-          switchOutCurve: Curves.easeInCubic,
-          layoutBuilder: (currentChild, previousChildren) => Stack(
-            alignment: Alignment.center,
-            children: [...previousChildren, ?currentChild],
-          ),
-          transitionBuilder: (child, animation) {
-            final fade = CurvedAnimation(
-              parent: animation,
-              curve: Curves.easeOutCubic,
-            );
-            return FadeTransition(
-              opacity: fade,
-              child: SlideTransition(
-                position: Tween<Offset>(
-                  begin: const Offset(0, .025),
-                  end: Offset.zero,
-                ).animate(fade),
-                child: ScaleTransition(
-                  scale: Tween(begin: .985, end: 1.0).animate(fade),
-                  child: child,
+
+        final back1Id = remainingIds.length > 1 ? remainingIds[1] : null;
+        final back1Profile = _profileFor(back1Id);
+
+        final back2Id = remainingIds.length > 2 ? remainingIds[2] : null;
+        final back2Profile = _profileFor(back2Id);
+
+        return LayoutBuilder(
+          key: ValueKey('discover-deck-layout-${currentProfile.id}'),
+          builder: (context, constraints) {
+            final width = math.min(512.0, constraints.maxWidth);
+            final desiredHeight = (width * 1.72).clamp(420.0, 760.0);
+            final availableHeight = math.max(0.0, constraints.maxHeight - 16);
+            final height = math.min(availableHeight, desiredHeight);
+
+            return Center(
+              child: SizedBox(
+                width: width,
+                height: height,
+                child: ValueListenableBuilder<double>(
+                  valueListenable: _dragOffsetX,
+                  builder: (context, dragX, _) {
+                    final progressFraction = (dragX.abs() / width).clamp(0.0, 1.0);
+
+                    return Stack(
+                      alignment: Alignment.center,
+                      clipBehavior: Clip.none,
+                      children: [
+                        // BACK CARD #2 (Deepest in stack)
+                        if (back2Profile != null)
+                          Positioned.fill(
+                            child: _buildBackCard(
+                              context: context,
+                              profile: back2Profile,
+                              baseScale: 0.93,
+                              targetScale: 0.965,
+                              baseOffsetY: -22.0,
+                              targetOffsetY: -11.0,
+                              baseRotation: 0.035,
+                              targetRotation: -0.025,
+                              baseOpacity: 0.78,
+                              targetOpacity: 0.92,
+                              progress: progressFraction,
+                            ),
+                          ),
+
+                        // BACK CARD #1 (Middle in stack)
+                        if (back1Profile != null)
+                          Positioned.fill(
+                            child: _buildBackCard(
+                              context: context,
+                              profile: back1Profile,
+                              baseScale: 0.965,
+                              targetScale: 1.0,
+                              baseOffsetY: -11.0,
+                              targetOffsetY: 0.0,
+                              baseRotation: -0.025,
+                              targetRotation: 0.0,
+                              baseOpacity: 0.92,
+                              targetOpacity: 1.0,
+                              progress: progressFraction,
+                            ),
+                          ),
+
+                        // FRONT CARD (Active interactive card)
+                        Positioned.fill(
+                          child: _buildDraggableCard(currentProfile, width),
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ),
             );
           },
-          child: LayoutBuilder(
-            key: ValueKey('discover-deck-${profile.id}'),
-            builder: (context, constraints) {
-              final width = math.min(512.0, constraints.maxWidth);
-              final desiredHeight = (width * 1.72).clamp(420.0, 760.0);
-              final availableHeight = math.max(0.0, constraints.maxHeight - 16);
-              final height = math.min(availableHeight, desiredHeight);
-              return Center(
-                child: SizedBox(
-                  width: width,
-                  height: height,
-                  child: _buildDraggableCard(profile, width),
-                ),
-              );
-            },
-          ),
         );
       },
+    );
+  }
+
+  Widget _buildBackCard({
+    required BuildContext context,
+    required DummyProfile profile,
+    required double baseScale,
+    required double targetScale,
+    required double baseOffsetY,
+    required double targetOffsetY,
+    required double baseRotation,
+    required double targetRotation,
+    required double baseOpacity,
+    required double targetOpacity,
+    required double progress,
+  }) {
+    final scale = baseScale + (targetScale - baseScale) * progress;
+    final offsetY = baseOffsetY + (targetOffsetY - baseOffsetY) * progress;
+    final rotation = baseRotation + (targetRotation - baseRotation) * progress;
+    final opacity = (baseOpacity + (targetOpacity - baseOpacity) * progress).clamp(0.0, 1.0);
+    final photos = _photosFor(profile);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return IgnorePointer(
+      key: ValueKey('discover-back-card-${profile.id}'),
+      child: Transform.translate(
+        offset: Offset(0, offsetY),
+        child: Transform.rotate(
+          angle: rotation,
+          child: Transform.scale(
+            scale: scale,
+            child: Opacity(
+              opacity: opacity,
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 28),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(32),
+                    border: Border.all(
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.22)
+                          : AppColors.primary.withValues(alpha: 0.18),
+                      width: 1.4,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF6B4E71).withValues(alpha: 0.12),
+                        blurRadius: 20,
+                        spreadRadius: 1,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(32),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        AmoraProfileImage(
+                          imageUrl: profile.imageUrl,
+                          assetPath: photos.first,
+                          initials: AppImages.initialsForName(profile.name),
+                          fit: BoxFit.cover,
+                          alignment: Alignment.topCenter,
+                          borderRadius: BorderRadius.circular(32),
+                        ),
+                        DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.transparent,
+                                AppColors.textPrimary.withValues(alpha: 0.15),
+                                AppColors.textPrimary.withValues(alpha: 0.65),
+                                AppColors.textPrimary.withValues(alpha: 0.85),
+                              ],
+                              stops: const [0.35, 0.58, 0.82, 1.0],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -403,88 +538,84 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
       0,
       photos.length - 1,
     );
-    return ValueListenableBuilder<double>(
-      valueListenable: _dragOffsetX,
-      builder: (context, dragX, _) {
-        final progress = (dragX / width).clamp(-1.0, 1.0);
-        final duration = _dragging ? Duration.zero : AmoraMotion.selection;
-        return GestureDetector(
-          key: ValueKey('discover-profile-card-${profile.id}'),
-          behavior: HitTestBehavior.opaque,
-          onHorizontalDragStart: _actions.isTransitioning
-              ? null
-              : (_) {
-                  _dragging = true;
-                  _horizontalDragLocked = true;
-                },
-          onHorizontalDragUpdate: _actions.isTransitioning
-              ? null
-              : (details) {
-                  if (!_horizontalDragLocked) return;
-                  _dragOffsetX.value = (_dragOffsetX.value + details.delta.dx)
-                      .clamp(-width, width);
-                },
-          onHorizontalDragCancel: _actions.isTransitioning ? null : _springBack,
-          onHorizontalDragEnd: _actions.isTransitioning
-              ? null
-              : (details) {
-                  final velocity = details.primaryVelocity ?? 0;
-                  final horizontalOffset = _dragOffsetX.value;
-                  final shouldComplete =
-                      horizontalOffset.abs() >= width * .27 ||
-                      velocity.abs() >= _velocityThreshold;
-                  if (!shouldComplete) {
-                    _springBack();
-                    return;
-                  }
-                  _performAction(
-                    profile,
-                    action: velocity == 0
-                        ? (horizontalOffset > 0
-                              ? DiscoverAction.like
-                              : DiscoverAction.pass)
-                        : (velocity > 0
-                              ? DiscoverAction.like
-                              : DiscoverAction.pass),
-                    width: width,
-                  );
-                },
-          child: AnimatedSlide(
-            key: const ValueKey('discover-card-slide'),
-            offset: Offset(progress * 1.5, 0),
-            duration: duration,
-            curve: Curves.easeOutCubic,
-            child: AnimatedRotation(
-              turns: progress * (7 / 360),
-              duration: duration,
-              curve: Curves.easeOutCubic,
-              child: _DiscoverProfileCard(
-                profile: profile,
-                dragProgress: progress,
-                photos: photos,
-                photoIndex: photoIndex,
-                enabled: !_actions.isTransitioning,
-                canRewind: _actions.canRewind,
-                onPreviousPhoto: () => _changePhoto(profile, photos, -1),
-                onNextPhoto: () => _changePhoto(profile, photos, 1),
-                onOpenProfile: () => _openProfile(profile),
-                onPass: () => _performAction(
-                  profile,
-                  action: DiscoverAction.pass,
-                  width: width,
-                ),
-                onUndo: _rewind,
-                onSuperLike: () => _sendSuperLike(profile),
-                onLike: () => _performAction(
-                  profile,
-                  action: DiscoverAction.like,
-                  width: width,
-                ),
-              ),
+    final dragX = _dragOffsetX.value;
+    final progress = (dragX / width).clamp(-1.0, 1.0);
+    final duration = _dragging ? Duration.zero : AmoraMotion.selection;
+    return GestureDetector(
+      key: ValueKey('discover-profile-card-${profile.id}'),
+      behavior: HitTestBehavior.opaque,
+      onHorizontalDragStart: _actions.isTransitioning
+          ? null
+          : (_) {
+              _dragging = true;
+              _horizontalDragLocked = true;
+            },
+      onHorizontalDragUpdate: _actions.isTransitioning
+          ? null
+          : (details) {
+              if (!_horizontalDragLocked) return;
+              _dragOffsetX.value = (_dragOffsetX.value + details.delta.dx)
+                  .clamp(-width, width);
+            },
+      onHorizontalDragCancel: _actions.isTransitioning ? null : _springBack,
+      onHorizontalDragEnd: _actions.isTransitioning
+          ? null
+          : (details) {
+              final velocity = details.primaryVelocity ?? 0;
+              final horizontalOffset = _dragOffsetX.value;
+              final shouldComplete =
+                  horizontalOffset.abs() >= width * .27 ||
+                  velocity.abs() >= _velocityThreshold;
+              if (!shouldComplete) {
+                _springBack();
+                return;
+              }
+              _performAction(
+                profile,
+                action: velocity == 0
+                    ? (horizontalOffset > 0
+                          ? DiscoverAction.like
+                          : DiscoverAction.pass)
+                    : (velocity > 0
+                          ? DiscoverAction.like
+                          : DiscoverAction.pass),
+                width: width,
+              );
+            },
+      child: AnimatedSlide(
+        key: const ValueKey('discover-card-slide'),
+        offset: Offset(progress * 1.5, 0),
+        duration: duration,
+        curve: Curves.easeOutCubic,
+        child: AnimatedRotation(
+          turns: progress * (7 / 360),
+          duration: duration,
+          curve: Curves.easeOutCubic,
+          child: _DiscoverProfileCard(
+            profile: profile,
+            dragProgress: progress,
+            photos: photos,
+            photoIndex: photoIndex,
+            enabled: !_actions.isTransitioning,
+            canRewind: _actions.canRewind,
+            onPreviousPhoto: () => _changePhoto(profile, photos, -1),
+            onNextPhoto: () => _changePhoto(profile, photos, 1),
+            onOpenProfile: () => _openProfile(profile),
+            onPass: () => _performAction(
+              profile,
+              action: DiscoverAction.pass,
+              width: width,
+            ),
+            onUndo: _rewind,
+            onSuperLike: () => _sendSuperLike(profile),
+            onLike: () => _performAction(
+              profile,
+              action: DiscoverAction.like,
+              width: width,
             ),
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 
@@ -530,18 +661,16 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
     _dragOffsetX.value = 0;
     if (action == DiscoverAction.like && saved) {
       final matched = _actions.matchedProfileId == profile.id;
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(
-            duration: const Duration(milliseconds: 900),
-            content: Text(
-              matched
-                  ? 'You and ${profile.name} liked each other'
-                  : 'Liked ${profile.name}',
-            ),
-          ),
-        );
+      AmoraTopNotificationManager.show(
+        context,
+        title: matched ? 'New Match!' : 'Liked ❤️',
+        message: matched
+            ? 'You and ${profile.name} liked each other'
+            : 'Liked ${profile.name}',
+        type: matched
+            ? AmoraTopNotificationType.match
+            : AmoraTopNotificationType.like,
+      );
       if (matched) {
         _actions.consumeMatch();
       }
@@ -642,14 +771,12 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
           if (!mounted) return;
         }
         if (saved) {
-          ScaffoldMessenger.of(context)
-            ..hideCurrentSnackBar()
-            ..showSnackBar(
-              SnackBar(
-                duration: const Duration(milliseconds: 1200),
-                content: const Text('Super Like sent'),
-              ),
-            );
+          AmoraTopNotificationManager.show(
+            context,
+            title: 'Super Liked ⭐',
+            message: 'You Super Liked ${profile.name}',
+            type: AmoraTopNotificationType.superLike,
+          );
         }
         unawaited(_loadNextPage());
       },
@@ -724,9 +851,12 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
 
   void _showSyncError(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
+    AmoraTopNotificationManager.show(
+      context,
+      title: 'Notice',
+      message: message,
+      type: AmoraTopNotificationType.system,
+    );
   }
 
   void _keyboardAction(DiscoverAction action) {
@@ -767,7 +897,7 @@ class _DiscoverFilterRail extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       key: const ValueKey('discover-filter-rail'),
-      height: 46,
+      height: 44,
       child: ListView(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.only(right: AmoraSpacing.space20),
@@ -782,7 +912,7 @@ class _DiscoverFilterRail extends StatelessWidget {
             onTap: onFilters,
           ),
           for (final filter in filters) ...[
-            const SizedBox(width: 5),
+            const SizedBox(width: 8),
             _DiscoverFilterChip(
               key: ValueKey('discover-filter-${filter.label}'),
               label: filter.label,
@@ -811,13 +941,10 @@ class _DiscoverHeader extends StatelessWidget {
         label: 'AMORAA',
         child: Align(
           alignment: Alignment.centerLeft,
-          child: Image.asset(
-            AmoraBrandAssets.wordmark,
+          child: AmoraLogo.wordmark(
             width: AmoraHeaderTokens.discoverLogoWidth,
             height: AmoraHeaderTokens.discoverLogoHeight,
-            fit: BoxFit.contain,
             alignment: Alignment.centerLeft,
-            filterQuality: FilterQuality.high,
           ),
         ),
       ),
@@ -834,7 +961,7 @@ class _DiscoverHeader extends StatelessWidget {
   }
 }
 
-class _DiscoverFilterChip extends StatefulWidget {
+class _DiscoverFilterChip extends StatelessWidget {
   const _DiscoverFilterChip({
     super.key,
     required this.label,
@@ -849,86 +976,13 @@ class _DiscoverFilterChip extends StatefulWidget {
   final VoidCallback onTap;
 
   @override
-  State<_DiscoverFilterChip> createState() => _DiscoverFilterChipState();
-}
-
-class _DiscoverFilterChipState extends State<_DiscoverFilterChip>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _scale;
-
-  @override
-  void initState() {
-    super.initState();
-    _scale = AnimationController.unbounded(vsync: this, value: 1);
-  }
-
-  @override
-  void dispose() {
-    _scale.dispose();
-    super.dispose();
-  }
-
-  void _animate(double target, {double velocity = 0}) {
-    _scale.animateWith(
-      SpringSimulation(
-        const SpringDescription(mass: .75, stiffness: 520, damping: 30),
-        _scale.value,
-        target,
-        velocity,
-      ),
-    );
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return Listener(
-      onPointerDown: (_) => _animate(.96, velocity: -1),
-      onPointerUp: (_) => _animate(1, velocity: 1),
-      onPointerCancel: (_) => _animate(1),
-      child: ScaleTransition(
-        scale: _scale,
-        child: Material(
-          color: widget.selected ? AppColors.primary : AppColors.surface,
-          shape: StadiumBorder(
-            side: BorderSide(
-              color: widget.selected
-                  ? AppColors.primary
-                  : AppColors.secondary.withValues(alpha: .55),
-            ),
-          ),
-          child: InkWell(
-            onTap: widget.onTap,
-            customBorder: const StadiumBorder(),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 9),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    widget.icon,
-                    size: 16,
-                    color: widget.selected
-                        ? AppColors.surface
-                        : AppColors.secondary,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    widget.label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AmoraTextStyles.labelMedium.copyWith(
-                      color: widget.selected
-                          ? AppColors.surface
-                          : AppColors.text,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
+    return AmoraFilterChip(
+      label: label,
+      icon: icon,
+      selected: selected,
+      onSelected: (_) => onTap(),
+      onTap: onTap,
     );
   }
 }
@@ -977,10 +1031,15 @@ class _DiscoverProfileCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(32),
               boxShadow: [
                 BoxShadow(
-                  color: AppColors.primary.withValues(alpha: .19),
-                  blurRadius: 30,
-                  spreadRadius: -8,
-                  offset: const Offset(0, 16),
+                  color: Colors.deepPurple.withValues(alpha: .08),
+                  blurRadius: 24,
+                  spreadRadius: 2,
+                  offset: const Offset(0, 10),
+                ),
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: .04),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
                 ),
               ],
             ),
@@ -1025,7 +1084,17 @@ class _DiscoverProfileCard extends StatelessWidget {
                   ),
                   DecoratedBox(
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: .40),
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.transparent,
+                          AppColors.textPrimary.withValues(alpha: .10),
+                          AppColors.textPrimary.withValues(alpha: .70),
+                          AppColors.textPrimary.withValues(alpha: .88),
+                        ],
+                        stops: const [0.35, 0.58, 0.82, 1.0],
+                      ),
                     ),
                   ),
                   if (photos.length > 1)
@@ -1369,52 +1438,103 @@ class _DiscoverActionBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(34),
-        border: Border.all(color: AppColors.tertiary),
+        borderRadius: BorderRadius.circular(35),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withValues(alpha: .15),
+            color: const Color(0xFF6B4E71).withValues(alpha: .12),
             blurRadius: 24,
-            spreadRadius: -7,
-            offset: const Offset(0, 10),
+            spreadRadius: 0,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(35),
+        clipBehavior: Clip.antiAlias,
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: const Color(0xFFFEFCFF).withValues(alpha: .52),
+              borderRadius: BorderRadius.circular(35),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: .75),
+                width: 1.2,
+              ),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
             _DiscoverActionButton(
               key: const ValueKey('discover-pass-button'),
               label: 'Not Now',
               icon: Icons.close_rounded,
-              foreground: AppColors.secondary,
+              backgroundColor: AppColors.surface,
+              borderColor: AppColors.border,
+              iconColor: AppColors.textSecondary,
+              dimension: 50,
+              iconSize: 24,
               onPressed: enabled ? onPass : null,
             ),
             _DiscoverActionButton(
               key: const ValueKey('discover-undo-button'),
               label: 'Undo previous action',
               icon: Icons.undo_rounded,
-              foreground: AppColors.primary,
+              backgroundColor: AppColors.surface,
+              borderColor: AppColors.border,
+              iconColor: AppColors.primaryLight,
+              dimension: 44,
+              iconSize: 20,
               onPressed: enabled && canRewind ? onUndo : null,
             ),
             _DiscoverActionButton(
               key: const ValueKey('discover-super-like-button'),
               label: 'Super Like profile',
+              tooltip: 'Super Like',
               icon: Icons.star_rounded,
-              filled: true,
+              backgroundColor: AppColors.primary,
+              borderColor: AppColors.primary,
+              iconColor: AppColors.surface,
+              dimension: 54,
+              iconSize: 24,
+              pressScale: 0.93,
+              shadows: [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: .26),
+                  blurRadius: 16,
+                  spreadRadius: -2,
+                  offset: const Offset(0, 6),
+                ),
+              ],
               onPressed: enabled ? onSuperLike : null,
             ),
             _DiscoverActionButton(
               key: const ValueKey('discover-like-button'),
               label: 'Like profile',
               icon: Icons.favorite_rounded,
-              filled: true,
+              backgroundColor: AppColors.primary,
+              borderColor: AppColors.primary,
+              iconColor: AppColors.surface,
+              dimension: 60,
+              iconSize: 26,
+              pressScale: 0.93,
+              shadows: [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: .26),
+                  blurRadius: 16,
+                  spreadRadius: -2,
+                  offset: const Offset(0, 6),
+                ),
+              ],
               onPressed: enabled ? onLike : null,
             ),
-          ],
+                ],
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -1425,17 +1545,31 @@ class _DiscoverActionButton extends StatefulWidget {
   const _DiscoverActionButton({
     super.key,
     required this.label,
+    this.tooltip,
     required this.icon,
     required this.onPressed,
-    this.foreground = AppColors.surface,
-    this.filled = false,
+    this.backgroundColor = AppColors.surface,
+    this.borderColor = AppColors.border,
+    this.iconColor = AppColors.primary,
+    this.gradient,
+    this.dimension = 52.0,
+    this.iconSize = 24.0,
+    this.shadows,
+    this.pressScale = 0.93,
   });
 
   final String label;
+  final String? tooltip;
   final IconData icon;
   final VoidCallback? onPressed;
-  final Color foreground;
-  final bool filled;
+  final Color backgroundColor;
+  final Color borderColor;
+  final Color iconColor;
+  final Gradient? gradient;
+  final double dimension;
+  final double iconSize;
+  final List<BoxShadow>? shadows;
+  final double pressScale;
 
   @override
   State<_DiscoverActionButton> createState() => _DiscoverActionButtonState();
@@ -1472,36 +1606,44 @@ class _DiscoverActionButtonState extends State<_DiscoverActionButton>
   Widget build(BuildContext context) {
     final enabled = widget.onPressed != null;
     return Tooltip(
-      message: widget.label,
+      message: widget.tooltip ?? widget.label,
       child: Listener(
-        onPointerDown: enabled ? (_) => _animate(.9, velocity: -1) : null,
+        onPointerDown: enabled ? (_) => _animate(widget.pressScale, velocity: -1) : null,
         onPointerUp: enabled ? (_) => _animate(1, velocity: 1) : null,
         onPointerCancel: enabled ? (_) => _animate(1) : null,
         child: ScaleTransition(
           scale: _scale,
-          child: Material(
-            color: widget.filled
-                ? (enabled
-                      ? AppColors.secondary
-                      : AppColors.tertiary.withValues(alpha: .65))
-                : AppColors.surface,
-            shape: CircleBorder(
-              side: BorderSide(
-                color: widget.filled ? AppColors.secondary : AppColors.tertiary,
-              ),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: enabled ? widget.gradient : null,
+              color: widget.gradient == null
+                  ? (enabled
+                      ? widget.backgroundColor
+                      : widget.backgroundColor.withValues(alpha: .5))
+                  : null,
+              boxShadow: enabled ? widget.shadows : null,
             ),
-            child: InkWell(
-              onTap: widget.onPressed,
-              customBorder: const CircleBorder(),
-              child: SizedBox.square(
-                dimension: 54,
-                child: Icon(
-                  widget.icon,
-                  color: enabled
-                      ? widget.foreground
-                      : AppColors.text.withValues(alpha: .32),
-                  size: widget.filled ? 25 : 24,
-                  semanticLabel: widget.label,
+            child: Material(
+              color: Colors.transparent,
+              shape: CircleBorder(
+                side: BorderSide(
+                  color: enabled ? widget.borderColor : AppColors.border,
+                ),
+              ),
+              child: InkWell(
+                onTap: widget.onPressed,
+                customBorder: const CircleBorder(),
+                child: SizedBox.square(
+                  dimension: widget.dimension,
+                  child: Icon(
+                    widget.icon,
+                    color: enabled
+                        ? widget.iconColor
+                        : AppColors.textSecondary.withValues(alpha: .38),
+                    size: widget.iconSize,
+                    semanticLabel: widget.label,
+                  ),
                 ),
               ),
             ),

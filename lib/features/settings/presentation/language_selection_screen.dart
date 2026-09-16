@@ -2,6 +2,7 @@ import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/amora_app_bar.dart';
+import 'package:amora_ai/core/widgets/amora_snackbar.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:flutter/material.dart';
@@ -92,11 +93,10 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
                 AppPrimaryButton(
                   label: 'Save Language',
                   icon: Icons.check_rounded,
-                  onPressed: () => ScaffoldMessenger.of(context)
-                    ..hideCurrentSnackBar()
-                    ..showSnackBar(
-                      SnackBar(content: Text('Language saved: $_language')),
-                    ),
+                  onPressed: () => showAmoraSnackBar(
+                    context,
+                    message: 'Language saved: $_language',
+                  ),
                 ),
                 const SizedBox(height: 10),
                 const Text(

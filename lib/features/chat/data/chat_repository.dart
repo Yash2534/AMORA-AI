@@ -4,8 +4,12 @@ import 'package:amora_ai/core/auth/auth_service.dart';
 import 'package:amora_ai/core/config/amora_api_config.dart';
 import 'package:amora_ai/core/data/image_repository.dart';
 import 'package:amora_ai/core/media/amora_media_picker.dart';
+import 'package:amora_ai/core/widgets/amora_top_notification.dart';
+import 'package:amora_ai/features/chat/presentation/chat_detail_screen.dart';
+import 'package:amora_ai/features/notifications/data/notification_inbox_repository.dart';
 import 'package:amora_ai/features/profile/data/public_profile_mapper.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 
 enum ChatMessageStatus { sending, queued, sent, delivered, read, failed }
@@ -589,6 +593,35 @@ class ChatRepository extends ChangeNotifier {
       message,
       unread: message.mine ? current.unread : current.unread + 1,
     );
+    if (!message.mine) {
+      final senderName =
+          current.user.name.trim().isEmpty ? 'New Message' : current.user.name;
+      final textPreview = message.deleted
+          ? 'Message deleted'
+          : (message.text.trim().isEmpty ? 'Sent a photo/media' : message.text);
+      AmoraTopNotificationManager.showGlobal(
+        title: senderName,
+        message: textPreview,
+        type: AmoraTopNotificationType.message,
+        avatarUrl: current.user.imageUrl,
+        onTap: () {
+          final ctx = AmoraTopNotificationManager.globalContext;
+          if (ctx != null) {
+            Navigator.of(ctx).pushNamed(
+              ChatDetailScreen.routeName,
+              arguments: ChatDetailArgs(
+                conversationId: conversationId,
+                recipientId: current.user.id,
+                profileId: current.user.id,
+                recipientName: current.user.name,
+                recipientImage: current.user.imageUrl,
+                recipientStatus: current.user.status,
+              ),
+            );
+          }
+        },
+      );
+    }
   }
 
   Future<void> setMessagingAvailability(
@@ -658,6 +691,10 @@ class ChatRepository extends ChangeNotifier {
       socket.on('message.delivered', _handleDelivered);
       socket.on('conversation.updated', (_) => unawaited(_refreshQuietly()));
       socket.on('presence.updated', _handlePresence);
+      socket.on('notification.created', _handleNotificationCreated);
+      socket.on('like.created', _handleLikeCreated);
+      socket.on('super_like.created', _handleSuperLikeCreated);
+      socket.on('match.created', _handleMatchCreated);
       socket.connect();
     } catch (_) {
       _realtimeConnected = false;
@@ -665,6 +702,77 @@ class ChatRepository extends ChangeNotifier {
     } finally {
       _connectingRealtime = false;
     }
+  }
+
+  void _handleLikeCreated(dynamic value) {
+    if (value is! Map) return;
+    final name = value['actorName']?.toString().trim() ?? 'Someone';
+    AmoraTopNotificationManager.showGlobal(
+      title: 'Someone liked you ❤️',
+      message: '$name liked your profile',
+      type: AmoraTopNotificationType.like,
+    );
+    unawaited(NotificationInboxRepository.instance.refresh());
+  }
+
+  void _handleSuperLikeCreated(dynamic value) {
+    if (value is! Map) return;
+    final name = value['actorName']?.toString().trim() ?? 'Someone';
+    AmoraTopNotificationManager.showGlobal(
+      title: 'You received a Super Like ⭐',
+      message: '$name Super Liked your profile',
+      type: AmoraTopNotificationType.superLike,
+    );
+    unawaited(NotificationInboxRepository.instance.refresh());
+  }
+
+  void _handleMatchCreated(dynamic value) {
+    if (value is! Map) return;
+    final name = value['actorName']?.toString().trim() ?? 'Someone';
+    AmoraTopNotificationManager.showGlobal(
+      title: 'New Match! 🎉',
+      message: 'You and $name liked each other',
+      type: AmoraTopNotificationType.match,
+    );
+    unawaited(NotificationInboxRepository.instance.refresh());
+  }
+
+  void _handleNotificationCreated(dynamic value) {
+    if (value is! Map) return;
+    final notif =
+        value['notification'] is Map ? value['notification'] as Map : value;
+    final type = notif['type']?.toString() ?? '';
+    final title = notif['title']?.toString() ?? 'Notification';
+    final message = notif['message']?.toString() ?? '';
+    final actorName = notif['actor']?['name']?.toString() ?? '';
+
+    if (type == 'superLike' || type == 'new_super_like') {
+      AmoraTopNotificationManager.showGlobal(
+        title: 'You received a Super Like ⭐',
+        message:
+            actorName.isNotEmpty ? '$actorName Super Liked your profile' : message,
+        type: AmoraTopNotificationType.superLike,
+      );
+    } else if (type == 'like' || type == 'new_like') {
+      AmoraTopNotificationManager.showGlobal(
+        title: 'Someone liked you ❤️',
+        message: actorName.isNotEmpty ? '$actorName liked your profile' : message,
+        type: AmoraTopNotificationType.like,
+      );
+    } else if (type == 'match' || type == 'new_match') {
+      AmoraTopNotificationManager.showGlobal(
+        title: 'New Match! 🎉',
+        message: message.isNotEmpty ? message : 'You have a new match',
+        type: AmoraTopNotificationType.match,
+      );
+    } else {
+      AmoraTopNotificationManager.showGlobal(
+        title: title,
+        message: message,
+        type: AmoraTopNotificationType.system,
+      );
+    }
+    unawaited(NotificationInboxRepository.instance.refresh());
   }
 
   void _handleMessageCreated(dynamic value) {

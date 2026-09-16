@@ -1,6 +1,7 @@
 import 'package:amora_ai/core/theme/amora_icon_sizes.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
+import 'package:amora_ai/core/widgets/premium_motion.dart';
 import 'package:flutter/material.dart';
 
 enum AppPrimaryButtonVariant {
@@ -157,7 +158,10 @@ class AppPrimaryButton extends StatelessWidget {
       child: SizedBox(
         width: fullWidth ? double.infinity : null,
         height: height,
-        child: button,
+        child: PressableScale(
+          enabled: enabled,
+          child: button,
+        ),
       ),
     );
   }

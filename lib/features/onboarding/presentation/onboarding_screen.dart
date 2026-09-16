@@ -1,4 +1,5 @@
 import 'package:amora_ai/core/branding/amora_brand_assets.dart';
+import 'package:amora_ai/core/branding/amora_logo.dart';
 import 'package:amora_ai/core/constants/app_images.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/theme/amora_icon_sizes.dart';
@@ -308,26 +309,9 @@ class _MiniBrand extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Image.asset(
-          AppImages.logo,
-          width: 36,
-          height: 36,
-          fit: BoxFit.contain,
-          semanticLabel: 'AMORAA',
-        ),
-        const SizedBox(width: AmoraSpacing.space8),
-        Flexible(
-          child: Image.asset(
-            AmoraBrandAssets.wordmark,
-            height: 19,
-            fit: BoxFit.contain,
-            semanticLabel: 'AMORAA',
-          ),
-        ),
-      ],
+    return const AmoraLogo(
+      iconSize: 36,
+      wordmarkHeight: 19,
     );
   }
 }

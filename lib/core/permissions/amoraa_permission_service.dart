@@ -1,3 +1,4 @@
+import 'package:amora_ai/core/widgets/amora_snackbar.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -342,7 +343,5 @@ Future<void> showAmoraaPermissionFeedback(
     );
     return;
   }
-  ScaffoldMessenger.of(context)
-    ..hideCurrentSnackBar()
-    ..showSnackBar(SnackBar(content: Text(result.message)));
+  showAmoraSnackBar(context, message: result.message);
 }

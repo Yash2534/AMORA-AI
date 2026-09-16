@@ -68,7 +68,12 @@ exports.signup = async (req, res, next) => {
         acceptedLegalDocuments: req.body.acceptedLegalDocuments,
         source: 'SIGNUP_EMAIL',
         platform: req.body.platform,
-        metadata: req.body.consentMetadata,
+        metadata: {
+          ...req.body.consentMetadata,
+          termsVersion: req.body.termsVersion,
+          privacyVersion: req.body.privacyVersion,
+          consentTimestamp: req.body.consentTimestamp || new Date().toISOString(),
+        },
         transaction,
       });
       // The database work must commit before calling an external provider.  The
@@ -91,7 +96,7 @@ exports.signup = async (req, res, next) => {
       pendingOtp.expiresAt,
       { correlationId: otpCorrelationId(req) },
     );
-  } catch (_) {
+  } catch (error) {
     // Do not leave an account that the user cannot verify after a provider
     // rejection.  This is compensating cleanup after the committed provider
     // boundary; it never turns a failed delivery into a successful response.
@@ -101,10 +106,37 @@ exports.signup = async (req, res, next) => {
       await ConsentEvent.destroy({ where: { userId: user.id }, transaction });
       await User.destroy({ where: { id: user.id }, transaction });
     }).catch(() => {});
-    console.error('[OTP] Registration SMS delivery failed.');
+    
+    console.error(`[OTP] Registration SMS delivery failed for ${phoneNumber}:`, error.message, error.code, error.status);
+
+    if (error.code === 'OTP_CONFIG_ERROR') {
+      return res.status(502).json({
+        success: false,
+        message: "SMS Provider is not configured on the server.",
+        code: 'OTP_PROVIDER_AUTH_ERROR',
+        errors: [],
+      });
+    }
+    if (error.status === 429) {
+      return res.status(429).json({
+        success: false,
+        message: "Too many attempts. Please try again later.",
+        code: 'RATE_LIMITED',
+        errors: [],
+      });
+    }
+    if (error.status === 400 && error.code === 21211) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid phone number.",
+        code: 'INVALID_PHONE_NUMBER',
+        errors: [],
+      });
+    }
+
     return res.status(503).json({
       success: false,
-      message: "We couldn't send the verification code. Please try again.",
+      message: error.message || "We couldn't send the verification code. Please try again.",
       code: 'OTP_DELIVERY_FAILED',
       errors: [],
     });
@@ -160,12 +192,38 @@ exports.resendVerification = async (req, res) => {
     try {
       await deliverPhoneOtp(phoneNumber, 'account_verification', pendingOtp.code, pendingOtp.expiresAt, { correlationId: otpCorrelationId(req) });
       deliveredCode = pendingOtp.code;
-    } catch (_) {
+    } catch (error) {
       await OtpToken.update({ consumed: true }, { where: { id: pendingOtp.otp.id } }).catch(() => {});
-      console.error('[OTP] Verification resend delivery failed.');
+      console.error(`[OTP] Verification resend delivery failed for ${phoneNumber}:`, error.message, error.code, error.status);
+
+      if (error.code === 'OTP_CONFIG_ERROR') {
+        return res.status(502).json({
+          success: false,
+          message: "SMS Provider is not configured on the server.",
+          code: 'OTP_PROVIDER_AUTH_ERROR',
+          errors: [],
+        });
+      }
+      if (error.status === 429) {
+        return res.status(429).json({
+          success: false,
+          message: "Too many attempts. Please try again later.",
+          code: 'RATE_LIMITED',
+          errors: [],
+        });
+      }
+      if (error.status === 400 && error.code === 21211) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid phone number.",
+          code: 'INVALID_PHONE_NUMBER',
+          errors: [],
+        });
+      }
+
       return res.status(503).json({
         success: false,
-        message: "We couldn't send the verification code. Please try again.",
+        message: error.message || "We couldn't send the verification code. Please try again.",
         code: 'OTP_DELIVERY_FAILED',
         errors: [],
       });
@@ -195,7 +253,7 @@ exports.google = async (req, res, next) => {
     try {
       user = await User.sequelize.transaction(async (transaction) => {
         const created = await User.create({ name: payload.name || email.split('@')[0], email, googleId: payload.sub, phoneNumber: '', authProvider: 'google', isVerified: true }, { transaction });
-        await consentService.recordRequiredSignupConsent({ userId: created.id, acceptedLegalDocuments: req.body.acceptedLegalDocuments, source: 'SIGNUP_GOOGLE', platform: req.body.platform, metadata: req.body.consentMetadata, transaction });
+        await consentService.recordRequiredSignupConsent({ userId: created.id, acceptedLegalDocuments: req.body.acceptedLegalDocuments, source: 'SIGNUP_GOOGLE', platform: req.body.platform, metadata: { ...req.body.consentMetadata, termsVersion: req.body.termsVersion, privacyVersion: req.body.privacyVersion, consentTimestamp: req.body.consentTimestamp || new Date().toISOString() }, transaction });
         return created;
       });
       isNewUser = true;
@@ -259,12 +317,12 @@ exports.forgotPassword = async (req, res) => {
     try {
       await deliverEmailOtp(email, 'password_reset', pendingOtp.code, pendingOtp.expiresAt);
       deliveredCode = pendingOtp.code;
-    } catch (_) {
+    } catch (error) {
       await OtpToken.update({ consumed: true }, { where: { id: pendingOtp.otp.id } }).catch(() => {});
-      console.error('[OTP] Password reset email delivery failed.');
+      console.error('[OTP] Password reset email delivery failed:', error.message);
       return res.status(503).json({
         success: false,
-        message: "We couldn't send the verification code. Please try again.",
+        message: error.message || "We couldn't send the verification code. Please try again.",
         code: 'OTP_DELIVERY_FAILED',
         errors: [],
       });

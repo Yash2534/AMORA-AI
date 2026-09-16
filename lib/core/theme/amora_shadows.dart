@@ -48,11 +48,25 @@ abstract final class AmoraShadows {
       offset: const Offset(0, -8),
     ),
   ];
-  static List<BoxShadow> get premiumCard => level2;
+  static List<BoxShadow> get premiumCard => [
+    BoxShadow(
+      color: Colors.deepPurple.withValues(alpha: .08),
+      blurRadius: 24,
+      spreadRadius: 2,
+      offset: const Offset(0, 10),
+    ),
+    BoxShadow(
+      color: Colors.black.withValues(alpha: .04),
+      blurRadius: 8,
+      offset: const Offset(0, 2),
+    ),
+  ];
 
   // Compatibility aliases.
   static List<BoxShadow> get none => level0;
   static List<BoxShadow> get soft => level1;
   static List<BoxShadow> get medium => level2;
   static List<BoxShadow> get glow => premiumCard;
+  static List<BoxShadow> get badge => level1;
 }
+
