@@ -109,6 +109,6 @@ router.patch('/roles/:roleId/permissions', [
 router.get('/permissions', permissionQuery, validate,
   requireAdminPermission('permissions.view', 'permissions.catalog.view'), controller.permissions);
 router.get('/permission-matrix', requireAdminPermission('permissions.matrix.view'), controller.matrix);
-router.get('/administration/audit-logs/verify-integrity', requireAdminPermission('system.audit.view', 'administrators.audit.view'), controller.verifyAuditIntegrity);
+router.get('/administration/audit-logs/verify-integrity', requireAdminPermission('auditLogs.integrity.view', 'administrators.audit.view'), controller.verifyAuditIntegrity);
 
 module.exports = router;

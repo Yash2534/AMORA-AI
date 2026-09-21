@@ -18,9 +18,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 class SignupScreen extends StatefulWidget {
-  const SignupScreen({super.key});
+  const SignupScreen({super.key, this.legalDocumentLoader});
 
   static const routeName = '/signup';
+
+  /// Allows callers that already own legal-document state (including widget
+  /// tests) to provide the same required documents without creating a second
+  /// network request.
+  final Future<List<SignupLegalDocument>> Function()? legalDocumentLoader;
 
   @override
   State<SignupScreen> createState() => _SignupScreenState();
@@ -61,8 +66,9 @@ class _SignupScreenState extends State<SignupScreen> {
       _legalLoadFailed = false;
     });
     try {
-      final documents = await AuthService.instance
-          .requiredSignupLegalDocuments();
+      final documents =
+          await (widget.legalDocumentLoader?.call() ??
+              AuthService.instance.requiredSignupLegalDocuments());
       final keys = documents.map((item) => item.documentKey).toSet();
       if (!keys.contains('TERMS_OF_SERVICE') ||
           !keys.contains('PRIVACY_POLICY')) {
@@ -259,7 +265,7 @@ class _SignupScreenState extends State<SignupScreen> {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       ),
                       SizedBox(width: AmoraSpacing.space8),
-                      Text('Loading Terms & Privacy Policy…'),
+                      Expanded(child: Text('Loading Terms & Privacy Policy…')),
                     ],
                   ),
                 ),
@@ -353,9 +359,12 @@ class _SignupScreenState extends State<SignupScreen> {
         setState(() {
           _loading = false;
           _error = switch (error.code) {
-            'LEGAL_DOCUMENT_VERSION_OUTDATED' => 'The Terms or Privacy Policy was updated. Please review and accept the latest version.',
-            'RATE_LIMITED' => 'Too many attempts. Please wait a moment and try again.',
-            'NETWORK_ERROR' => 'Unable to connect. Please check your internet connection and try again.',
+            'LEGAL_DOCUMENT_VERSION_OUTDATED' =>
+              'The Terms or Privacy Policy was updated. Please review and accept the latest version.',
+            'RATE_LIMITED' =>
+              'Too many attempts. Please wait a moment and try again.',
+            'NETWORK_ERROR' =>
+              'Unable to connect. Please check your internet connection and try again.',
             'INVALID_PHONE_NUMBER' => 'Please enter a valid phone number.',
             _ => error.userMessage,
           };
@@ -399,7 +408,8 @@ class _SignupScreenState extends State<SignupScreen> {
         setState(() {
           _googleLoading = false;
           _error = switch (error.code) {
-            'NETWORK_ERROR' => 'Unable to connect. Please check your internet connection and try again.',
+            'NETWORK_ERROR' =>
+              'Unable to connect. Please check your internet connection and try again.',
             _ => error.message,
           };
         });

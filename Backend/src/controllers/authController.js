@@ -68,12 +68,10 @@ exports.signup = async (req, res, next) => {
         acceptedLegalDocuments: req.body.acceptedLegalDocuments,
         source: 'SIGNUP_EMAIL',
         platform: req.body.platform,
-        metadata: {
-          ...req.body.consentMetadata,
-          termsVersion: req.body.termsVersion,
-          privacyVersion: req.body.privacyVersion,
-          consentTimestamp: req.body.consentTimestamp || new Date().toISOString(),
-        },
+        // Version identity, document IDs, source, platform, and the server
+        // timestamp are persisted by ConsentEvent itself.  Only pass optional
+        // client metadata when it is actually supplied and schema-valid.
+        metadata: req.body.consentMetadata,
         transaction,
       });
       // The database work must commit before calling an external provider.  The
@@ -253,7 +251,7 @@ exports.google = async (req, res, next) => {
     try {
       user = await User.sequelize.transaction(async (transaction) => {
         const created = await User.create({ name: payload.name || email.split('@')[0], email, googleId: payload.sub, phoneNumber: '', authProvider: 'google', isVerified: true }, { transaction });
-        await consentService.recordRequiredSignupConsent({ userId: created.id, acceptedLegalDocuments: req.body.acceptedLegalDocuments, source: 'SIGNUP_GOOGLE', platform: req.body.platform, metadata: { ...req.body.consentMetadata, termsVersion: req.body.termsVersion, privacyVersion: req.body.privacyVersion, consentTimestamp: req.body.consentTimestamp || new Date().toISOString() }, transaction });
+        await consentService.recordRequiredSignupConsent({ userId: created.id, acceptedLegalDocuments: req.body.acceptedLegalDocuments, source: 'SIGNUP_GOOGLE', platform: req.body.platform, metadata: req.body.consentMetadata, transaction });
         return created;
       });
       isNewUser = true;

@@ -51,7 +51,6 @@ const summary = (r, x) => {
     caseId: x.adminCase ? reportIdStr : null,
     allowedActions: ['assign', 'resolve', 'dismiss', 'warn', 'suspend'],
     version: String(x.version || 1),
-    evidenceCount: 0,
     relatedReportCount: 0
   };
 };

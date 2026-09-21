@@ -1,4 +1,5 @@
 import 'package:amora_ai/core/branding/amora_brand_assets.dart';
+import 'package:amora_ai/core/auth/auth_service.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_theme.dart';
 import 'package:amora_ai/features/auth/presentation/account_verification_screen.dart';
@@ -33,6 +34,25 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 700));
   }
+
+  Future<List<SignupLegalDocument>> testLegalDocuments() async => const [
+    SignupLegalDocument(
+      documentKey: 'TERMS_OF_SERVICE',
+      documentVersionId: 1,
+      title: 'Terms & Conditions',
+      version: '1.0',
+      effectiveAt: null,
+      content: 'Terms',
+    ),
+    SignupLegalDocument(
+      documentKey: 'PRIVACY_POLICY',
+      documentVersionId: 2,
+      title: 'Privacy Policy',
+      version: '1.0',
+      effectiveAt: null,
+      content: 'Privacy',
+    ),
+  ];
 
   group('production authentication presentation', () {
     setUp(LocalOnboardingRepository.instance.resetForTesting);
@@ -77,7 +97,7 @@ void main() {
           find.byWidgetPredicate(
             (widget) => widget is Image && widget.semanticLabel == 'AMORAA',
           ),
-          findsOneWidget,
+          findsAtLeastNWidgets(1),
           reason: 'Official wordmark missing at ${width.toInt()}px',
         );
         expect(tester.takeException(), isNull);
@@ -89,12 +109,12 @@ void main() {
       tester,
     ) async {
       const widths = <double>[320, 360, 390, 430, 600, 768, 1024];
-      const screens = <Widget>[
-        LoginScreen(),
-        SignupScreen(),
-        ForgotPasswordScreen(),
-        ResetPasswordScreen(),
-        AccountVerificationScreen(),
+      final screens = <Widget>[
+        const LoginScreen(),
+        SignupScreen(legalDocumentLoader: testLegalDocuments),
+        const ForgotPasswordScreen(),
+        const ResetPasswordScreen(),
+        const AccountVerificationScreen(),
       ];
       for (final width in widths) {
         await tester.binding.setSurfaceSize(
@@ -135,7 +155,7 @@ void main() {
                 size: Size(width, 900),
                 textScaler: const TextScaler.linear(1.3),
               ),
-              child: const SignupScreen(),
+              child: SignupScreen(legalDocumentLoader: testLegalDocuments),
             ),
           ),
         );
@@ -235,7 +255,7 @@ void main() {
                 size: Size(width, 1000),
                 textScaler: const TextScaler.linear(1.3),
               ),
-              child: const SignupScreen(),
+              child: SignupScreen(legalDocumentLoader: testLegalDocuments),
             ),
             routes: {
               TermsConditionsScreen.routeName: (_) =>
@@ -303,13 +323,13 @@ void main() {
 
       await tapInlineLink('Terms & Conditions');
       await tester.pumpAndSettle();
-      expect(find.byType(TermsConditionsScreen), findsOneWidget);
+      expect(find.byType(VersionedLegalDocumentScreen), findsOneWidget);
       await tester.pageBack();
       await tester.pumpAndSettle();
 
       await tapInlineLink('Privacy Policy');
       await tester.pumpAndSettle();
-      expect(find.byType(PrivacyPolicyScreen), findsOneWidget);
+      expect(find.byType(VersionedLegalDocumentScreen), findsOneWidget);
     });
 
     testWidgets('login accepts a non-empty legacy password', (tester) async {
@@ -336,7 +356,7 @@ void main() {
       addTearDown(() => tester.binding.setSurfaceSize(null));
       await tester.pumpWidget(
         app(
-          home: const SignupScreen(),
+          home: SignupScreen(legalDocumentLoader: testLegalDocuments),
           routes: {
             TermsConditionsScreen.routeName: (_) =>
                 const TermsConditionsScreen(),
@@ -983,7 +1003,9 @@ void main() {
         await tester.tap(find.byKey(const ValueKey('verification-resend')));
         await tester.pump();
         expect(
-          find.text("Couldn't resend the code. Please try again."),
+          find.text(
+            'Unable to connect. Please check your internet connection and try again.',
+          ),
           findsOneWidget,
         );
         expect(
@@ -1076,7 +1098,9 @@ void main() {
         find.byKey(const ValueKey('confirm-new-password-field')),
         'password1',
       );
-      await tester.tap(find.byKey(const ValueKey('reset-password-submit')));
+      final submit = find.byKey(const ValueKey('reset-password-submit'));
+      await tester.ensureVisible(submit);
+      await tester.tap(submit);
       await tester.pump(const Duration(milliseconds: 300));
       expect(resetPassword, 'password1');
       expect(

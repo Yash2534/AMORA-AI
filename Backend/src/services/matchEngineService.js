@@ -1,14 +1,5 @@
-const MATCH_ENGINE_VERSION = 'v3';
-const SCORE_WEIGHTS = Object.freeze({
-  intent: 25,
-  values: 15,
-  lifestyle: 15,
-  communication: 15,
-  interests: 10,
-  personality: 10,
-  preferences: 5,
-  behavior: 5
-});
+const MATCH_ENGINE_VERSION = 'v2';
+const SCORE_WEIGHTS = Object.freeze({ interests: 35, relationshipGoals: 25, communicationStyle: 10, languages: 10, city: 5, smoking: 5, drinking: 5, weed: 5 });
 const TOTAL_WEIGHT = Object.values(SCORE_WEIGHTS).reduce((sum, value) => sum + value, 0);
 
 const normalise = (value) => (Array.isArray(value)
@@ -34,14 +25,14 @@ const exactFactor = (key, weight, viewer, candidate) => {
 // so a missing optional field never acts as a negative signal.
 function scoreCompatibility(viewer = {}, candidate = {}) {
   const factors = [
-    listFactor('intent', SCORE_WEIGHTS.intent, viewer.intent || viewer.relationshipGoals, candidate.intent || candidate.relationshipGoals),
-    listFactor('values', SCORE_WEIGHTS.values, viewer.values, candidate.values),
-    listFactor('lifestyle', SCORE_WEIGHTS.lifestyle, viewer.lifestyle, candidate.lifestyle),
-    exactFactor('communication', SCORE_WEIGHTS.communication, viewer.communication || viewer.communicationStyle, candidate.communication || candidate.communicationStyle),
     listFactor('interests', SCORE_WEIGHTS.interests, viewer.interests, candidate.interests),
-    listFactor('personality', SCORE_WEIGHTS.personality, viewer.personality, candidate.personality),
-    listFactor('preferences', SCORE_WEIGHTS.preferences, viewer.preferences, candidate.preferences),
-    listFactor('behavior', SCORE_WEIGHTS.behavior, viewer.behavior, candidate.behavior),
+    listFactor('relationshipGoals', SCORE_WEIGHTS.relationshipGoals, viewer.relationshipGoals, candidate.relationshipGoals),
+    exactFactor('communicationStyle', SCORE_WEIGHTS.communicationStyle, viewer.communicationStyle, candidate.communicationStyle),
+    listFactor('languages', SCORE_WEIGHTS.languages, viewer.languages, candidate.languages),
+    exactFactor('city', SCORE_WEIGHTS.city, viewer.city, candidate.city),
+    exactFactor('smoking', SCORE_WEIGHTS.smoking, viewer.smoking, candidate.smoking),
+    exactFactor('drinking', SCORE_WEIGHTS.drinking, viewer.drinking, candidate.drinking),
+    exactFactor('weed', SCORE_WEIGHTS.weed, viewer.weed, candidate.weed),
   ];
   const availableWeight = factors.filter((factor) => factor.available).reduce((total, factor) => total + factor.weight, 0);
   const weightedValue = factors.reduce((total, factor) => total + factor.weight * factor.value, 0);
@@ -59,22 +50,16 @@ function compatibilityReasons(viewer, candidate) {
   const { factors } = scoreCompatibility(viewer, candidate);
   const reasons = [];
   
-  const intent = factors.find((factor) => factor.key === 'intent');
-  if (intent?.shared.length) reasons.push('Aligned on relationship goals');
-  
-  const values = factors.find((factor) => factor.key === 'values');
-  if (values?.shared.length) reasons.push('Similar core values');
-
-  const lifestyle = factors.find((factor) => factor.key === 'lifestyle');
-  if (lifestyle?.shared.length) reasons.push('Compatible lifestyle choices');
-
-  const communication = factors.find((factor) => factor.key === 'communication');
-  if (communication?.value) reasons.push('Compatible communication styles');
-
   const interests = factors.find((factor) => factor.key === 'interests');
   if (interests?.shared.length) reasons.push(`${interests.shared.length} shared ${interests.shared.length === 1 ? 'interest' : 'interests'}`);
-
-  if (text(viewer.city) && text(viewer.city) === text(candidate.city)) reasons.push('Same city');
+  const goals = factors.find((factor) => factor.key === 'relationshipGoals');
+  if (goals?.shared.length) reasons.push('Both prefer the same relationship goal');
+  const style = factors.find((factor) => factor.key === 'communicationStyle');
+  if (style?.value) reasons.push('Compatible communication styles');
+  const languages = factors.find((factor) => factor.key === 'languages');
+  if (languages?.shared.length) reasons.push('Shared language');
+  if (factors.find((factor) => factor.key === 'city')?.value) reasons.push('Same city');
+  for (const key of ['smoking', 'drinking', 'weed']) if (factors.find((factor) => factor.key === key)?.value) reasons.push(`Similar ${key} preference`);
   
   return reasons.slice(0, 6);
 }

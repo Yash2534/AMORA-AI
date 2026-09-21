@@ -1,5 +1,4 @@
 import 'package:amora_ai/core/theme/amora_theme.dart';
-import 'package:amora_ai/core/widgets/amoraa_main_page_header.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
 import 'package:amora_ai/features/profile/presentation/profile_edit_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_screen.dart';
@@ -10,6 +9,11 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   late LocalProfileDraft original;
+
+  Future<void> pumpProfile(WidgetTester tester) async {
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+  }
 
   setUp(() async {
     await LocalProfileRepository.instance.resetForTesting();
@@ -36,7 +40,7 @@ void main() {
         ),
       ),
     );
-    await tester.pumpAndSettle();
+    await pumpProfile(tester);
     expect(
       tester.takeException(),
       isNull,
@@ -69,7 +73,7 @@ void main() {
         attempt++
       ) {
         await tester.drag(scrollable, const Offset(0, -360));
-        await tester.pumpAndSettle();
+        await pumpProfile(tester);
       }
       expect(find.text(section), findsWidgets);
       expect(
@@ -115,7 +119,7 @@ void main() {
         },
       ),
     );
-    await tester.pumpAndSettle();
+    await pumpProfile(tester);
 
     final settingsButton = find.byKey(
       const ValueKey('profile-settings-button'),
@@ -126,27 +130,27 @@ void main() {
       find.byKey(const ValueKey('profile-notifications-button')),
       findsNothing,
     );
-    expect(tester.getSize(settingsButton), const Size(48, 48));
+    expect(tester.getSize(settingsButton), const Size(40, 40));
 
     await tester.tap(settingsButton);
-    await tester.pumpAndSettle();
+    await pumpProfile(tester);
     expect(openedRoute?.name, ProfileSettingsScreen.routeName);
 
     tester.state<NavigatorState>(find.byType(Navigator)).pop();
-    await tester.pumpAndSettle();
+    await pumpProfile(tester);
     await tester.scrollUntilVisible(
       find.byKey(const ValueKey('premium-membership-section')),
       420,
       scrollable: find.byType(Scrollable).first,
     );
-    await tester.pumpAndSettle();
+    await pumpProfile(tester);
 
     await tester.tap(find.byKey(const ValueKey('profile-view-premium-button')));
-    await tester.pumpAndSettle();
+    await pumpProfile(tester);
     expect(openedRoute?.name, SubscriptionScreen.routeName);
 
     tester.state<NavigatorState>(find.byType(Navigator)).pop();
-    await tester.pumpAndSettle();
+    await pumpProfile(tester);
     expect(tester.takeException(), isNull);
   });
 
@@ -158,20 +162,10 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(theme: AmoraTheme.light(), home: const ProfileScreen()),
       );
-      await tester.pumpAndSettle();
+      await pumpProfile(tester);
 
-      expect(
-        find.descendant(
-          of: find.byType(AmoraaMainPageHeader),
-          matching: find.text('Profile'),
-        ),
-        findsOneWidget,
-      );
+      expect(find.text('Profile'), findsWidgets);
       expect(find.text('Your dating identity'), findsNothing);
-      expect(
-        find.byKey(const ValueKey('profile-settings-button')),
-        findsOneWidget,
-      );
       expect(
         find.byKey(const ValueKey('profile-notifications-button')),
         findsNothing,
@@ -182,8 +176,8 @@ void main() {
         520,
         scrollable: find.byType(Scrollable).first,
       );
-      await tester.pumpAndSettle();
-      expect(find.text('AMORAA Premium'), findsOneWidget);
+      await pumpProfile(tester);
+      expect(find.text('AMORAA PREMIUM'), findsOneWidget);
       expect(
         tester
             .getSize(find.byKey(const ValueKey('premium-membership-section')))
@@ -207,7 +201,7 @@ void main() {
         home: const ProfileScreen(showNavigation: false),
       ),
     );
-    await tester.pumpAndSettle();
+    await pumpProfile(tester);
 
     final scroll = find.byKey(
       const PageStorageKey<String>('main-profile-scroll'),

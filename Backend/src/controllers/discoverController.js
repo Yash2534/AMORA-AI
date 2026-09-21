@@ -90,19 +90,11 @@ function buildProfileWhere(filters) {
   const minAge = Number.isFinite(filters.minAge) ? filters.minAge : defaults.minAge;
   const maxAge = Number.isFinite(filters.maxAge) ? filters.maxAge : defaults.maxAge;
   const whereValues = {
-    [Op.or]: [
-      { onboardingCompleted: true },
-      { stage: 'complete' },
-      where(col('OnboardingProfile.gender'), { [Op.ne]: null }),
-    ],
+    onboardingCompleted: true,
+    stage: 'complete',
     birthDate: {
-      [Op.or]: [
-        {
-          [Op.gt]: yearsAgoDate(maxAge + 1),
-          [Op.lte]: yearsAgoDate(minAge),
-        },
-        null,
-      ],
+      [Op.gt]: yearsAgoDate(maxAge + 1),
+      [Op.lte]: yearsAgoDate(minAge),
     },
   };
 
@@ -211,10 +203,7 @@ function compatibilityScoreSql(sequelize, viewer) {
     const value = lower(viewer[name]);
     if (!value) return { numerator: '0', available: '0' };
     const column = profileColumn(name);
-    return {
-      numerator: `(CASE WHEN LOWER(${column}) = ${sequelize.escape(value)} THEN ${weight} ELSE 0 END)`,
-      available: `(CASE WHEN ${column} IS NOT NULL AND ${column} <> '' THEN ${weight} ELSE 0 END)`,
-    };
+    return { numerator: `(CASE WHEN LOWER(${column}) = ${sequelize.escape(value)} THEN ${weight} ELSE 0 END)`, available: `(CASE WHEN ${column} IS NOT NULL AND ${column} <> '' THEN ${weight} ELSE 0 END)` };
   };
   const style = String(viewer.communicationStyle || '').trim().toLowerCase();
   const styleAvailable = style ? `(CASE WHEN ${profileColumn('communicationStyle')} IS NOT NULL AND ${profileColumn('communicationStyle')} <> '' THEN ${SCORE_WEIGHTS.communicationStyle} ELSE 0 END)` : '0';
@@ -227,68 +216,6 @@ function compatibilityScoreSql(sequelize, viewer) {
   const available = `${interests.available} + ${goals.available} + ${styleAvailable} + ${languages.available} + ${city.available} + ${smoking.available} + ${drinking.available} + ${weed.available}`;
   const raw = `(CASE WHEN (${available}) = 0 THEN 50 ELSE (100 * (${numerator}) / (${available})) END)`;
   return `LEAST(100, GREATEST(0, ROUND(50 + ((${raw}) - 50) * ((${available}) / 100))))`;
-}
-
-function getFallbackProfiles(req, viewer) {
-  const viewerGender = String(viewer?.gender || '').toLowerCase();
-  const isMale = ['man', 'men', 'male'].includes(viewerGender);
-
-  const femaleFallback = [
-    { id: '9901', name: 'Ananya Sharma', gender: 'Female', birthDate: '2002-05-14', city: 'Ahmedabad', profession: 'Product Designer', education: 'Undergraduate', relationshipGoals: ['Meaningful Dating'], interests: ['Design', 'Coffee', 'Music', 'Travel'], imageUrl: '/assets/images/profiles/ananya.jpg', score: 92 },
-    { id: '9903', name: 'Priya Patel', gender: 'Female', birthDate: '2003-01-10', city: 'Surat', profession: 'Architect', education: 'Undergraduate', relationshipGoals: ['Exploring Possibilities'], interests: ['Architecture', 'Art', 'Photography'], imageUrl: '/assets/images/profiles/priya.jpg', score: 88 },
-    { id: '9905', name: 'Diya Shah', gender: 'Female', birthDate: '2001-04-18', city: 'Ahmedabad', profession: 'Marketing Manager', education: 'Undergraduate', relationshipGoals: ['Meaningful Dating'], interests: ['Fashion', 'Yoga', 'Movies'], imageUrl: '/assets/images/profiles/diya.jpg', score: 95 },
-    { id: '9907', name: 'Riya Mehta', gender: 'Female', birthDate: '2000-11-25', city: 'Gandhinagar', profession: 'Software Developer', education: 'Postgraduate', relationshipGoals: ['Long-Term Relationship'], interests: ['Coding', 'Badminton', 'Reading'], imageUrl: '/assets/images/profiles/riya.jpg', score: 90 },
-  ];
-
-  const maleFallback = [
-    { id: '9902', name: 'Rohan Mehta', gender: 'Male', birthDate: '2000-08-22', city: 'Gandhinagar', profession: 'Software Engineer', education: 'Postgraduate', relationshipGoals: ['Long-Term Relationship'], interests: ['Tech', 'Fitness', 'Travel'], imageUrl: '/assets/images/profiles/rohan.jpg', score: 91 },
-    { id: '9904', name: 'Aarav Joshi', gender: 'Male', birthDate: '1999-11-05', city: 'Vadodara', profession: 'Business Consultant', education: 'Postgraduate', relationshipGoals: ['Marriage Minded'], interests: ['Business', 'Reading', 'Cooking'], imageUrl: '/assets/images/profiles/aarav.jpg', score: 87 },
-    { id: '9906', name: 'Karan Verma', gender: 'Male', birthDate: '1998-09-30', city: 'Gandhinagar', profession: 'Financial Analyst', education: 'Professional', relationshipGoals: ['Long-Term Relationship'], interests: ['Finance', 'Running', 'Music'], imageUrl: '/assets/images/profiles/karan.jpg', score: 94 },
-    { id: '9908', name: 'Dev Patel', gender: 'Male', birthDate: '2001-07-12', city: 'Ahmedabad', profession: 'UI/UX Designer', education: 'Undergraduate', relationshipGoals: ['Meaningful Dating'], interests: ['Design', 'Gaming', 'Coffee'], imageUrl: '/assets/images/profiles/dev.jpg', score: 89 },
-  ];
-
-  const candidateList = isMale ? femaleFallback : maleFallback;
-  return candidateList.map((item) => ({
-    id: String(item.id),
-    gender: item.gender,
-    customGender: '',
-    name: item.name,
-    age: ageFor(item.birthDate) || 24,
-    city: item.city,
-    profession: item.profession,
-    education: item.education,
-    distance: '5 km',
-    score: item.score,
-    compatibilityScore: item.score,
-    compatibilityCoverage: 100,
-    compatibilityReasons: ['Shared interests', 'Compatible relationship goals', 'Same region'],
-    compatibility: { score: item.score, confidence: 95, level: 'high', highlights: ['Shared interests', 'Compatible goals'], reasons: [{ key: 'interests', label: 'Shared interests', score: 95 }] },
-    intent: item.relationshipGoals[0],
-    status: 'Online now',
-    bio: `Hey! I am ${item.name}, based in ${item.city}. Passionate about ${item.interests.join(', ')}.`,
-    interests: item.interests,
-    imageUrl: item.imageUrl,
-    gallery: [item.imageUrl],
-    languages: ['Gujarati', 'Hindi', 'English'],
-    verification: 'Verified',
-    premium: false,
-    lifestyle: {},
-    promptAnswers: {},
-    religion: 'Hindu',
-    community: 'Gujarati',
-    height: '5\'6"',
-    smoking: 'Never',
-    drinking: 'Socially',
-    weed: 'Never',
-    hometown: item.city,
-    valuedQualities: ['Empathy', 'Humour', 'Ambition'],
-    pronouns: isMale ? ['she', 'her'] : ['he', 'him'],
-    sexuality: 'Straight',
-    preferredTalkingHours: ['Evening'],
-    loveLanguages: ['Quality Time'],
-    iceBreaker: '',
-    communicationStyle: null,
-  }));
 }
 
 exports.getFeed = async (req, res, next) => {
@@ -343,7 +270,9 @@ exports.getFeed = async (req, res, next) => {
 
     const profileWhere = buildProfileWhere(filters);
     const preferenceClauses = discoveryPreferenceClauses(viewer);
-    let users = await User.findAll({
+    const isAiMatches = req.aiMatches === true;
+    const maxAiCandidates = 500;
+    const users = await User.findAll({
       where: userWhere,
       include: [{
         model: OnboardingProfile,
@@ -359,74 +288,40 @@ exports.getFeed = async (req, res, next) => {
         attributes: { include: [[literal(scoreSql), 'compatibilityScore']] },
       }, { model: Subscription, as: 'subscription', required: false, attributes: ['status', 'currentPeriodEnd'] }],
       order: [[literal(scoreSql), 'DESC'], ['id', 'ASC']],
-      offset: (page - 1) * limit,
-      limit: limit + 1,
+      // AI ranking must happen over the eligible set before page slicing.
+      // Bound that set to protect the endpoint from unbounded memory work.
+      offset: isAiMatches ? 0 : (page - 1) * limit,
+      limit: isAiMatches ? maxAiCandidates : limit + 1,
       subQuery: false,
     });
 
-    if (!users.length && page === 1) {
-      const fallbackUserWhere = {
-        id: { [Op.ne]: Number(req.user.sub) },
-        accountStatus: 'active',
-        [Op.and]: [
-          notBlockedUserSql(sequelize, req.user.sub),
-          where(col('User.id'), { [Op.notIn]: matchedTargets }),
-        ],
-      };
-      users = await User.findAll({
-        where: fallbackUserWhere,
-        include: [{
-          model: OnboardingProfile,
-          required: false,
-        }, { model: Subscription, as: 'subscription', required: false, attributes: ['status', 'currentPeriodEnd'] }],
-        order: [['id', 'ASC']],
-        offset: 0,
-        limit: limit + 1,
-        subQuery: false,
-      });
-    }
-
-    if (!users.length && page === 1) {
-      const fallbackData = getFallbackProfiles(req, viewer);
-      if (req.aiMatches === true) {
-        return success(res, 'AI recommendations retrieved.', {
-          recommendations: fallbackData.map((profile) => ({
-            id: profile.id,
-            profile,
-            compatibility: profile.compatibility,
-          })),
-          pagination: { page: 1, limit, hasMore: false, nextPage: null },
-        });
-      }
-      return success(res, 'Discover feed retrieved.', {
-        profiles: fallbackData,
-        pagination: { page: 1, limit, hasMore: false, nextPage: null },
-      });
-    }
-
-    const hasMore = users.length > limit;
+    const hasMore = !isAiMatches && users.length > limit;
     const selected = (hasMore ? users.slice(0, limit) : users)
       .map((user) => ({ user, score: Number(user.OnboardingProfile?.getDataValue('compatibilityScore') || 85) }));
-    if (req.aiMatches === true) {
+    if (isAiMatches) {
       const ranked = rankCandidates(viewer, selected.map(({ user, score }) => ({
         userId: user.id,
         user,
         profile: user.OnboardingProfile,
         compatibility: { score, coverage: 100, factors: [] },
       })));
+      const pageOffset = (page - 1) * limit;
+      const pageItems = ranked.slice(pageOffset, pageOffset + limit);
+      const aiHasMore = ranked.length > pageOffset + limit;
       return success(res, ranked.length ? 'AI recommendations retrieved.' : 'No AI recommendations found.', {
-        recommendations: ranked.map((item) => ({
+        provider: 'LOCAL',
+        recommendations: pageItems.map((item) => ({
           id: String(item.user.id),
-          profile: profileData(req, item.user, item.profile || {}, viewer, item.aiMatchScore),
-          compatibility: {
-            score: item.aiMatchScore,
-            confidence: item.aiConfidence,
-            level: item.aiMatchLevel,
-            highlights: item.aiHighlights,
-            reasons: item.aiReasons,
-          },
+          profile: profileData(req, item.user, item.profile || {}, viewer, item.compatibility.score),
+          compatibilityScore: item.compatibility.score,
+          compatibilityCoverage: item.compatibility.coverage,
+          aiMatchScore: item.aiMatchScore,
+          aiConfidence: item.aiConfidence,
+          aiMatchLevel: item.aiMatchLevel,
+          aiHighlights: item.aiHighlights,
+          aiReasons: item.aiReasons,
         })),
-        pagination: { page, limit, hasMore, nextPage: hasMore ? page + 1 : null },
+        pagination: { page, limit, hasMore: aiHasMore, nextPage: aiHasMore ? page + 1 : null },
       });
     }
     return success(res, selected.length ? 'Discover feed retrieved.' : 'No discover profiles found.', {
@@ -476,9 +371,13 @@ exports.swipe = async (req, res, next) => {
         lock: transaction.LOCK.UPDATE,
       });
       const existingAction = await DiscoverAction.findOne({ where: { actorUserId: req.user.sub, targetUserId }, transaction, lock: transaction.LOCK.UPDATE });
-      if (existingAction && ['like', 'superLike'].includes(existingAction.action) && req.body.action === 'like') return;
+      const alreadyLiked = existingAction
+        && ['like', 'superLike'].includes(existingAction.action)
+        && req.body.action === 'like';
       createdAction = !existingAction;
-      await DiscoverAction.upsert({ actorUserId: req.user.sub, targetUserId, action: req.body.action, createdAt: existingAction?.createdAt || new Date(), updatedAt: new Date() }, { transaction });
+      if (!alreadyLiked) {
+        await DiscoverAction.upsert({ actorUserId: req.user.sub, targetUserId, action: req.body.action, createdAt: existingAction?.createdAt || new Date(), updatedAt: new Date() }, { transaction });
+      }
       if (['like', 'superLike'].includes(req.body.action)) {
         const reciprocal = await DiscoverAction.findOne({
           where: {

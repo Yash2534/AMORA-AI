@@ -65,12 +65,12 @@ function localAiMatch(viewer, candidate, compatibility = null) {
   const confidenceScore = clamp(Math.round((base.coverage * 0.8) + (highlights.length / MAX_HIGHLIGHTS) * 20));
   const confidenceLevel = base.confidence;
 
-  return { aiMatchScore: score, aiConfidenceScore: confidenceScore, aiConfidenceLevel: confidenceLevel, aiMatchLevel: levelFor(score), aiHighlights: highlights, aiReasons: reasons, provider: PROVIDER };
+  return { aiMatchScore: score, aiConfidence: confidenceScore, aiConfidenceLevel: confidenceLevel, aiMatchLevel: levelFor(score), aiHighlights: highlights, aiReasons: reasons, provider: PROVIDER };
 }
 
 function rankCandidates(viewer, candidates) {
   return candidates.map((candidate) => ({ ...candidate, ...localAiMatch(viewer, candidate.profile || candidate, candidate.compatibility) }))
-    .sort((left, right) => right.aiMatchScore - left.aiMatchScore || right.aiConfidenceScore - left.aiConfidenceScore || Number(left.userId || left.id) - Number(right.userId || right.id));
+    .sort((left, right) => right.aiMatchScore - left.aiMatchScore || right.aiConfidence - left.aiConfidence || Number(left.userId || left.id) - Number(right.userId || right.id));
 }
 
 module.exports = { PROVIDER, configuredProvider, localAiMatch, rankCandidates, levelFor };

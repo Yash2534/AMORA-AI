@@ -145,9 +145,7 @@ class _AuthAmbientBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const IgnorePointer(
-      child: ColoredBox(color: AppColors.background),
-    );
+    return const IgnorePointer(child: ColoredBox(color: AppColors.background));
   }
 }
 
@@ -202,13 +200,10 @@ class AuthBrandHeader extends StatelessWidget {
         children: [
           Expanded(
             flex: 5,
-            child: Row(
-              children: [
-                const AmoraLogo(
-                  iconSize: 32,
-                  wordmarkHeight: 16.5,
-                ),
-              ],
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: const AmoraLogo(iconSize: 32, wordmarkHeight: 16.5),
             ),
           ),
           const SizedBox(width: AmoraSpacing.space8),
@@ -337,12 +332,12 @@ class AuthFormSurface extends StatelessWidget {
       color: AppColors.surface.withValues(alpha: .75),
       borderColor: AppColors.border.withValues(alpha: compact ? .64 : .78),
       borderRadius: compact
-              ? (veryNarrow
-                    ? 18
-                    : narrow
-                    ? 20
-                    : 24)
-              : (narrow ? 22 : 26),
+          ? (veryNarrow
+                ? 18
+                : narrow
+                ? 20
+                : 24)
+          : (narrow ? 22 : 26),
       boxShadow: compact ? AmoraShadows.level1 : AmoraShadows.level2,
       padding: EdgeInsets.all(
         compact && veryNarrow

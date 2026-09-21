@@ -26,7 +26,7 @@ void main() {
     );
 
     expect(track.resolve({}), AppColors.tertiary.withValues(alpha: .72));
-    expect(track.resolve({WidgetState.selected}), AppColors.secondary);
+    expect(track.resolve({WidgetState.selected}), AppColors.active);
     expect(
       track.resolve({WidgetState.disabled}),
       AppColors.tertiary.withValues(alpha: .34),

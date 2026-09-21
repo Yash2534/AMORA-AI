@@ -11,7 +11,8 @@ const ACCOUNT_DELETION_STATUSES = Object.freeze({
 
 const statusValues = Object.values(ACCOUNT_DELETION_STATUSES);
 
-const defineAccountDeletionRequest = (sequelize) => sequelize.define('AccountDeletionRequest', {
+const defineAccountDeletionRequest = (sequelize) => {
+  const AccountDeletionRequest = sequelize.define('AccountDeletionRequest', {
   id: { type: DataTypes.BIGINT.UNSIGNED, autoIncrement: true, primaryKey: true },
   // Nullable only after a future physical User deletion; non-null values retain FK integrity.
   userId: { type: DataTypes.INTEGER, allowNull: true },
@@ -36,7 +37,8 @@ const defineAccountDeletionRequest = (sequelize) => sequelize.define('AccountDel
     { fields: ['userId', 'requestedAt'] },
     { fields: ['status', 'requestedAt'] },
   ],
-});
-
-defineAccountDeletionRequest.STATUSES = ACCOUNT_DELETION_STATUSES;
+  });
+  AccountDeletionRequest.STATUSES = ACCOUNT_DELETION_STATUSES;
+  return AccountDeletionRequest;
+};
 module.exports = defineAccountDeletionRequest;

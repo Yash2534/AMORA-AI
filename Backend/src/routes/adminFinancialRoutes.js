@@ -34,6 +34,11 @@ function enforceProjection(req, res, next) {
   return next();
 }
 
+function requirePlanStatusPermission(req, res, next) {
+  const activating = req.body?.active === true || req.body?.status === 'active';
+  return requireAdminPermission(activating ? 'membership.plans.activate' : 'membership.plans.update')(req, res, next);
+}
+
 router.get('/membership-plans', [
   ...common(),
   query('status').optional().isIn(['active', 'inactive']),
@@ -45,7 +50,7 @@ router.get('/membership-plans/:planId', [
 
 router.post('/membership-plans', requireAdminPermission('membership.plans.create'), controller.createPlan);
 router.put('/membership-plans/:planId', requireAdminPermission('membership.plans.update'), controller.updatePlan);
-router.patch('/membership-plans/:planId/status', requireAdminPermission('membership.plans.update'), controller.updatePlanStatus);
+router.patch('/membership-plans/:planId/status', requirePlanStatusPermission, controller.updatePlanStatus);
 router.delete('/membership-plans/:planId', requireAdminPermission('membership.plans.delete'), controller.deletePlan);
 
 router.get('/payment-transactions', [
@@ -92,10 +97,6 @@ router.get('/membership-plans/:planId/subscribers', [
   ...page(),
   param('planId').isString().trim(),
 ], validate, requireAdminPermission('membership.plans.view'), controller.planSubscribers);
-
-router.post('/payment-transactions/:transactionId/refund', [
-  param('transactionId').isString().trim(),
-], validate, requireAdminPermission('payments.refund'), controller.processRefund);
 
 router.get('/membership-offers/:offerId/usage', [
   ...page(),

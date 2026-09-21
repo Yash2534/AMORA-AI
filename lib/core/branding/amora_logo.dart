@@ -139,9 +139,11 @@ class AmoraLogo extends StatelessWidget {
             child: iconWidget,
           ),
           const SizedBox(width: 8),
-          ColorFiltered(
-            colorFilter: ColorFilter.mode(primaryColor, BlendMode.srcIn),
-            child: wordmarkWidget,
+          Flexible(
+            child: ColorFiltered(
+              colorFilter: ColorFilter.mode(primaryColor, BlendMode.srcIn),
+              child: wordmarkWidget,
+            ),
           ),
         ],
       );
@@ -156,9 +158,11 @@ class AmoraLogo extends StatelessWidget {
           child: iconWidget,
         ),
         const SizedBox(width: 8),
-        _GlassyLogoElement(
-          baseColor: primaryColor,
-          child: wordmarkWidget,
+        Flexible(
+          child: _GlassyLogoElement(
+            baseColor: primaryColor,
+            child: wordmarkWidget,
+          ),
         ),
       ],
     );

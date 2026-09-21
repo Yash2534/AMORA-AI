@@ -47,7 +47,7 @@ class AmoraaIdentityBadge extends StatelessWidget {
       AmoraaIdentityBadgeType.none => '',
     };
     final background = resolved == AmoraaIdentityBadgeType.verified
-        ? AppColors.surface.withValues(alpha: .94)
+        ? AppColors.secondary
         : AppColors.primary;
     final contentColor = resolved == AmoraaIdentityBadgeType.verified
         ? AppColors.primary
@@ -116,11 +116,8 @@ class AmoraaVerifiedIcon extends StatelessWidget {
   final double size;
 
   @override
-  Widget build(BuildContext context) => Icon(
-    Icons.verified_rounded,
-    color: AppColors.secondary,
-    size: size,
-  );
+  Widget build(BuildContext context) =>
+      Icon(Icons.verified_rounded, color: AppColors.secondary, size: size);
 }
 
 /// Avatar-specific verified mark using the same pink verification token.

@@ -68,7 +68,7 @@ function planLimits(value) {
   }).filter(Boolean);
 }
 
-function planJson(plan, activeMemberships = null) {
+function planJson(plan, activeMemberships = null, request = {}) {
   return {
     planId: String(plan.id),
     name: plan.displayName || plan.name,
@@ -83,7 +83,12 @@ function planJson(plan, activeMemberships = null) {
     },
     priceMinor: Number(plan.priceMinor),
     currency: plan.currency,
-    allowedActions: ['view', 'edit', 'activate', 'deactivate', 'delete'],
+    allowedActions: [
+      ...(can(request, 'membership.plans.update') ? ['edit'] : []),
+      ...(!plan.active && can(request, 'membership.plans.activate') ? ['activate'] : []),
+      ...(plan.active && can(request, 'membership.plans.update') ? ['deactivate'] : []),
+      ...(can(request, 'membership.plans.delete') ? ['delete'] : []),
+    ],
     description: plan.description,
     durationCount: Number(plan.billingInterval),
     durationUnit: plan.billingPeriod,
@@ -136,7 +141,7 @@ async function plans(request, page) {
   });
   const counts = await membershipCounts(result.rows.map((plan) => String(plan.id)));
   return {
-    items: result.rows.map((plan) => planJson(plan, counts.get(String(plan.id)) || 0)),
+    items: result.rows.map((plan) => planJson(plan, counts.get(String(plan.id)) || 0, request)),
     pagination: {
       page: page.page,
       pageSize: page.pageSize,
@@ -153,7 +158,7 @@ async function plan(request, planId) {
   const activeMemberships = await Subscription.count({
     where: { planId, status: { [Op.in]: ['active', 'trialing'] } },
   });
-  return planJson(row, activeMemberships);
+  return planJson(row, activeMemberships, request);
 }
 
 async function createPlan(request, data) {

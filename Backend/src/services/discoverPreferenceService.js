@@ -31,7 +31,6 @@ const defaults = {
   onlineNow: false,
   hasPrompts: false,
   hasEventInterest: false,
-  preferenceImportance: {}, // maps preference key -> 'must_match', 'very_important', 'prefer', 'flexible'
 };
 
 const arrayFilters = new Set([
@@ -65,8 +64,6 @@ async function filtersFor(userId, overrides = {}) {
         : typeof overrides[key] === 'string'
           ? overrides[key].split(',').map((value) => value.trim()).filter(Boolean)
           : overrides[key];
-    } else if (key === 'preferenceImportance') {
-      values[key] = typeof overrides[key] === 'string' ? JSON.parse(overrides[key]) : (overrides[key] || {});
     } else {
       values[key] = overrides[key];
     }

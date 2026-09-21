@@ -34,35 +34,48 @@ exports.deactivate = async (req, res, next) => {
 
 exports.remove = async (req, res, next) => {
   try {
-    const { User, OtpToken, RefreshToken, Match } = getModels();
+    const { User, AccountDeletionConfirmation, AccountDeletionRequest } = getModels();
     const userId = Number(req.user.sub);
-    await User.sequelize.transaction(async (transaction) => {
+    const confirmation = String(req.body.deletionConfirmation || '');
+    const [tokenSelector] = confirmation.split('.', 1);
+    const tokenHash = crypto.createHash('sha256').update(confirmation).digest('hex');
+    const deletionRequest = await User.sequelize.transaction(async (transaction) => {
       const user = await User.findByPk(userId, { transaction, lock: transaction.LOCK.UPDATE });
-      if (!user || user.accountStatus === 'deleted') return;
-      const previousEmail = user.email;
-      const previousPhoneNumber = user.phoneNumber;
-      const deletedIdentity = `deleted-${user.id}-${Date.now()}`;
-      user.accountStatus = 'deleted';
-      user.deletedAt = new Date();
-      user.deactivatedAt = null;
-      user.tokenVersion += 1;
-      user.deletionReason = req.body.reason;
-      user.deletionDetails = req.body.details || null;
-      user.name = 'Deleted Member';
-      user.email = `${deletedIdentity}@deleted.amora.invalid`;
-      user.phoneNumber = deletedIdentity;
-      user.passwordHash = null;
-      user.googleId = null;
-      user.isVerified = false;
-      await user.save({ transaction });
-      await RefreshToken.destroy({ where: { userId }, transaction });
-      await OtpToken.destroy({
-        where: { [Op.or]: [{ email: previousEmail }, { phoneNumber: previousPhoneNumber }] },
+      const stored = await AccountDeletionConfirmation.findOne({
+        where: { userId, tokenSelector, purpose: 'account_deletion', consumedAt: null },
         transaction,
+        lock: transaction.LOCK.UPDATE,
       });
-      await Match.destroy({ where: { [Op.or]: [{ userOneId: userId }, { userTwoId: userId }] }, transaction });
+      if (!user || user.accountStatus === 'deleted' || !stored || stored.expiresAt <= new Date()
+        || !crypto.timingSafeEqual(Buffer.from(stored.tokenHash, 'hex'), Buffer.from(tokenHash, 'hex'))) {
+        const error = new Error('Account deletion requires re-authentication.');
+        error.status = 401;
+        error.code = 'REAUTHENTICATION_REQUIRED';
+        throw error;
+      }
+      stored.consumedAt = new Date();
+      await stored.save({ transaction });
+      return AccountDeletionRequest.create({
+        userId,
+        status: 'VERIFIED',
+        requestedAt: new Date(),
+        verifiedAt: new Date(),
+      }, { transaction });
     });
-    return res.json({ success: true, message: 'Account deleted.', data: {} });
+    const result = await accountDeletionService.execute({
+      userId,
+      deletionRequestId: deletionRequest.id,
+      correlationId: deletionRequest.correlationId,
+      deletionReason: req.body.reason,
+      deletionDetails: req.body.details,
+    });
+    return res.status(202).json({
+      success: true,
+      message: result.status === 'BLOCKED_BY_RETENTION_DECISION'
+        ? 'Account deletion is pending retention review.'
+        : 'Account deletion request processed.',
+      data: { deletionStatus: result.status, canRetry: result.status === 'FAILED' },
+    });
   } catch (error) {
     return next(error);
   }

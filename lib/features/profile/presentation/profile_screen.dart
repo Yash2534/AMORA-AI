@@ -77,7 +77,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (ProfileRelationshipController.instance.likedProfiles.isEmpty &&
           !ProfileRelationshipController.instance.loading) {
         unawaited(
-          ProfileRelationshipController.instance.refreshRemote().catchError((_) {}),
+          ProfileRelationshipController.instance.refreshRemote().catchError(
+            (_) {},
+          ),
         );
       }
     }
@@ -140,10 +142,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [
-            Color(0xFFF9F5FF),
-            Color(0xFFECE5F8),
-          ],
+          colors: [Color(0xFFF9F5FF), Color(0xFFECE5F8)],
         ),
       ),
       child: Scaffold(
@@ -155,153 +154,165 @@ class _ProfileScreenState extends State<ProfileScreen> {
         body: SafeArea(
           bottom: false,
           child: ResponsiveMobileFrame(
-          maxWidth: 1040,
-          child: CustomScrollView(
-            key: const PageStorageKey('main-profile-scroll'),
-            physics: const BouncingScrollPhysics(
-              parent: AlwaysScrollableScrollPhysics(),
-            ),
-            slivers: [
-              AmoraaPinnedMainPageHeader(
-                pinned: false,
-                child: AmoraaMainPageHeader(
-                  title: 'Profile',
-                  actions: [
-                    AmoraaMainPageHeaderAction(
-                      key: const ValueKey('profile-settings-button'),
-                      tooltip: 'Profile settings',
-                      semanticLabel: 'Open profile settings',
-                      onPressed: () => _open(ProfileSettingsScreen.routeName),
-                      icon: Icons.settings_rounded,
-                    ),
-                  ],
-                ),
+            maxWidth: 1040,
+            child: CustomScrollView(
+              key: const PageStorageKey('main-profile-scroll'),
+              physics: const BouncingScrollPhysics(
+                parent: AlwaysScrollableScrollPhysics(),
               ),
-              SliverPadding(
-                padding: EdgeInsets.fromLTRB(
-                  AmoraaMainPageHeader.contentHorizontalInset,
-                  AmoraaMainPageHeader.contentSpacing,
-                  AmoraaMainPageHeader.contentHorizontalInset,
-                  bottomInset,
-                ),
-                sliver: SliverList.list(
-                  children: [
-                    if (_repository.lastSyncError != null) ...[
-                      PremiumCard(
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.cloud_off_rounded,
-                              color: AppColors.errorRed,
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(child: Text(_repository.lastSyncError!)),
-                            TextButton(
-                              onPressed: _refreshing ? null : _retryProfile,
-                              child: Text(_refreshing ? 'Loading...' : 'Retry'),
-                            ),
-                          ],
-                        ),
+              slivers: [
+                AmoraaPinnedMainPageHeader(
+                  pinned: false,
+                  child: AmoraaMainPageHeader(
+                    title: 'Profile',
+                    actions: [
+                      AmoraaMainPageHeaderAction(
+                        key: const ValueKey('profile-settings-button'),
+                        tooltip: 'Profile settings',
+                        semanticLabel: 'Open profile settings',
+                        onPressed: () => _open(ProfileSettingsScreen.routeName),
+                        icon: Icons.settings_rounded,
                       ),
-                      const SizedBox(height: 16),
                     ],
-                    FadeUp(
-                      child: Builder(
-                        builder: (context) {
-                          final matchesCount =
-                              ChatRepository.instance.loading &&
-                                      ChatRepository.instance.conversations.isEmpty
-                                  ? '--'
-                                  : _formatStatCount(
-                                      ChatRepository.instance.conversations.length,
-                                    );
-                          final likesCount =
-                              ProfileRelationshipController.instance.loading &&
+                  ),
+                ),
+                SliverPadding(
+                  padding: EdgeInsets.fromLTRB(
+                    AmoraaMainPageHeader.contentHorizontalInset,
+                    AmoraaMainPageHeader.contentSpacing,
+                    AmoraaMainPageHeader.contentHorizontalInset,
+                    bottomInset,
+                  ),
+                  sliver: SliverList.list(
+                    children: [
+                      if (_repository.lastSyncError != null) ...[
+                        PremiumCard(
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.cloud_off_rounded,
+                                color: AppColors.errorRed,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(child: Text(_repository.lastSyncError!)),
+                              TextButton(
+                                onPressed: _refreshing ? null : _retryProfile,
+                                child: Text(
+                                  _refreshing ? 'Loading...' : 'Retry',
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+                      FadeUp(
+                        child: Builder(
+                          builder: (context) {
+                            final matchesCount =
+                                ChatRepository.instance.loading &&
+                                    ChatRepository
+                                        .instance
+                                        .conversations
+                                        .isEmpty
+                                ? '--'
+                                : _formatStatCount(
+                                    ChatRepository
+                                        .instance
+                                        .conversations
+                                        .length,
+                                  );
+                            final likesCount =
+                                ProfileRelationshipController
+                                        .instance
+                                        .loading &&
+                                    ProfileRelationshipController
+                                        .instance
+                                        .likedProfiles
+                                        .isEmpty
+                                ? '--'
+                                : _formatStatCount(
+                                    math.max(
                                       ProfileRelationshipController
                                           .instance
                                           .likedProfiles
-                                          .isEmpty
-                                  ? '--'
-                                  : _formatStatCount(
-                                      math.max(
-                                        ProfileRelationshipController
-                                            .instance
-                                            .likedProfiles
-                                            .length,
-                                        ProfileRelationshipController
-                                            .instance
-                                            .receivedLikesTotal,
-                                      ),
-                                    );
+                                          .length,
+                                      ProfileRelationshipController
+                                          .instance
+                                          .receivedLikesTotal,
+                                    ),
+                                  );
 
-                          return ProfileHero(
-                            profile: profile,
-                            isAadhaarVerified: false,
-                            isPremium: AmoraaMembershipStatus.isPremiumActive,
-                            onEdit: () => _open(ProfileEditScreen.routeName),
-                            onPreview: () => _open(ProfilePreviewScreen.routeName),
-                            onComplete: () =>
-                                _open(ProfileCompletionScreen.routeName),
-                            onOpenCompletionSheet: () =>
-                                _showProfileCompletionSheet(context, profile),
-                            matchesCount: matchesCount,
-                            likesCount: likesCount,
-                            onLikesTap: () =>
-                                _open(LikesSuperLikesScreen.routeName),
-                          );
-                        },
+                            return ProfileHero(
+                              profile: profile,
+                              isAadhaarVerified: false,
+                              isPremium: AmoraaMembershipStatus.isPremiumActive,
+                              onEdit: () => _open(ProfileEditScreen.routeName),
+                              onPreview: () =>
+                                  _open(ProfilePreviewScreen.routeName),
+                              onComplete: () =>
+                                  _open(ProfileCompletionScreen.routeName),
+                              onOpenCompletionSheet: () =>
+                                  _showProfileCompletionSheet(context, profile),
+                              matchesCount: matchesCount,
+                              likesCount: likesCount,
+                              onLikesTap: () =>
+                                  _open(LikesSuperLikesScreen.routeName),
+                            );
+                          },
+                        ),
                       ),
-                    ),
-                    if (profile.presentationCompletionPercent < 100) ...[
+                      if (profile.presentationCompletionPercent < 100) ...[
+                        const SizedBox(height: 16),
+                        FadeUp(
+                          child: _CompleteProfileBannerCard(
+                            profile: profile,
+                            onTap: () => _open(ProfileEditScreen.routeName),
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 16),
                       FadeUp(
-                        child: _CompleteProfileBannerCard(
-                          profile: profile,
-                          onTap: () => _open(ProfileEditScreen.routeName),
+                        child: _AuraPremiumBannerCard(
+                          isPremium: AmoraaMembershipStatus.isPremiumActive,
+                          onUpgrade: () => _open(SubscriptionScreen.routeName),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      FadeUp(
+                        child: _ProfileMenuList(
+                          onWhoLikedYou: () =>
+                              _open(LikesSuperLikesScreen.routeName),
+                          onProfileVisitors: () =>
+                              _open(LikesSuperLikesScreen.routeName),
+                          onAiCoach: () => _open(FaqSupportScreen.routeName),
+                          onSafety: () => _open(SafetyPrivacyScreen.routeName),
+                          onNotifications: () =>
+                              _open(NotificationPreferencesScreen.routeName),
+                          onSecuritySessions: () =>
+                              _showSecuritySessionsModal(context),
+                          onAccountActions: () =>
+                              _showAccountActionsModal(context),
+                          onLegalPolicies: () =>
+                              _showLegalPoliciesModal(context),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      FadeUp(
+                        child: _SignOutButton(
+                          onSignOut: () => _handleSignOut(context),
                         ),
                       ),
                     ],
-                    const SizedBox(height: 16),
-                    FadeUp(
-                      child: _AuraPremiumBannerCard(
-                        isPremium: AmoraaMembershipStatus.isPremiumActive,
-                        onUpgrade: () => _open(SubscriptionScreen.routeName),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    FadeUp(
-                      child: _ProfileMenuList(
-                        onWhoLikedYou: () =>
-                            _open(LikesSuperLikesScreen.routeName),
-                        onProfileVisitors: () =>
-                            _open(LikesSuperLikesScreen.routeName),
-                        onAiCoach: () => _open(FaqSupportScreen.routeName),
-                        onSafety: () => _open(SafetyPrivacyScreen.routeName),
-                        onNotifications: () =>
-                            _open(NotificationPreferencesScreen.routeName),
-                        onSecuritySessions: () =>
-                            _showSecuritySessionsModal(context),
-                        onAccountActions: () =>
-                            _showAccountActionsModal(context),
-                        onLegalPolicies: () => _showLegalPoliciesModal(context),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    FadeUp(
-                      child: _SignOutButton(
-                        onSignOut: () => _handleSignOut(context),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Future<void> _handleSignOut(BuildContext context) async {
     final confirm = await showAmoraGlassDialog<bool>(
@@ -348,10 +359,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       await AuthService.instance.logout();
       AmoraSession.logOut();
       if (mounted) {
-        Navigator.of(context).pushNamedAndRemoveUntil(
-          LoginScreen.routeName,
-          (route) => false,
-        );
+        Navigator.of(
+          context,
+        ).pushNamedAndRemoveUntil(LoginScreen.routeName, (route) => false);
       }
     }
   }
@@ -476,7 +486,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  void _showProfileCompletionSheet(BuildContext context, LocalProfileDraft profile) {
+  void _showProfileCompletionSheet(
+    BuildContext context,
+    LocalProfileDraft profile,
+  ) {
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
@@ -618,7 +631,10 @@ class ProfileHero extends StatelessWidget {
                           decoration: BoxDecoration(
                             color: AppColors.primary,
                             shape: BoxShape.circle,
-                            border: Border.all(color: AppColors.surface, width: 2),
+                            border: Border.all(
+                              color: AppColors.surface,
+                              width: 2,
+                            ),
                           ),
                           alignment: Alignment.center,
                           child: const Icon(
@@ -635,20 +651,26 @@ class ProfileHero extends StatelessWidget {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
-                        _InstaStatColumn(
-                          value: matchesCount,
-                          label: 'Matches',
-                          onTap: onMatchesTap,
+                        Expanded(
+                          child: _InstaStatColumn(
+                            value: matchesCount,
+                            label: 'Matches',
+                            onTap: onMatchesTap,
+                          ),
                         ),
-                        _InstaStatColumn(
-                          value: likesCount,
-                          label: 'Likes',
-                          onTap: onLikesTap,
+                        Expanded(
+                          child: _InstaStatColumn(
+                            value: likesCount,
+                            label: 'Likes',
+                            onTap: onLikesTap,
+                          ),
                         ),
-                        _InstaStatColumn(
-                          value: '${profile.presentationCompletionPercent}%',
-                          label: 'Strength',
-                          onTap: onOpenCompletionSheet ?? onComplete,
+                        Expanded(
+                          child: _InstaStatColumn(
+                            value: '${profile.presentationCompletionPercent}%',
+                            label: 'Strength',
+                            onTap: onOpenCompletionSheet ?? onComplete,
+                          ),
                         ),
                       ],
                     ),
@@ -685,7 +707,9 @@ class ProfileHero extends StatelessWidget {
                 child: FilledButton(
                   onPressed: onEdit,
                   style: FilledButton.styleFrom(
-                    backgroundColor: isDark ? const Color(0xFF333333) : const Color(0xFFF1F1F1),
+                    backgroundColor: isDark
+                        ? const Color(0xFF333333)
+                        : const Color(0xFFF1F1F1),
                     foregroundColor: isDark ? Colors.white : Colors.black87,
                     elevation: 0,
                     minimumSize: const Size.fromHeight(40),
@@ -694,7 +718,10 @@ class ProfileHero extends StatelessWidget {
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  child: const Text('Edit profile', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                  child: const Text(
+                    'Edit profile',
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                  ),
                 ),
               ),
             ],
@@ -719,7 +746,7 @@ class _InstaStatColumn extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
@@ -732,6 +759,8 @@ class _InstaStatColumn extends StatelessWidget {
             children: [
               Text(
                 value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: AmoraTextStyles.headlineSmall.copyWith(
                   fontWeight: FontWeight.w800,
                   fontSize: 15,
@@ -741,6 +770,8 @@ class _InstaStatColumn extends StatelessWidget {
               const SizedBox(height: 2),
               Text(
                 label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: AmoraTextStyles.labelMedium.copyWith(
                   color: isDark ? Colors.white70 : Colors.black54,
                   fontSize: 11,
@@ -857,7 +888,8 @@ class _ProfileStatCircle extends StatelessWidget {
     if (onTap != null) {
       return Semantics(
         button: true,
-        label: 'Profile strength $value. Tap to view profile completion details.',
+        label:
+            'Profile strength $value. Tap to view profile completion details.',
         child: childWidget,
       );
     }
@@ -1133,7 +1165,9 @@ class _ProfileCompletionSheet extends StatelessWidget {
                         for (final item in pending)
                           _ProfileCompletionRow(
                             icon: Icons.radio_button_unchecked_rounded,
-                            iconColor: AppColors.textSecondary.withValues(alpha: 0.6),
+                            iconColor: AppColors.textSecondary.withValues(
+                              alpha: 0.6,
+                            ),
                             title: item.actionLabel,
                             isCompleted: false,
                             onTap: () {
@@ -1183,10 +1217,7 @@ class _ProfileCompletionSheet extends StatelessWidget {
                   },
                   child: const Text(
                     'Complete your Profile',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 15,
-                    ),
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
                   ),
                 ),
               ],
@@ -1252,8 +1283,9 @@ class _ProfileCompletionRow extends StatelessWidget {
                         title,
                         style: AmoraTextStyles.titleMedium.copyWith(
                           fontSize: 14,
-                          fontWeight:
-                              isCompleted ? FontWeight.w600 : FontWeight.w500,
+                          fontWeight: isCompleted
+                              ? FontWeight.w600
+                              : FontWeight.w500,
                           color: isCompleted
                               ? AppColors.textPrimary
                               : AppColors.textSecondary,
@@ -1265,7 +1297,9 @@ class _ProfileCompletionRow extends StatelessWidget {
                           subtitle!,
                           style: AmoraTextStyles.bodySmall.copyWith(
                             fontSize: 11,
-                            color: AppColors.textSecondary.withValues(alpha: 0.7),
+                            color: AppColors.textSecondary.withValues(
+                              alpha: 0.7,
+                            ),
                           ),
                         ),
                       ],
@@ -1317,125 +1351,130 @@ class _LiveAnimatedMembershipBackgroundState
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, _) {
-        final progress = _controller.value;
-        final alignTop = Alignment(
-          -0.8 + (progress * 0.6),
-          -1.0 + (progress * 0.4),
-        );
-        final alignBottom = Alignment(
-          0.8 - (progress * 0.6),
-          1.0 - (progress * 0.4),
-        );
+    return TickerMode(
+      enabled: !MediaQuery.disableAnimationsOf(context),
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, _) {
+          final progress = _controller.value;
+          final alignTop = Alignment(
+            -0.8 + (progress * 0.6),
+            -1.0 + (progress * 0.4),
+          );
+          final alignBottom = Alignment(
+            0.8 - (progress * 0.6),
+            1.0 - (progress * 0.4),
+          );
 
-        return Stack(
-          fit: StackFit.expand,
-          children: [
-            // Moving Gradient Base
-            DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: alignTop,
-                  end: alignBottom,
-                  colors: const [
-                    Color(0xFF3E1943),
-                    Color(0xFF6B2F6E),
-                    Color(0xFF863B8B),
-                    Color(0xFF4A254D),
-                  ],
-                  stops: const [0.0, 0.35, 0.7, 1.0],
-                ),
-              ),
-            ),
-            // Floating Soft Orb 1 (Top-Right Glow)
-            Positioned(
-              top: -40 + (progress * 25),
-              right: -30 + (progress * 20),
-              child: Container(
-                width: 220,
-                height: 220,
+          return Stack(
+            fit: StackFit.expand,
+            children: [
+              // Moving Gradient Base
+              DecoratedBox(
                 decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [
-                      Colors.white.withValues(alpha: 0.16 + (progress * 0.08)),
-                      const Color(0xFFD68BF2).withValues(alpha: 0.12),
-                      Colors.transparent,
+                  gradient: LinearGradient(
+                    begin: alignTop,
+                    end: alignBottom,
+                    colors: const [
+                      Color(0xFF3E1943),
+                      Color(0xFF6B2F6E),
+                      Color(0xFF863B8B),
+                      Color(0xFF4A254D),
                     ],
+                    stops: const [0.0, 0.35, 0.7, 1.0],
                   ),
                 ),
               ),
-            ),
-            // Floating Soft Orb 2 (Bottom-Left Glow)
-            Positioned(
-              bottom: -50 + (progress * 30),
-              left: -40 + (progress * 15),
-              child: Container(
-                width: 180,
-                height: 180,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [
-                      const Color(0xFFFFB74D).withValues(alpha: 0.14),
-                      const Color(0xFFE91E63).withValues(alpha: 0.10),
-                      Colors.transparent,
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            // Floating Subtle Sparkle Particle 1
-            Positioned(
-              top: 30 + (progress * 15),
-              right: 60 - (progress * 20),
-              child: Opacity(
-                opacity: (0.3 + (progress * 0.5)).clamp(0.0, 1.0),
+              // Floating Soft Orb 1 (Top-Right Glow)
+              Positioned(
+                top: -40 + (progress * 25),
+                right: -30 + (progress * 20),
                 child: Container(
-                  width: 6,
-                  height: 6,
-                  decoration: const BoxDecoration(
+                  width: 220,
+                  height: 220,
+                  decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Colors.white,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.white,
-                        blurRadius: 8,
-                        spreadRadius: 2,
-                      ),
-                    ],
+                    gradient: RadialGradient(
+                      colors: [
+                        Colors.white.withValues(
+                          alpha: 0.16 + (progress * 0.08),
+                        ),
+                        const Color(0xFFD68BF2).withValues(alpha: 0.12),
+                        Colors.transparent,
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-            // Floating Subtle Sparkle Particle 2
-            Positioned(
-              bottom: 45 - (progress * 20),
-              left: 90 + (progress * 25),
-              child: Opacity(
-                opacity: (0.7 - (progress * 0.4)).clamp(0.0, 1.0),
+              // Floating Soft Orb 2 (Bottom-Left Glow)
+              Positioned(
+                bottom: -50 + (progress * 30),
+                left: -40 + (progress * 15),
                 child: Container(
-                  width: 4,
-                  height: 4,
-                  decoration: const BoxDecoration(
+                  width: 180,
+                  height: 180,
+                  decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Color(0xFFF3E5F5),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Color(0xFFF3E5F5),
-                        blurRadius: 6,
-                        spreadRadius: 1,
-                      ),
-                    ],
+                    gradient: RadialGradient(
+                      colors: [
+                        const Color(0xFFFFB74D).withValues(alpha: 0.14),
+                        const Color(0xFFE91E63).withValues(alpha: 0.10),
+                        Colors.transparent,
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
-        );
-      },
+              // Floating Subtle Sparkle Particle 1
+              Positioned(
+                top: 30 + (progress * 15),
+                right: 60 - (progress * 20),
+                child: Opacity(
+                  opacity: (0.3 + (progress * 0.5)).clamp(0.0, 1.0),
+                  child: Container(
+                    width: 6,
+                    height: 6,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.white,
+                          blurRadius: 8,
+                          spreadRadius: 2,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              // Floating Subtle Sparkle Particle 2
+              Positioned(
+                bottom: 45 - (progress * 20),
+                left: 90 + (progress * 25),
+                child: Opacity(
+                  opacity: (0.7 - (progress * 0.4)).clamp(0.0, 1.0),
+                  child: Container(
+                    width: 4,
+                    height: 4,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Color(0xFFF3E5F5),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Color(0xFFF3E5F5),
+                          blurRadius: 6,
+                          spreadRadius: 1,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 }
@@ -1651,9 +1690,7 @@ class _AuraPremiumBannerCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(28),
         child: Stack(
           children: [
-            const Positioned.fill(
-              child: _LiveAnimatedMembershipBackground(),
-            ),
+            const Positioned.fill(child: _LiveAnimatedMembershipBackground()),
             Padding(
               padding: const EdgeInsets.all(24),
               child: Column(
@@ -1968,8 +2005,8 @@ class _SheetItem extends StatelessWidget {
           color: isDanger
               ? AppColors.errorRed.withValues(alpha: .25)
               : (isDark
-                  ? Colors.white.withValues(alpha: 0.12)
-                  : AppColors.primary.withValues(alpha: 0.10)),
+                    ? Colors.white.withValues(alpha: 0.12)
+                    : AppColors.primary.withValues(alpha: 0.10)),
           width: 1,
         ),
       ),
@@ -1986,9 +2023,7 @@ class _SheetItem extends StatelessWidget {
                 SizedBox(
                   width: 40,
                   height: 40,
-                  child: Center(
-                    child: Icon(icon, color: color, size: 20),
-                  ),
+                  child: Center(child: Icon(icon, color: color, size: 20)),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -2000,7 +2035,9 @@ class _SheetItem extends StatelessWidget {
                         style: AmoraTextStyles.titleMedium.copyWith(
                           fontWeight: FontWeight.w600,
                           fontSize: 15,
-                          color: isDanger ? AppColors.errorRed : AppColors.textPrimary,
+                          color: isDanger
+                              ? AppColors.errorRed
+                              : AppColors.textPrimary,
                         ),
                       ),
                       const SizedBox(height: 2),
@@ -2078,7 +2115,10 @@ class _ProfileMenuItemRow extends StatelessWidget {
               onTap: onTap,
               borderRadius: BorderRadius.circular(20),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
                 child: Row(
                   children: [
                     SizedBox(
@@ -2173,7 +2213,10 @@ class _SignOutButton extends StatelessWidget {
               onTap: onSignOut,
               borderRadius: BorderRadius.circular(99),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 14,
+                ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   mainAxisSize: MainAxisSize.min,

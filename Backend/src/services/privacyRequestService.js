@@ -1,15 +1,12 @@
 const crypto = require('crypto'); const bcrypt = require('bcrypt');
 const { getModels } = require('../models');
 
-// Exposing required states: PROCESSING, READY, EXPIRED, FAILED
-const ACTIVE_STATUSES = Object.freeze(['IDENTITY_VERIFICATION_REQUIRED', 'VERIFIED', 'PROCESSING', 'READY']);
+const ACTIVE_STATUSES = Object.freeze(['IDENTITY_VERIFICATION_REQUIRED', 'VERIFIED', 'PROCESSING']);
 const TRANSITIONS = Object.freeze({
-  IDENTITY_VERIFICATION_REQUIRED: ['VERIFIED', 'FAILED', 'EXPIRED'],
-  VERIFIED: ['PROCESSING', 'FAILED', 'EXPIRED'],
-  PROCESSING: ['READY', 'FAILED'],
-  READY: ['EXPIRED'],
-  COMPLETED: [], // Legacy fallback
-  EXPIRED: [],
+  IDENTITY_VERIFICATION_REQUIRED: ['VERIFIED', 'FAILED'],
+  VERIFIED: ['PROCESSING', 'FAILED'],
+  PROCESSING: ['COMPLETED', 'FAILED'],
+  COMPLETED: [],
   FAILED: [],
 });
 
@@ -119,7 +116,7 @@ class PrivacyRequestService {
           chatMetadata
         };
         await m.PrivacyAccessResult.create({privacyRequestId:r.id,userId,data,generatedAt:new Date()},{transaction});
-        r.status='READY';
+        r.status='COMPLETED';
         r.completedAt=new Date();
         await r.save({transaction});
         return {request:r,data};
