@@ -4,14 +4,14 @@ const { resolveDummySeedConfig } = require('../scripts/dummy-seed/config');
 
 const validEnv = {
   NODE_ENV: 'development', ALLOW_DUMMY_SEED: 'true', DB_NAME: 'amora_ai_test',
-  DUMMY_SEED_DATABASES: 'amora_ai,amora_ai_test', SEED_USER_COUNT: '50',
+  DUMMY_SEED_DATABASES: 'amora_ai,amora_ai_test', SEED_USER_COUNT: '40',
   SEED_RANDOM_SEED: '12345', SEED_REFERENCE_DATE: '2026-08-29', SEED_TEST_PASSWORD: 'safe-development-password',
 };
 
 test('dummy seed config accepts an explicitly approved development database', () => {
   const config = resolveDummySeedConfig(validEnv, ['--confirm-development-db']);
   assert.equal(config.databaseName, 'amora_ai_test');
-  assert.equal(config.userCount, 50);
+  assert.equal(config.userCount, 40);
   assert.equal(config.mode, 'seed');
 });
 

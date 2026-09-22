@@ -109,23 +109,24 @@ Configure a local ignored `.env`—never a production environment—with values 
 ```dotenv
 ALLOW_DUMMY_SEED=true
 DUMMY_SEED_DATABASES=amora_ai,amora_ai_test
-SEED_USER_COUNT=150
-SEED_RANDOM_SEED=12345
-SEED_REFERENCE_DATE=2026-08-29
+SEED_USER_COUNT=40
+SEED_RANDOM_SEED=20260922
+SEED_REFERENCE_DATE=2026-09-22
 SEED_TEST_PASSWORD=Amoraa-Dev-Only-2026!
 ```
 
 Then run:
 
 ```bash
-npm run setup:demo-portrait-assets
 npm run db:seed:dummy
 npm run db:seed:dummy:validate
 npm run verify:dummy-seed
 npm run verify:demo-profile-images
+npm run verify:master-flow
+npm run report:dummy-seed
 ```
 
-`setup:demo-portrait-assets` caches 200 CC0 AI-generated portraits from the Faker person-portrait collection under `demo-assets/`. The seed combines those assets with the repository-owned synthetic portraits and writes exactly two unique images for each of the 150 completed demo profiles. The application never fetches portrait media at runtime.
+The current dataset uses 80 new synthetic, locally stored portraits under `demo-assets/amoraa-v2-generated/`: exactly two unique age-appropriate images for each of 40 profiles. The seed copies them through the existing upload/media architecture. The application never fetches portrait media at runtime and the old Faker portrait cache is no longer used by this seed.
 
 `db:seed:dummy` is deterministic and idempotent: it removes the previous isolated seed dataset and recreates it in one database transaction. To remove only generated dummy data and its prefixed local media:
 
@@ -133,14 +134,12 @@ npm run verify:demo-profile-images
 npm run db:seed:dummy:reset
 ```
 
-The predictable video accounts are:
+The primary manual-test account is:
 
 | Role | Login | Scenario |
 | --- | --- | --- |
-| Demo A — Aisha Mehta | `demo.aisha@seed.amoraa.example.test` | Complete/discoverable; can Like Demo B; already matched with Demo C |
-| Demo B — Rohan Shah | `demo.rohan@seed.amoraa.example.test` | Has already liked Demo A, so A's Like creates a real match; receives Super Likes/Roses |
-| Demo C — Kavya Iyer | `demo.kavya@seed.amoraa.example.test` | Different age/city for filters; existing long conversation with Demo A |
+| MASTER — Aisha Mehta | `master@seed.amoraa.example.test` | Complete premium/verified profile; Discover/AI pagination; incoming reactions; seven existing chat states; all primary manual workflows |
 
-All three use `SEED_TEST_PASSWORD`. Seeded phone numbers use an internal deterministic pattern and work with the existing guarded development OTP flow; the seeder does not add or invoke any OTP bypass.
+The MASTER and all supporting accounts use `SEED_TEST_PASSWORD`. Candidate F has already liked MASTER but has no existing match, so MASTER's normal Like action creates the match. Other deterministic supporting profiles cover untouched actions, Super Likes, Roses, saved state, blocked/non-reciprocal/out-of-range/incomplete/inactive exclusions, verified/premium presentation, seven chat states, and multiple Discover/AI pages. Seeded phone numbers use an internal deterministic pattern and work with the existing guarded development OTP flow; the seeder does not add or invoke any OTP bypass.
 
 The current schema has no coordinates, so discovery returns `distance: null` and true geospatial distance filtering cannot be populated without a future schema/business-logic change. Interests are JSON values validated against the mobile app's existing options rather than lookup-table foreign keys. Super Likes are `DiscoverActions.action = 'superLike'`; there is no separate Super Likes table.

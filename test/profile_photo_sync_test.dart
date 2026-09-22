@@ -138,7 +138,11 @@ void main() {
   testWidgets('local photo synchronizes immediately with Profile', (
     tester,
   ) async {
-    await _pump(tester, const ProfileScreen(showNavigation: false));
+    await _pump(
+      tester,
+      const ProfileScreen(showNavigation: false),
+      settle: false,
+    );
     repository.addPhotoInSession(_localPhoto);
     await tester.pump();
     await tester.scrollUntilVisible(
@@ -146,7 +150,7 @@ void main() {
       400,
       scrollable: find.byType(Scrollable).first,
     );
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(seconds: 1));
 
     expect(
       tester

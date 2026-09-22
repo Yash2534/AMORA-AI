@@ -29,28 +29,32 @@ async function run() {
     const health = await request(baseUrl, '/health');
     if (!health) throw new Error('Health response was empty.');
     const login = await request(baseUrl, '/api/auth/login', null, {
-      method: 'POST', body: JSON.stringify({ email: 'demo.aisha@seed.amoraa.example.test', password: config.password }),
+      method: 'POST', body: JSON.stringify({ email: 'master@seed.amoraa.example.test', password: config.password }),
     });
     const token = login.accessToken;
     if (!token) throw new Error('Demo login did not return an access token.');
     const pageOne = await request(baseUrl, '/api/discover/feed?page=1&limit=20&verifiedOnly=false', token);
     const pageTwo = await request(baseUrl, '/api/discover/feed?page=2&limit=20&verifiedOnly=false', token);
-    const receivedOne = await request(baseUrl, '/api/me/received-likes?page=1&limit=20', token);
-    const receivedTwo = await request(baseUrl, '/api/me/received-likes?page=2&limit=20', token);
+    const aiOne = await request(baseUrl, '/api/discover/ai-matches?page=1&limit=10', token);
+    const aiTwo = await request(baseUrl, '/api/discover/ai-matches?page=2&limit=10', token);
+    const receivedOne = await request(baseUrl, '/api/me/received-likes?page=1&limit=5', token);
+    const receivedTwo = await request(baseUrl, '/api/me/received-likes?page=2&limit=5', token);
     const filters = await request(baseUrl, '/api/discover/filters', token);
     const matches = await request(baseUrl, '/api/matches', token);
     const conversations = await request(baseUrl, '/api/conversations?page=1&limit=20', token);
-    const demoB = await getModels().User.findOne({ where: { email: 'demo.rohan@seed.amoraa.example.test' } });
-    await request(baseUrl, `/api/profiles/${demoB.id}`, token);
-    const demoC = await getModels().User.findOne({ where: { email: 'demo.kavya@seed.amoraa.example.test' } });
-    const demoConversation = await getModels().Conversation.findOne({ where: { pairKey: [login.user.id, demoC.id].sort((a, b) => a - b).join(':') } });
+    const candidate = await getModels().User.findOne({ where: { name: 'Arjun Desai' } });
+    await request(baseUrl, `/api/profiles/${candidate.id}`, token);
+    const longChatUser = await getModels().User.findOne({ where: { name: 'Reyan Kapoor' } });
+    const demoConversation = await getModels().Conversation.findOne({ where: { pairKey: [login.user.id, longChatUser.id].sort((a, b) => a - b).join(':') } });
     const history = await request(baseUrl, `/api/conversations/${demoConversation.id}/messages?limit=20`, token);
     const listLength = (value) => Array.isArray(value) ? value.length : Array.isArray(value?.items) ? value.items.length : Array.isArray(value?.profiles) ? value.profiles.length : Array.isArray(value?.matches) ? value.matches.length : Array.isArray(value?.conversations) ? value.conversations.length : Array.isArray(value?.messages) ? value.messages.length : 0;
     if (listLength(pageOne) < 1 || listLength(pageTwo) < 1) throw new Error('Discovery did not return two populated pages.');
+    if (listLength(aiOne?.recommendations) < 1 || listLength(aiTwo?.recommendations) < 1) throw new Error('AI Matches did not return two populated pages.');
     if (listLength(receivedOne) < 1 || listLength(receivedTwo) < 1) throw new Error('Received likes did not return two populated pages.');
     if (listLength(matches) < 1 || listLength(conversations) < 1 || listLength(history) < 1) throw new Error('Demo match/conversation/message APIs were empty.');
     if (!filters) throw new Error('Discover filters did not load.');
-    console.log(`[DummySeed] API verification passed: login, discovery pages 1-2, profile, filters, likes pages 1-2, matches, conversations, and message history.`);
+    if (aiOne.provider !== 'LOCAL') throw new Error(`Expected LOCAL AI provider, received ${aiOne.provider}.`);
+    console.log(`[DummySeed] API verification passed: MASTER login, discovery pages 1-2, LOCAL AI pages 1-2, profile, filters, likes pages 1-2, matches, conversations, and message history.`);
     console.log(`[DummySeed] Validated counts: ${JSON.stringify(counts)}`);
     return counts;
   } finally {

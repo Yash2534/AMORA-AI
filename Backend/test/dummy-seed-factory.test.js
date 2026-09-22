@@ -3,15 +3,15 @@ const assert = require('node:assert/strict');
 const { buildSeedBlueprint, pairKey } = require('../scripts/dummy-seed/factory');
 const { detectedMimeType, sha256 } = require('../scripts/dummy-seed/media');
 
-const config = { userCount: 60, randomSeed: 789, referenceDate: new Date('2026-08-29T12:00:00.000Z') };
+const config = { userCount: 40, randomSeed: 789, referenceDate: new Date('2026-08-29T12:00:00.000Z') };
 
 test('dummy profile generation is deterministic, unique, varied, and onboarding-compatible', () => {
   const first = buildSeedBlueprint(config).users;
   const second = buildSeedBlueprint(config).users;
   assert.deepEqual(first, second);
-  assert.equal(first.length, 60);
-  assert.equal(new Set(first.map((value) => value.email)).size, 60);
-  assert.equal(new Set(first.map((value) => value.phoneNumber)).size, 60);
+  assert.equal(first.length, 40);
+  assert.equal(new Set(first.map((value) => value.email)).size, 40);
+  assert.equal(new Set(first.map((value) => value.phoneNumber)).size, 40);
   assert.ok(new Set(first.map((value) => value.bio)).size > 15);
   assert.ok(new Set(first.map((value) => value.city)).size >= 4);
   for (const profile of first.filter((value) => value.completed)) {
@@ -22,11 +22,11 @@ test('dummy profile generation is deterministic, unique, varied, and onboarding-
   }
 });
 
-test('demo accounts and video relationships have stable identities', () => {
+test('MASTER and supporting scenarios have stable identities', () => {
   const values = buildSeedBlueprint(config).users;
-  assert.deepEqual(values.slice(0, 3).map((value) => value.email), [
-    'demo.aisha@seed.amoraa.example.test', 'demo.rohan@seed.amoraa.example.test', 'demo.kavya@seed.amoraa.example.test',
-  ]);
+  assert.equal(values[0].email, 'master@seed.amoraa.example.test');
+  assert.equal(values[0].role, 'MASTER_TEST_ACCOUNT');
+  assert.equal(values[6].role, 'RECIPROCAL_LIKE_TRIGGER');
   assert.equal(pairKey(9, 2), '2:9');
 });
 

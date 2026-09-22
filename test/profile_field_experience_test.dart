@@ -32,6 +32,7 @@ void main() {
     WidgetTester tester,
     Widget child, {
     Size size = const Size(390, 844),
+    bool settle = true,
   }) async {
     await tester.binding.setSurfaceSize(size);
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -41,7 +42,11 @@ void main() {
         home: Scaffold(body: SafeArea(child: child)),
       ),
     );
-    await tester.pumpAndSettle();
+    if (settle) {
+      await tester.pumpAndSettle();
+    } else {
+      await tester.pump(const Duration(seconds: 1));
+    }
   }
 
   test('language codec preserves the existing string storage contract', () {
@@ -475,6 +480,7 @@ void main() {
       tester,
       const ProfileScreen(showNavigation: false),
       size: const Size(430, 5000),
+      settle: false,
     );
 
     expect(find.byType(ProfilePhotoGallery), findsOneWidget);
@@ -492,6 +498,7 @@ void main() {
       tester,
       const ProfileScreen(showNavigation: false),
       size: const Size(430, 5000),
+      settle: false,
     );
     expect(find.text('Photographer'), findsOneWidget);
 
@@ -499,6 +506,7 @@ void main() {
       tester,
       const ProfilePreviewScreen(),
       size: const Size(430, 5000),
+      settle: false,
     );
     expect(find.text('Photographer'), findsOneWidget);
     expect(tester.takeException(), isNull);

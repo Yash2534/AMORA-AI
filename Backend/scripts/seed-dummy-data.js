@@ -36,7 +36,7 @@ async function run() {
     console.log(`[DummySeed] Seeded and validated ${config.databaseName}.`);
     console.log(`[DummySeed] Deterministic fingerprint: ${result.fingerprint}`);
     console.log(`[DummySeed] Counts: ${JSON.stringify(validated)}`);
-    console.log('[DummySeed] Demo logins: demo.aisha@seed.amoraa.example.test, demo.rohan@seed.amoraa.example.test, demo.kavya@seed.amoraa.example.test');
+    console.log('[DummySeed] MASTER login: master@seed.amoraa.example.test');
     console.log('[DummySeed] Password is the configured SEED_TEST_PASSWORD; no email or SMS was sent.');
     return validated;
   } finally {
