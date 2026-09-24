@@ -346,22 +346,24 @@ class _NotificationHero extends StatelessWidget {
             width: 64,
             height: 64,
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [AppColors.secondary, AppColors.primary],
+              color: AppColors.primary.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: AppColors.primary.withValues(alpha: 0.20),
+                width: 1.5,
               ),
-              borderRadius: BorderRadius.circular(22),
               boxShadow: [
                 BoxShadow(
-                  color: AppColors.primary.withValues(alpha: .22),
+                  color: AppColors.primary.withValues(alpha: .12),
                   blurRadius: 20,
-                  spreadRadius: -5,
+                  spreadRadius: -2,
                 ),
               ],
             ),
             child: const Icon(
-              Icons.notifications_none_rounded,
-              color: AppColors.surface,
-              size: 32,
+              Icons.notifications_active_rounded,
+              color: AppColors.primary,
+              size: 30,
             ),
           ),
           const SizedBox(width: AmoraSpacing.space16),
@@ -473,12 +475,18 @@ class _PreferenceToggle extends StatelessWidget {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: value ? AppColors.tertiary : AppColors.background,
-                  borderRadius: BorderRadius.circular(16),
+                  color: value
+                      ? AppColors.primary.withValues(alpha: 0.12)
+                      : AppColors.primary.withValues(alpha: 0.06),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: AppColors.primary.withValues(alpha: value ? 0.18 : 0.10),
+                  ),
                 ),
                 child: Icon(
                   icon,
-                  color: value ? AppColors.primary : AppColors.textMuted,
+                  color: AppColors.primary.withValues(alpha: value ? 1.0 : 0.65),
+                  size: 22,
                 ),
               ),
               const SizedBox(width: AmoraSpacing.space12),

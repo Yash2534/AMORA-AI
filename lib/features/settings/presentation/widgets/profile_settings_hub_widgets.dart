@@ -146,16 +146,16 @@ class _ProfileSettingsHubRowState extends State<ProfileSettingsHubRow> {
                       height: AmoraSpacing.minimumTouchTarget,
                       decoration: BoxDecoration(
                         color: widget.danger
-                            ? AppColors.error.withValues(alpha: .08)
-                            : AppColors.background,
-                        borderRadius: BorderRadius.circular(16),
+                            ? AppColors.error.withValues(alpha: .10)
+                            : AppColors.primary.withValues(alpha: .10),
+                        shape: BoxShape.circle,
                         border: Border.all(
                           color: highlighted
                               ? foreground.withValues(alpha: .36)
-                              : AppColors.tertiary.withValues(alpha: .62),
+                              : AppColors.primary.withValues(alpha: .16),
                         ),
                       ),
-                      child: Icon(widget.icon, color: foreground, size: 23),
+                      child: Icon(widget.icon, color: foreground, size: 22),
                     ),
                     const SizedBox(width: AmoraSpacing.space12),
                     Expanded(

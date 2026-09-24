@@ -673,11 +673,29 @@ class AmoraaInterestsSelector extends StatelessWidget {
             children: [
               for (final item in group.value)
                 FilterChip(
-                  label: Text(item),
+                  label: Text(
+                    item,
+                    style: TextStyle(
+                      color: controller.interests.contains(item)
+                          ? AppColors.primary
+                          : AppColors.textPrimary,
+                      fontWeight: controller.interests.contains(item)
+                          ? FontWeight.w700
+                          : FontWeight.w500,
+                    ),
+                  ),
                   selected: controller.interests.contains(item),
+                  selectedColor: AppColors.primary.withValues(alpha: .08),
+                  backgroundColor: AppColors.surface,
+                  side: BorderSide(
+                    color: controller.interests.contains(item)
+                        ? AppColors.primary
+                        : AppColors.border,
+                    width: controller.interests.contains(item) ? 2 : 1,
+                  ),
                   showCheckmark: false,
                   avatar: controller.interests.contains(item)
-                      ? const Icon(Icons.check_rounded, size: 18)
+                      ? const Icon(Icons.check_rounded, size: 18, color: AppColors.primary)
                       : null,
                   onSelected: (selected) =>
                       controller.toggleInterest(item, selected),
@@ -723,8 +741,26 @@ class AmoraaLifestyleSelector extends StatelessWidget {
               children: [
                 for (final value in entry.value)
                   ChoiceChip(
-                    label: Text(value),
+                    label: Text(
+                      value,
+                      style: TextStyle(
+                        color: controller.lifestyle[entry.key] == value
+                            ? AppColors.primary
+                            : AppColors.textPrimary,
+                        fontWeight: controller.lifestyle[entry.key] == value
+                            ? FontWeight.w700
+                            : FontWeight.w500,
+                      ),
+                    ),
                     selected: controller.lifestyle[entry.key] == value,
+                    selectedColor: AppColors.primary.withValues(alpha: .08),
+                    backgroundColor: AppColors.surface,
+                    side: BorderSide(
+                      color: controller.lifestyle[entry.key] == value
+                          ? AppColors.primary
+                          : AppColors.border,
+                      width: controller.lifestyle[entry.key] == value ? 2 : 1,
+                    ),
                     showCheckmark: false,
                     onSelected: (_) =>
                         controller.setLifestyle(entry.key, value),
@@ -767,8 +803,26 @@ class AmoraaHabitsEditor extends StatelessWidget {
                     key: ValueKey(
                       'profile-habit-${entry.key.toLowerCase()}-$value',
                     ),
-                    label: Text(value),
+                    label: Text(
+                      value,
+                      style: TextStyle(
+                        color: controller.lifestyle[entry.key] == value
+                            ? AppColors.primary
+                            : AppColors.textPrimary,
+                        fontWeight: controller.lifestyle[entry.key] == value
+                            ? FontWeight.w700
+                            : FontWeight.w500,
+                      ),
+                    ),
                     selected: controller.lifestyle[entry.key] == value,
+                    selectedColor: AppColors.primary.withValues(alpha: .08),
+                    backgroundColor: AppColors.surface,
+                    side: BorderSide(
+                      color: controller.lifestyle[entry.key] == value
+                          ? AppColors.primary
+                          : AppColors.border,
+                      width: controller.lifestyle[entry.key] == value ? 2 : 1,
+                    ),
                     showCheckmark: false,
                     onSelected: (_) =>
                         controller.setLifestyle(entry.key, value),
@@ -1350,9 +1404,38 @@ class _FormError extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(top: AmoraSpacing.space8),
-      child: Text(
-        message,
-        style: AmoraTextStyles.bodySmall.copyWith(color: AppColors.primary),
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AmoraSpacing.space12,
+          vertical: AmoraSpacing.space8,
+        ),
+        decoration: BoxDecoration(
+          color: AppColors.error.withValues(alpha: .08),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: AppColors.error.withValues(alpha: .3),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.error_outline_rounded,
+              color: AppColors.error,
+              size: 16,
+            ),
+            const SizedBox(width: AmoraSpacing.space8),
+            Expanded(
+              child: Text(
+                message,
+                style: AmoraTextStyles.bodySmall.copyWith(
+                  color: AppColors.error,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

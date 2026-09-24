@@ -1499,8 +1499,8 @@ class _CompleteProfileBannerCard extends StatelessWidget {
         ? pending.first.actionLabel
         : 'Complete your profile details';
     final energeticTagline = pending.isNotEmpty
-        ? '⚡ $nextAction • Get 3x more matches!'
-        : '🚀 Complete your profile & get 3x more matches!';
+        ? '⚡ $nextAction • Get 3x matches'
+        : '🚀 Complete profile & get 3x matches';
 
     return Semantics(
       button: true,
@@ -1616,13 +1616,14 @@ class _CompleteProfileBannerCard extends StatelessWidget {
                             const SizedBox(height: 3),
                             Text(
                               energeticTagline,
-                              maxLines: 1,
+                              maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               style: AmoraTextStyles.bodySmall.copyWith(
                                 color: isDark
                                     ? const Color(0xFFD68BF2)
                                     : AppColors.primary,
                                 fontSize: 12,
+                                height: 1.25,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),

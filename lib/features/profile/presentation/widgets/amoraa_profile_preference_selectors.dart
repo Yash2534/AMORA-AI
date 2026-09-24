@@ -317,8 +317,8 @@ class _PreferenceChoice extends StatelessWidget {
               Text(
                 label,
                 style: AmoraTextStyles.labelLarge.copyWith(
-                  color: AppColors.text,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                  color: selected ? AppColors.primary : AppColors.textPrimary,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                 ),
               ),
               if (description case final text?) ...[
@@ -326,7 +326,9 @@ class _PreferenceChoice extends StatelessWidget {
                 Text(
                   text,
                   style: AmoraTextStyles.labelSmall.copyWith(
-                    color: AppColors.textSecondary,
+                    color: selected
+                        ? AppColors.primary.withValues(alpha: .8)
+                        : AppColors.textSecondary,
                   ),
                 ),
               ],
@@ -337,7 +339,7 @@ class _PreferenceChoice extends StatelessWidget {
         Icon(
           selected ? Icons.check_circle_rounded : Icons.add_circle_outline,
           size: 20,
-          color: selected ? AppColors.secondary : AppColors.primary,
+          color: selected ? AppColors.primary : AppColors.textMuted,
         ),
       ],
     );
@@ -354,12 +356,12 @@ class _PreferenceChoice extends StatelessWidget {
         ),
         decoration: BoxDecoration(
           color: selected
-              ? AppColors.tertiary.withValues(alpha: .72)
+              ? AppColors.primary.withValues(alpha: .08)
               : AppColors.surface,
           borderRadius: BorderRadius.circular(cardStyle ? 18 : 999),
           border: Border.all(
-            color: selected ? AppColors.secondary : AppColors.tertiary,
-            width: selected ? 1.5 : 1,
+            color: selected ? AppColors.primary : AppColors.tertiary.withValues(alpha: .72),
+            width: selected ? 2 : 1,
           ),
         ),
         child: Material(

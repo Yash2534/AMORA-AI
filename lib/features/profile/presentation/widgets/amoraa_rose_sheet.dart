@@ -184,16 +184,24 @@ class _AmoraaRoseSheetState extends State<AmoraaRoseSheet>
                       width: 92,
                       height: 92,
                       decoration: BoxDecoration(
-                        color: AppColors.tertiary.withValues(alpha: .30),
+                        color: AppColors.primary.withValues(alpha: .12),
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: AppColors.secondary.withValues(alpha: .46),
+                          color: AppColors.primary.withValues(alpha: .28),
+                          width: 1.5,
                         ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primary.withValues(alpha: .15),
+                            blurRadius: 20,
+                            spreadRadius: -4,
+                          ),
+                        ],
                       ),
                       child: const Icon(
                         Icons.local_florist_rounded,
                         size: 48,
-                        color: AppColors.secondary,
+                        color: AppColors.primary,
                       ),
                     ),
                   ),

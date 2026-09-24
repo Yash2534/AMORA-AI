@@ -880,7 +880,7 @@ class _NotificationAvatar extends StatelessWidget {
             bottom: 0,
             child: DecoratedBox(
               decoration: BoxDecoration(
-                color: AppColors.secondary,
+                color: AppColors.primary,
                 shape: BoxShape.circle,
                 border: Border.all(color: AppColors.surface, width: 2),
               ),
@@ -909,7 +909,7 @@ class _NotificationBadge extends StatelessWidget {
         height: 9,
         margin: const EdgeInsets.only(top: AmoraSpacing.space4),
         decoration: const BoxDecoration(
-          color: AppColors.secondary,
+          color: AppColors.primary,
           shape: BoxShape.circle,
         ),
       ),

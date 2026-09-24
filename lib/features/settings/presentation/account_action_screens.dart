@@ -117,20 +117,57 @@ class _DeactivateAccountScreenState extends State<DeactivateAccountScreen> {
       action: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          CheckboxListTile(
+          InkWell(
             key: const ValueKey('deactivate-account-understood'),
-            contentPadding: EdgeInsets.zero,
-            value: _understood,
-            onChanged: _submitting
+            onTap: _submitting
                 ? null
-                : (value) => setState(() {
-                    _understood = value ?? false;
+                : () => setState(() {
+                    _understood = !_understood;
                     _error = null;
                   }),
-            title: const Text(
-              'I understand that my profile will be hidden temporarily.',
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: Checkbox(
+                      value: _understood,
+                      activeColor: AppColors.primary,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      side: BorderSide(
+                        color: _understood
+                            ? AppColors.primary
+                            : AppColors.textSecondary.withValues(alpha: 0.6),
+                        width: 1.5,
+                      ),
+                      onChanged: _submitting
+                          ? null
+                          : (value) => setState(() {
+                              _understood = value ?? false;
+                              _error = null;
+                            }),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'I understand that my profile will be hidden temporarily.',
+                      style: AmoraTextStyles.bodyMedium.copyWith(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w600,
+                        height: 1.35,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-            controlAffinity: ListTileControlAffinity.leading,
           ),
           if (_error != null) _AccountActionError(message: _error!),
           const SizedBox(height: AmoraSpacing.space12),
@@ -365,7 +402,7 @@ class _AccountActionScaffold extends StatelessWidget {
                                 padding: EdgeInsets.only(top: 2),
                                 child: Icon(
                                   Icons.check_circle_outline_rounded,
-                                  color: AppColors.secondary,
+                                  color: AppColors.primary,
                                   size: 19,
                                 ),
                               ),

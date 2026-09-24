@@ -543,7 +543,7 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
             child: _OptionWrap(
               options: visible,
               selected: _lifestyles,
-              emojiFor: (option) => _lifestyleEmoji[option],
+              iconFor: (option) => _lifestyleIcons[option],
               icon: Icons.auto_awesome_rounded,
               onToggle: _toggle,
             ),
@@ -2463,12 +2463,14 @@ class _OptionWrap extends StatelessWidget {
     required this.selected,
     required this.onToggle,
     this.icon,
+    this.iconFor,
     this.emojiFor,
   });
 
   final List<String> options;
   final Set<String> selected;
   final IconData? icon;
+  final IconData? Function(String option)? iconFor;
   final String? Function(String option)? emojiFor;
   final void Function(Set<String> selected, String option) onToggle;
 
@@ -2483,7 +2485,7 @@ class _OptionWrap extends StatelessWidget {
             key: ValueKey('filter-option-$option'),
             label: option,
             selected: selected.contains(option),
-            icon: icon,
+            icon: iconFor?.call(option) ?? icon,
             emoji: emojiFor?.call(option),
             onTap: () => onToggle(selected, option),
           ),
@@ -2943,21 +2945,21 @@ abstract final class _GroupIds {
 
 const _noSearchMatch = '__no_match__';
 
-const _lifestyleEmoji = <String, String>{
-  'Travel Companion': '✈️',
-  'Adventure Seeker': '🏔️',
-  'Fitness Partner': '💪',
-  'Foodie Partner': '🍜',
-  'Coffee Dates': '☕',
-  'Pet Lover': '🐾',
-  'Movie Nights': '🎬',
-  'Music Lover': '🎵',
-  'Road Trip Buddy': '🚗',
-  'Book Lover': '📚',
-  'Creative Soul': '🎨',
-  'Tech Enthusiast': '💻',
-  'Wellness & Yoga': '🧘',
-  'Volunteer & Community': '❤️',
+const _lifestyleIcons = <String, IconData>{
+  'Travel Companion': Icons.flight_takeoff_rounded,
+  'Adventure Seeker': Icons.terrain_rounded,
+  'Fitness Partner': Icons.fitness_center_rounded,
+  'Foodie Partner': Icons.restaurant_rounded,
+  'Coffee Dates': Icons.local_cafe_rounded,
+  'Pet Lover': Icons.pets_rounded,
+  'Movie Nights': Icons.movie_rounded,
+  'Music Lover': Icons.music_note_rounded,
+  'Road Trip Buddy': Icons.directions_car_rounded,
+  'Book Lover': Icons.menu_book_rounded,
+  'Creative Soul': Icons.palette_rounded,
+  'Tech Enthusiast': Icons.laptop_rounded,
+  'Wellness & Yoga': Icons.self_improvement_rounded,
+  'Volunteer & Community': Icons.volunteer_activism_rounded,
 };
 
 const _communityList = [

@@ -356,32 +356,40 @@ class _FlowHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 4),
-      child: Row(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          SizedBox.square(
-            dimension: AmoraHeaderTokens.touchTarget,
-            child: onBack == null
-                ? null
-                : AmoraHeaderBackButton(onPressed: onBack!),
-          ),
-          Expanded(
-            child: Column(
-              children: [
-                Text(
+          Row(
+            children: [
+              SizedBox.square(
+                dimension: AmoraHeaderTokens.touchTarget,
+                child: onBack == null
+                    ? null
+                    : AmoraHeaderBackButton(onPressed: onBack!),
+              ),
+              Expanded(
+                child: Text(
                   'Step ${page + 1} of $total',
-                  style: AmoraTextStyles.labelLarge,
+                  textAlign: TextAlign.center,
+                  style: AmoraTextStyles.labelLarge.copyWith(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-                const SizedBox(height: 8),
-                LinearProgressIndicator(
-                  value: (page + 1) / total,
-                  minHeight: 6,
-                  borderRadius: BorderRadius.circular(99),
-                ),
-              ],
+              ),
+              const SizedBox(width: AmoraHeaderTokens.touchTarget),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: LinearProgressIndicator(
+              value: (page + 1) / total,
+              minHeight: 6,
+              borderRadius: BorderRadius.circular(99),
             ),
           ),
-          const SizedBox(width: AmoraHeaderTokens.touchTarget),
         ],
       ),
     );
@@ -965,12 +973,6 @@ class _GenderQuestion extends StatelessWidget {
               ),
             ),
           ],
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('Show my gender on my profile'),
-            value: state.showGender,
-            onChanged: (value) => onChanged(state.copyWith(showGender: value)),
-          ),
         ],
       ),
     );
@@ -1006,12 +1008,12 @@ class _GenderOptionCard extends StatelessWidget {
           constraints: const BoxConstraints(minHeight: 56),
           decoration: BoxDecoration(
             color: selected
-                ? AppColors.secondary.withValues(alpha: .08)
+                ? AppColors.primary.withValues(alpha: .08)
                 : AppColors.surface,
             borderRadius: borderRadius,
             border: Border.all(
               color: selected
-                  ? AppColors.secondary
+                  ? AppColors.primary
                   : AppColors.tertiary.withValues(alpha: .72),
               width: selected ? 2 : 1,
             ),
@@ -1023,8 +1025,8 @@ class _GenderOptionCard extends StatelessWidget {
             child: InkWell(
               onTap: onTap,
               borderRadius: borderRadius,
-              focusColor: AppColors.secondary.withValues(alpha: .14),
-              hoverColor: AppColors.secondary.withValues(alpha: .08),
+              focusColor: AppColors.primary.withValues(alpha: .14),
+              hoverColor: AppColors.primary.withValues(alpha: .08),
               splashColor: AppColors.tertiary.withValues(alpha: .32),
               highlightColor: AppColors.tertiary.withValues(alpha: .18),
               child: Padding(
@@ -1035,7 +1037,13 @@ class _GenderOptionCard extends StatelessWidget {
                 child: Row(
                   children: [
                     Expanded(
-                      child: Text(label, style: AmoraTextStyles.titleMedium),
+                      child: Text(
+                        label,
+                        style: AmoraTextStyles.titleMedium.copyWith(
+                          color: selected ? AppColors.primary : AppColors.textPrimary,
+                          fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                        ),
+                      ),
                     ),
                     const SizedBox(width: AmoraSpacing.space16),
                     _GenderRadioIndicator(selected: selected),
@@ -1065,9 +1073,9 @@ class _GenderRadioIndicator extends StatelessWidget {
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: selected ? AppColors.secondary : AppColors.surface,
+        color: selected ? AppColors.primary : AppColors.surface,
         border: Border.all(
-          color: selected ? AppColors.secondary : AppColors.textMuted,
+          color: selected ? AppColors.primary : AppColors.textMuted,
           width: 2,
         ),
       ),
@@ -1219,12 +1227,12 @@ class _DatingIntentionCard extends StatelessWidget {
           constraints: const BoxConstraints(minHeight: 64),
           decoration: BoxDecoration(
             color: selected
-                ? AppColors.secondary.withValues(alpha: .08)
+                ? AppColors.primary.withValues(alpha: .08)
                 : AppColors.surface,
             borderRadius: borderRadius,
             border: Border.all(
               color: selected
-                  ? AppColors.secondary
+                  ? AppColors.primary
                   : AppColors.tertiary.withValues(alpha: .72),
               width: selected ? 2 : 1,
             ),
@@ -1236,8 +1244,8 @@ class _DatingIntentionCard extends StatelessWidget {
             child: InkWell(
               onTap: onTap,
               borderRadius: borderRadius,
-              focusColor: AppColors.secondary.withValues(alpha: .14),
-              hoverColor: AppColors.secondary.withValues(alpha: .08),
+              focusColor: AppColors.primary.withValues(alpha: .14),
+              hoverColor: AppColors.primary.withValues(alpha: .08),
               splashColor: AppColors.tertiary.withValues(alpha: .32),
               highlightColor: AppColors.tertiary.withValues(alpha: .18),
               child: Padding(
@@ -1248,13 +1256,19 @@ class _DatingIntentionCard extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(label, style: AmoraTextStyles.titleMedium),
+                          Text(
+                            label,
+                            style: AmoraTextStyles.titleMedium.copyWith(
+                              color: selected ? AppColors.primary : AppColors.textPrimary,
+                              fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                            ),
+                          ),
                           if (description.isNotEmpty) ...[
                             const SizedBox(height: AmoraSpacing.space4),
                             Text(
                               description,
                               style: AmoraTextStyles.bodySmall.copyWith(
-                                color: AppColors.textSecondary,
+                                color: selected ? AppColors.primary.withValues(alpha: .8) : AppColors.textSecondary,
                               ),
                             ),
                           ],
@@ -1271,7 +1285,7 @@ class _DatingIntentionCard extends StatelessWidget {
                         shape: BoxShape.circle,
                         border: Border.all(
                           color: selected
-                              ? AppColors.secondary
+                              ? AppColors.primary
                               : AppColors.textMuted,
                           width: 2,
                         ),
@@ -1283,7 +1297,7 @@ class _DatingIntentionCard extends StatelessWidget {
                                 width: 12,
                                 height: 12,
                                 decoration: const BoxDecoration(
-                                  color: AppColors.secondary,
+                                  color: AppColors.primary,
                                   shape: BoxShape.circle,
                                 ),
                               ),
@@ -1392,17 +1406,23 @@ class _ChoiceCard extends StatelessWidget {
             constraints: const BoxConstraints(minHeight: 56),
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: selected ? AppColors.selectedContainer : AppColors.surface,
+              color: selected ? AppColors.primary.withValues(alpha: .08) : AppColors.surface,
               borderRadius: AmoraRadius.card,
               border: Border.all(
                 color: selected ? AppColors.primary : AppColors.outlineVariant,
-                width: selected ? 1.5 : 1,
+                width: selected ? 2 : 1,
               ),
             ),
             child: Row(
               children: [
                 Expanded(
-                  child: Text(label, style: AmoraTextStyles.titleMedium),
+                  child: Text(
+                    label,
+                    style: AmoraTextStyles.titleMedium.copyWith(
+                      color: selected ? AppColors.primary : AppColors.textPrimary,
+                      fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                    ),
+                  ),
                 ),
                 Icon(
                   selected ? Icons.check_circle_rounded : Icons.circle_outlined,

@@ -67,4 +67,16 @@ class AmoraIcons {
   static const IconData dashboard = Icons.dashboard_rounded;
   static const IconData crown = Icons.workspace_premium_rounded;
   static const IconData zodiac = Icons.brightness_2_rounded;
+  static const IconData rose = Icons.local_florist_rounded;
+  static const IconData height = Icons.straighten_rounded;
+  static const IconData education = Icons.school_rounded;
+  static const IconData profession = Icons.work_rounded;
+  static const IconData travel = Icons.flight_takeoff_rounded;
+  static const IconData reading = Icons.menu_book_rounded;
+  static const IconData cooking = Icons.restaurant_rounded;
+  static const IconData photography = Icons.photo_camera_rounded;
+  static const IconData yoga = Icons.self_improvement_rounded;
+  static const IconData beach = Icons.beach_access_rounded;
+  static const IconData relationshipIntent = Icons.favorite_border_rounded;
 }
+

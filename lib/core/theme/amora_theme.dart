@@ -222,20 +222,22 @@ abstract final class AmoraTheme {
         trackHeight: AmoraSpacing.space4,
       ),
       chipTheme: ChipThemeData(
-        backgroundColor: AppColors.chipBackground,
-        selectedColor: AppColors.activeContainer,
+        backgroundColor: AppColors.surface,
+        selectedColor: AppColors.primary.withValues(alpha: .08),
         disabledColor: AppColors.surfaceContainer,
         side: const BorderSide(color: AppColors.border),
         shape: const StadiumBorder(),
-        labelStyle: AmoraTextStyles.labelMedium,
+        labelStyle: AmoraTextStyles.labelMedium.copyWith(color: AppColors.textPrimary),
         secondaryLabelStyle: AmoraTextStyles.labelMedium.copyWith(
-          color: AppColors.onPrimaryContainer,
+          color: AppColors.primary,
+          fontWeight: FontWeight.w700,
         ),
         padding: const EdgeInsets.symmetric(
           horizontal: AmoraSpacing.space12,
           vertical: AmoraSpacing.space8,
         ),
-        checkmarkColor: AppColors.onPrimaryContainer,
+        checkmarkColor: AppColors.primary,
+        iconTheme: const IconThemeData(color: AppColors.primary),
       ),
       cardTheme: const CardThemeData(
         color: AppColors.cardBackground,

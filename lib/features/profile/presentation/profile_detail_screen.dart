@@ -1355,7 +1355,7 @@ class _SymbolicInfoTile extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(fact.icon, color: AppColors.secondary, size: 18),
+              Icon(fact.icon, color: AppColors.primary, size: 18),
               const SizedBox(width: AmoraSpacing.space8),
               Expanded(
                 child: Text(
@@ -1667,26 +1667,26 @@ class InterestChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: AppColors.surface,
-      shape: StadiumBorder(
-        side: BorderSide(color: AppColors.secondary.withValues(alpha: .72)),
+      color: AppColors.softBackground,
+      shape: const StadiumBorder(
+        side: BorderSide(color: AppColors.border),
       ),
       clipBehavior: Clip.antiAlias,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
               ProfileAttributeIcons.interest(label),
-              color: AppColors.secondary,
-              size: 17,
+              color: AppColors.primary,
+              size: 16,
             ),
             const SizedBox(width: AmoraSpacing.space8),
             Text(
               label,
               style: AmoraTextStyles.labelMedium.copyWith(
-                color: AppColors.textNeutral,
+                color: AppColors.textPrimary,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -1696,6 +1696,7 @@ class InterestChip extends StatelessWidget {
     );
   }
 }
+
 
 class _ProfilePromptsSection extends StatelessWidget {
   const _ProfilePromptsSection({required this.profile, required this.onReply});

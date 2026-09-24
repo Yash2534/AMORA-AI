@@ -413,24 +413,20 @@ class ManagedProfileCard extends StatelessWidget {
                     children: [
                       Row(
                         children: [
-                          Expanded(
+                          Flexible(
                             child: Text(
                               '${profile.name}, ${profile.age}',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: AmoraTextStyles.titleMedium,
+                              style: AmoraTextStyles.titleMedium.copyWith(
+                                color: AppColors.textPrimary,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ),
-                          if (resolveAmoraaIdentityBadge(
-                                isAadhaarVerified: profile.verified,
-                                isPremium: profile.premium,
-                              ) !=
-                              AmoraaIdentityBadgeType.none) ...[
-                            const SizedBox(width: AmoraSpacing.space8),
-                            AmoraaIdentityBadge(
-                              isAadhaarVerified: profile.verified,
-                              isPremium: profile.premium,
-                            ),
+                          if (profile.verified) ...[
+                            const SizedBox(width: 6),
+                            const AmoraaVerifiedIcon(size: 16),
                           ],
                         ],
                       ),

@@ -213,14 +213,15 @@ class _LanguagePickerSheetState extends State<_LanguagePickerSheet> {
                           label: '$language language',
                           child: Material(
                             color: selected
-                                ? AppColors.background
+                                ? AppColors.primary.withValues(alpha: .08)
                                 : AppColors.surface,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(18),
                               side: BorderSide(
                                 color: selected
-                                    ? AppColors.secondary
-                                    : AppColors.tertiary,
+                                    ? AppColors.primary
+                                    : AppColors.tertiary.withValues(alpha: .72),
+                                width: selected ? 2 : 1,
                               ),
                             ),
                             clipBehavior: Clip.antiAlias,
@@ -241,7 +242,14 @@ class _LanguagePickerSheetState extends State<_LanguagePickerSheet> {
                                       Expanded(
                                         child: Text(
                                           language,
-                                          style: AmoraTextStyles.titleMedium,
+                                          style: AmoraTextStyles.titleMedium.copyWith(
+                                            color: selected
+                                                ? AppColors.primary
+                                                : AppColors.textPrimary,
+                                            fontWeight: selected
+                                                ? FontWeight.w600
+                                                : FontWeight.w500,
+                                          ),
                                         ),
                                       ),
                                       Icon(
@@ -249,7 +257,7 @@ class _LanguagePickerSheetState extends State<_LanguagePickerSheet> {
                                             ? Icons.check_circle_rounded
                                             : Icons.circle_outlined,
                                         color: selected
-                                            ? AppColors.secondary
+                                            ? AppColors.primary
                                             : AppColors.textMuted,
                                       ),
                                     ],

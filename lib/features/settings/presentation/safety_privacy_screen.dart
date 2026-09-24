@@ -265,7 +265,8 @@ class _OverviewStatus extends StatelessWidget {
                   Text(
                     value,
                     style: AmoraTextStyles.titleSmall.copyWith(
-                      color: AppColors.secondary,
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ],

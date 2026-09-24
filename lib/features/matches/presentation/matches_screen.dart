@@ -18,7 +18,9 @@ import 'package:amora_ai/features/profile/domain/profile_interest_policy.dart';
 import 'package:amora_ai/features/profile/presentation/controllers/profile_relationship_controller.dart';
 import 'package:amora_ai/features/profile/presentation/profile_completion_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_detail_screen.dart';
+import 'package:amora_ai/features/profile/presentation/widgets/profile_attribute_icons.dart';
 import 'package:flutter/material.dart';
+
 
 class MatchesScreen extends StatefulWidget {
   const MatchesScreen({
@@ -1553,25 +1555,47 @@ class AiMatchReason extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final firstName = profile.name.trim().split(RegExp(r'\s+')).first;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final intentCopy = profile.intent.trim().isNotEmpty
+        ? 'You share a relationship goal: ${profile.intent.toLowerCase()}.'
+        : 'Recommended based on high mutual compatibility factors.';
+
     return Material(
-      color: AppColors.tertiary.withValues(alpha: .26),
-      borderRadius: BorderRadius.circular(18),
+      color: isDark
+          ? AppColors.primary.withValues(alpha: 0.16)
+          : AppColors.softBackground,
+      borderRadius: BorderRadius.circular(16),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: isDark
+              ? AppColors.primaryLight.withValues(alpha: 0.25)
+              : AppColors.border,
+        ),
+      ),
       child: InkWell(
         key: ValueKey('why-match-${profile.id}'),
         onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(16),
         child: Padding(
           padding: const EdgeInsets.all(AmoraSpacing.space12),
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              const Icon(
-                Icons.auto_awesome_rounded,
-                color: AppColors.secondary,
-                size: 20,
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.10),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.auto_awesome_rounded,
+                  color: AppColors.primary,
+                  size: 18,
+                ),
               ),
-              const SizedBox(width: AmoraSpacing.space8),
+              const SizedBox(width: AmoraSpacing.space12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1579,25 +1603,29 @@ class AiMatchReason extends StatelessWidget {
                     Text(
                       'Why this recommendation?',
                       style: AmoraTextStyles.labelMedium.copyWith(
-                        color: AppColors.primary,
+                        color: isDark ? AppColors.white : AppColors.primary,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
-                    const SizedBox(height: AmoraSpacing.space4),
+                    const SizedBox(height: AmoraSpacing.space2),
                     Text(
-                      '$firstName is looking for ${profile.intent.toLowerCase()}.',
+                      intentCopy,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: AmoraTextStyles.bodySmall.copyWith(
-                        color: AppColors.textNeutral.withValues(alpha: .72),
+                        color: isDark
+                            ? AppColors.white.withValues(alpha: 0.8)
+                            : AppColors.textSecondary,
+                        height: 1.3,
                       ),
                     ),
                   ],
                 ),
               ),
-              const Icon(
+              const SizedBox(width: AmoraSpacing.space8),
+              Icon(
                 Icons.chevron_right_rounded,
-                color: AppColors.primary,
+                color: isDark ? AppColors.accentLavender : AppColors.primary,
                 size: 20,
               ),
             ],
@@ -1615,27 +1643,43 @@ class SharedInterestChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isMore = label.startsWith('+');
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: AppColors.background,
+        color: AppColors.softBackground,
         borderRadius: AmoraRadius.pillBorder,
-        border: Border.all(color: AppColors.tertiary.withValues(alpha: .86)),
+        border: Border.all(color: AppColors.border),
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(
           horizontal: AmoraSpacing.space12,
-          vertical: AmoraSpacing.space8,
+          vertical: AmoraSpacing.space6,
         ),
-        child: Text(
-          label,
-          style: AmoraTextStyles.labelSmall.copyWith(
-            color: AppColors.textNeutral,
-          ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (!isMore) ...[
+              Icon(
+                ProfileAttributeIcons.interest(label),
+                size: 14,
+                color: AppColors.primary,
+              ),
+              const SizedBox(width: AmoraSpacing.space6),
+            ],
+            Text(
+              label,
+              style: AmoraTextStyles.labelSmall.copyWith(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
+
 
 class AiMatchActionBar extends StatelessWidget {
   const AiMatchActionBar({

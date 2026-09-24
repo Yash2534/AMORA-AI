@@ -233,15 +233,25 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
               child: AuthInlineAlert(message: _confirmation!),
             ),
           ],
-          const SizedBox(height: AmoraSpacing.space16),
+          const SizedBox(height: AmoraSpacing.space20),
+          AuthPrimaryButton(
+            key: const ValueKey('verify-mobile-button'),
+            label: _isVerifyingOtp ? 'Verifying…' : 'Verify Mobile Number',
+            icon: Icons.verified_user_outlined,
+            isLoading: _isVerifyingOtp,
+            onPressed: _isCompleteOtp && !_isBusy ? _verifyOtp : null,
+          ),
+          const SizedBox(height: AmoraSpacing.space20),
           Text(
             "Didn't receive the code?",
             textAlign: TextAlign.center,
-            style: AmoraTextStyles.bodyMedium,
+            style: AmoraTextStyles.bodyMedium.copyWith(
+              color: AppColors.textSecondary,
+            ),
           ),
           const SizedBox(height: AmoraSpacing.space4),
           Center(child: _resendAction()),
-          const SizedBox(height: AmoraSpacing.space4),
+          const SizedBox(height: AmoraSpacing.space8),
           AppPrimaryButton(
             key: const ValueKey('verification-change-mobile'),
             label: 'Change mobile number',
@@ -249,14 +259,6 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
             size: AmoraButtonSize.compact,
             fullWidth: false,
             onPressed: _isBusy ? null : _changeMobileNumber,
-          ),
-          const SizedBox(height: AmoraSpacing.space16),
-          AuthPrimaryButton(
-            key: const ValueKey('verify-mobile-button'),
-            label: _isVerifyingOtp ? 'Verifying…' : 'Verify Mobile Number',
-            icon: Icons.verified_user_outlined,
-            isLoading: _isVerifyingOtp,
-            onPressed: _isCompleteOtp && !_isBusy ? _verifyOtp : null,
           ),
         ],
       ),
@@ -663,7 +665,6 @@ class _UnifiedMobileNumberFieldState extends State<_UnifiedMobileNumberField> {
           builder: (context, constraints) {
             final availableWidth = constraints.maxWidth;
             final narrow = availableWidth < 260;
-            final phoneIconWidth = (availableWidth * .13).clamp(32.0, 40.0);
             return AnimatedContainer(
               key: const ValueKey('unified-mobile-number-field'),
               duration: const Duration(milliseconds: 180),
@@ -777,25 +778,14 @@ class _UnifiedMobileNumberFieldState extends State<_UnifiedMobileNumberField> {
                           hintStyle: AmoraTextStyles.bodyLarge.copyWith(
                             color: AppColors.text.withValues(alpha: .48),
                           ),
-                          prefixIcon: const Center(
-                            child: Icon(
-                              Icons.phone_iphone_rounded,
-                              color: AppColors.primary,
-                              size: 19,
-                            ),
-                          ),
-                          prefixIconConstraints: BoxConstraints.tightFor(
-                            width: phoneIconWidth,
-                            height: AmoraSpacing.controlHeight,
-                          ),
                           border: InputBorder.none,
                           enabledBorder: InputBorder.none,
                           focusedBorder: InputBorder.none,
                           disabledBorder: InputBorder.none,
                           errorBorder: InputBorder.none,
                           focusedErrorBorder: InputBorder.none,
-                          contentPadding: EdgeInsets.only(
-                            right: narrow ? 6 : AmoraSpacing.space8,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: AmoraSpacing.space12,
                           ),
                         ),
                       ),

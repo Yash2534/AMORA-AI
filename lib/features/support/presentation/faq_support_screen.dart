@@ -346,7 +346,7 @@ class FaqAccordionTile extends StatelessWidget {
                       ),
                       child: Icon(
                         faq.category.icon,
-                        color: AppColors.secondary,
+                        color: AppColors.primary,
                         size: 20,
                       ),
                     ),
@@ -419,7 +419,7 @@ class FaqSearchEmptyState extends StatelessWidget {
       ),
       child: const Column(
         children: [
-          Icon(Icons.search_off_rounded, color: AppColors.secondary, size: 32),
+          Icon(Icons.search_off_rounded, color: AppColors.primary, size: 32),
           SizedBox(height: 10),
           Text(
             'No help topics found',
@@ -496,7 +496,7 @@ class EmailSupportCard extends StatelessWidget {
                   ),
                   child: const Icon(
                     Icons.mail_outline_rounded,
-                    color: AppColors.secondary,
+                    color: AppColors.primary,
                     size: 27,
                   ),
                 ),
@@ -656,7 +656,7 @@ class _ResourceLink extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Icon(icon, color: AppColors.secondary, size: 19),
+                Icon(icon, color: AppColors.primary, size: 19),
                 const SizedBox(width: 8),
                 Flexible(
                   child: Text(

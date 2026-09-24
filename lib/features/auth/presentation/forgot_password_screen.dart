@@ -77,6 +77,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           ? 'We sent a code to $_maskedDestination.'
           : "Enter your registered email and we'll send a verification code.",
       stepLabel: enteringCode ? 'Step 2 of 3' : 'Step 1 of 3',
+      alignStepLabelRight: true,
       child: AnimatedSwitcher(
         duration: MediaQuery.disableAnimationsOf(context)
             ? Duration.zero

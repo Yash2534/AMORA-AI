@@ -1844,32 +1844,35 @@ class _SheetAction extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final color = danger ? AppColors.secondary : AppColors.primary;
+    final iconColor = danger ? AppColors.error : AppColors.primary;
+    final textColor = danger ? AppColors.error : AppColors.plumBlack;
     return ListTile(
       minTileHeight: 56,
       onTap: onTap,
       leading: DecoratedBox(
         decoration: BoxDecoration(
-          color: color.withValues(alpha: isDark ? 0.18 : 0.08),
+          color: iconColor.withValues(alpha: isDark ? 0.22 : 0.08),
           shape: BoxShape.circle,
         ),
         child: SizedBox.square(
           dimension: 42,
-          child: Icon(icon, color: color, size: 21),
+          child: Icon(icon, color: iconColor, size: 20),
         ),
       ),
       title: Text(
         title,
         style: TextStyle(
-          color: color,
+          color: textColor,
           fontSize: 16,
           fontWeight: FontWeight.w600,
         ),
       ),
       trailing: Icon(
         Icons.chevron_right_rounded,
-        color: color.withValues(alpha: 0.6),
+        color: AppColors.secondaryText.withValues(alpha: 0.5),
+        size: 20,
       ),
     );
   }
 }
+

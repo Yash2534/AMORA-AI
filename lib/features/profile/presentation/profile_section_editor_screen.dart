@@ -164,11 +164,29 @@ class _ProfileSectionEditorScreenState
             children: [
               for (final item in group.value)
                 FilterChip(
-                  label: Text(item),
+                  label: Text(
+                    item,
+                    style: TextStyle(
+                      color: _interests.contains(item)
+                          ? AppColors.primary
+                          : AppColors.textPrimary,
+                      fontWeight: _interests.contains(item)
+                          ? FontWeight.w700
+                          : FontWeight.w500,
+                    ),
+                  ),
                   selected: _interests.contains(item),
+                  selectedColor: AppColors.primary.withValues(alpha: .08),
+                  backgroundColor: AppColors.surface,
+                  side: BorderSide(
+                    color: _interests.contains(item)
+                        ? AppColors.primary
+                        : AppColors.border,
+                    width: _interests.contains(item) ? 2 : 1,
+                  ),
                   showCheckmark: false,
                   avatar: _interests.contains(item)
-                      ? const Icon(Icons.check_rounded, size: 18)
+                      ? const Icon(Icons.check_rounded, size: 18, color: AppColors.primary)
                       : null,
                   onSelected: (selected) {
                     if (selected && _interests.length >= 10) return;

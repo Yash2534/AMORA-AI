@@ -313,17 +313,24 @@ class _ReactionSegmentItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final selectedColor = isSuperLike ? AppColors.superLike : AppColors.secondary;
-    final containerColor = isSuperLike 
-        ? (isDark ? AppColors.superLike.withValues(alpha: 0.15) : AppColors.superLikeContainer)
-        : AppColors.tertiary;
+    final iconColor = selected
+        ? AppColors.primary
+        : AppColors.secondaryText;
+    final textColor = selected
+        ? AppColors.plumBlack
+        : AppColors.secondaryText;
+    final containerColor = selected
+        ? (isDark
+            ? AppColors.primary.withValues(alpha: 0.26)
+            : AppColors.softLavender)
+        : AppColors.transparent;
 
     return Semantics(
       button: true,
       selected: selected,
       label: label,
       child: Material(
-        color: selected ? containerColor : AppColors.transparent,
+        color: containerColor,
         borderRadius: BorderRadius.circular(14),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
@@ -331,16 +338,17 @@ class _ReactionSegmentItem extends StatelessWidget {
           child: ConstrainedBox(
             constraints: const BoxConstraints(minHeight: 48),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Icon(
                     icon,
                     size: 18,
-                    color: selected ? selectedColor : AppColors.primary,
+                    color: iconColor,
                   ),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: 8),
                   Flexible(
                     child: AnimatedSwitcher(
                       duration: const Duration(milliseconds: 220),
@@ -350,7 +358,7 @@ class _ReactionSegmentItem extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: AmoraTextStyles.labelMedium.copyWith(
-                          color: AppColors.text,
+                          color: textColor,
                           fontWeight: selected
                               ? FontWeight.w800
                               : FontWeight.w600,
@@ -367,6 +375,7 @@ class _ReactionSegmentItem extends StatelessWidget {
     );
   }
 }
+
 
 class _ReactionEmptyState extends StatelessWidget {
   const _ReactionEmptyState({

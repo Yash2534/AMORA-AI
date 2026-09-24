@@ -84,7 +84,10 @@ class _AmoraaInlineCompatibilityFilterState
   }
 
   @override
+  @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final reduceMotion = MediaQuery.disableAnimationsOf(context);
     final duration = reduceMotion
         ? Duration.zero
@@ -92,17 +95,29 @@ class _AmoraaInlineCompatibilityFilterState
     final value = widget.value.clamp(widget.min, widget.max).toInt();
     final divisions = (widget.max - widget.min) ~/ widget.step;
 
+    final cardColor = isDark
+        ? AppColors.plumBlack
+        : AppColors.surface;
+    final activeColor = AppColors.primary;
+    final inactiveTrack = isDark
+        ? AppColors.primaryLight.withValues(alpha: 0.28)
+        : AppColors.border;
+
     return Semantics(
       container: true,
       label: 'Minimum compatibility, $value percent',
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: cardColor,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppColors.tertiary),
+          border: Border.all(
+            color: isDark
+                ? AppColors.primaryLight.withValues(alpha: 0.35)
+                : AppColors.border,
+          ),
           boxShadow: [
             BoxShadow(
-              color: AppColors.primary.withValues(alpha: .07),
+              color: AppColors.shadow.withValues(alpha: .08),
               blurRadius: 18,
               spreadRadius: -12,
               offset: const Offset(0, 8),
@@ -129,7 +144,7 @@ class _AmoraaInlineCompatibilityFilterState
                         Text(
                           'Minimum compatibility',
                           style: AmoraTextStyles.labelMedium.copyWith(
-                            color: AppColors.text,
+                            color: isDark ? AppColors.white : AppColors.textPrimary,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -139,7 +154,7 @@ class _AmoraaInlineCompatibilityFilterState
                             compatibilityFilterLabel(value),
                             key: ValueKey('compatibility-label-$value'),
                             style: AmoraTextStyles.bodySmall.copyWith(
-                              color: AppColors.primary,
+                              color: isDark ? AppColors.accentLavender : AppColors.primary,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
@@ -154,7 +169,7 @@ class _AmoraaInlineCompatibilityFilterState
                       '$value%+',
                       key: ValueKey('compatibility-value-$value'),
                       style: AmoraTextStyles.titleMedium.copyWith(
-                        color: AppColors.primary,
+                        color: isDark ? AppColors.accentLavender : AppColors.primary,
                         fontWeight: FontWeight.w900,
                         letterSpacing: -.4,
                       ),
@@ -167,7 +182,7 @@ class _AmoraaInlineCompatibilityFilterState
                       tooltip: 'Reset compatibility to 70 percent',
                       onPressed: widget.onReset,
                       icon: const Icon(Icons.restart_alt_rounded, size: 20),
-                      color: AppColors.secondary,
+                      color: isDark ? AppColors.accentLavender : AppColors.primary,
                     ),
                   ],
                 ],
@@ -176,23 +191,23 @@ class _AmoraaInlineCompatibilityFilterState
                 height: 48,
                 child: SliderTheme(
                   data: SliderTheme.of(context).copyWith(
-                    trackHeight: 3,
-                    activeTrackColor: AppColors.secondary,
-                    inactiveTrackColor: AppColors.tertiary,
-                    thumbColor: AppColors.secondary,
-                    overlayColor: AppColors.tertiary.withValues(alpha: .24),
-                    activeTickMarkColor: AppColors.surface,
-                    inactiveTickMarkColor: AppColors.secondary,
+                    trackHeight: 4,
+                    activeTrackColor: activeColor,
+                    inactiveTrackColor: inactiveTrack,
+                    thumbColor: activeColor,
+                    overlayColor: activeColor.withValues(alpha: .16),
+                    activeTickMarkColor: AppColors.white,
+                    inactiveTickMarkColor: activeColor,
                     valueIndicatorColor: AppColors.primary,
                     valueIndicatorTextStyle: AmoraTextStyles.labelMedium
                         .copyWith(
-                          color: AppColors.surface,
+                          color: AppColors.white,
                           fontWeight: FontWeight.w800,
                         ),
                     trackShape: const RoundedRectSliderTrackShape(),
                     thumbShape: const _AmoraaCompatibilityThumbShape(),
                     overlayShape: const RoundSliderOverlayShape(
-                      overlayRadius: 24,
+                      overlayRadius: 22,
                     ),
                     tickMarkShape: const RoundSliderTickMarkShape(
                       tickMarkRadius: 2,
@@ -294,6 +309,7 @@ class _AmoraaCompatibilityThumbShape extends SliderComponentShape {
     final canvas = context.canvas;
     final radius = _radius + activationAnimation.value;
     canvas.drawCircle(center, radius + 2, Paint()..color = AppColors.surface);
-    canvas.drawCircle(center, radius, Paint()..color = AppColors.secondary);
+    canvas.drawCircle(center, radius, Paint()..color = AppColors.primary);
   }
 }
+

@@ -760,7 +760,7 @@ class _AmoraaClearOptionTile extends StatelessWidget {
       label: 'Clear selection',
       child: Material(
         color: selected
-            ? AppColors.tertiary.withValues(alpha: .72)
+            ? AppColors.primary.withValues(alpha: .08)
             : AppColors.surface,
         borderRadius: BorderRadius.circular(16),
         clipBehavior: Clip.antiAlias,
@@ -776,7 +776,10 @@ class _AmoraaClearOptionTile extends StatelessWidget {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: selected ? AppColors.secondary : AppColors.tertiary,
+                color: selected
+                    ? AppColors.primary
+                    : AppColors.tertiary.withValues(alpha: .72),
+                width: selected ? 2 : 1,
               ),
             ),
             child: Row(
@@ -791,14 +794,14 @@ class _AmoraaClearOptionTile extends StatelessWidget {
                   child: Text(
                     'Clear selection',
                     style: AmoraTextStyles.bodyLarge.copyWith(
-                      color: AppColors.text,
+                      color: selected ? AppColors.primary : AppColors.textPrimary,
                       fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                     ),
                   ),
                 ),
                 Icon(
                   selected ? Icons.check_circle_rounded : Icons.circle_outlined,
-                  color: selected ? AppColors.secondary : AppColors.tertiary,
+                  color: selected ? AppColors.primary : AppColors.textMuted,
                   size: 22,
                 ),
               ],
@@ -839,12 +842,17 @@ class AmoraaSelectOptionTile<T> extends StatelessWidget {
         curve: Curves.easeOutCubic,
         constraints: const BoxConstraints(minHeight: 56),
         decoration: BoxDecoration(
-          color: selected || highlighted
-              ? AppColors.tertiary.withValues(alpha: selected ? .72 : .34)
-              : AppColors.surface,
+          color: selected
+              ? AppColors.primary.withValues(alpha: .08)
+              : highlighted
+                  ? AppColors.primary.withValues(alpha: .04)
+                  : AppColors.surface,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: selected ? AppColors.secondary : AppColors.tertiary,
+            color: selected
+                ? AppColors.primary
+                : AppColors.tertiary.withValues(alpha: .72),
+            width: selected ? 2 : 1,
           ),
         ),
         child: Material(
@@ -861,7 +869,11 @@ class AmoraaSelectOptionTile<T> extends StatelessWidget {
               child: Row(
                 children: [
                   if (option.icon != null) ...[
-                    Icon(option.icon, color: AppColors.primary, size: 21),
+                    Icon(
+                      option.icon,
+                      color: selected ? AppColors.primary : AppColors.textSecondary,
+                      size: 21,
+                    ),
                     const SizedBox(width: AmoraSpacing.space12),
                   ],
                   Expanded(
@@ -874,7 +886,7 @@ class AmoraaSelectOptionTile<T> extends StatelessWidget {
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: AmoraTextStyles.bodyLarge.copyWith(
-                            color: AppColors.text,
+                            color: selected ? AppColors.primary : AppColors.textPrimary,
                             fontWeight: selected
                                 ? FontWeight.w700
                                 : FontWeight.w500,
@@ -887,7 +899,9 @@ class AmoraaSelectOptionTile<T> extends StatelessWidget {
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: AmoraTextStyles.bodySmall.copyWith(
-                              color: AppColors.text.withValues(alpha: .68),
+                              color: selected
+                                  ? AppColors.primary.withValues(alpha: .8)
+                                  : AppColors.textSecondary,
                             ),
                           ),
                         ],
@@ -899,7 +913,7 @@ class AmoraaSelectOptionTile<T> extends StatelessWidget {
                     selected
                         ? Icons.check_circle_rounded
                         : Icons.circle_outlined,
-                    color: selected ? AppColors.secondary : AppColors.tertiary,
+                    color: selected ? AppColors.primary : AppColors.textMuted,
                     size: 22,
                   ),
                 ],

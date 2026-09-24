@@ -761,7 +761,7 @@ class _Tip extends StatelessWidget {
       children: [
         const Icon(
           Icons.check_circle_rounded,
-          color: AppColors.successGreen,
+          color: AppColors.primary,
           size: AmoraIconSizes.medium,
         ),
         const SizedBox(width: AmoraSpacing.space8),

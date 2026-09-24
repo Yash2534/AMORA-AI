@@ -442,10 +442,16 @@ class _ProfileCompletionScreenState extends State<ProfileCompletionScreen> {
       (candidate) => candidate.id == id,
     );
     if (!formValid || !section.isComplete) {
-      setState(() {
-        _saveErrors[id] =
-            '${section.title} still needs ${section.missingFields} ${section.missingFields == 1 ? 'detail' : 'details'}.';
-      });
+      if (!formValid) {
+        setState(() {
+          _saveErrors.remove(id);
+        });
+      } else {
+        setState(() {
+          _saveErrors[id] =
+              '${section.title} still needs ${section.missingFields} ${section.missingFields == 1 ? 'detail' : 'details'}.';
+        });
+      }
       final pending = draft.pendingFields
           .where((field) => field.id.sectionId == id)
           .firstOrNull;
@@ -811,7 +817,7 @@ class _CompletionSectionCard extends StatelessWidget {
                         height: 44,
                         decoration: BoxDecoration(
                           color: section.isComplete
-                              ? AppColors.tertiary
+                              ? AppColors.primary.withValues(alpha: .08)
                               : AppColors.background,
                           borderRadius: BorderRadius.circular(15),
                         ),
@@ -889,13 +895,40 @@ class _CompletionSectionCard extends StatelessWidget {
                         const SizedBox(height: AmoraSpacing.space16),
                         editor,
                         if (error case final message?) ...[
-                          const SizedBox(height: AmoraSpacing.space8),
+                          const SizedBox(height: AmoraSpacing.space12),
                           Semantics(
                             liveRegion: true,
-                            child: Text(
-                              message,
-                              style: AmoraTextStyles.bodySmall.copyWith(
-                                color: Theme.of(context).colorScheme.error,
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: AmoraSpacing.space12,
+                                vertical: AmoraSpacing.space8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.error.withValues(alpha: .08),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: AppColors.error.withValues(alpha: .36),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.error_outline_rounded,
+                                    color: AppColors.error,
+                                    size: 18,
+                                  ),
+                                  const SizedBox(width: AmoraSpacing.space8),
+                                  Expanded(
+                                    child: Text(
+                                      message,
+                                      style: AmoraTextStyles.bodySmall.copyWith(
+                                        color: AppColors.error,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ),

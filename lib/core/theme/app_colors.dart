@@ -69,8 +69,8 @@ abstract final class AppColors {
   // Interaction.
   static const Color active = primary;
   static const Color onActive = white;
-  static const Color activeContainer = softLavender;
-  static const Color selectedContainer = softLavender;
+  static const Color activeContainer = Color(0x14713F62);
+  static const Color selectedContainer = Color(0x14713F62);
   static const Color focus = primary;
   static const Color hover = softLavender;
   static const Color pressed = primaryDark;
