@@ -90,10 +90,7 @@ class LegalDocumentScreen extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const AmoraLogo(
-                            iconSize: 40,
-                            wordmarkHeight: 20,
-                          ),
+                          const AmoraLogo(iconSize: 40, wordmarkHeight: 20),
                           const SizedBox(height: AmoraSpacing.space20),
                           Text(
                             updated,
@@ -252,7 +249,7 @@ const _termsSections = <LegalSection>[
   ),
   LegalSection(
     'Ending your account',
-    'You may stop using the service or request account deletion through the '
+    'You may stop using the service or permanently delete your account through the '
         'available account controls. Certain records may be retained where '
         'required for safety, fraud prevention, dispute resolution, or law.',
   ),

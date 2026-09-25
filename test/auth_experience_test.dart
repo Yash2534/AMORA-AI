@@ -849,12 +849,6 @@ void main() {
           final number = tester.getRect(
             find.byKey(const ValueKey('mobile-number-field')),
           );
-          final phoneIcon = tester.getRect(
-            find.descendant(
-              of: find.byKey(const ValueKey('unified-mobile-number-field')),
-              matching: find.byIcon(Icons.phone_iphone_rounded),
-            ),
-          );
 
           expect(field.height, AmoraSpacing.controlHeight);
           expect(country.left, greaterThanOrEqualTo(field.left));
@@ -870,7 +864,6 @@ void main() {
             closeTo(AmoraSpacing.space8, 1),
           );
           expect(number.center.dy, closeTo(field.center.dy, 1));
-          expect(phoneIcon.center.dy, closeTo(field.center.dy, 1));
           expect(field.left, greaterThanOrEqualTo(0));
           expect(field.right, lessThanOrEqualTo(width));
           expect(tester.takeException(), isNull);

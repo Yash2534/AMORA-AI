@@ -144,12 +144,8 @@ void main() {
       settle: false,
     );
     repository.addPhotoInSession(_localPhoto);
+    repository.setPrimaryPhotoInSession(repository.profile.photos.length - 1);
     await tester.pump();
-    await tester.scrollUntilVisible(
-      find.byKey(const ValueKey('profile-horizontal-photo-gallery')),
-      400,
-      scrollable: find.byType(Scrollable).first,
-    );
     await tester.pump(const Duration(seconds: 1));
 
     expect(

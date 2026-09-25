@@ -7,8 +7,10 @@ import 'package:amora_ai/core/theme/amora_theme_controller.dart';
 import 'package:amora_ai/core/navigation/main_shell.dart';
 import 'package:amora_ai/core/widgets/floating_bottom_nav.dart';
 import 'package:amora_ai/features/auth/presentation/compatibility_onboarding_screen.dart';
+import 'package:amora_ai/features/auth/presentation/change_password_screen.dart';
 import 'package:amora_ai/features/auth/presentation/account_verification_screen.dart';
 import 'package:amora_ai/features/auth/presentation/login_screen.dart';
+import 'package:amora_ai/features/auth/presentation/welcome_back_reactivation_screen.dart';
 import 'package:amora_ai/features/auth/presentation/signup_screen.dart';
 import 'package:amora_ai/features/auth/presentation/forgot_password_screen.dart';
 import 'package:amora_ai/features/auth/presentation/reset_password_screen.dart';
@@ -26,6 +28,7 @@ import 'package:amora_ai/features/legal/presentation/legal_document_screen.dart'
 import 'package:amora_ai/features/legal/presentation/community_guidelines_screen.dart';
 import 'package:amora_ai/features/matches/presentation/matches_screen.dart';
 import 'package:amora_ai/features/notifications/presentation/notifications_hub_screen.dart';
+import 'package:amora_ai/features/notifications/data/push_notification_service.dart';
 import 'package:amora_ai/features/onboarding/presentation/onboarding_screen.dart';
 import 'package:amora_ai/features/onboarding/presentation/profile_onboarding_flow.dart';
 import 'package:amora_ai/features/onboarding/data/local_onboarding_repository.dart';
@@ -64,8 +67,12 @@ import 'package:amora_ai/core/widgets/amora_top_notification.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await PushNotificationService.instance.initialize();
   await AuthService.instance.initialize();
   await AmoraSession.restore();
+  if (AmoraSession.isLoggedIn.value) {
+    await PushNotificationService.instance.syncForAuthenticatedUser();
+  }
   await LocalProfileRepository.instance.initialize();
   await ProfileRelationshipController.instance.refreshRemote();
   await LocalOnboardingRepository.instance.initialize();
@@ -125,6 +132,8 @@ class _MyAppState extends State<MyApp> {
           ),
           OnboardingScreen.routeName: (_) => const OnboardingScreen(),
           LoginScreen.routeName: (_) => const LoginScreen(),
+          WelcomeBackReactivationScreen.routeName: (_) =>
+              const WelcomeBackReactivationScreen(),
           SignupScreen.routeName: (_) => const SignupScreen(),
           ForgotPasswordScreen.routeName: (_) => ForgotPasswordScreen(
             requestCode: AuthService.instance.forgotPassword,
@@ -132,6 +141,7 @@ class _MyAppState extends State<MyApp> {
           ),
           ResetPasswordScreen.routeName: (_) =>
               ResetPasswordScreen(onReset: AuthService.instance.resetPassword),
+          ChangePasswordScreen.routeName: (_) => const ChangePasswordScreen(),
           AccountVerificationScreen.routeName: (_) =>
               const AccountVerificationScreen(),
           ProfileOnboardingFlow.routeName: (_) => const ProfileOnboardingFlow(),
@@ -208,22 +218,16 @@ class _MyAppState extends State<MyApp> {
               const CommunityGuidelinesScreen(),
           LogoutAccountScreen.routeName: (_) => const LogoutAccountScreen(),
           DeactivateAccountScreen.routeName: (_) => DeactivateAccountScreen(
-            onDeactivate: () async {
-              await PhaseTwoApiService.instance.deactivate();
+            onDeactivate: (password) async {
+              await PhaseTwoApiService.instance.deactivate(password);
+              PushNotificationService.instance
+                  .forgetCurrentDeviceRegistration();
               await AuthService.instance.clearSession();
               return true;
             },
           ),
           DeleteAccountInformationScreen.routeName: (_) =>
-              DeleteAccountInformationScreen(
-                onDeleteSelection: (selection, deletionConfirmation) async {
-                  return PhaseTwoApiService.instance.deleteAccount(
-                    reason: selection.backendValue,
-                    details: selection.details,
-                    deletionConfirmation: deletionConfirmation,
-                  );
-                },
-              ),
+              const DeleteAccountInformationScreen(),
         },
         onUnknownRoute: (_) {
           return MaterialPageRoute<void>(

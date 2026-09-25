@@ -285,16 +285,22 @@ class NotificationInboxRepository extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<bool> registerPushToken(String token, {String? platform}) async {
+  Future<bool> registerPushToken(
+    String token, {
+    String? platform,
+    String? installationId,
+  }) async {
     final cleanToken = token.trim();
     if (cleanToken.isEmpty) return false;
     try {
       final response = await _remote.request(
         'POST',
-        '/api/notifications/register-token',
+        '/api/devices',
         body: <String, dynamic>{
-          'token': cleanToken,
+          'pushToken': cleanToken,
           'platform': platform ?? defaultTargetPlatform.name,
+          if (installationId?.trim().isNotEmpty == true)
+            'installationId': installationId!.trim(),
         },
       );
       final data = (response['data'] as Map?)?.cast<String, dynamic>();
@@ -309,9 +315,9 @@ class NotificationInboxRepository extends ChangeNotifier {
     if (cleanToken.isEmpty) return false;
     try {
       final response = await _remote.request(
-        'POST',
-        '/api/notifications/unregister-token',
-        body: <String, dynamic>{'token': cleanToken},
+        'DELETE',
+        '/api/devices',
+        body: <String, dynamic>{'pushToken': cleanToken},
       );
       return response['success'] == true;
     } catch (_) {

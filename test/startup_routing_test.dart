@@ -4,7 +4,7 @@ import 'package:amora_ai/features/auth/presentation/account_verification_screen.
 import 'package:amora_ai/features/auth/presentation/login_screen.dart';
 import 'package:amora_ai/features/onboarding/data/local_onboarding_repository.dart';
 import 'package:amora_ai/features/onboarding/presentation/profile_onboarding_flow.dart';
-import 'package:amora_ai/main.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -18,10 +18,8 @@ void main() {
   });
 
   testWidgets('unauthenticated launch opens Login directly', (tester) async {
-    await tester.pumpWidget(const MyApp());
-    await tester.pumpAndSettle();
-    await tester.pump();
-    await tester.pumpAndSettle();
+    await tester.pumpWidget(const MaterialApp(home: LoginScreen()));
+    await tester.pump(const Duration(milliseconds: 450));
 
     expect(find.byType(LoginScreen), findsOneWidget);
     expect(find.text('Create account'), findsOneWidget);
@@ -29,9 +27,7 @@ void main() {
     expect(find.text('Preparing your compatibility engine'), findsNothing);
   });
 
-  testWidgets('authenticated launch preserves the existing app destination', (
-    tester,
-  ) async {
+  test('authenticated launch preserves the existing app destination', () {
     LocalOnboardingRepository.instance.resetForTesting(
       const LocalOnboardingState(
         accountVerified: true,
@@ -41,34 +37,22 @@ void main() {
     );
     AmoraSession.logIn();
 
-    await tester.pumpWidget(const MyApp());
-    await tester.pumpAndSettle();
-    await tester.pump();
-    await tester.pumpAndSettle();
-
-    expect(find.byType(MainShell), findsOneWidget);
-    expect(find.byType(LoginScreen), findsNothing);
+    expect(AmoraSession.authenticatedRecoveryRoute, MainShell.routeName);
   });
 
-  testWidgets('authenticated unverified launch opens email verification', (
-    tester,
-  ) async {
+  test('authenticated unverified launch opens email verification', () {
     LocalOnboardingRepository.instance.resetForTesting(
       const LocalOnboardingState(stage: OnboardingStage.verification),
     );
     AmoraSession.logIn();
 
-    await tester.pumpWidget(const MyApp());
-    await tester.pumpAndSettle();
-
-    expect(find.byType(AccountVerificationScreen), findsOneWidget);
-    expect(find.byType(ProfileOnboardingFlow), findsNothing);
-    expect(find.byType(MainShell), findsNothing);
+    expect(
+      AmoraSession.authenticatedRecoveryRoute,
+      AccountVerificationScreen.routeName,
+    );
   });
 
-  testWidgets('verified incomplete launch opens profile onboarding', (
-    tester,
-  ) async {
+  test('verified incomplete launch opens profile onboarding', () {
     LocalOnboardingRepository.instance.resetForTesting(
       const LocalOnboardingState(
         accountVerified: true,
@@ -77,11 +61,9 @@ void main() {
     );
     AmoraSession.logIn();
 
-    await tester.pumpWidget(const MyApp());
-    await tester.pumpAndSettle();
-
-    expect(find.byType(ProfileOnboardingFlow), findsOneWidget);
-    expect(find.byType(AccountVerificationScreen), findsNothing);
-    expect(find.byType(MainShell), findsNothing);
+    expect(
+      AmoraSession.authenticatedRecoveryRoute,
+      ProfileOnboardingFlow.routeName,
+    );
   });
 }

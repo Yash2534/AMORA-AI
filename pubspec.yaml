@@ -10,6 +10,8 @@ environment:
 dependencies:
   cupertino_icons: ^1.0.8
   emoji_picker_flutter: ^4.5.3
+  firebase_core: ^4.15.0
+  firebase_messaging: ^16.7.0
   flutter:
     sdk: flutter
   flutter_secure_storage: ^9.2.2

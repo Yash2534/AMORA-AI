@@ -165,6 +165,64 @@ test('Discover rejects missing and invalid authentication', async () => {
   assert.equal(invalid.body.code, 'TOKEN_INVALID');
 });
 
+test('Discover filter ranges accept boundaries, reject malformed values, and normalize stale storage', async () => {
+  const headers = { authorization: `Bearer ${accessToken}` };
+  const update = (body) => request('/api/discover/filters', {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify(body),
+  });
+
+  const minimum = await update({
+    minAge: 18,
+    maxAge: 18,
+    maxDistanceKm: 1,
+    minScore: 0,
+    minHeight: 137,
+  });
+  assert.equal(minimum.status, 200, JSON.stringify(minimum.body));
+
+  const maximum = await update({
+    minAge: 99,
+    maxAge: 99,
+    maxDistanceKm: 300,
+    minScore: 100,
+    minHeight: 213,
+  });
+  assert.equal(maximum.status, 200, JSON.stringify(maximum.body));
+  assert.equal(maximum.body.data.filters.maxDistanceKm, 300);
+
+  for (const invalidBody of [
+    { maxDistanceKm: 301 },
+    { maxDistanceKm: 0 },
+    { maxDistanceKm: 'not-a-number' },
+    { minHeight: 136 },
+    { minHeight: 214 },
+  ]) {
+    const invalid = await update(invalidBody);
+    assert.equal(invalid.status, 400, JSON.stringify(invalid.body));
+  }
+  const invalidFeed = await authorized('/api/discover/feed?maxDistanceKm=301');
+  assert.equal(invalidFeed.status, 400);
+
+  const viewerId = Number(jwt.decode(accessToken).sub);
+  await models.DiscoverFilterPreference.update(
+    { maxDistanceKm: 500 },
+    { where: { userId: viewerId } },
+  );
+  const normalized = await request('/api/discover/filters', { headers });
+  assert.equal(normalized.status, 200);
+  assert.equal(normalized.body.data.filters.maxDistanceKm, 300);
+  const restored = await update({
+    minAge: 18,
+    maxAge: 45,
+    maxDistanceKm: 80,
+    minScore: 0,
+    minHeight: null,
+  });
+  assert.equal(restored.status, 200, JSON.stringify(restored.body));
+});
+
 test('authenticated Discover uses database eligibility and exclusions', async () => {
   const result = await authorized('/api/discover/feed?limit=30&minScore=0');
   assert.equal(result.status, 200);

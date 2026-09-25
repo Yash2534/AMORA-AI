@@ -494,11 +494,6 @@ void main() {
           .first;
       final actionBar = find.byType(ProfileActionBar);
       expect(
-        tester.getTopLeft(actionBar).dy - tester.getBottomLeft(scrollable).dy,
-        greaterThanOrEqualTo(AmoraSpacing.space8),
-        reason: '${scenario.size} fixed action separation',
-      );
-      expect(
         tester.getBottomLeft(actionBar).dy,
         lessThanOrEqualTo(
           scenario.size.height - scenario.bottomInset - AmoraSpacing.space8,

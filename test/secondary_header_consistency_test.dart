@@ -74,7 +74,10 @@ void main() {
       of: find.byType(AmoraHeaderBackButton),
       matching: find.byType(IconButton),
     );
-    expect(tester.getSize(backIconButton), const Size.square(48));
+    expect(
+      tester.getSize(backIconButton),
+      const Size.square(AmoraHeaderTokens.touchTarget),
+    );
     expect(
       tester.getSize(find.byType(AmoraHeaderActionButton)),
       const Size.square(AmoraHeaderTokens.touchTarget),
@@ -119,10 +122,10 @@ void main() {
     final appBarTheme = Theme.of(
       tester.element(find.byType(AppBar)),
     ).appBarTheme;
-    expect(appBarTheme.titleSpacing, AmoraSpacing.space20);
+    expect(appBarTheme.titleSpacing, AmoraHeaderTokens.contentHorizontalInset);
     expect(appBarTheme.titleTextStyle, AmoraTextStyles.pageHeaderTitle);
-    expect(appBarTheme.iconTheme?.size, 20);
-    expect(appBarTheme.actionsIconTheme?.size, 20);
+    expect(appBarTheme.iconTheme?.size, AmoraHeaderTokens.iconSize);
+    expect(appBarTheme.actionsIconTheme?.size, AmoraHeaderTokens.iconSize);
   });
 
   testWidgets('subtitle title block uses the shared header tokens', (

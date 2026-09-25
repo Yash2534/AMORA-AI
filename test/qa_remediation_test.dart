@@ -40,7 +40,7 @@ void main() {
     expect(ProfileAttributeIcons.smoking('Never'), Icons.smoke_free_rounded);
     expect(
       ProfileAttributeIcons.interest('Photography'),
-      Icons.photo_camera_outlined,
+      Icons.photo_camera_rounded,
     );
     expect(ProfileAttributeIcons.interest('Dogs'), Icons.pets_rounded);
     expect(ProfileAttributeIcons.pronouns, Icons.person_outline_rounded);

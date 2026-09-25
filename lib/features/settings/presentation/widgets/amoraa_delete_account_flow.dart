@@ -1,101 +1,39 @@
-import 'package:amora_ai/core/auth/auth_service.dart';
+import 'dart:async';
+
 import 'package:amora_ai/core/api/phase_two_api_service.dart';
+import 'package:amora_ai/core/auth/auth_service.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
+import 'package:amora_ai/features/auth/presentation/widgets/amora_otp_input.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
-@immutable
-class DeleteAccountReason {
-  const DeleteAccountReason({
-    required this.code,
-    required this.label,
-    required this.icon,
-  });
+typedef AccountDeletionMethodsLoader =
+    Future<List<AccountDeletionMethod>> Function();
+typedef AccountDeletionOtpSender = Future<void> Function(String channel);
+typedef AccountDeletionConfirmer =
+    Future<void> Function(String channel, String otp);
 
-  final String code;
-  final String label;
-  final IconData icon;
-}
-
-const deleteAccountReasons = <DeleteAccountReason>[
-  DeleteAccountReason(
-    code: 'found_someone',
-    label: 'I found someone',
-    icon: Icons.favorite_rounded,
-  ),
-  DeleteAccountReason(
-    code: 'taking_a_break',
-    label: 'I\u2019m taking a break',
-    icon: Icons.pause_circle_rounded,
-  ),
-  DeleteAccountReason(
-    code: 'not_finding_matches',
-    label: 'I\u2019m not finding the right matches',
-    icon: Icons.person_search_rounded,
-  ),
-  DeleteAccountReason(
-    code: 'privacy_concerns',
-    label: 'Privacy concerns',
-    icon: Icons.shield_rounded,
-  ),
-  DeleteAccountReason(
-    code: 'too_many_notifications',
-    label: 'Too many notifications',
-    icon: Icons.notifications_off_rounded,
-  ),
-  DeleteAccountReason(
-    code: 'app_experience_issues',
-    label: 'App experience issues',
-    icon: Icons.sentiment_dissatisfied_rounded,
-  ),
-  DeleteAccountReason(
-    code: 'other',
-    label: 'Other',
-    icon: Icons.more_horiz_rounded,
-  ),
-];
-
-@immutable
-class DeleteAccountSelection {
-  const DeleteAccountSelection({required this.reason, this.details});
-
-  final DeleteAccountReason reason;
-  final String? details;
-
-  String get backendValue => reason.code;
-}
-
-typedef DeleteAccountConfirmed =
-    Future<AccountDeletionResult> Function(
-      DeleteAccountSelection selection,
-      String deletionConfirmation,
-    );
-
-enum _DeleteAccountStep {
-  reason,
-  reauthentication,
-  confirmation,
-  processing,
-  completed,
-  pendingReview,
-  failure,
-  unknown,
-}
+enum _DeleteAccountStep { warning, method, otp }
 
 class AmoraaDeleteAccountFlow extends StatefulWidget {
   const AmoraaDeleteAccountFlow({
     super.key,
-    required this.onDeleteConfirmed,
+    required this.onDeleted,
     required this.onCancel,
-    this.reauthenticateWithPassword,
+    this.loadMethods,
+    this.sendOtp,
+    this.confirmDeletion,
+    this.resendCooldown = const Duration(seconds: 45),
   });
 
-  final DeleteAccountConfirmed onDeleteConfirmed;
+  final Future<void> Function() onDeleted;
   final VoidCallback onCancel;
-  final Future<String> Function(String password)? reauthenticateWithPassword;
+  final AccountDeletionMethodsLoader? loadMethods;
+  final AccountDeletionOtpSender? sendOtp;
+  final AccountDeletionConfirmer? confirmDeletion;
+  final Duration resendCooldown;
 
   @override
   State<AmoraaDeleteAccountFlow> createState() =>
@@ -103,352 +41,50 @@ class AmoraaDeleteAccountFlow extends StatefulWidget {
 }
 
 class _AmoraaDeleteAccountFlowState extends State<AmoraaDeleteAccountFlow> {
-  static const _maximumOtherReasonLength = 240;
+  final _otpControllers = List.generate(6, (_) => TextEditingController());
+  final _otpNodes = List.generate(6, (_) => FocusNode());
+  _DeleteAccountStep _step = _DeleteAccountStep.warning;
+  List<AccountDeletionMethod> _methods = const [];
+  AccountDeletionMethod? _selected;
+  bool _busy = false;
+  String? _error;
+  Timer? _timer;
+  int _cooldownSeconds = 0;
 
-  final _otherController = TextEditingController();
-  final _passwordController = TextEditingController();
-  DeleteAccountReason? _selectedReason;
-  _DeleteAccountStep _step = _DeleteAccountStep.reason;
-  bool _submitting = false;
-  String? _reauthenticationError;
-  String? _deletionConfirmation;
-  bool _canRetry = false;
-
-  bool get _isOther => _selectedReason?.code == 'other';
-  bool get _otherIsValid =>
-      !_isOther || _otherController.text.trim().isNotEmpty;
-  bool get _canContinue => _selectedReason != null && _otherIsValid;
-
-  @override
-  void initState() {
-    super.initState();
-    _otherController.addListener(_refresh);
-  }
+  String get _otp =>
+      _otpControllers.map((controller) => controller.text).join();
+  bool get _otpComplete => RegExp(r'^\d{6}$').hasMatch(_otp);
 
   @override
   void dispose() {
-    _otherController
-      ..removeListener(_refresh)
-      ..dispose();
-    _passwordController.dispose();
+    _timer?.cancel();
+    for (final controller in _otpControllers) {
+      controller.dispose();
+    }
+    for (final node in _otpNodes) {
+      node.dispose();
+    }
     super.dispose();
   }
 
-  void _refresh() {
-    if (mounted) setState(() {});
-  }
-
-  DeleteAccountSelection get _selection {
-    final reason = _selectedReason!;
-    final details = reason.code == 'other' ? _otherController.text.trim() : '';
-    return DeleteAccountSelection(
-      reason: reason,
-      details: details.isEmpty ? null : details,
-    );
-  }
-
   @override
-  Widget build(BuildContext context) {
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 220),
-      switchInCurve: Curves.easeOutCubic,
-      switchOutCurve: Curves.easeInCubic,
-      child: switch (_step) {
-        _DeleteAccountStep.reason => _buildReasonStep(),
-        _DeleteAccountStep.reauthentication => _buildReauthenticationStep(),
-        _DeleteAccountStep.confirmation => _buildConfirmationStep(),
-        _DeleteAccountStep.processing => _buildProcessingStep(),
-        _DeleteAccountStep.completed => _buildCompletedStep(),
-        _DeleteAccountStep.pendingReview => _buildPendingReviewStep(),
-        _DeleteAccountStep.failure => _buildFailureStep(),
-        _DeleteAccountStep.unknown => _buildUnknownStep(),
-      },
-    );
-  }
-
-  Widget _buildReasonStep() {
-    return Column(
-      key: const ValueKey('delete-account-reason-step'),
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(
-          'Why are you deleting your account?',
-          style: AmoraTextStyles.titleLarge,
-        ),
-        const SizedBox(height: AmoraSpacing.space8),
-        Text(
-          'Your feedback helps us improve AMORAA.',
-          style: AmoraTextStyles.bodyMedium.copyWith(
-            color: AppColors.textSecondary,
-          ),
-        ),
-        const SizedBox(height: AmoraSpacing.space16),
-        for (final reason in deleteAccountReasons) ...[
-          _DeleteReasonRow(
-            key: ValueKey('delete-reason-${reason.code}'),
-            reason: reason,
-            selected: reason == _selectedReason,
-            onTap: () => setState(() => _selectedReason = reason),
-          ),
-          if (reason != deleteAccountReasons.last)
-            const SizedBox(height: AmoraSpacing.space8),
-        ],
-        AnimatedSize(
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeOutCubic,
-          child: _isOther
-              ? Padding(
-                  padding: const EdgeInsets.only(top: AmoraSpacing.space12),
-                  child: TextFormField(
-                    key: const ValueKey('delete-other-reason-field'),
-                    controller: _otherController,
-                    maxLength: _maximumOtherReasonLength,
-                    inputFormatters: [
-                      LengthLimitingTextInputFormatter(
-                        _maximumOtherReasonLength,
-                      ),
-                    ],
-                    minLines: 2,
-                    maxLines: 4,
-                    textInputAction: TextInputAction.done,
-                    decoration: InputDecoration(
-                      labelText: 'Tell us more',
-                      hintText: 'Enter your reason',
-                      counterText: '',
-                      errorText:
-                          _otherController.text.isNotEmpty && !_otherIsValid
-                          ? 'Please enter your reason.'
-                          : null,
-                    ),
-                  ),
-                )
-              : const SizedBox.shrink(),
-        ),
-        const SizedBox(height: AmoraSpacing.space20),
-        AppPrimaryButton(
-          key: const ValueKey('delete-reason-continue'),
-          label: 'Continue',
-          icon: Icons.arrow_forward_rounded,
-          variant: AppPrimaryButtonVariant.outlined,
-          onPressed: _canContinue
-              ? () {
-                  FocusScope.of(context).unfocus();
-                  setState(() => _step = _DeleteAccountStep.reauthentication);
-                }
-              : null,
-        ),
-        const SizedBox(height: AmoraSpacing.space8),
-        AppPrimaryButton(
-          key: const ValueKey('delete-reason-cancel'),
-          label: 'Cancel',
-          variant: AppPrimaryButtonVariant.text,
-          onPressed: widget.onCancel,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildReauthenticationStep() {
-    final isGoogle = AuthService.instance.currentUser?.authProvider == 'google';
-    return Column(
-      key: const ValueKey('delete-account-reauthentication-step'),
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text('Confirm it’s you', style: AmoraTextStyles.titleLarge),
-        const SizedBox(height: AmoraSpacing.space8),
-        Text(
-          isGoogle
-              ? 'Re-authenticate with the Google account linked to AMORAA before deleting your account.'
-              : 'Enter your current password before deleting your account.',
-          style: AmoraTextStyles.bodyMedium.copyWith(
-            color: AppColors.textSecondary,
-          ),
-        ),
-        const SizedBox(height: AmoraSpacing.space20),
-        if (isGoogle)
-          AppPrimaryButton(
-            key: const ValueKey('delete-account-google-reauthenticate'),
-            label: 'Continue with Google',
-            icon: Icons.login_rounded,
-            isLoading: _submitting,
-            onPressed: _submitting ? null : _reauthenticateWithGoogle,
-          )
-        else ...[
-          TextFormField(
-            key: const ValueKey('delete-account-password-field'),
-            controller: _passwordController,
-            obscureText: true,
-            autocorrect: false,
-            enableSuggestions: false,
-            textInputAction: TextInputAction.done,
-            onFieldSubmitted: (_) => _reauthenticateWithPassword(),
-            decoration: const InputDecoration(labelText: 'Current Password'),
-          ),
-          const SizedBox(height: AmoraSpacing.space16),
-          AppPrimaryButton(
-            key: const ValueKey('delete-account-password-reauthenticate'),
-            label: 'Continue',
-            icon: Icons.lock_outline_rounded,
-            isLoading: _submitting,
-            onPressed: _submitting ? null : _reauthenticateWithPassword,
-          ),
-        ],
-        if (_reauthenticationError != null) ...[
-          const SizedBox(height: AmoraSpacing.space12),
-          Text(
-            _reauthenticationError!,
-            style: AmoraTextStyles.bodySmall.copyWith(color: AppColors.error),
-          ),
-        ],
-        const SizedBox(height: AmoraSpacing.space8),
-        AppPrimaryButton(
-          label: 'Go back',
-          variant: AppPrimaryButtonVariant.text,
-          onPressed: _submitting
-              ? null
-              : () => setState(() => _step = _DeleteAccountStep.reason),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildConfirmationStep() {
-    final selection = _selection;
-    return Column(
-      key: const ValueKey('delete-account-final-step'),
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(
-          'Delete your account permanently?',
-          style: AmoraTextStyles.titleLarge,
-        ),
-        const SizedBox(height: AmoraSpacing.space8),
-        Text(
-          'After you confirm your identity, we will submit your account deletion request. Deletion may require additional processing or review.',
-          style: AmoraTextStyles.bodyMedium.copyWith(
-            color: AppColors.textSecondary,
-            height: 1.5,
-          ),
-        ),
-        const SizedBox(height: AmoraSpacing.space16),
-        _SelectedReasonSummary(selection: selection),
-        const SizedBox(height: AmoraSpacing.space20),
-        Semantics(
-          button: true,
-          label: 'Delete Permanently, destructive action',
-          child: AppPrimaryButton(
-            key: const ValueKey('settings-delete-permanently'),
-            label: 'Delete Permanently',
-            icon: Icons.delete_forever_rounded,
-            isLoading: _submitting,
-            variant: AppPrimaryButtonVariant.destructive,
-            onPressed: _submitting ? null : _submitDeletion,
-          ),
-        ),
-        const SizedBox(height: AmoraSpacing.space8),
-        AppPrimaryButton(
-          key: const ValueKey('delete-keep-account'),
-          label: 'Keep My Account',
-          variant: AppPrimaryButtonVariant.text,
-          onPressed: _submitting ? null : widget.onCancel,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildFailureStep() {
-    return Column(
-      key: const ValueKey('delete-account-failure-step'),
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Semantics(
-          liveRegion: true,
-          child: Text(
-            'Deletion could not be completed',
-            style: AmoraTextStyles.titleLarge,
-          ),
-        ),
-        const SizedBox(height: AmoraSpacing.space8),
-        Text(
-          'We were unable to complete your deletion request. Please try again or contact support if the problem continues.',
-          style: AmoraTextStyles.bodyMedium.copyWith(
-            color: AppColors.textSecondary,
-            height: 1.5,
-          ),
-        ),
-        const SizedBox(height: AmoraSpacing.space16),
-        _SelectedReasonSummary(selection: _selection),
-        const SizedBox(height: AmoraSpacing.space20),
-        if (_canRetry)
-          AppPrimaryButton(
-            key: const ValueKey('delete-account-retry'),
-            label: 'Try Again',
-            icon: Icons.refresh_rounded,
-            isLoading: _submitting,
-            variant: AppPrimaryButtonVariant.destructive,
-            onPressed: _submitting
-                ? null
-                : () => setState(
-                    () => _step = _DeleteAccountStep.reauthentication,
-                  ),
-          ),
-        const SizedBox(height: AmoraSpacing.space8),
-        AppPrimaryButton(
-          key: const ValueKey('delete-failure-cancel'),
-          label: 'Cancel',
-          variant: AppPrimaryButtonVariant.text,
-          onPressed: _submitting ? null : widget.onCancel,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildProcessingStep() => _buildLifecycleState(
-    key: 'delete-account-processing-step',
-    title: 'Processing deletion',
-    message:
-        'Your account deletion request is being processed. Some deletion steps may take additional time to complete.',
-    icon: Icons.hourglass_top_rounded,
+  Widget build(BuildContext context) => AnimatedSwitcher(
+    duration: const Duration(milliseconds: 220),
+    child: switch (_step) {
+      _DeleteAccountStep.warning => _warningStep(),
+      _DeleteAccountStep.method => _methodStep(),
+      _DeleteAccountStep.otp => _otpStep(),
+    },
   );
 
-  Widget _buildCompletedStep() => _buildLifecycleState(
-    key: 'delete-account-completed-step',
-    title: 'Deletion completed',
-    message: 'Your account deletion has been completed.',
-    icon: Icons.check_circle_outline_rounded,
-  );
-
-  Widget _buildPendingReviewStep() => _buildLifecycleState(
-    key: 'delete-account-pending-review-step',
-    title: 'Deletion request received',
-    message:
-        'Your account deletion request has been received. Some information may require additional review before the process can be fully completed.',
-    icon: Icons.info_outline_rounded,
-  );
-
-  Widget _buildUnknownStep() => _buildLifecycleState(
-    key: 'delete-account-unknown-step',
-    title: 'Unable to confirm deletion status',
-    message:
-        'We could not confirm the current status of your deletion request. Please contact support if the problem continues.',
-    icon: Icons.help_outline_rounded,
-  );
-
-  Widget _buildLifecycleState({
-    required String key,
-    required String title,
-    required String message,
-    required IconData icon,
-  }) => Column(
-    key: ValueKey(key),
+  Widget _warningStep() => Column(
+    key: const ValueKey('delete-account-warning-step'),
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
-      Semantics(liveRegion: true, child: Icon(icon, color: AppColors.primary)),
-      const SizedBox(height: AmoraSpacing.space12),
-      Text(title, style: AmoraTextStyles.titleLarge),
+      Text('This action is permanent', style: AmoraTextStyles.titleLarge),
       const SizedBox(height: AmoraSpacing.space8),
       Text(
-        message,
+        'Your active AMORAA account, profile, matches, and private account data will no longer be available. This cannot be undone.',
         style: AmoraTextStyles.bodyMedium.copyWith(
           color: AppColors.textSecondary,
           height: 1.5,
@@ -456,212 +92,264 @@ class _AmoraaDeleteAccountFlowState extends State<AmoraaDeleteAccountFlow> {
       ),
       const SizedBox(height: AmoraSpacing.space20),
       AppPrimaryButton(
-        label: 'Close',
+        key: const ValueKey('settings-delete-permanently'),
+        label: 'Delete Account',
+        icon: Icons.delete_forever_rounded,
+        variant: AppPrimaryButtonVariant.destructive,
+        onPressed: _busy ? null : _confirmIntent,
+      ),
+      const SizedBox(height: AmoraSpacing.space8),
+      AppPrimaryButton(
+        key: const ValueKey('delete-keep-account'),
+        label: 'Keep My Account',
         variant: AppPrimaryButtonVariant.text,
-        onPressed: widget.onCancel,
+        onPressed: _busy ? null : widget.onCancel,
       ),
     ],
   );
 
-  Future<void> _reauthenticateWithPassword() async {
-    if (_submitting || _passwordController.text.isEmpty) return;
-    await _reauthenticate(
-      () =>
-          widget.reauthenticateWithPassword?.call(_passwordController.text) ??
-          AuthService.instance.reauthenticateForAccountDeletionWithPassword(
-            _passwordController.text,
-          ),
-    );
-  }
-
-  Future<void> _reauthenticateWithGoogle() => _reauthenticate(
-    AuthService.instance.reauthenticateForAccountDeletionWithGoogle,
+  Widget _methodStep() => Column(
+    key: const ValueKey('delete-account-method-step'),
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      Text('Verify your identity', style: AmoraTextStyles.titleLarge),
+      const SizedBox(height: AmoraSpacing.space8),
+      Text(
+        'Send a verification code to a registered destination:',
+        style: AmoraTextStyles.bodyMedium.copyWith(
+          color: AppColors.textSecondary,
+        ),
+      ),
+      const SizedBox(height: AmoraSpacing.space16),
+      RadioGroup<AccountDeletionMethod>(
+        groupValue: _selected,
+        onChanged: _busy
+            ? (_) {}
+            : (value) => setState(() => _selected = value),
+        child: Column(
+          children: [
+            for (final method in _methods)
+              RadioListTile<AccountDeletionMethod>(
+                key: ValueKey('delete-method-${method.channel.toLowerCase()}'),
+                value: method,
+                enabled: !_busy,
+                activeColor: AppColors.primary,
+                title: Text(method.channel == 'EMAIL' ? 'Email' : 'Phone'),
+                subtitle: Text(method.maskedDestination),
+              ),
+          ],
+        ),
+      ),
+      if (_error != null) _errorText(),
+      const SizedBox(height: AmoraSpacing.space16),
+      AppPrimaryButton(
+        key: const ValueKey('delete-account-send-otp'),
+        label: 'Send OTP',
+        icon: Icons.mark_email_read_outlined,
+        isLoading: _busy,
+        onPressed: _selected == null || _busy ? null : _sendOtp,
+      ),
+      AppPrimaryButton(
+        label: 'Go back',
+        variant: AppPrimaryButtonVariant.text,
+        onPressed: _busy
+            ? null
+            : () => setState(() => _step = _DeleteAccountStep.warning),
+      ),
+    ],
   );
 
-  Future<void> _reauthenticate(Future<String> Function() action) async {
-    setState(() {
-      _submitting = true;
-      _reauthenticationError = null;
-    });
-    try {
-      final confirmation = await action();
-      if (!mounted) return;
-      setState(() {
-        _submitting = false;
-        _deletionConfirmation = confirmation;
-        _step = _DeleteAccountStep.confirmation;
-      });
-    } on AuthException catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _submitting = false;
-        _reauthenticationError = error.userMessage;
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _submitting = false;
-        _reauthenticationError =
-            'Please re-authenticate before deleting your account.';
-      });
-    } finally {
-      _passwordController.clear();
-    }
-  }
-
-  Future<void> _submitDeletion() async {
-    if (_submitting || !_canContinue) return;
-    setState(() => _submitting = true);
-    AccountDeletionResult? result;
-    try {
-      final confirmation = _deletionConfirmation;
-      if (confirmation == null) {
-        throw const AuthException(
-          'Please re-authenticate before deleting your account.',
-        );
-      }
-      result = await widget.onDeleteConfirmed(_selection, confirmation);
-    } on AuthException catch (error) {
-      if (!mounted) return;
-      final confirmationExpired =
-          error.code == 'DELETION_CONFIRMATION_INVALID' ||
-          error.code == 'REAUTHENTICATION_REQUIRED';
-      setState(() {
-        _submitting = false;
-        _deletionConfirmation = null;
-        if (confirmationExpired) {
-          _reauthenticationError =
-              'Your identity confirmation has expired. Please confirm your identity again.';
-          _step = _DeleteAccountStep.reauthentication;
-        } else {
-          _step = _DeleteAccountStep.unknown;
-        }
-      });
-      return;
-    } catch (_) {
-      result = const AccountDeletionResult(
-        status: AccountDeletionStatus.unknown,
-        canRetry: false,
-      );
-    }
-    if (!mounted) return;
-    setState(() {
-      _submitting = false;
-      _deletionConfirmation = null;
-      _canRetry = result!.canRetry;
-      _step = switch (result.status) {
-        AccountDeletionStatus.verified ||
-        AccountDeletionStatus.processing => _DeleteAccountStep.processing,
-        AccountDeletionStatus.completed => _DeleteAccountStep.completed,
-        AccountDeletionStatus.pendingReview => _DeleteAccountStep.pendingReview,
-        AccountDeletionStatus.failed => _DeleteAccountStep.failure,
-        AccountDeletionStatus.unknown => _DeleteAccountStep.unknown,
-      };
-    });
-  }
-}
-
-class _DeleteReasonRow extends StatelessWidget {
-  const _DeleteReasonRow({
-    super.key,
-    required this.reason,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final DeleteAccountReason reason;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      checked: selected,
-      inMutuallyExclusiveGroup: true,
-      label: '${reason.label}, ${selected ? 'selected' : 'unselected'}',
-      child: Material(
-        color: selected
-            ? AppColors.tertiary.withValues(alpha: .28)
-            : AppColors.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
-          side: BorderSide(
-            color: selected ? AppColors.secondary : AppColors.tertiary,
-            width: selected ? 1.5 : 1,
-          ),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 56),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AmoraSpacing.space16,
-                vertical: AmoraSpacing.space12,
-              ),
-              child: Row(
-                children: [
-                  Icon(reason.icon, color: AppColors.primary, size: 21),
-                  const SizedBox(width: AmoraSpacing.space12),
-                  Expanded(
-                    child: Text(
-                      reason.label,
-                      style: AmoraTextStyles.bodyMedium.copyWith(
-                        fontWeight: selected
-                            ? FontWeight.w700
-                            : FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: AmoraSpacing.space8),
-                  Icon(
-                    selected
-                        ? Icons.radio_button_checked_rounded
-                        : Icons.radio_button_unchecked_rounded,
-                    color: selected
-                        ? AppColors.secondary
-                        : AppColors.textSecondary,
-                    size: 22,
-                  ),
-                ],
-              ),
-            ),
-          ),
+  Widget _otpStep() => Column(
+    key: const ValueKey('delete-account-otp-step'),
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      Text('Enter verification code', style: AmoraTextStyles.titleLarge),
+      const SizedBox(height: AmoraSpacing.space8),
+      Text(
+        'We sent a six-digit code to ${_selected?.maskedDestination ?? 'your registered destination'}.',
+        style: AmoraTextStyles.bodyMedium.copyWith(
+          color: AppColors.textSecondary,
         ),
       ),
-    );
-  }
-}
-
-class _SelectedReasonSummary extends StatelessWidget {
-  const _SelectedReasonSummary({required this.selection});
-
-  final DeleteAccountSelection selection;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      key: const ValueKey('delete-selected-reason-summary'),
-      padding: const EdgeInsets.all(AmoraSpacing.space16),
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.tertiary),
+      const SizedBox(height: AmoraSpacing.space20),
+      AmoraOtpInput(
+        key: const ValueKey('delete-account-otp-input'),
+        controllers: _otpControllers,
+        nodes: _otpNodes,
+        enabled: !_busy,
+        hasError: _error != null,
+        onChanged: () => setState(() => _error = null),
+        onPaste: (_) {},
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Selected reason', style: AmoraTextStyles.labelMedium),
-          const SizedBox(height: AmoraSpacing.space4),
-          Text(selection.reason.label, style: AmoraTextStyles.titleMedium),
-          if (selection.details case final details?) ...[
-            const SizedBox(height: AmoraSpacing.space4),
-            Text(details, style: AmoraTextStyles.bodySmall),
-          ],
+      if (_error != null) _errorText(),
+      const SizedBox(height: AmoraSpacing.space20),
+      AppPrimaryButton(
+        key: const ValueKey('delete-account-verify-delete'),
+        label: 'Verify & Delete Account',
+        icon: Icons.delete_forever_rounded,
+        variant: AppPrimaryButtonVariant.destructive,
+        isLoading: _busy,
+        onPressed: _otpComplete && !_busy ? _verifyAndDelete : null,
+      ),
+      const SizedBox(height: AmoraSpacing.space8),
+      AppPrimaryButton(
+        key: const ValueKey('delete-account-resend-otp'),
+        label: _cooldownSeconds > 0
+            ? 'Resend in ${_cooldownSeconds}s'
+            : 'Resend code',
+        variant: AppPrimaryButtonVariant.text,
+        onPressed: _busy || _cooldownSeconds > 0 ? null : _sendOtp,
+      ),
+    ],
+  );
+
+  Widget _errorText() => Padding(
+    padding: const EdgeInsets.only(top: AmoraSpacing.space12),
+    child: Text(
+      _error!,
+      key: const ValueKey('delete-account-error'),
+      style: AmoraTextStyles.bodySmall.copyWith(color: AppColors.error),
+    ),
+  );
+
+  Future<void> _confirmIntent() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text(
+          'Are you sure you want to permanently delete your account?',
+        ),
+        content: const Text('This action is permanent and cannot be undone.'),
+        actions: [
+          TextButton(
+            key: const ValueKey('delete-confirmation-cancel'),
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            key: const ValueKey('delete-confirmation-continue'),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Continue'),
+          ),
         ],
       ),
     );
+    if (confirmed != true || !mounted) return;
+    await _loadMethods();
+  }
+
+  Future<void> _loadMethods() async {
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final methods =
+          await (widget.loadMethods ??
+              PhaseTwoApiService.instance.accountDeletionMethods)();
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _methods = methods;
+        _selected = methods.length == 1 ? methods.first : null;
+        _step = _DeleteAccountStep.method;
+        if (methods.isEmpty) {
+          _error =
+              'No verified email or phone number is available. Please use an approved account recovery path.';
+        }
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _error = _messageFor(error);
+      });
+    }
+  }
+
+  Future<void> _sendOtp() async {
+    final selected = _selected;
+    if (selected == null || _busy) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await (widget.sendOtp ??
+          PhaseTwoApiService.instance.sendAccountDeletionOtp)(selected.channel);
+      if (!mounted) return;
+      _clearOtp();
+      setState(() {
+        _busy = false;
+        _step = _DeleteAccountStep.otp;
+      });
+      _startCooldown();
+      _otpNodes.first.requestFocus();
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _error = _messageFor(error);
+      });
+    }
+  }
+
+  Future<void> _verifyAndDelete() async {
+    final selected = _selected;
+    if (selected == null || !_otpComplete || _busy) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await (widget.confirmDeletion ??
+          ((channel, otp) => PhaseTwoApiService.instance.confirmAccountDeletion(
+            channel: channel,
+            otp: otp,
+          )))(selected.channel, _otp);
+      await widget.onDeleted();
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _error = _messageFor(error);
+      });
+    }
+  }
+
+  void _startCooldown() {
+    _timer?.cancel();
+    _cooldownSeconds = widget.resendCooldown.inSeconds;
+    if (_cooldownSeconds <= 0) return;
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted || _cooldownSeconds <= 1) {
+        timer.cancel();
+        if (mounted) setState(() => _cooldownSeconds = 0);
+        return;
+      }
+      setState(() => _cooldownSeconds -= 1);
+    });
+  }
+
+  void _clearOtp() {
+    for (final controller in _otpControllers) {
+      controller.clear();
+    }
+  }
+
+  String _messageFor(Object error) {
+    if (error is AuthException) {
+      return switch (error.code) {
+        'OTP_INVALID' => 'Invalid verification code.',
+        'OTP_EXPIRED' =>
+          'This verification code has expired. Please request a new code.',
+        'OTP_MAX_ATTEMPTS' ||
+        'RATE_LIMITED' => 'Too many attempts. Please try again later.',
+        'DELETION_VERIFICATION_UNAVAILABLE' || 'DELETION_CHANNEL_UNAVAILABLE' =>
+          'No verified email or phone number is available. Please use an approved account recovery path.',
+        _ => error.userMessage,
+      };
+    }
+    return 'Unable to complete account deletion. Please try again.';
   }
 }

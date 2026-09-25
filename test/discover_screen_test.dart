@@ -87,7 +87,7 @@ void main() {
 
     expect(find.text('Discover'), findsOneWidget);
     expect(find.text('Home'), findsNothing);
-    expect(find.text('Chat'), findsOneWidget);
+    expect(find.text('Chats'), findsOneWidget);
     expect(find.text('AI Matches'), findsOneWidget);
     expect(find.text('Events'), findsNothing);
     expect(find.text('Profile'), findsOneWidget);
@@ -99,8 +99,14 @@ void main() {
     expect(find.byKey(const ValueKey('discover-search-field')), findsNothing);
     expect(filters, findsOneWidget);
     expect(card, findsOneWidget);
-    expect(find.byType(PremiumImage), findsOneWidget);
-    expect(find.byType(Hero), findsOneWidget);
+    expect(
+      find.descendant(of: card, matching: find.byType(PremiumImage)),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: card, matching: find.byType(Hero)),
+      findsOneWidget,
+    );
     expect(find.byKey(const ValueKey('discover-pass-button')), findsOneWidget);
     expect(find.byKey(const ValueKey('discover-undo-button')), findsOneWidget);
     expect(
@@ -127,7 +133,10 @@ void main() {
 
     expect(tester.getSize(card).width, lessThanOrEqualTo(512));
     expect(tester.getSize(card).height, lessThanOrEqualTo(760));
-    expect(find.byType(PremiumImage), findsOneWidget);
+    expect(
+      find.descendant(of: card, matching: find.byType(PremiumImage)),
+      findsOneWidget,
+    );
     expect(tester.getCenter(card).dx, moreOrLessEquals(600, epsilon: 1));
     expect(tester.takeException(), isNull);
   });
@@ -144,7 +153,7 @@ void main() {
       onNamedRoute: (settings) => openedRoute = settings,
     );
 
-    const labels = <String>['Discover', 'Chat', 'AI Matches', 'Profile'];
+    const labels = <String>['Discover', 'Chats', 'AI Matches', 'Profile'];
     for (final label in labels) {
       expect(find.byKey(ValueKey('bottom-nav-$label')), findsOneWidget);
     }
@@ -172,13 +181,15 @@ void main() {
         findsOneWidget,
       );
       expect(
-        find.byWidgetPredicate(
-          (widget) =>
-              widget is Image &&
-              widget.image is AssetImage &&
-              (widget.image as AssetImage).assetName ==
-                  AmoraBrandAssets.wordmark,
-        ),
+        find
+            .byWidgetPredicate(
+              (widget) =>
+                  widget is Image &&
+                  widget.image is AssetImage &&
+                  (widget.image as AssetImage).assetName ==
+                      AmoraBrandAssets.wordmark,
+            )
+            .hitTestable(),
         findsOneWidget,
       );
       expect(find.text('7'), findsNothing);
@@ -265,9 +276,11 @@ void main() {
         },
       ),
     );
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
     await tester.tap(find.byKey(const ValueKey('profile-settings-button')));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
 
     expect(openedRoute?.name, ProfileSettingsScreen.routeName);
     expect(
@@ -500,14 +513,18 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('floating Like and Undo actions reuse the swipe sequence', (
-    tester,
-  ) async {
+  testWidgets('floating Like exposes the shared rewind action', (tester) async {
     await tester.binding.setSurfaceSize(const Size(430, 900));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     AmoraSession.logIn();
 
-    await pumpDiscover(tester);
+    final controller = DiscoverActionController(
+      profileIds: ImageRepository.profiles.map((profile) => profile.id),
+      transitionDuration: Duration.zero,
+      apiService: _FixtureDiscoverApiService(),
+    );
+    addTearDown(controller.dispose);
+    await pumpDiscover(tester, controller: controller);
     final firstProfile = ImageRepository.profiles.first;
     await tester.tap(find.byKey(const ValueKey('discover-next-photo')));
     await tester.pumpAndSettle();
@@ -533,19 +550,8 @@ void main() {
       findsOneWidget,
     );
 
-    await tester.tap(find.byKey(const ValueKey('discover-undo-button')));
-    await tester.pumpAndSettle();
-    expect(find.text('Unlike ${firstProfile.name}?'), findsOneWidget);
-    expect(
-      find.text('This profile will be removed from your Likes list.'),
-      findsOneWidget,
-    );
-    await tester.tap(find.text('Unlike'));
-    await tester.pumpAndSettle();
-    expect(
-      find.byKey(ValueKey('discover-profile-card-${firstProfile.id}')),
-      findsOneWidget,
-    );
+    expect(controller.canRewind, isTrue);
+    expect(find.byKey(const ValueKey('discover-undo-button')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

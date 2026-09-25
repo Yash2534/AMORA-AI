@@ -1,7 +1,6 @@
 import 'package:amora_ai/core/navigation/main_shell.dart';
 import 'package:amora_ai/core/theme/amora_header_tokens.dart';
 import 'package:amora_ai/core/theme/amora_theme.dart';
-import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/amoraa_main_page_header.dart';
 import 'package:amora_ai/features/chat/presentation/chat_list_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_screen.dart';
@@ -60,7 +59,8 @@ void main() {
     await pumpMainShell(tester);
 
     final headers = find.byType(AmoraaMainPageHeader, skipOffstage: false);
-    expect(headers, findsNWidgets(4));
+    expect(headers, findsNWidgets(3));
+    expect(find.byType(ChatsAppBar, skipOffstage: false), findsOneWidget);
 
     final headerContext = tester.element(headers.first);
     expect(
@@ -93,7 +93,7 @@ void main() {
       AmoraaMainPageHeaderAction,
       skipOffstage: false,
     );
-    expect(actions, findsNWidgets(5));
+    expect(actions, findsNWidgets(4));
     for (final element in actions.evaluate()) {
       expect(
         rectFor(element).size,
@@ -119,9 +119,9 @@ void main() {
         skipOffstage: false,
       ),
     );
-    expect(logo, findsOneWidget);
+    expect(logo.hitTestable(), findsOneWidget);
     expect(
-      tester.getSize(logo),
+      tester.getSize(logo.hitTestable()),
       const Size(
         AmoraHeaderTokens.discoverLogoWidth,
         AmoraHeaderTokens.discoverLogoHeight,
@@ -137,10 +137,6 @@ void main() {
 
     final titleFinders = <Finder>[
       find.descendant(
-        of: find.byType(ChatsAppBar, skipOffstage: false),
-        matching: find.text('Chats', skipOffstage: false),
-      ),
-      find.descendant(
         of: find.byType(AmoraaMainPageHeader, skipOffstage: false),
         matching: find.text('AI Matches', skipOffstage: false),
       ),
@@ -149,12 +145,17 @@ void main() {
         matching: find.text('Profile', skipOffstage: false),
       ),
     ];
+    final canonicalTitleStyle = tester.widget<Text>(titleFinders.first).style;
     for (final finder in titleFinders) {
-      expect(
-        tester.widget<Text>(finder).style,
-        AmoraaMainPageHeader.titleStyle,
-      );
+      expect(tester.widget<Text>(finder).style, canonicalTitleStyle);
     }
+    expect(
+      find.descendant(
+        of: find.byType(ChatsAppBar, skipOffstage: false),
+        matching: find.text('Chats', skipOffstage: false),
+      ),
+      findsOneWidget,
+    );
 
     for (final redundantSubtitle in <String>[
       'Your conversations',
@@ -173,7 +174,7 @@ void main() {
     await pumpMainShell(tester, textScale: 1.3);
 
     final headers = find.byType(AmoraaMainPageHeader, skipOffstage: false);
-    expect(headers, findsNWidgets(4));
+    expect(headers, findsNWidgets(3));
     for (final header in headers.evaluate()) {
       final rect = rectFor(header);
       final contentRect = rectFor(contentRowFor(header));
@@ -188,10 +189,6 @@ void main() {
     }
     expect(
       find.byKey(const ValueKey('discover-notifications'), skipOffstage: false),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(const ValueKey('chats-compose-action'), skipOffstage: false),
       findsOneWidget,
     );
     expect(
@@ -259,20 +256,6 @@ void main() {
         rectFor(element).size,
         const Size.square(AmoraaMainPageHeader.actionSize),
       );
-      final iconButton = tester.widget<IconButton>(
-        find.descendant(
-          of: find.byElementPredicate(
-            (candidate) => identical(candidate, element),
-            skipOffstage: false,
-          ),
-          matching: find.byType(IconButton, skipOffstage: false),
-        ),
-      );
-      expect(
-        iconButton.style?.backgroundColor?.resolve(<WidgetState>{}),
-        AppColors.transparent,
-      );
-      expect(iconButton.style?.side, isNull);
       expect(
         tester
             .widget<Icon>(
@@ -299,7 +282,7 @@ void main() {
         await pumpMainShell(tester, width: width, textScale: textScale);
 
         final headers = find.byType(AmoraaMainPageHeader, skipOffstage: false);
-        expect(headers, findsNWidgets(4));
+        expect(headers, findsNWidgets(3));
         final context = tester.element(headers.first);
         final headerElements = headers.evaluate().toList(growable: false);
         for (final rect in headerElements.map(rectFor)) {

@@ -26,10 +26,15 @@ async function deliverPhoneOtp(phoneNumber, purpose, code, expiresAt, { correlat
 
 async function deliverEmailOtp(email, purpose, code, expiresAt) {
   if (resolveOtpTestConfig().skipDelivery) return { skipped: true };
+  const deletingAccount = purpose === 'account_deletion';
   await sendEmail(
     email,
-    'Your Amora AI password reset code',
-    `<p>Your Amora AI password reset code is <strong>${code}</strong>.</p><p>It expires in 10 minutes. If you did not request this, you can ignore this email.</p>`,
+    deletingAccount
+      ? 'Your AMORAA account deletion code'
+      : 'Your Amora AI password reset code',
+    deletingAccount
+      ? `<p>Your AMORAA account deletion code is <strong>${code}</strong>.</p><p>It expires in 10 minutes. If you did not request account deletion, secure your account immediately.</p>`
+      : `<p>Your Amora AI password reset code is <strong>${code}</strong>.</p><p>It expires in 10 minutes. If you did not request this, you can ignore this email.</p>`,
     { code, purpose, expiresAt },
   );
   return { skipped: false };
@@ -42,10 +47,19 @@ async function createOtp(identifierField, identifier, purpose, options = {}) {
   const queryOptions = options.transaction ? { transaction: options.transaction } : {};
   await OtpToken.update(
     { consumed: true },
-    { where: { [identifierField]: identifier, purpose, consumed: false }, ...queryOptions },
+    {
+      where: {
+        [identifierField]: identifier,
+        purpose,
+        consumed: false,
+        ...(options.userId == null ? {} : { userId: options.userId }),
+      },
+      ...queryOptions,
+    },
   );
   const otp = await OtpToken.create({
     [identifierField]: identifier,
+    ...(options.userId == null ? {} : { userId: options.userId }),
     purpose,
     codeHash: await bcrypt.hash(code, 12),
     expiresAt,
@@ -69,16 +83,24 @@ async function createEmailOtp(email, purpose, options) {
   return createOtp('email', email, purpose, options);
 }
 
-async function verifyOtp(identifierField, identifier, code, purpose, { correlationId } = {}) {
+async function verifyOtp(identifierField, identifier, code, purpose, options = {}) {
   const { OtpToken } = getModels();
+  const queryOptions = options.transaction ? { transaction: options.transaction } : {};
   const otp = await OtpToken.findOne({
-    where: { [identifierField]: identifier, purpose, consumed: false },
+    where: {
+      [identifierField]: identifier,
+      purpose,
+      consumed: false,
+      ...(options.userId == null ? {} : { userId: options.userId }),
+    },
     order: [['createdAt', 'DESC']],
+    ...(options.transaction ? { lock: options.transaction.LOCK.UPDATE } : {}),
+    ...queryOptions,
   });
   if (!otp || otp.expiresAt <= new Date()) {
     if (otp) {
       otp.consumed = true;
-      await otp.save();
+      await otp.save(queryOptions);
     }
     return { error: ['OTP_EXPIRED', 'This verification code has expired.'] };
   }
@@ -97,7 +119,7 @@ async function verifyOtp(identifierField, identifier, code, purpose, { correlati
   if (!accepted) {
     otp.attempts += 1;
     if (otp.attempts >= OTP_MAX_ATTEMPTS) otp.consumed = true;
-    await otp.save();
+    await otp.save(queryOptions);
     return {
       error: [
         otp.attempts >= OTP_MAX_ATTEMPTS ? 'OTP_MAX_ATTEMPTS' : 'OTP_INVALID',
@@ -110,9 +132,9 @@ async function verifyOtp(identifierField, identifier, code, purpose, { correlati
   }
 
   otp.consumed = true;
-  await otp.save();
+  await otp.save(queryOptions);
   if (restrictedLiveTestMatch) {
-    console.info(`[OTP_AUDIT] event=restricted_live_test_verified phone=${maskedPhone(identifier)} correlationId=${correlationId || 'unavailable'}`);
+    console.info(`[OTP_AUDIT] event=restricted_live_test_verified phone=${maskedPhone(identifier)} correlationId=${options.correlationId || 'unavailable'}`);
   }
   return { otp };
 }
@@ -121,8 +143,8 @@ async function verifyPhoneOtp(phoneNumber, code, purpose, options) {
   return verifyOtp('phoneNumber', phoneNumber, code, purpose, options);
 }
 
-async function verifyEmailOtp(email, code, purpose) {
-  return verifyOtp('email', email, code, purpose);
+async function verifyEmailOtp(email, code, purpose, options) {
+  return verifyOtp('email', email, code, purpose, options);
 }
 
 module.exports = {

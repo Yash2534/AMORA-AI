@@ -193,24 +193,23 @@ class _AmoraFilterChipState extends State<AmoraFilterChip>
                                 ),
                                 const SizedBox(width: 5),
                               ] else if (widget.icon != null) ...[
-                                Icon(
-                                  widget.icon,
-                                  size: 16,
-                                  color: iconColor,
-                                ),
+                                Icon(widget.icon, size: 16, color: iconColor),
                                 const SizedBox(width: 6),
                               ],
-                              Text(
-                                widget.label,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: AmoraTextStyles.caption.copyWith(
-                                  color: contentColor,
-                                  fontWeight: selected
-                                      ? FontWeight.w700
-                                      : FontWeight.w600,
-                                  letterSpacing: 0.1,
-                                  height: 1.1,
+                              Flexible(
+                                child: Text(
+                                  widget.label,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  textAlign: TextAlign.center,
+                                  style: AmoraTextStyles.caption.copyWith(
+                                    color: contentColor,
+                                    fontWeight: selected
+                                        ? FontWeight.w700
+                                        : FontWeight.w600,
+                                    letterSpacing: 0.1,
+                                    height: 1.1,
+                                  ),
                                 ),
                               ),
                             ],

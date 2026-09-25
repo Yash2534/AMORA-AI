@@ -32,7 +32,10 @@ void main() {
     expect(nav.indicatorColor, AppColors.activeContainer);
     expect(theme.progressIndicatorTheme.color, AppColors.active);
     expect(theme.tabBarTheme.labelColor, AppColors.active);
-    expect(theme.chipTheme.selectedColor, AppColors.activeContainer);
+    expect(
+      theme.chipTheme.selectedColor,
+      AppColors.primary.withValues(alpha: .08),
+    );
     expect(
       theme.switchTheme.trackColor?.resolve({WidgetState.selected}),
       AppColors.active,

@@ -38,7 +38,20 @@ async function deliverPush(notification, preferences) {
       continue;
     }
     try {
-      const result = await pushProvider.send({ token: device.pushToken, title: notification.title, body: notification.message, data: notification.data || {} });
+      const result = await pushProvider.send({
+        token: device.pushToken,
+        title: notification.title,
+        body: notification.message,
+        data: {
+          ...(notification.data || {}),
+          notificationId: String(notification.id),
+          type: notification.type,
+          category: notification.category,
+          ...(notification.actorUserId && !(notification.data || {}).targetUserId
+            ? { targetUserId: String(notification.actorUserId) }
+            : {}),
+        },
+      });
       await delivery.update({ status: 'sent', providerMessageId: result.messageId, attemptCount: Number(delivery.attemptCount) + 1, lastAttemptAt: new Date(), errorCode: null });
     } catch (error) {
       await delivery.update({ status: 'failed', attemptCount: Number(delivery.attemptCount) + 1, lastAttemptAt: new Date(), errorCode: String(error.code || 'PUSH_DELIVERY_FAILED').slice(0, 100) });

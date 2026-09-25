@@ -1,5 +1,6 @@
 const { getModels } = require('../models');
 const { parseCommunicationStyles } = require('../constants/communicationStyles');
+const { DISCOVER_FILTER_RANGES } = require('../constants/discoverFilterRanges');
 
 const HARD_FILTERS = new Set(['minAge', 'maxAge', 'maxDistanceKm', 'blockedUsers', 'reportedUsers', 'verifiedOnly']);
 
@@ -38,16 +39,66 @@ const arrayFilters = new Set([
   'qualities', 'preferredTalkingHours', 'loveLanguages', 'communicationStyles',
 ]);
 
+function boundedInteger(value, range, fallback) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return fallback;
+  return Math.min(range.max, Math.max(range.min, Math.round(numeric)));
+}
+
+function normalizeStoredRanges(values, fallbacks) {
+  const normalized = { ...values };
+  normalized.minAge = boundedInteger(
+    values.minAge,
+    DISCOVER_FILTER_RANGES.age,
+    fallbacks.minAge,
+  );
+  normalized.maxAge = boundedInteger(
+    values.maxAge,
+    DISCOVER_FILTER_RANGES.age,
+    fallbacks.maxAge,
+  );
+  if (normalized.minAge > normalized.maxAge) {
+    normalized.minAge = fallbacks.minAge;
+    normalized.maxAge = fallbacks.maxAge;
+  }
+  normalized.maxDistanceKm = boundedInteger(
+    values.maxDistanceKm,
+    DISCOVER_FILTER_RANGES.distanceKm,
+    fallbacks.maxDistanceKm,
+  );
+  normalized.minScore = boundedInteger(
+    values.minScore,
+    DISCOVER_FILTER_RANGES.score,
+    fallbacks.minScore,
+  );
+  if (values.minHeight == null || values.minHeight === '') {
+    normalized.minHeight = null;
+  } else {
+    normalized.minHeight = boundedInteger(
+      values.minHeight,
+      DISCOVER_FILTER_RANGES.heightCm,
+      fallbacks.minHeight,
+    );
+  }
+  return normalized;
+}
+
 async function filtersFor(userId, overrides = {}) {
   const { DiscoverFilterPreference } = getModels();
   const runtime = await require('./adminDiscoverConfigurationService').runtimeConfiguration();
   const { onlineWindowMinutes: _onlineWindowMinutes, ...runtimePreferenceDefaults } = runtime.defaults;
-  const effectiveDefaults = { ...defaults, ...runtimePreferenceDefaults };
+  const effectiveDefaults = normalizeStoredRanges(
+    { ...defaults, ...runtimePreferenceDefaults },
+    defaults,
+  );
   const [stored] = await DiscoverFilterPreference.findOrCreate({
     where: { userId },
     defaults: { userId, ...effectiveDefaults },
   });
-  const values = { ...effectiveDefaults, ...stored.toJSON() };
+  const values = {
+    ...effectiveDefaults,
+    ...normalizeStoredRanges(stored.toJSON(), effectiveDefaults),
+  };
   for (const key of Object.keys(effectiveDefaults)) {
     if (overrides[key] === undefined) continue;
     if (['minAge', 'maxAge', 'maxDistanceKm', 'minScore'].includes(key)) {
@@ -86,4 +137,10 @@ async function updateFilters(userId, body) {
   return filtersFor(userId);
 }
 
-module.exports = { HARD_FILTERS, defaults, filtersFor, updateFilters };
+module.exports = {
+  HARD_FILTERS,
+  defaults,
+  filtersFor,
+  updateFilters,
+  _test: { boundedInteger, normalizeStoredRanges },
+};

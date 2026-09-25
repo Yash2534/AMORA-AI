@@ -66,12 +66,14 @@ class AuthException implements Exception {
     this.code,
     this.statusCode,
     this.errors = const <String, String>{},
+    this.data = const <String, dynamic>{},
   });
 
   final String message;
   final String? code;
   final int? statusCode;
   final Map<String, String> errors;
+  final Map<String, dynamic> data;
 
   String get userMessage {
     if (errors.isEmpty) return message;
@@ -229,6 +231,13 @@ class AuthService {
     return _saveAuthentication(response);
   }
 
+  Future<AmoraUser> reactivate(String reactivationToken) async {
+    final response = await _post('/api/auth/reactivate', {
+      'reactivationToken': reactivationToken,
+    });
+    return _saveAuthentication(response);
+  }
+
   Future<AmoraUser> googleSignIn({
     List<LegalDocumentAcceptance>? acceptedLegalDocuments,
     String? platform,
@@ -259,48 +268,6 @@ class AuthService {
     return _saveAuthentication(response);
   }
 
-  Future<String> reauthenticateForAccountDeletionWithPassword(
-    String password,
-  ) async {
-    final response = await _request(
-      'POST',
-      '/api/account/deletion/reauthenticate',
-      body: {'password': password},
-      authenticated: true,
-    );
-    return _deletionConfirmation(response);
-  }
-
-  Future<String> reauthenticateForAccountDeletionWithGoogle() async {
-    final account = await GoogleSignIn(scopes: const ['email']).signIn();
-    if (account == null) {
-      throw const AuthException('Google re-authentication was cancelled.');
-    }
-    final idToken = (await account.authentication).idToken;
-    if (idToken == null) {
-      throw const AuthException(
-        'Unable to verify your Google account. Please try again.',
-      );
-    }
-    final response = await _request(
-      'POST',
-      '/api/account/deletion/reauthenticate',
-      body: {'idToken': idToken},
-      authenticated: true,
-    );
-    return _deletionConfirmation(response);
-  }
-
-  String _deletionConfirmation(Map<String, dynamic> response) {
-    final confirmation = _data(response)['deletionConfirmation'] as String?;
-    if (confirmation == null || confirmation.isEmpty) {
-      throw const AuthException(
-        'Please re-authenticate before deleting your account.',
-      );
-    }
-    return confirmation;
-  }
-
   Future<void> forgotPassword(String email) async =>
       _post('/api/auth/forgot-password', {'email': email});
 
@@ -321,6 +288,14 @@ class AuthService {
     'recoveryToken': recoveryToken,
     'newPassword': newPassword,
   });
+
+  Future<void> changePassword(
+    String currentPassword,
+    String newPassword,
+  ) async => _post('/api/auth/change-password', {
+    'currentPassword': currentPassword,
+    'newPassword': newPassword,
+  }, authenticated: true);
 
   Future<AmoraUser> me() async {
     final response = await _request('GET', '/api/auth/me', authenticated: true);
@@ -553,6 +528,9 @@ class AuthService {
           code: decoded['code'] as String?,
           statusCode: response.statusCode,
           errors: _errorDetails(decoded['errors']),
+          data:
+              (decoded['data'] as Map?)?.cast<String, dynamic>() ??
+              const <String, dynamic>{},
         );
       }
       return decoded;

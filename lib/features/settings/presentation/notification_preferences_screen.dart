@@ -10,6 +10,7 @@ import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:flutter/material.dart';
 import 'package:amora_ai/features/settings/data/notification_preferences_repository.dart';
+import 'package:amora_ai/features/notifications/data/push_notification_service.dart';
 
 class NotificationPreferencesScreen extends StatefulWidget {
   const NotificationPreferencesScreen({
@@ -239,6 +240,9 @@ class _NotificationPreferencesScreenState
     if (!mounted) return;
     if (result.allowsFeature) {
       setState(() => _channels[channel] = true);
+      await PushNotificationService.instance.syncForAuthenticatedUser(
+        requestPermission: false,
+      );
       return;
     }
     setState(() => _channels[channel] = false);
@@ -480,12 +484,16 @@ class _PreferenceToggle extends StatelessWidget {
                       : AppColors.primary.withValues(alpha: 0.06),
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: AppColors.primary.withValues(alpha: value ? 0.18 : 0.10),
+                    color: AppColors.primary.withValues(
+                      alpha: value ? 0.18 : 0.10,
+                    ),
                   ),
                 ),
                 child: Icon(
                   icon,
-                  color: AppColors.primary.withValues(alpha: value ? 1.0 : 0.65),
+                  color: AppColors.primary.withValues(
+                    alpha: value ? 1.0 : 0.65,
+                  ),
                   size: 22,
                 ),
               ),

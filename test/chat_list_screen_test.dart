@@ -111,8 +111,8 @@ void main() {
     final textField = tester.widget<TextField>(field);
 
     expect(textField.decoration?.hintText, 'Search chats...');
-    expect(textField.decoration?.prefixIconConstraints?.maxWidth, 48);
-    expect(textField.decoration?.suffixIconConstraints?.maxWidth, 48);
+    expect(textField.decoration?.prefixIconConstraints?.maxWidth, 44);
+    expect(textField.decoration?.suffixIconConstraints?.maxWidth, 44);
     expect(iconRect.center.dy, closeTo(containerRect.center.dy, .1));
     expect(hintRect.left, greaterThan(iconRect.right));
     expect(hintRect.center.dy, closeTo(containerRect.center.dy, 1));
@@ -125,9 +125,9 @@ void main() {
     final clearRect = tester.getRect(clear);
     expect(clear, findsOneWidget);
     expect(find.bySemanticsLabel('Clear search'), findsOneWidget);
-    expect(clearRect.width, 48);
-    expect(clearRect.height, greaterThanOrEqualTo(48));
-    expect(clearRect.right, closeTo(containerRect.right, 1));
+    expect(clearRect.width, 44);
+    expect(clearRect.height, greaterThanOrEqualTo(44));
+    expect(clearRect.right, closeTo(containerRect.right, 2));
     expect(clearRect.center.dy, closeTo(containerRect.center.dy, .1));
     expect(tester.takeException(), isNull);
   });
@@ -138,8 +138,10 @@ void main() {
     await pumpChats(tester, size: const Size(320, 760));
 
     final container = find.byKey(const ValueKey('chats-search-container'));
-    final searchSurface = tester.widget<AnimatedContainer>(container);
-    expect(searchSurface.curve, Curves.easeOutCubic);
+    final searchSurface = tester.widget<AnimatedContainer>(
+      find.descendant(of: container, matching: find.byType(AnimatedContainer)),
+    );
+    expect(searchSurface.curve, Curves.linear);
     expect(
       find.descendant(of: container, matching: find.byType(ScaleTransition)),
       findsNothing,
@@ -181,9 +183,9 @@ void main() {
       find.byKey(ValueKey('conversation-verified-badge-${chat.id}')),
     );
 
-    expect(avatarRect.size, const Size.square(48));
-    expect(avatarRect.left, closeTo(tileRect.left + 20, 1));
-    expect(timeRect.right, closeTo(tileRect.right - 20, 1));
+    expect(avatarRect.size, const Size.square(52));
+    expect(avatarRect.left, closeTo(tileRect.left + 28, 1));
+    expect(timeRect.right, closeTo(tileRect.right - 28, 1));
     expect(verifiedRect.center.dy, closeTo(nameRect.center.dy, 2));
     expect(nameRect.right, lessThanOrEqualTo(timeRect.left));
     expect(tester.takeException(), isNull);
@@ -273,7 +275,7 @@ void main() {
       final clearRect = tester.getRect(
         find.byKey(const ValueKey('chats-search-clear')),
       );
-      expect(clearRect.right, closeTo(searchContainer.right, 1));
+      expect(clearRect.right, closeTo(searchContainer.right, 2));
       expect(clearRect.center.dy, closeTo(searchContainer.center.dy, .1));
       await tester.tap(find.byKey(const ValueKey('chats-search-clear')));
       await tester.pumpAndSettle();

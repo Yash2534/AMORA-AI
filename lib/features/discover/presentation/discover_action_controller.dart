@@ -141,7 +141,6 @@ class DiscoverActionController extends ChangeNotifier {
       },
     );
     if (!result.success || result.data == null) {
-      _deck.remove(profileId);
       _activeAction = null;
       _isTransitioning = false;
       _lastError = result.message ?? 'Action failed';

@@ -138,7 +138,10 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('“Coffee and a long walk.”'), findsOneWidget);
-      expect(find.widgetWithText(TextButton, 'Edit'), findsNWidgets(2));
+      expect(
+        find.byKey(const ValueKey('edit-profile-prompt')),
+        findsNWidgets(2),
+      );
       expect(find.text('Like'), findsNothing);
       expect(find.text('Reply'), findsNothing);
       expect(find.byType(DropdownButtonFormField<String>), findsNothing);
@@ -251,7 +254,7 @@ void main() {
       tester.getTopLeft(cards.at(1)).dy,
       greaterThan(tester.getBottomLeft(cards.at(0)).dy),
     );
-    expect(find.widgetWithText(TextButton, 'Edit'), findsNWidgets(2));
+    expect(find.byKey(const ValueKey('edit-profile-prompt')), findsNWidgets(2));
     final firstTitle = tester.widget<Text>(find.text(shortPrompt.key));
     final secondTitle = tester.widget<Text>(find.text(longPrompt.key));
     final firstAnswer = tester.widget<Text>(find.text('“Already quoted”'));
@@ -458,7 +461,10 @@ void main() {
           reason: '$width px card $index',
         );
       }
-      expect(find.widgetWithText(TextButton, 'Edit'), findsNWidgets(3));
+      expect(
+        find.byKey(const ValueKey('edit-profile-prompt')),
+        findsNWidgets(3),
+      );
       expect(tester.takeException(), isNull, reason: '$width px');
     }
   });

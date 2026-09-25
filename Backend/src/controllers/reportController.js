@@ -12,7 +12,7 @@ exports.create = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'You cannot report your own account.', code: 'SELF_REPORT_NOT_ALLOWED', errors: [] });
     }
     if (targetType === 'profile') {
-      const target = await User.findOne({ where: { id: reportedUserId, accountStatus: { [Op.ne]: 'deleted' } }, attributes: ['id'] });
+      const target = await User.findOne({ where: { id: reportedUserId, accountStatus: 'active' }, attributes: ['id'] });
       if (!target) return res.status(404).json({ success: false, message: 'The reported profile is not available.', code: 'PROFILE_NOT_AVAILABLE', errors: [] });
       if (req.body.conversationId) {
         const participants = await ConversationParticipant.findAll({

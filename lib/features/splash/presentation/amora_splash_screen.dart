@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:amora_ai/core/branding/amora_brand_assets.dart';
 import 'package:amora_ai/core/branding/amora_logo.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
+import 'package:amora_ai/features/notifications/data/push_notification_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -65,6 +66,9 @@ class _AmoraSplashScreenState extends State<AmoraSplashScreen>
     if (!mounted || _didNavigate) return;
     _didNavigate = true;
     Navigator.of(context).pushReplacementNamed<void, void>(destination);
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => PushNotificationService.instance.flushPendingNavigation(),
+    );
   }
 
   @override

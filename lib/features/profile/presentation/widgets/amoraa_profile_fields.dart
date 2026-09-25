@@ -2,6 +2,8 @@ import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/amora_dob_field.dart';
+import 'package:amora_ai/core/widgets/amora_dialog.dart';
+import 'package:amora_ai/core/widgets/amoraa_confirm_action_sheet.dart';
 import 'package:amora_ai/core/widgets/amoraa_select_field.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/features/discover/presentation/widgets/amoraa_minimum_height_picker.dart';
@@ -695,7 +697,11 @@ class AmoraaInterestsSelector extends StatelessWidget {
                   ),
                   showCheckmark: false,
                   avatar: controller.interests.contains(item)
-                      ? const Icon(Icons.check_rounded, size: 18, color: AppColors.primary)
+                      ? const Icon(
+                          Icons.check_rounded,
+                          size: 18,
+                          color: AppColors.primary,
+                        )
                       : null,
                   onSelected: (selected) =>
                       controller.toggleInterest(item, selected),
@@ -890,6 +896,7 @@ class AmoraaProfilePromptField extends StatelessWidget {
           controller.beginEditPrompt(prompt);
           _focusPromptAnswer();
         },
+        onDeletePrompt: (prompt) => _confirmDeletePrompt(context, prompt),
         onCancelPrompt: controller.cancelPromptEditing,
         onSavePrompt: controller.savePrompt,
         footer: canAddPrompt || showPromptRequired
@@ -927,6 +934,26 @@ class AmoraaProfilePromptField extends StatelessWidget {
           ?.requestFocus();
     });
   }
+
+  Future<void> _confirmDeletePrompt(
+    BuildContext context,
+    String promptTitle,
+  ) async {
+    await showAmoraGlassDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (_) => AmoraaConfirmActionSheet(
+        title: 'Delete prompt?',
+        description: 'Are you sure you want to delete this prompt?',
+        confirmLabel: 'Delete',
+        cancelLabel: 'Cancel',
+        errorMessage: 'Could not delete this prompt. Please try again.',
+        semanticLabel: 'Delete prompt',
+        isDestructive: true,
+        onConfirm: () => controller.deletePrompt(promptTitle),
+      ),
+    );
+  }
 }
 
 class AmoraaProfilePromptsSection extends StatelessWidget {
@@ -934,6 +961,7 @@ class AmoraaProfilePromptsSection extends StatelessWidget {
     super.key,
     required this.prompts,
     required this.onEditPrompt,
+    this.onDeletePrompt,
     this.editingPromptTitle,
     this.newPromptTitle,
     this.answerController,
@@ -946,6 +974,7 @@ class AmoraaProfilePromptsSection extends StatelessWidget {
 
   final List<MapEntry<String, String>> prompts;
   final ValueChanged<String> onEditPrompt;
+  final Future<void> Function(String prompt)? onDeletePrompt;
   final String? editingPromptTitle;
   final String? newPromptTitle;
   final TextEditingController? answerController;
@@ -976,6 +1005,9 @@ class AmoraaProfilePromptsSection extends StatelessWidget {
               answerFocusNode: answerFocusNode,
               showValidation: showValidation,
               onEdit: () => onEditPrompt(prompts[index].key),
+              onDelete: onDeletePrompt == null
+                  ? null
+                  : () => onDeletePrompt!(prompts[index].key),
               onCancel: onCancelPrompt,
               onSave: onSavePrompt,
             ),
@@ -1054,6 +1086,7 @@ class AmoraaEditableProfilePromptCard extends StatefulWidget {
     required this.answer,
     required this.editing,
     required this.onEdit,
+    this.onDelete,
     this.answerController,
     this.answerFocusNode,
     this.onCancel,
@@ -1065,6 +1098,7 @@ class AmoraaEditableProfilePromptCard extends StatefulWidget {
   final String answer;
   final bool editing;
   final VoidCallback onEdit;
+  final Future<void> Function()? onDelete;
   final TextEditingController? answerController;
   final FocusNode? answerFocusNode;
   final VoidCallback? onCancel;
@@ -1153,21 +1187,40 @@ class _AmoraaEditableProfilePromptCardState
         const SizedBox(height: AmoraSpacing.space12),
         Align(
           alignment: Alignment.bottomRight,
-          child: Semantics(
-            button: true,
-            label: 'Edit profile prompt: ${widget.promptTitle}',
-            child: TextButton.icon(
-              key: const ValueKey('edit-profile-prompt'),
-              style: TextButton.styleFrom(
-                minimumSize: const Size(0, AmoraSpacing.minimumTouchTarget),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AmoraSpacing.space12,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Semantics(
+                button: true,
+                label: 'Edit prompt',
+                child: IconButton(
+                  key: const ValueKey('edit-profile-prompt'),
+                  tooltip: 'Edit prompt',
+                  constraints: const BoxConstraints(
+                    minWidth: AmoraSpacing.minimumTouchTarget,
+                    minHeight: AmoraSpacing.minimumTouchTarget,
+                  ),
+                  onPressed: widget.onEdit,
+                  icon: const Icon(Icons.edit_outlined),
                 ),
               ),
-              onPressed: widget.onEdit,
-              icon: const Icon(Icons.edit_outlined),
-              label: const Text('Edit'),
-            ),
+              if (widget.onDelete != null)
+                Semantics(
+                  button: true,
+                  label: 'Delete prompt',
+                  child: IconButton(
+                    key: const ValueKey('delete-profile-prompt'),
+                    tooltip: 'Delete prompt',
+                    constraints: const BoxConstraints(
+                      minWidth: AmoraSpacing.minimumTouchTarget,
+                      minHeight: AmoraSpacing.minimumTouchTarget,
+                    ),
+                    color: AppColors.errorRed,
+                    onPressed: widget.onDelete,
+                    icon: const Icon(Icons.delete_outline_rounded),
+                  ),
+                ),
+            ],
           ),
         ),
       ],
@@ -1412,9 +1465,7 @@ class _FormError extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.error.withValues(alpha: .08),
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: AppColors.error.withValues(alpha: .3),
-          ),
+          border: Border.all(color: AppColors.error.withValues(alpha: .3)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,

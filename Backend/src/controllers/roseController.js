@@ -6,8 +6,13 @@ const { createNotification } = require('../services/notificationService');
 const { activeMatch, ensureDirectConversation } = require('../services/conversationAccessService');
 const { emitConversationEvent } = require('../realtime/realtimeHub');
 
-const isRetryableTransactionError = (error) => ['ER_LOCK_DEADLOCK', 'ER_LOCK_WAIT_TIMEOUT'].includes(error?.code)
-  || [1213, 1205].includes(Number(error?.errno));
+const isRetryableTransactionError = (error) => [
+  error,
+  error?.parent,
+  error?.original,
+  error?.cause,
+].some((candidate) => ['ER_LOCK_DEADLOCK', 'ER_LOCK_WAIT_TIMEOUT'].includes(candidate?.code)
+  || [1213, 1205].includes(Number(candidate?.errno)));
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 async function withTransactionRetry(operation, attempts = 3) {
   for (let attempt = 1; attempt <= attempts; attempt += 1) {

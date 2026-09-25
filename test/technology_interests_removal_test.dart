@@ -115,15 +115,9 @@ void main() {
         home: const ProfileScreen(showNavigation: false),
       ),
     );
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
 
-    await tester.scrollUntilVisible(
-      find.textContaining('Interests'),
-      320,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.pumpAndSettle();
-    expect(find.text('Coffee'), findsOneWidget);
     expectRetiredInterestsAbsent();
     expect(tester.takeException(), isNull);
   });

@@ -304,6 +304,26 @@ class ProfileFormController extends ChangeNotifier {
     }
   }
 
+  Future<UserProfile> deletePrompt(String title) async {
+    if (saving || !_baseProfile.prompts.containsKey(title)) {
+      return _baseProfile;
+    }
+    final hasOtherChanges = _hasUnsavedNonPromptChanges();
+    final prompts = Map<String, String>.of(_baseProfile.prompts)..remove(title);
+    final updated = _baseProfile.copyWith(prompts: prompts);
+    saving = true;
+    notifyListeners();
+    try {
+      await repository.savePersisted(updated);
+      _baseProfile = repository.profile;
+      dirty = hasOtherChanges;
+      return _baseProfile;
+    } finally {
+      saving = false;
+      notifyListeners();
+    }
+  }
+
   void setLanguages(Set<String> values) {
     languages = Set<String>.of(values);
     markDirty();

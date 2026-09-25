@@ -12,6 +12,7 @@ import 'package:amora_ai/features/chat/data/chat_repository.dart';
 import 'package:amora_ai/features/events/presentation/controllers/event_participation_controller.dart';
 import 'package:amora_ai/features/monetization/data/monetization_repository.dart';
 import 'package:amora_ai/features/notifications/data/notification_inbox_repository.dart';
+import 'package:amora_ai/features/notifications/data/push_notification_service.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
 import 'package:amora_ai/features/profile/presentation/controllers/profile_relationship_controller.dart';
 import 'package:flutter/material.dart';
@@ -60,7 +61,12 @@ class AmoraSession {
     EventParticipationController.instance.clearSessionState();
     unawaited(ChatRepository.instance.clearForAccountDeletion());
     unawaited(LocalOnboardingRepository.instance.clearForAccountDeletion());
-    unawaited(AuthService.instance.logout());
+    unawaited(_completeLogout());
+  }
+
+  static Future<void> _completeLogout() async {
+    await PushNotificationService.instance.unregisterCurrentDevice();
+    await AuthService.instance.logout();
   }
 
   static Future<void> restore() async {
@@ -108,12 +114,15 @@ class AmoraSession {
         ProfileRelationshipController.instance.refreshRemote(),
         ChatRepository.instance.initialize(),
       ]);
+      await PushNotificationService.instance.syncForAuthenticatedUser();
     } catch (_) {
       // The destination screens expose retry/error state for remote data.
     }
     final action = _pendingAction;
     _pendingAction = null;
     if (!context.mounted) return;
+
+    PushNotificationService.instance.flushPendingNavigation();
 
     if (action != null) {
       if (Navigator.of(context).canPop()) {

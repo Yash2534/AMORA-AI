@@ -1,6 +1,5 @@
 import 'package:amora_ai/core/access/amora_access.dart';
 import 'package:amora_ai/core/theme/amora_theme.dart';
-import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/amora_filter_chip.dart';
 import 'package:amora_ai/core/widgets/floating_ai_assistant.dart';
 import 'package:amora_ai/features/discover/presentation/advanced_filters_screen.dart';
@@ -9,7 +8,6 @@ import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
 import 'package:amora_ai/features/profile/presentation/profile_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_completion_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_edit_screen.dart';
-import 'package:amora_ai/features/profile/presentation/profile_setup_screen.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_form.dart';
 import 'package:amora_ai/features/subscription/presentation/subscription_screen.dart';
 import 'package:flutter/material.dart';
@@ -36,12 +34,13 @@ void main() {
     await tester.pump();
 
     await Scrollable.ensureVisible(
-      tester.element(find.text('Edit Profile').first),
+      tester.element(find.text('Edit profile').first),
       alignment: .3,
     );
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Edit Profile').first);
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.tap(find.text('Edit profile').first);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
     expect(find.text('Edit profile'), findsOneWidget);
     expect(find.byType(TextFormField), findsWidgets);
   });
@@ -54,30 +53,10 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: AmoraTheme.light(),
-        routes: {
-          ProfileCompletionScreen.routeName: (_) =>
-              const ProfileCompletionScreen(),
-          ProfileSetupScreen.routeName: (_) => const ProfileSetupScreen(),
-        },
-        home: const ProfileScreen(),
+        home: const ProfileCompletionScreen(),
       ),
     );
-    await tester.pump();
-
-    final completionCard = find.byKey(
-      const ValueKey('profile-completion-card'),
-    );
-    await tester.scrollUntilVisible(
-      completionCard,
-      300,
-      scrollable: find.byType(Scrollable).first,
-    );
-    final completionAction = find.descendant(
-      of: completionCard,
-      matching: find.byType(InkWell),
-    );
-    tester.widget<InkWell>(completionAction.first).onTap?.call();
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 500));
     expect(find.byType(AmoraaProfileForm), findsNothing);
     expect(find.text('Profile Completion'), findsOneWidget);
     await tester.scrollUntilVisible(
@@ -85,7 +64,7 @@ void main() {
       280,
       scrollable: find.byType(Scrollable).first,
     );
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 300));
     expect(find.text('Profile Photos'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('Back to Profile'),
@@ -167,8 +146,8 @@ void main() {
         ),
       ),
     );
-    final chip = tester.widget<FilterChip>(find.byType(FilterChip));
-    expect(chip.selectedColor, AppColors.active);
+    final chip = tester.widget<AmoraFilterChip>(find.byType(AmoraFilterChip));
+    expect(chip.selected, isTrue);
   });
 
   test('profile completion and avatar update from local repository', () {

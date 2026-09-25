@@ -87,6 +87,7 @@ test('persisted platform setting values normalize booleans and emails', () => {
 test('rose retry classification retries only lock failures', () => {
   assert.equal(_json.isRetryableTransactionError({ code: 'ER_LOCK_DEADLOCK' }), true);
   assert.equal(_json.isRetryableTransactionError({ errno: 1205 }), true);
+  assert.equal(_json.isRetryableTransactionError({ parent: { code: 'ER_LOCK_DEADLOCK', errno: 1213 } }), true);
   assert.equal(_json.isRetryableTransactionError({ code: 'ER_DUP_ENTRY' }), false);
 });
 

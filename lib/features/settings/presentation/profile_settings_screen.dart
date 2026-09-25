@@ -3,7 +3,7 @@ import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/core/widgets/amora_app_bar.dart';
-import 'package:amora_ai/features/auth/presentation/forgot_password_screen.dart';
+import 'package:amora_ai/features/auth/presentation/change_password_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_basic_details_screen.dart';
 import 'package:amora_ai/features/settings/presentation/account_action_screens.dart';
 import 'package:amora_ai/features/settings/presentation/managed_profiles_screen.dart';
@@ -133,8 +133,8 @@ class ProfileSettingsScreen extends StatelessWidget {
                           key: const ValueKey('settings-change-password'),
                           icon: Icons.password_rounded,
                           title: 'Change Password',
-                          subtitle: 'Securely reset your password by email.',
-                          onTap: () => open(ForgotPasswordScreen.routeName),
+                          subtitle: 'Update your password securely.',
+                          onTap: () => open(ChangePasswordScreen.routeName),
                         ),
                         ProfileSettingsHubRow(
                           key: const ValueKey('settings-logout'),

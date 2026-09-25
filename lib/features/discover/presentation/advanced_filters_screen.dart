@@ -11,6 +11,7 @@ import 'package:amora_ai/core/widgets/premium_motion.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/discover/presentation/browse_grid_screen.dart';
 import 'package:amora_ai/features/discover/data/discover_api_service.dart';
+import 'package:amora_ai/features/discover/domain/discover_filter_ranges.dart';
 import 'package:amora_ai/features/discover/presentation/widgets/amoraa_minimum_height_picker.dart';
 import 'package:amora_ai/features/profile/domain/profile_form_options.dart';
 import 'package:amora_ai/features/profile/domain/profile_form_validators.dart';
@@ -70,9 +71,12 @@ class AdvancedFiltersScreen extends StatefulWidget {
 
 class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
   late final DiscoverApiService _discoverApi;
-  RangeValues _age = const RangeValues(24, 34);
-  double _distance = 80;
-  double _score = 80;
+  RangeValues _age = const RangeValues(
+    DiscoverFilterRanges.defaultMinimumAge,
+    DiscoverFilterRanges.defaultMaximumAge,
+  );
+  double _distance = DiscoverFilterRanges.defaultDistance;
+  double _score = DiscoverFilterRanges.defaultCompatibility;
   final Set<String> _cities = {'Ahmedabad'};
   final Set<String> _intents = {'Long-Term Relationship'};
   final Set<String> _lifestyles = {'Coffee Dates'};
@@ -156,20 +160,27 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
     }
 
     setState(() {
-      _age = RangeValues(
-        ((filters['minAge'] as num?)?.toDouble() ?? 18)
-            .clamp(18, 99)
-            .toDouble(),
-        ((filters['maxAge'] as num?)?.toDouble() ?? 45)
-            .clamp(18, 99)
-            .toDouble(),
+      final age = normalizeFilterRange(
+        rawStart: filters['minAge'],
+        rawEnd: filters['maxAge'],
+        minimum: DiscoverFilterRanges.ageMinimum,
+        maximum: DiscoverFilterRanges.ageMaximum,
+        fallbackStart: DiscoverFilterRanges.defaultMinimumAge,
+        fallbackEnd: DiscoverFilterRanges.defaultMaximumAge,
       );
-      _distance = ((filters['maxDistanceKm'] as num?)?.toDouble() ?? 80)
-          .clamp(1, 500)
-          .toDouble();
-      _score = ((filters['minScore'] as num?)?.toDouble() ?? 80)
-          .clamp(50, 100)
-          .toDouble();
+      _age = RangeValues(age.start, age.end);
+      _distance = normalizeFilterNumber(
+        filters['maxDistanceKm'],
+        minimum: DiscoverFilterRanges.distanceMinimum,
+        maximum: DiscoverFilterRanges.distanceMaximum,
+        fallback: DiscoverFilterRanges.defaultDistance,
+      );
+      _score = normalizeFilterNumber(
+        filters['minScore'],
+        minimum: DiscoverFilterRanges.compatibilityMinimum,
+        maximum: DiscoverFilterRanges.compatibilityMaximum,
+        fallback: DiscoverFilterRanges.defaultCompatibility,
+      );
       replace(
         _cities,
         value('city').isEmpty ? const <String>[] : <String>[value('city')],
@@ -235,7 +246,7 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
         _weed,
         value('weed').isEmpty ? const <String>[] : <String>[value('weed')],
       );
-      _minimumHeightCm = (filters['minHeight'] as num?)?.toInt();
+      _minimumHeightCm = normalizeMinimumHeight(filters['minHeight']);
       _verifiedOnly = filters['verifiedOnly'] == true;
       _onlineNow = filters['onlineNow'] == true;
       _hasPrompts = filters['hasPrompts'] == true;
@@ -364,6 +375,15 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
   }
 
   Widget _buildBasicsSection() {
+    final safeAge = normalizeFilterRange(
+      rawStart: _age.start,
+      rawEnd: _age.end,
+      minimum: DiscoverFilterRanges.ageMinimum,
+      maximum: DiscoverFilterRanges.ageMaximum,
+      fallbackStart: DiscoverFilterRanges.defaultMinimumAge,
+      fallbackEnd: DiscoverFilterRanges.defaultMaximumAge,
+    );
+    final ageValues = RangeValues(safeAge.start, safeAge.end);
     return _ExpandableFilterSection(
       key: _categoryKeys[_FilterCategory.basics],
       id: _GroupIds.basics,
@@ -387,15 +407,17 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
                 icon: Icons.cake_outlined,
                 emoji: '🎂',
                 title: 'Age range',
-                value: '${_age.start.round()}–${_age.end.round()} years',
+                value:
+                    '${ageValues.start.round()}–${ageValues.end.round()} years',
                 child: RangeSlider(
-                  values: _age,
-                  min: 18,
-                  max: 45,
+                  key: const ValueKey('filters-age-range-slider'),
+                  values: ageValues,
+                  min: DiscoverFilterRanges.ageMinimum,
+                  max: DiscoverFilterRanges.ageMaximum,
                   divisions: 27,
                   labels: RangeLabels(
-                    '${_age.start.round()}',
-                    '${_age.end.round()}',
+                    '${ageValues.start.round()}',
+                    '${ageValues.end.round()}',
                   ),
                   onChanged: (value) => setState(() => _age = value),
                 ),
@@ -406,9 +428,10 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
                 title: 'Distance',
                 value: 'Up to ${_distance.round()} km',
                 current: _distance,
-                min: 0,
-                max: 300,
+                min: DiscoverFilterRanges.distanceMinimum,
+                max: DiscoverFilterRanges.distanceMaximum,
                 divisions: 60,
+                sliderKey: const ValueKey('filters-distance-slider'),
                 onChanged: (value) => setState(() => _distance = value),
               ),
             ],
@@ -1005,9 +1028,10 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
             description:
                 'Scores are guidance based on profile compatibility, not guarantees.',
             current: _score,
-            min: 50,
-            max: 100,
+            min: DiscoverFilterRanges.compatibilityMinimum,
+            max: DiscoverFilterRanges.compatibilityMaximum,
             divisions: 50,
+            sliderKey: const ValueKey('filters-compatibility-slider'),
             onChanged: (value) => setState(() => _score = value),
             infoTooltip:
                 'Match scores help prioritize compatible profiles. They do not predict relationship outcomes.',
@@ -1467,9 +1491,12 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
 
   void _reset() {
     setState(() {
-      _age = const RangeValues(18, 45);
-      _distance = 300;
-      _score = 80;
+      _age = const RangeValues(
+        DiscoverFilterRanges.defaultMinimumAge,
+        DiscoverFilterRanges.defaultMaximumAge,
+      );
+      _distance = DiscoverFilterRanges.distanceMaximum;
+      _score = DiscoverFilterRanges.defaultCompatibility;
       _cities.clear();
       _intents.clear();
       _lifestyles.clear();
@@ -1537,13 +1564,40 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
         selection: TextSelection.collapsed(offset: customEducation.length),
       );
     }
+    final safeAge = normalizeFilterRange(
+      rawStart: _age.start,
+      rawEnd: _age.end,
+      minimum: DiscoverFilterRanges.ageMinimum,
+      maximum: DiscoverFilterRanges.ageMaximum,
+      fallbackStart: DiscoverFilterRanges.defaultMinimumAge,
+      fallbackEnd: DiscoverFilterRanges.defaultMaximumAge,
+    );
+    final safeDistance = normalizeFilterNumber(
+      _distance,
+      minimum: DiscoverFilterRanges.distanceMinimum,
+      maximum: DiscoverFilterRanges.distanceMaximum,
+      fallback: DiscoverFilterRanges.defaultDistance,
+    );
+    final safeScore = normalizeFilterNumber(
+      _score,
+      minimum: DiscoverFilterRanges.compatibilityMinimum,
+      maximum: DiscoverFilterRanges.compatibilityMaximum,
+      fallback: DiscoverFilterRanges.defaultCompatibility,
+    );
+    final safeHeight = normalizeMinimumHeight(_minimumHeightCm);
+    setState(() {
+      _age = RangeValues(safeAge.start, safeAge.end);
+      _distance = safeDistance;
+      _score = safeScore;
+      _minimumHeightCm = safeHeight;
+    });
     final filters = <String, dynamic>{
-      'minAge': _age.start.round(),
-      'maxAge': _age.end.round(),
-      'maxDistanceKm': _distance.round(),
-      'minScore': _score.round(),
+      'minAge': safeAge.start.round(),
+      'maxAge': safeAge.end.round(),
+      'maxDistanceKm': safeDistance.round(),
+      'minScore': safeScore.round(),
       'city': _cities.isEmpty ? '' : _cities.first,
-      'minHeight': _minimumHeightCm,
+      'minHeight': safeHeight,
       'hometown': _hometowns.toList(),
       'datingIntentions': _intents.toList(),
       'lifestyleTags': _lifestyles.toList(),
@@ -2345,6 +2399,7 @@ class _ValueSliderControl extends StatelessWidget {
     this.description,
     this.divisions,
     this.infoTooltip,
+    this.sliderKey,
   });
 
   final IconData icon;
@@ -2358,9 +2413,16 @@ class _ValueSliderControl extends StatelessWidget {
   final int? divisions;
   final ValueChanged<double> onChanged;
   final String? infoTooltip;
+  final Key? sliderKey;
 
   @override
   Widget build(BuildContext context) {
+    final safeCurrent = normalizeFilterNumber(
+      current,
+      minimum: min,
+      maximum: max,
+      fallback: min,
+    );
     return _ControlBlock(
       icon: icon,
       title: title,
@@ -2404,7 +2466,8 @@ class _ValueSliderControl extends StatelessWidget {
             ],
           ),
           Slider(
-            value: current,
+            key: sliderKey,
+            value: safeCurrent,
             min: min,
             max: max,
             divisions: divisions,

@@ -11,6 +11,7 @@ import 'package:amora_ai/features/profile/domain/profile_form_options.dart';
 import 'package:flutter/material.dart';
 import 'package:amora_ai/core/auth/auth_service.dart';
 import 'package:amora_ai/features/discover/data/discover_api_service.dart';
+import 'package:amora_ai/features/discover/domain/discover_filter_ranges.dart';
 
 class DealbreakersScreen extends StatefulWidget {
   const DealbreakersScreen({super.key, this.apiService});
@@ -63,11 +64,21 @@ class _DealbreakersScreenState extends State<DealbreakersScreen> {
     }
     final value = result.data!;
     setState(() {
-      _age = RangeValues(
-        (value['minAge'] as num?)?.toDouble() ?? 24,
-        (value['maxAge'] as num?)?.toDouble() ?? 34,
+      final age = normalizeFilterRange(
+        rawStart: value['minAge'],
+        rawEnd: value['maxAge'],
+        minimum: DiscoverFilterRanges.ageMinimum,
+        maximum: DiscoverFilterRanges.dealbreakerAgeMaximum,
+        fallbackStart: DiscoverFilterRanges.defaultDealbreakerMinimumAge,
+        fallbackEnd: DiscoverFilterRanges.defaultDealbreakerMaximumAge,
       );
-      _distance = (value['maxDistanceKm'] as num?)?.toDouble() ?? 25;
+      _age = RangeValues(age.start, age.end);
+      _distance = normalizeFilterNumber(
+        value['maxDistanceKm'],
+        minimum: DiscoverFilterRanges.dealbreakerDistanceMinimum,
+        maximum: DiscoverFilterRanges.dealbreakerDistanceMaximum,
+        fallback: DiscoverFilterRanges.defaultDealbreakerDistance,
+      );
       _mustHaves.clear();
       if ((value['smoking']?.toString() ?? '').isNotEmpty) {
         _mustHaves.add('Smoking');
@@ -93,14 +104,30 @@ class _DealbreakersScreenState extends State<DealbreakersScreen> {
   }
 
   Future<void> _save() async {
+    final age = normalizeFilterRange(
+      rawStart: _age.start,
+      rawEnd: _age.end,
+      minimum: DiscoverFilterRanges.ageMinimum,
+      maximum: DiscoverFilterRanges.dealbreakerAgeMaximum,
+      fallbackStart: DiscoverFilterRanges.defaultDealbreakerMinimumAge,
+      fallbackEnd: DiscoverFilterRanges.defaultDealbreakerMaximumAge,
+    );
+    final distance = normalizeFilterNumber(
+      _distance,
+      minimum: DiscoverFilterRanges.dealbreakerDistanceMinimum,
+      maximum: DiscoverFilterRanges.dealbreakerDistanceMaximum,
+      fallback: DiscoverFilterRanges.defaultDealbreakerDistance,
+    );
     setState(() {
       _saving = true;
       _error = null;
+      _age = RangeValues(age.start, age.end);
+      _distance = distance;
     });
     final result = await _api.updateFilters(<String, dynamic>{
-      'minAge': _age.start.round(),
-      'maxAge': _age.end.round(),
-      'maxDistanceKm': _distance.round(),
+      'minAge': age.start.round(),
+      'maxAge': age.end.round(),
+      'maxDistanceKm': distance.round(),
       'smoking': _mustHaves.contains('Smoking') ? _values['Smoking'] : '',
       'drinking': _mustHaves.contains('Drinking') ? _values['Drinking'] : '',
       'datingIntentions': _mustHaves.contains('Relationship intention')
@@ -160,7 +187,16 @@ class _DealbreakersScreenState extends State<DealbreakersScreen> {
                         ),
                       ),
                       RangeSlider(
-                        values: _age,
+                        values: RangeValues(
+                          _age.start.clamp(
+                            DiscoverFilterRanges.ageMinimum,
+                            DiscoverFilterRanges.dealbreakerAgeMaximum,
+                          ),
+                          _age.end.clamp(
+                            DiscoverFilterRanges.ageMinimum,
+                            DiscoverFilterRanges.dealbreakerAgeMaximum,
+                          ),
+                        ),
                         min: 18,
                         max: 60,
                         divisions: 42,
@@ -186,7 +222,10 @@ class _DealbreakersScreenState extends State<DealbreakersScreen> {
                         ),
                       ),
                       Slider(
-                        value: _distance,
+                        value: _distance.clamp(
+                          DiscoverFilterRanges.dealbreakerDistanceMinimum,
+                          DiscoverFilterRanges.dealbreakerDistanceMaximum,
+                        ),
                         min: 5,
                         max: 100,
                         divisions: 19,

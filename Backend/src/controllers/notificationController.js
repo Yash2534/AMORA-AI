@@ -25,7 +25,7 @@ function actorInclude() {
 }
 
 function actorPayload(req, actor) {
-  if (!actor || actor.accountStatus === 'deleted') return null;
+  if (!actor || actor.accountStatus !== 'active') return null;
   const profile = actor.OnboardingProfile;
   const photos = Array.isArray(profile?.photos) ? profile.photos : [];
   const primary = photos[Number(profile?.primaryPhotoIndex || 0)] || photos[0] || null;

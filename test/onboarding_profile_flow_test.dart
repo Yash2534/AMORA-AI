@@ -33,27 +33,15 @@ void main() {
     tester,
   ) async {
     onboarding.resetForTesting(
-      const LocalOnboardingState(stage: OnboardingStage.interestedIn),
-    );
-    await tester.pumpWidget(
-      MaterialApp(
-        routes: {
-          ProfileOnboardingFlow.routeName: (_) =>
-              const Scaffold(body: Text('Saved question opened')),
-          MainShell.routeName: (_) =>
-              const Scaffold(body: Text('Discover opened')),
-        },
-        home: Builder(
-          builder: (context) => TextButton(
-            onPressed: () => AmoraSession.completeAuthentication(context),
-            child: const Text('Complete sign in'),
-          ),
-        ),
+      const LocalOnboardingState(
+        stage: OnboardingStage.interestedIn,
+        accountVerified: true,
       ),
     );
-    await tester.tap(find.text('Complete sign in'));
-    await tester.pumpAndSettle();
-    expect(find.text('Saved question opened'), findsOneWidget);
+    expect(
+      AmoraSession.authenticatedRecoveryRoute,
+      ProfileOnboardingFlow.routeName,
+    );
   });
 
   testWidgets('completed onboarding routes returning users to Discover', (
@@ -62,29 +50,11 @@ void main() {
     onboarding.resetForTesting(
       const LocalOnboardingState(
         stage: OnboardingStage.complete,
+        accountVerified: true,
         onboardingCompleted: true,
       ),
     );
-    await tester.pumpWidget(
-      MaterialApp(
-        routes: {
-          ProfileOnboardingFlow.routeName: (_) =>
-              const Scaffold(body: Text('Saved question opened')),
-          MainShell.routeName: (_) =>
-              const Scaffold(body: Text('Discover opened')),
-        },
-        home: Builder(
-          builder: (context) => TextButton(
-            onPressed: () => AmoraSession.completeAuthentication(context),
-            child: const Text('Complete sign in'),
-          ),
-        ),
-      ),
-    );
-    await tester.tap(find.text('Complete sign in'));
-    await tester.pumpAndSettle();
-    expect(find.text('Discover opened'), findsOneWidget);
-    expect(find.text('Saved question opened'), findsNothing);
+    expect(AmoraSession.authenticatedRecoveryRoute, MainShell.routeName);
   });
 
   testWidgets('authentication entry is the email Login screen', (tester) async {

@@ -23,6 +23,7 @@ async function send({ token, title, body, data = {} }) {
   const accessToken = await auth.getAccessToken();
   const response = await fetch(`https://fcm.googleapis.com/v1/projects/${encodeURIComponent(config.projectId)}/messages:send`, {
     method: 'POST',
+    signal: AbortSignal.timeout(10000),
     headers: { authorization: `Bearer ${accessToken}`, 'content-type': 'application/json' },
     body: JSON.stringify({ message: {
       token,
@@ -34,7 +35,10 @@ async function send({ token, title, body, data = {} }) {
   if (!response.ok) {
     const error = new Error('Firebase rejected the push notification.');
     error.code = payload?.error?.status || 'PUSH_DELIVERY_FAILED';
-    error.invalidToken = ['NOT_FOUND', 'INVALID_ARGUMENT'].includes(error.code);
+    const fcmError = payload?.error?.details?.find(
+      (detail) => detail?.['@type'] === 'type.googleapis.com/google.firebase.fcm.v1.FcmError',
+    )?.errorCode;
+    error.invalidToken = fcmError === 'UNREGISTERED';
     throw error;
   }
   return { messageId: payload.name || null };

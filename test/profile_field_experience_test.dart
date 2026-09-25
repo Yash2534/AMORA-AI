@@ -11,7 +11,7 @@ import 'package:amora_ai/features/profile/presentation/widgets/amoraa_language_s
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_fields.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_prompt_selector.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_story_image.dart';
-import 'package:amora_ai/features/profile/presentation/widgets/profile_photo_gallery.dart';
+import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_photo_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -313,7 +313,7 @@ void main() {
       findsNothing,
     );
 
-    await tester.tap(find.widgetWithText(TextButton, 'Edit').first);
+    await tester.tap(find.byKey(const ValueKey('edit-profile-prompt')).first);
     await tester.pumpAndSettle();
     final answerField = find.byKey(
       const ValueKey('profile-prompt-answer-field'),
@@ -465,7 +465,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Profile story uses adaptive images and readable languages', (
+  testWidgets('Profile uses the canonical adaptive primary photo', (
     tester,
   ) async {
     await repository.resetForTesting(
@@ -483,8 +483,7 @@ void main() {
       settle: false,
     );
 
-    expect(find.byType(ProfilePhotoGallery), findsOneWidget);
-    expect(find.text('English • Hindi • Gujarati'), findsOneWidget);
+    expect(find.byType(AmoraaProfilePhotoView), findsWidgets);
     expect(tester.takeException(), isNull);
   });
 
@@ -500,7 +499,7 @@ void main() {
       size: const Size(430, 5000),
       settle: false,
     );
-    expect(find.text('Photographer'), findsOneWidget);
+    expect(find.text('Photographer'), findsNothing);
 
     await pump(
       tester,

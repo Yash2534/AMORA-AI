@@ -1,5 +1,5 @@
 import 'package:amora_ai/core/access/amora_access.dart';
-import 'package:amora_ai/core/api/phase_two_api_service.dart';
+import 'package:amora_ai/core/auth/auth_service.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
@@ -43,13 +43,7 @@ class LogoutAccountScreen extends StatelessWidget {
   }
 }
 
-typedef AccountDeactivationCallback = Future<bool> Function();
-typedef AccountDeletionCallback = Future<bool> Function();
-typedef AccountDeletionSelectionCallback =
-    Future<AccountDeletionResult> Function(
-      DeleteAccountSelection selection,
-      String deletionConfirmation,
-    );
+typedef AccountDeactivationCallback = Future<bool> Function(String password);
 
 class DeactivateAccountScreen extends StatefulWidget {
   const DeactivateAccountScreen({super.key, this.onDeactivate});
@@ -64,12 +58,53 @@ class DeactivateAccountScreen extends StatefulWidget {
 }
 
 class _DeactivateAccountScreenState extends State<DeactivateAccountScreen> {
-  bool _understood = false;
+  final _passwordController = TextEditingController();
+  bool _passwordStep = false;
   bool _submitting = false;
   String? _error;
 
+  @override
+  void dispose() {
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _confirmDeactivation() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Are you sure you want to deactivate your account?'),
+        content: const Text(
+          'Your profile will be hidden until you choose to activate your account again.',
+        ),
+        actions: [
+          TextButton(
+            key: const ValueKey('deactivate-confirmation-cancel'),
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            key: const ValueKey('deactivate-confirmation-continue'),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Continue'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && mounted) {
+      setState(() {
+        _passwordStep = true;
+        _error = null;
+      });
+    }
+  }
+
   Future<void> _deactivate() async {
-    if (!_understood || _submitting) return;
+    if (_submitting) return;
+    if (_passwordController.text.isEmpty) {
+      setState(() => _error = 'Password is required.');
+      return;
+    }
     final callback = widget.onDeactivate;
     if (callback == null) {
       setState(() {
@@ -84,9 +119,23 @@ class _DeactivateAccountScreenState extends State<DeactivateAccountScreen> {
     });
     var deactivated = false;
     try {
-      deactivated = await callback();
+      deactivated = await callback(_passwordController.text);
+    } on AuthException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _submitting = false;
+        _error = error.code == 'CURRENT_PASSWORD_INCORRECT'
+            ? 'Incorrect password. Please try again.'
+            : error.userMessage;
+      });
+      return;
     } catch (_) {
-      deactivated = false;
+      if (!mounted) return;
+      setState(() {
+        _submitting = false;
+        _error = 'Couldn’t deactivate your account. Please try again.';
+      });
+      return;
     }
     if (!mounted) return;
     if (!deactivated) {
@@ -112,63 +161,40 @@ class _DeactivateAccountScreenState extends State<DeactivateAccountScreen> {
       supporting: const [
         'Your account data remains stored.',
         'Matches, chats, profile information, and membership data are not permanently deleted.',
-        'Signing in again with the same account reactivates your profile.',
+        'Signing in again will let you explicitly reactivate your profile.',
       ],
       action: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          InkWell(
-            key: const ValueKey('deactivate-account-understood'),
-            onTap: _submitting
-                ? null
-                : () => setState(() {
-                    _understood = !_understood;
-                    _error = null;
-                  }),
-            borderRadius: BorderRadius.circular(12),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: Checkbox(
-                      value: _understood,
-                      activeColor: AppColors.primary,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      side: BorderSide(
-                        color: _understood
-                            ? AppColors.primary
-                            : AppColors.textSecondary.withValues(alpha: 0.6),
-                        width: 1.5,
-                      ),
-                      onChanged: _submitting
-                          ? null
-                          : (value) => setState(() {
-                              _understood = value ?? false;
-                              _error = null;
-                            }),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'I understand that my profile will be hidden temporarily.',
-                      style: AmoraTextStyles.bodyMedium.copyWith(
-                        color: AppColors.textPrimary,
-                        fontWeight: FontWeight.w600,
-                        height: 1.35,
-                      ),
-                    ),
-                  ),
-                ],
+          if (_passwordStep) ...[
+            Text(
+              'Confirm your password',
+              style: AmoraTextStyles.titleMedium.copyWith(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w800,
               ),
             ),
-          ),
+            const SizedBox(height: AmoraSpacing.space8),
+            Text(
+              'Enter your password to deactivate your account.',
+              style: AmoraTextStyles.bodyMedium.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: AmoraSpacing.space12),
+            TextField(
+              key: const ValueKey('deactivate-password-field'),
+              controller: _passwordController,
+              obscureText: true,
+              enabled: !_submitting,
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) => _deactivate(),
+              decoration: const InputDecoration(
+                labelText: 'Current password',
+                prefixIcon: Icon(Icons.lock_outline_rounded),
+              ),
+            ),
+          ],
           if (_error != null) _AccountActionError(message: _error!),
           const SizedBox(height: AmoraSpacing.space12),
           Semantics(
@@ -180,7 +206,11 @@ class _DeactivateAccountScreenState extends State<DeactivateAccountScreen> {
               icon: Icons.pause_circle_outline_rounded,
               isLoading: _submitting,
               variant: AppPrimaryButtonVariant.outlined,
-              onPressed: _understood && !_submitting ? _deactivate : null,
+              onPressed: _submitting
+                  ? null
+                  : _passwordStep
+                  ? _deactivate
+                  : _confirmDeactivation,
             ),
           ),
           const SizedBox(height: AmoraSpacing.space8),
@@ -201,18 +231,18 @@ class _DeactivateAccountScreenState extends State<DeactivateAccountScreen> {
 class DeleteAccountInformationScreen extends StatefulWidget {
   const DeleteAccountInformationScreen({
     super.key,
-    this.onDeleteAccount,
-    this.onDeleteSelection,
-    this.reauthenticateWithPassword,
+    this.loadMethods,
+    this.sendOtp,
+    this.confirmDeletion,
+    this.resendCooldown = const Duration(seconds: 45),
   });
 
   static const routeName = '/delete-account';
 
-  final AccountDeletionCallback? onDeleteAccount;
-  final AccountDeletionSelectionCallback? onDeleteSelection;
-
-  /// Test seam; production callers leave this null and use server re-authentication.
-  final Future<String> Function(String password)? reauthenticateWithPassword;
+  final AccountDeletionMethodsLoader? loadMethods;
+  final AccountDeletionOtpSender? sendOtp;
+  final AccountDeletionConfirmer? confirmDeletion;
+  final Duration resendCooldown;
 
   @override
   State<DeleteAccountInformationScreen> createState() =>
@@ -221,42 +251,13 @@ class DeleteAccountInformationScreen extends StatefulWidget {
 
 class _DeleteAccountInformationScreenState
     extends State<DeleteAccountInformationScreen> {
-  Future<AccountDeletionResult> _deletePermanently(
-    DeleteAccountSelection selection,
-    String deletionConfirmation,
-  ) async {
-    final callback = widget.onDeleteAccount;
-    final selectionCallback = widget.onDeleteSelection;
-    if (callback == null && selectionCallback == null) {
-      return const AccountDeletionResult(
-        status: AccountDeletionStatus.failed,
-        canRetry: false,
-      );
-    }
-    AccountDeletionResult result;
-    try {
-      result = selectionCallback != null
-          ? await selectionCallback(selection, deletionConfirmation)
-          : AccountDeletionResult(
-              status: await callback!()
-                  ? AccountDeletionStatus.completed
-                  : AccountDeletionStatus.failed,
-              canRetry: false,
-            );
-    } catch (_) {
-      return const AccountDeletionResult(
-        status: AccountDeletionStatus.unknown,
-        canRetry: false,
-      );
-    }
-    if (result.status != AccountDeletionStatus.completed) return result;
+  Future<void> _completeDeletion() async {
     await _clearDeletedAccountState();
-    if (!mounted) return result;
+    if (!mounted) return;
     AmoraSession.logOut();
     Navigator.of(
       context,
     ).pushNamedAndRemoveUntil(LoginScreen.routeName, (_) => false);
-    return result;
   }
 
   Future<void> _clearDeletedAccountState() async {
@@ -280,16 +281,19 @@ class _DeleteAccountInformationScreenState
       icon: Icons.delete_forever_rounded,
       heading: 'Permanent account deletion',
       description:
-          'Deleting your account is permanent. Review the warning, select a reason, and confirm only when you are ready.',
+          'Deleting your account is permanent. Continue only when you are ready to verify your identity with a one-time code.',
       supporting: const [
-        'Existing matches, chats, and account data may be deleted according to the active backend policy.',
+        'Your account will be removed from the active-user experience immediately after successful verification.',
         'Billing managed by an app store must be cancelled through that store.',
-        'AMORAA will not treat a local logout as successful deletion.',
+        'AMORAA will never treat a local logout or an unverified code as successful deletion.',
       ],
       action: AmoraaDeleteAccountFlow(
-        onDeleteConfirmed: _deletePermanently,
+        onDeleted: _completeDeletion,
         onCancel: () => Navigator.of(context).maybePop(),
-        reauthenticateWithPassword: widget.reauthenticateWithPassword,
+        loadMethods: widget.loadMethods,
+        sendOtp: widget.sendOtp,
+        confirmDeletion: widget.confirmDeletion,
+        resendCooldown: widget.resendCooldown,
       ),
       showBackAction: false,
     );

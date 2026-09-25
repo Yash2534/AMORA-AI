@@ -72,7 +72,7 @@ class AmoraaPublicProfileView extends StatelessWidget {
               horizontalPadding,
               desktop ? AmoraSpacing.space24 : 0,
               horizontalPadding,
-              _showsInteractions ? 100.0 : AmoraSpacing.space40,
+              _showsInteractions ? 112.0 : AmoraSpacing.space40,
             ),
             child: content,
           );

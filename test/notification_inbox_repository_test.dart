@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 class _Remote implements NotificationInboxRemoteDataSource {
   final List<String> requests = <String>[];
+  final List<Map<String, dynamic>?> bodies = <Map<String, dynamic>?>[];
   Object? failure;
   int page = 0;
 
@@ -26,6 +27,7 @@ class _Remote implements NotificationInboxRemoteDataSource {
     Map<String, dynamic>? body,
   }) async {
     requests.add('$method $path');
+    bodies.add(body);
     if (failure case final error?) throw error;
     if (method == 'GET') {
       page++;
@@ -42,7 +44,15 @@ class _Remote implements NotificationInboxRemoteDataSource {
       return response({'notification': row('1', read: true), 'unreadCount': 1});
     }
     if (method == 'DELETE') {
+      if (path == '/api/devices') {
+        return response({'removed': true});
+      }
       return response({'deleted': true, 'id': '1', 'unreadCount': 1});
+    }
+    if (method == 'POST' && path == '/api/devices') {
+      return response({
+        'device': {'active': true},
+      });
     }
     throw StateError('Unexpected request');
   }
@@ -128,4 +138,32 @@ void main() {
       expect(repository.unreadCount, 0);
     },
   );
+
+  test('uses the authenticated device registration contract', () async {
+    final remote = _Remote();
+    final repository = NotificationInboxRepository(remote: remote);
+    addTearDown(repository.dispose);
+
+    expect(
+      await repository.registerPushToken(
+        'device-token-12345678901234567890',
+        platform: 'android',
+        installationId: 'installation-1',
+      ),
+      isTrue,
+    );
+    expect(
+      await repository.unregisterPushToken('device-token-12345678901234567890'),
+      isTrue,
+    );
+    expect(remote.requests, ['POST /api/devices', 'DELETE /api/devices']);
+    expect(remote.bodies.first, {
+      'pushToken': 'device-token-12345678901234567890',
+      'platform': 'android',
+      'installationId': 'installation-1',
+    });
+    expect(remote.bodies.last, {
+      'pushToken': 'device-token-12345678901234567890',
+    });
+  });
 }

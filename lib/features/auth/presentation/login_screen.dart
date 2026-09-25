@@ -7,14 +7,20 @@ import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/features/auth/domain/amora_password_policy.dart';
 import 'package:amora_ai/features/auth/presentation/forgot_password_screen.dart';
 import 'package:amora_ai/features/auth/presentation/signup_screen.dart';
+import 'package:amora_ai/features/auth/presentation/welcome_back_reactivation_screen.dart';
 import 'package:amora_ai/features/auth/presentation/widgets/auth_presentation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+typedef LoginCallback =
+    Future<AmoraUser> Function(String email, String password);
+
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  const LoginScreen({super.key, this.login});
 
   static const routeName = '/login';
+
+  final LoginCallback? login;
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -154,7 +160,7 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _loading = true);
     try {
       TextInput.finishAutofillContext();
-      await AuthService.instance.login(
+      await (widget.login ?? AuthService.instance.login)(
         _emailController.text.trim(),
         _passwordController.text,
       );
@@ -162,6 +168,7 @@ class _LoginScreenState extends State<LoginScreen> {
       await AmoraSession.completeAuthentication(context);
     } on AuthException catch (error) {
       if (!mounted) return;
+      if (_openReactivation(error)) return;
       if (error.code == 'ACCOUNT_NOT_VERIFIED') {
         Navigator.of(context).pushNamed(
           AccountVerificationScreen.routeName,
@@ -195,6 +202,7 @@ class _LoginScreenState extends State<LoginScreen> {
       await AmoraSession.completeAuthentication(context);
     } on AuthException catch (error) {
       if (!mounted) return;
+      if (_openReactivation(error)) return;
       setState(() {
         _googleLoading = false;
         _error = error.message;
@@ -218,6 +226,22 @@ class _LoginScreenState extends State<LoginScreen> {
     return null;
   }
 
+  bool _openReactivation(AuthException error) {
+    if (error.code != 'ACCOUNT_DEACTIVATED') return false;
+    final token = error.data['reactivationToken']?.toString() ?? '';
+    if (token.isEmpty) return false;
+    setState(() {
+      _loading = false;
+      _googleLoading = false;
+    });
+    Navigator.of(context).pushNamedAndRemoveUntil(
+      WelcomeBackReactivationScreen.routeName,
+      (_) => false,
+      arguments: token,
+    );
+    return true;
+  }
+
   /// The API intentionally does not reveal whether an account exists or
   /// whether a password was wrong. Keep that secure, actionable message
   /// instead of combining it with client-side field validation.
@@ -225,9 +249,10 @@ class _LoginScreenState extends State<LoginScreen> {
     return switch (error.code) {
       'INVALID_CREDENTIALS' => 'Email or password is incorrect.',
       'ACCOUNT_NOT_VERIFIED' => 'Please verify your account before signing in.',
-      _ => error.userMessage.isEmpty
-          ? 'Sign in is unavailable right now. Please try again.'
-          : error.userMessage,
+      _ =>
+        error.userMessage.isEmpty
+            ? 'Sign in is unavailable right now. Please try again.'
+            : error.userMessage,
     };
   }
 }

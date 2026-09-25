@@ -1351,19 +1351,30 @@ String? _notificationRoute(InboxNotification notification) {
     SubscriptionScreen.routeName,
   };
   if (requested != null && allowed.contains(requested)) return requested;
-  return switch (notification.category) {
-    'Likes' || 'Super Likes' || 'Matches' || 'Profile Views' =>
+  final category = notification.category.trim().toLowerCase();
+  final type = notification.type.trim().toLowerCase();
+  return switch ((category, type)) {
+    ('likes' || 'super likes' || 'matches' || 'profile views', _) ||
+    (
+      _,
+      'like' ||
+          'new_like' ||
+          'superlike' ||
+          'new_super_like' ||
+          'rose_received' ||
+          'new_match',
+    ) =>
       notification.actor?.userId == null &&
               notification.data['targetUserId'] == null
           ? null
           : ProfileDetailScreen.routeName,
-    'Messages' =>
+    ('messages', _) || (_, 'message' || 'new_message') =>
       notification.data['conversationId'] == null
           ? null
           : ChatDetailScreen.routeName,
-    'Events' => EventsScreen.routeName,
-    'Verification' => KycVerificationScreen.routeName,
-    'Payments' || 'Offers' => SubscriptionScreen.routeName,
+    ('events', _) => EventsScreen.routeName,
+    ('verification', _) => KycVerificationScreen.routeName,
+    ('payments' || 'offers', _) => SubscriptionScreen.routeName,
     _ => null,
   };
 }

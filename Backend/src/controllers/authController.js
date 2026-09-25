@@ -18,13 +18,26 @@ const refreshSelectorOf = (value) => {
   const selector = String(value || '').split('.', 1)[0];
   return /^[a-f0-9]{32}$/.test(selector) && String(value).includes('.') ? selector : null;
 };
+const REACTIVATION_ISSUER = 'amoraa-backend';
+const REACTIVATION_AUDIENCE = 'amoraa-account-reactivation';
+const reactivationChallenge = (user) => jwt.sign({
+  sub: String(user.id),
+  ver: Number(user.tokenVersion || 0),
+  purpose: 'account_reactivation',
+  jti: crypto.randomUUID(),
+}, process.env.JWT_SECRET, {
+  expiresIn: '10m',
+  issuer: REACTIVATION_ISSUER,
+  audience: REACTIVATION_AUDIENCE,
+});
+const deactivatedResponse = (res, user) => res.status(403).json({
+  success: false,
+  message: 'This account is deactivated. Confirm reactivation to continue.',
+  code: 'ACCOUNT_DEACTIVATED',
+  errors: [],
+  data: { reactivationToken: reactivationChallenge(user), expiresInSeconds: 600 },
+});
 function success(res, message, data, devOtp) { const body = { success: true, message, data }; if (process.env.NODE_ENV === 'development' && devOtp) body.devOtp = devOtp; return res.json(body); }
-const deletionConfirmationToken = () => {
-  const selector = crypto.randomBytes(16).toString('hex');
-  const secret = crypto.randomBytes(32).toString('hex');
-  const token = `${selector}.${secret}`;
-  return { token, selector, hash: crypto.createHash('sha256').update(token).digest('hex') };
-};
 exports.requiredSignupLegalDocuments = async (_req, res, next) => {
   try {
     const documents = await consentService.requiredSignupDocuments();
@@ -234,7 +247,7 @@ exports.resendVerification = async (req, res) => {
     deliveredCode,
   );
 };
-exports.login = async (req, res) => { const { User } = getModels(); const user = await User.findOne({ where: { email: emailOf(req.body.email) } }); if (!user || user.authProvider !== 'local' || !(await bcrypt.compare(req.body.password, user.passwordHash || '')) || user.accountStatus === 'deleted') { if (user && user.accountStatus !== 'deleted') await recordLoginEvent({ userId: user.id, result: 'failed', authenticationMethod: 'password', failureCategory: 'invalid_credentials', request: req }); const provider = user && user.authProvider === 'google'; return res.status(401).json({ success: false, message: provider ? 'This account uses Google Sign-In. Please sign in with Google.' : 'Invalid email or password.', code: 'INVALID_CREDENTIALS', errors: [] }); } if (!user.isVerified) { await recordLoginEvent({ userId: user.id, result: 'failed', authenticationMethod: 'password', failureCategory: 'account_not_verified', request: req }); return res.status(403).json({ success: false, message: 'Please verify your account before logging in.', code: 'ACCOUNT_NOT_VERIFIED', errors: [] }); } const reactivated = user.accountStatus === 'deactivated'; if (reactivated) { user.accountStatus = 'active'; user.deactivatedAt = null; await user.save(); } await recordLoginEvent({ userId: user.id, result: 'successful', authenticationMethod: 'password', request: req }); return success(res, reactivated ? 'Account reactivated and logged in.' : 'Logged in.', { ...(await issueTokens(user, req.ip)), user: profile(user), reactivated }); };
+exports.login = async (req, res) => { const { User } = getModels(); const user = await User.findOne({ where: { email: emailOf(req.body.email) } }); if (!user || user.authProvider !== 'local' || !(await bcrypt.compare(req.body.password, user.passwordHash || '')) || user.accountStatus === 'deleted') { if (user && user.accountStatus !== 'deleted') await recordLoginEvent({ userId: user.id, result: 'failed', authenticationMethod: 'password', failureCategory: 'invalid_credentials', request: req }); const provider = user && user.authProvider === 'google'; return res.status(401).json({ success: false, message: provider ? 'This account uses Google Sign-In. Please sign in with Google.' : 'Invalid email or password.', code: 'INVALID_CREDENTIALS', errors: [] }); } if (!user.isVerified) { await recordLoginEvent({ userId: user.id, result: 'failed', authenticationMethod: 'password', failureCategory: 'account_not_verified', request: req }); return res.status(403).json({ success: false, message: 'Please verify your account before logging in.', code: 'ACCOUNT_NOT_VERIFIED', errors: [] }); } if (user.accountStatus === 'deactivated') { await recordLoginEvent({ userId: user.id, result: 'successful', authenticationMethod: 'password', request: req }); return deactivatedResponse(res, user); } await recordLoginEvent({ userId: user.id, result: 'successful', authenticationMethod: 'password', request: req }); return success(res, 'Logged in.', { ...(await issueTokens(user, req.ip)), user: profile(user) }); };
 exports.google = async (req, res, next) => {
   if (!googleClient) return res.status(503).json({ success: false, message: 'Google Sign-In is not configured on this server yet.', code: 'GOOGLE_AUTH_NOT_CONFIGURED', errors: [] });
   let payload;
@@ -257,34 +270,39 @@ exports.google = async (req, res, next) => {
       isNewUser = true;
     } catch (error) { return next(error); }
   }
-  const reactivated = user.accountStatus === 'deactivated';
-  if (reactivated) { user.accountStatus = 'active'; user.deactivatedAt = null; await user.save(); }
   await recordLoginEvent({ userId: user.id, result: 'successful', authenticationMethod: 'google', request: req });
-  return success(res, reactivated ? 'Account reactivated and signed in.' : 'Google Sign-In successful.', { ...(await issueTokens(user, req.ip)), user: profile(user), isNewUser, reactivated });
+  if (user.accountStatus === 'deactivated') return deactivatedResponse(res, user);
+  return success(res, 'Google Sign-In successful.', { ...(await issueTokens(user, req.ip)), user: profile(user), isNewUser });
 };
-exports.reauthenticateForAccountDeletion = async (req, res, next) => {
+exports.reactivate = async (req, res, next) => {
+  let payload;
   try {
-    const { User, AccountDeletionConfirmation } = getModels();
-    const user = await User.findByPk(req.user.sub);
-    if (!user || user.accountStatus === 'deleted') return res.status(401).json({ success: false, message: 'Please re-authenticate before deleting your account.', code: 'REAUTHENTICATION_REQUIRED', errors: [] });
-
-    if (user.authProvider === 'local') {
-      if (!req.body.password || !(await bcrypt.compare(req.body.password, user.passwordHash || ''))) {
-        return res.status(401).json({ success: false, message: 'The password you entered is incorrect.', code: 'REAUTHENTICATION_FAILED', errors: [] });
-      }
-    } else if (user.authProvider === 'google') {
-      if (!googleClient) return res.status(503).json({ success: false, message: 'Unable to verify your Google account. Please try again.', code: 'GOOGLE_AUTH_NOT_CONFIGURED', errors: [] });
-      let payload;
-      try { payload = (await googleClient.verifyIdToken({ idToken: req.body.idToken, audience: googleIds })).getPayload(); } catch (_) { return res.status(401).json({ success: false, message: 'Unable to verify your Google account. Please try again.', code: 'REAUTHENTICATION_FAILED', errors: [] }); }
-      if (!payload?.sub || payload.sub !== user.googleId || emailOf(payload.email) !== user.email) return res.status(401).json({ success: false, message: 'Unable to verify your Google account. Please try again.', code: 'REAUTHENTICATION_FAILED', errors: [] });
-    } else {
-      return res.status(401).json({ success: false, message: 'Please re-authenticate before deleting your account.', code: 'REAUTHENTICATION_REQUIRED', errors: [] });
-    }
-
-    const generated = deletionConfirmationToken();
-    const expiresAt = new Date(Date.now() + (5 * 60 * 1000));
-    await AccountDeletionConfirmation.create({ userId: user.id, tokenSelector: generated.selector, tokenHash: generated.hash, purpose: 'account_deletion', expiresAt });
-    return success(res, 'Re-authentication successful.', { deletionConfirmation: generated.token, expiresIn: 300 });
+    payload = jwt.verify(req.body.reactivationToken, process.env.JWT_SECRET, {
+      issuer: REACTIVATION_ISSUER,
+      audience: REACTIVATION_AUDIENCE,
+    });
+  } catch (error) {
+    return res.status(401).json({ success: false, message: 'Reactivation authorization is invalid or has expired.', code: error.name === 'TokenExpiredError' ? 'REACTIVATION_EXPIRED' : 'REACTIVATION_INVALID', errors: [] });
+  }
+  if (payload.purpose !== 'account_reactivation' || !payload.sub) {
+    return res.status(401).json({ success: false, message: 'Reactivation authorization is invalid or has expired.', code: 'REACTIVATION_INVALID', errors: [] });
+  }
+  try {
+    const { User } = getModels();
+    const outcome = await User.sequelize.transaction(async (transaction) => {
+      const user = await User.findByPk(payload.sub, { transaction, lock: transaction.LOCK.UPDATE });
+      if (!user || user.accountStatus === 'deleted') return { invalid: true };
+      if (user.accountStatus !== 'deactivated' || Number(payload.ver) !== Number(user.tokenVersion || 0)) return { used: true };
+      user.accountStatus = 'active';
+      user.deactivatedAt = null;
+      user.tokenVersion += 1;
+      await user.save({ transaction });
+      const tokens = await issueTokens(user, req.ip, { transaction });
+      return { user, tokens };
+    });
+    if (outcome.invalid) return res.status(401).json({ success: false, message: 'Reactivation authorization is invalid.', code: 'REACTIVATION_INVALID', errors: [] });
+    if (outcome.used) return res.status(409).json({ success: false, message: 'This reactivation authorization has already been used.', code: 'REACTIVATION_ALREADY_USED', errors: [] });
+    return success(res, 'Your account has been reactivated.', { ...outcome.tokens, user: profile(outcome.user) });
   } catch (error) { return next(error); }
 };
 exports.forgotPassword = async (req, res) => {
@@ -355,6 +373,40 @@ exports.resetPassword = async (req, res) => {
   });
   if (!result) return res.status(401).json({ success: false, message: 'Invalid or already used recovery token.', code: 'TOKEN_INVALID', errors: [] });
   return success(res, 'Password updated. Please log in again.', {});
+};
+exports.changePassword = async (req, res, next) => {
+  try {
+    const { User } = getModels();
+    const result = await User.sequelize.transaction(async (transaction) => {
+      const user = await User.findOne({
+        where: { id: req.user.sub, authProvider: 'local', accountStatus: 'active' },
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+      });
+      if (!user || !(await bcrypt.compare(req.body.currentPassword, user.passwordHash || ''))) {
+        return 'CURRENT_PASSWORD_INCORRECT';
+      }
+      if (req.body.newPassword.length < 8) {
+        return 'PASSWORD_POLICY_INVALID';
+      }
+      if (await bcrypt.compare(req.body.newPassword, user.passwordHash || '')) {
+        return 'NEW_PASSWORD_SAME_AS_CURRENT';
+      }
+      user.passwordHash = await bcrypt.hash(req.body.newPassword, 12);
+      await user.save({ transaction });
+      return 'UPDATED';
+    });
+    if (result === 'CURRENT_PASSWORD_INCORRECT') {
+      return res.status(401).json({ success: false, message: 'The current password you entered is incorrect.', code: 'CURRENT_PASSWORD_INCORRECT', errors: [] });
+    }
+    if (result === 'PASSWORD_POLICY_INVALID') {
+      return res.status(400).json({ success: false, message: 'Validation failed.', code: 'VALIDATION_ERROR', errors: [{ field: 'newPassword', message: 'New password must contain at least 8 characters.' }] });
+    }
+    if (result === 'NEW_PASSWORD_SAME_AS_CURRENT') {
+      return res.status(409).json({ success: false, message: 'New password cannot be the same as the current password.', code: 'NEW_PASSWORD_SAME_AS_CURRENT', errors: [] });
+    }
+    return success(res, 'Password updated.', {});
+  } catch (error) { return next(error); }
 };
 exports.refreshToken = async (req, res) => {
   const { RefreshToken, User } = getModels();

@@ -1,7 +1,6 @@
-import 'dart:io';
-
 import 'package:amora_ai/core/theme/amora_theme.dart';
-import 'package:amora_ai/features/auth/presentation/forgot_password_screen.dart';
+import 'package:amora_ai/features/profile/presentation/profile_screen.dart';
+import 'package:amora_ai/features/auth/presentation/change_password_screen.dart';
 import 'package:amora_ai/features/legal/presentation/community_guidelines_screen.dart';
 import 'package:amora_ai/features/legal/presentation/legal_document_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_basic_details_screen.dart';
@@ -87,7 +86,7 @@ void main() {
           CommunityGuidelinesScreen.routeName,
       const ValueKey('settings-email-support'): FaqSupportScreen.routeName,
       const ValueKey('settings-change-password'):
-          ForgotPasswordScreen.routeName,
+          ChangePasswordScreen.routeName,
       const ValueKey('settings-logout'): LogoutAccountScreen.routeName,
       const ValueKey('settings-deactivate-account'):
           DeactivateAccountScreen.routeName,
@@ -146,19 +145,22 @@ void main() {
     expect(find.text('support@amoraa.ai'), findsOneWidget);
     expect(find.text('Contact'), findsOneWidget);
 
-    final profileSource = File(
-      'lib/features/profile/presentation/profile_screen.dart',
-    ).readAsStringSync();
-    for (final removed in const [
-      "title: 'Support'",
-      "title: 'Legal'",
-      "title: 'Terms & Conditions'",
-      "title: 'Privacy policy'",
-      "title: 'Community guidelines'",
-      "title: 'Safety center'",
-      'EmailSupportProfileCard',
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AmoraTheme.light(),
+        home: const ProfileScreen(showNavigation: false),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    for (final label in const [
+      'Email Support',
+      'Terms & Conditions',
+      'Privacy Policy',
+      'Community Guidelines',
+      'Safety Center',
     ]) {
-      expect(profileSource, isNot(contains(removed)));
+      expect(find.text(label), findsNothing);
     }
   });
 

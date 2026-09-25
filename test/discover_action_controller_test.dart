@@ -79,16 +79,17 @@ void main() {
     expect(controller.isEmpty, isTrue);
   });
 
-  test('non-numeric profile ID blocks API call and sets lastError', () async {
+  test('controller delegates the profile ID supplied by the feed', () async {
     final invalidController = DiscoverActionController(
       profileIds: const ['female-1'],
       transitionDuration: Duration.zero,
       apiService: api,
     );
     final result = await invalidController.likeProfile();
-    expect(result, isFalse);
-    expect(invalidController.lastError, 'Unable to process this profile right now. Please try again.');
-    expect(api.swipeCalls, 0);
+    expect(result, isTrue);
+    expect(invalidController.lastError, isNull);
+    expect(api.swipeCalls, 1);
+    expect(api.lastTargetUserId, 'female-1');
     invalidController.dispose();
   });
 }

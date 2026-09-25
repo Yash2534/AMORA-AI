@@ -355,14 +355,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
 
-    if (confirm == true && mounted) {
-      await AuthService.instance.logout();
+    if (confirm == true && context.mounted) {
       AmoraSession.logOut();
-      if (mounted) {
-        Navigator.of(
-          context,
-        ).pushNamedAndRemoveUntil(LoginScreen.routeName, (route) => false);
-      }
+      Navigator.of(
+        context,
+      ).pushNamedAndRemoveUntil(LoginScreen.routeName, (route) => false);
     }
   }
 
@@ -1698,7 +1695,6 @@ class _AuraPremiumBannerCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
-                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Container(
                         width: 22,
@@ -1718,13 +1714,19 @@ class _AuraPremiumBannerCard extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      Text(
-                        isPremium ? 'AMORAA PREMIUM ACTIVE' : 'AMORAA PREMIUM',
-                        style: AmoraTextStyles.labelSmall.copyWith(
-                          color: Colors.white.withValues(alpha: .9),
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 1.4,
-                          fontSize: 12,
+                      Expanded(
+                        child: Text(
+                          isPremium
+                              ? 'AMORAA PREMIUM ACTIVE'
+                              : 'AMORAA PREMIUM',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AmoraTextStyles.labelSmall.copyWith(
+                            color: Colors.white.withValues(alpha: .9),
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1.4,
+                            fontSize: 12,
+                          ),
                         ),
                       ),
                     ],

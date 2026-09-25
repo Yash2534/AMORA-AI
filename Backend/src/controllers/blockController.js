@@ -1,4 +1,3 @@
-const { Op } = require('sequelize');
 const { getModels } = require('../models');
 const { activeAccountWhere } = require('../services/accessControlService');
 const { serializePublicProfile } = require('../services/publicProfileService');
@@ -12,7 +11,7 @@ exports.list = async (req, res, next) => {
         model: User,
         as: 'blockedUser',
         required: true,
-        where: { accountStatus: { [Op.ne]: 'deleted' } },
+        where: activeAccountWhere(),
         attributes: ['id', 'name', 'identityVerifiedAt'],
         include: [{ model: OnboardingProfile, required: true, where: { onboardingCompleted: true } }],
       }],

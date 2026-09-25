@@ -259,7 +259,7 @@ void main() {
     );
     expect(find.byType(AmoraaProfilePromptsSection), findsOneWidget);
     expect(find.byType(AmoraaEditableProfilePromptCard), findsNWidgets(2));
-    expect(find.widgetWithText(TextButton, 'Edit'), findsNWidgets(2));
+    expect(find.byKey(const ValueKey('edit-profile-prompt')), findsNWidgets(2));
     await tester.tap(find.byKey(const ValueKey('edit-profile-prompt')).first);
     await tester.pumpAndSettle();
     expect(
