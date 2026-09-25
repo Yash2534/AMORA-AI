@@ -88,6 +88,8 @@ Map<String, dynamic> _listResponse(List<Map<String, dynamic>> values) => {
 };
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   final repository = ChatRepository.instance;
 
   setUp(() {
@@ -150,6 +152,29 @@ void main() {
     expect(repository.conversation('12')?.user.id, '2');
     expect(remote.calls, contains('POST /api/conversations'));
   });
+
+  test(
+    'cached direct conversations are revalidated with the backend before opening',
+    () async {
+      final remote = _FakeChatRemote();
+      remote.responses['GET /api/conversations?page=1&limit=20'] =
+          _listResponse([_summary(id: '12')]);
+      remote.responses['POST /api/conversations'] = {
+        'success': true,
+        'data': {'conversation': _summary(id: '12')},
+      };
+      await repository.resetForTesting(remote: remote);
+      await repository.refreshConversations();
+
+      final conversationId = await repository.createConversationForUserId('2');
+
+      expect(conversationId, '12');
+      expect(
+        remote.calls.where((call) => call == 'POST /api/conversations'),
+        hasLength(1),
+      );
+    },
+  );
 
   test(
     'history, send, read, and incoming realtime state use persisted IDs',

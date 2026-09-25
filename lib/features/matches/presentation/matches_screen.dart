@@ -1,5 +1,6 @@
 import 'package:amora_ai/core/data/image_repository.dart';
 import 'package:amora_ai/core/api/phase_two_api_service.dart';
+import 'package:amora_ai/core/auth/auth_service.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
@@ -20,7 +21,6 @@ import 'package:amora_ai/features/profile/presentation/profile_completion_screen
 import 'package:amora_ai/features/profile/presentation/profile_detail_screen.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/profile_attribute_icons.dart';
 import 'package:flutter/material.dart';
-
 
 class MatchesScreen extends StatefulWidget {
   const MatchesScreen({
@@ -76,10 +76,12 @@ class _MatchesScreenState extends State<MatchesScreen> {
   }
 
   List<DummyProfile> get _recommendations {
+    final previews = [...widget.initialProfiles]
+      ..sort((a, b) => b.score.compareTo(a.score));
     return <DummyProfile>[
       ..._matches.map((item) => item.profile.profile),
-      ...widget.initialProfiles,
-    ]..sort((a, b) => b.score.compareTo(a.score));
+      ...previews,
+    ];
   }
 
   Future<void> _loadMatches() async {
@@ -120,7 +122,7 @@ class _MatchesScreenState extends State<MatchesScreen> {
   List<DummyProfile> get _visibleRecommendations {
     final profiles = _thresholdRecommendations;
     if (profiles.isEmpty) return const [];
-    final best = _highestScoring(profiles);
+    final best = profiles.first;
     return profiles
         .where((profile) {
           return switch (_filter) {
@@ -148,7 +150,7 @@ class _MatchesScreenState extends State<MatchesScreen> {
   @override
   Widget build(BuildContext context) {
     final visible = _visibleRecommendations;
-    final featured = visible.isEmpty ? null : _highestScoring(visible);
+    final featured = visible.isEmpty ? null : visible.first;
     final feed = featured == null
         ? const <DummyProfile>[]
         : visible
@@ -174,18 +176,15 @@ class _MatchesScreenState extends State<MatchesScreen> {
                   child: _selectionMode
                       ? AmoraaMainPageHeaderFrame(
                           child: AiMatchesSelectionToolbar(
-                            key: const ValueKey(
-                              'ai-matches-selection-toolbar',
-                            ),
+                            key: const ValueKey('ai-matches-selection-toolbar'),
                             selectedCount: _selectedProfileIds.length,
                             canSelectAll:
                                 !_bulkSubmitting &&
                                 _eligibleVisibleRecommendations.isNotEmpty,
-                            allEligibleSelected:
-                                _eligibleVisibleRecommendations.every(
-                                  (profile) => _selectedProfileIds.contains(
-                                    profile.id,
-                                  ),
+                            allEligibleSelected: _eligibleVisibleRecommendations
+                                .every(
+                                  (profile) =>
+                                      _selectedProfileIds.contains(profile.id),
                                 ),
                             editingLocked: _bulkSubmitting,
                             onClose: _exitSelectionMode,
@@ -211,9 +210,7 @@ class _MatchesScreenState extends State<MatchesScreen> {
                           slivers: [
                             headerSliver,
                             const SliverFillRemaining(
-                              child: Center(
-                                child: CircularProgressIndicator(),
-                              ),
+                              child: Center(child: CircularProgressIndicator()),
                             ),
                           ],
                         )
@@ -267,219 +264,202 @@ class _MatchesScreenState extends State<MatchesScreen> {
                           slivers: [
                             headerSliver,
                             SliverPadding(
-                                    padding: const EdgeInsets.fromLTRB(
-                                      AmoraaMainPageHeader
-                                          .contentHorizontalInset,
-                                      AmoraSpacing.space8,
-                                      AmoraaMainPageHeader
-                                          .contentHorizontalInset,
-                                      AmoraSpacing.space12,
+                              padding: const EdgeInsets.fromLTRB(
+                                AmoraaMainPageHeader.contentHorizontalInset,
+                                AmoraSpacing.space8,
+                                AmoraaMainPageHeader.contentHorizontalInset,
+                                AmoraSpacing.space12,
+                              ),
+                              sliver: SliverToBoxAdapter(
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    Text(
+                                      'Best Matches',
+                                      style: AmoraTextStyles.sectionTitle,
                                     ),
-                                    sliver: SliverToBoxAdapter(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.stretch,
-                                        children: [
-                                          Text(
-                                            'Best Matches',
-                                            style: AmoraTextStyles.sectionTitle,
-                                          ),
-                                          const SizedBox(
-                                            height: AmoraSpacing.space12,
-                                          ),
-                                          AmoraaInlineCompatibilityFilter(
-                                            value: _compatibilityThreshold,
-                                            onChanged: (value) {
-                                              if (value ==
-                                                  _compatibilityThreshold) {
-                                                return;
-                                              }
-                                              setState(
-                                                () => _compatibilityThreshold =
-                                                    value,
-                                              );
-                                            },
-                                            onReset: () => setState(
-                                              () => _compatibilityThreshold =
-                                                  defaultCompatibilityThreshold,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
+                                    const SizedBox(
+                                      height: AmoraSpacing.space12,
                                     ),
-                                  ),
-                                  SliverToBoxAdapter(
-                                    child: Padding(
-                                      padding: const EdgeInsets.fromLTRB(
-                                        AmoraaMainPageHeader
-                                            .contentHorizontalInset,
-                                        AmoraSpacing.space8,
-                                        AmoraaMainPageHeader
-                                            .contentHorizontalInset,
-                                        AmoraSpacing.space20,
-                                      ),
-                                      child: AiMatchFilterBar(
-                                        selected: _filter,
-                                        onSelected: (filter) =>
-                                            setState(() => _filter = filter),
-                                      ),
-                                    ),
-                                  ),
-                                  if (_thresholdRecommendations.isEmpty)
-                                    SliverFillRemaining(
-                                      hasScrollBody: false,
-                                      child: AiMatchesThresholdEmptyState(
-                                        onLowerFilter: () => setState(
-                                          () => _compatibilityThreshold =
-                                              defaultCompatibilityThreshold,
-                                        ),
-                                      ),
-                                    )
-                                  else if (featured == null)
-                                    SliverFillRemaining(
-                                      hasScrollBody: false,
-                                      child: AiMatchesFilteredEmptyState(
-                                        onShowAll: () => setState(
-                                          () => _filter = AiMatchFilter.all,
-                                        ),
-                                      ),
-                                    )
-                                  else ...[
-                                    SliverPadding(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: AmoraaMainPageHeader
-                                            .contentHorizontalInset,
-                                      ),
-                                      sliver: SliverToBoxAdapter(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.stretch,
-                                          children: [
-                                            const _SectionTitle(
-                                              icon: Icons.auto_awesome_rounded,
-                                              title: 'Featured recommendation',
-                                            ),
-                                            const SizedBox(
-                                              height: AmoraSpacing.space12,
-                                            ),
-                                            _MatchReveal(
-                                              key: ValueKey(
-                                                'featured-reveal-'
-                                                '$_compatibilityThreshold-'
-                                                '${featured.id}',
-                                              ),
-                                              delay: Duration.zero,
-                                              child: SelectableAiMatchCard(
-                                                profile: featured,
-                                                selectionMode: _selectionMode,
-                                                selected: _selectedProfileIds
-                                                    .contains(featured.id),
-                                                enabled: _canLike(featured),
-                                                processing:
-                                                    _processingProfileIds
-                                                        .contains(featured.id),
-                                                radius: 30,
-                                                onToggle: () =>
-                                                    _toggleProfileSelection(
-                                                      featured,
-                                                    ),
-                                                onLongPress: () =>
-                                                    _enterSelectionMode(
-                                                      featured,
-                                                    ),
-                                                child: FeaturedAiMatchCard(
-                                                  key: ValueKey(
-                                                    'featured-match-${featured.id}',
-                                                  ),
-                                                  profile: featured,
-                                                  horizontal: desktop,
-                                                  onOpenProfile: () =>
-                                                      _openProfile(featured),
-                                                  onMessage: () =>
-                                                      _openConversation(
-                                                        featured,
-                                                      ),
-                                                  onWhyMatch: () =>
-                                                      _showWhyThisMatch(
-                                                        featured,
-                                                      ),
-                                                ),
-                                              ),
-                                            ),
-                                            if (feed.isNotEmpty) ...[
-                                              const SizedBox(
-                                                height: AmoraSpacing.space24,
-                                              ),
-                                              const _SectionTitle(
-                                                icon: Icons
-                                                    .favorite_border_rounded,
-                                                title: 'More recommendations',
-                                              ),
-                                              const SizedBox(
-                                                height: AmoraSpacing.space12,
-                                              ),
-                                            ],
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                    if (feed.isNotEmpty)
-                                      if (desktop)
-                                        SliverPadding(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: AmoraaMainPageHeader
-                                                .contentHorizontalInset,
-                                          ),
-                                          sliver: SliverGrid.builder(
-                                            gridDelegate:
-                                                const SliverGridDelegateWithFixedCrossAxisCount(
-                                                  crossAxisCount: 2,
-                                                  mainAxisSpacing:
-                                                      AmoraSpacing.space16,
-                                                  crossAxisSpacing:
-                                                      AmoraSpacing.space16,
-                                                  mainAxisExtent: 1024,
-                                                ),
-                                            itemCount: feed.length,
-                                            itemBuilder: (context, index) =>
-                                                _buildFeedCard(
-                                                  feed[index],
-                                                  index,
-                                                ),
-                                          ),
-                                        )
-                                      else
-                                        SliverPadding(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: AmoraSpacing.space20,
-                                          ),
-                                          sliver: SliverList.separated(
-                                            itemCount: feed.length,
-                                            separatorBuilder: (_, _) =>
-                                                const SizedBox(
-                                                  height: AmoraSpacing.space16,
-                                                ),
-                                            itemBuilder: (context, index) =>
-                                                _buildFeedCard(
-                                                  feed[index],
-                                                  index,
-                                                ),
-                                          ),
-                                        ),
-                                    SliverToBoxAdapter(
-                                      child: SizedBox(
-                                        height:
-                                            _selectionMode &&
-                                                (_selectedProfileIds
-                                                        .isNotEmpty ||
-                                                    _bulkSubmitting)
-                                            ? FloatingBottomNav.navigationHeightFor(context) + 124.0
-                                            : FloatingBottomNav.navigationHeightFor(context) + 24.0,
+                                    AmoraaInlineCompatibilityFilter(
+                                      value: _compatibilityThreshold,
+                                      onChanged: (value) {
+                                        if (value == _compatibilityThreshold) {
+                                          return;
+                                        }
+                                        setState(
+                                          () => _compatibilityThreshold = value,
+                                        );
+                                      },
+                                      onReset: () => setState(
+                                        () => _compatibilityThreshold =
+                                            defaultCompatibilityThreshold,
                                       ),
                                     ),
                                   ],
-                                ],
+                                ),
                               ),
+                            ),
+                            SliverToBoxAdapter(
+                              child: Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  AmoraaMainPageHeader.contentHorizontalInset,
+                                  AmoraSpacing.space8,
+                                  AmoraaMainPageHeader.contentHorizontalInset,
+                                  AmoraSpacing.space20,
+                                ),
+                                child: AiMatchFilterBar(
+                                  selected: _filter,
+                                  onSelected: (filter) =>
+                                      setState(() => _filter = filter),
+                                ),
+                              ),
+                            ),
+                            if (_thresholdRecommendations.isEmpty)
+                              SliverFillRemaining(
+                                hasScrollBody: false,
+                                child: AiMatchesThresholdEmptyState(
+                                  onLowerFilter: () => setState(
+                                    () => _compatibilityThreshold =
+                                        defaultCompatibilityThreshold,
+                                  ),
+                                ),
+                              )
+                            else if (featured == null)
+                              SliverFillRemaining(
+                                hasScrollBody: false,
+                                child: AiMatchesFilteredEmptyState(
+                                  onShowAll: () => setState(
+                                    () => _filter = AiMatchFilter.all,
+                                  ),
+                                ),
+                              )
+                            else ...[
+                              SliverPadding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: AmoraaMainPageHeader
+                                      .contentHorizontalInset,
+                                ),
+                                sliver: SliverToBoxAdapter(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: [
+                                      const _SectionTitle(
+                                        icon: Icons.auto_awesome_rounded,
+                                        title: 'Featured recommendation',
+                                      ),
+                                      const SizedBox(
+                                        height: AmoraSpacing.space12,
+                                      ),
+                                      _MatchReveal(
+                                        key: ValueKey(
+                                          'featured-reveal-'
+                                          '$_compatibilityThreshold-'
+                                          '${featured.id}',
+                                        ),
+                                        delay: Duration.zero,
+                                        child: SelectableAiMatchCard(
+                                          profile: featured,
+                                          selectionMode: _selectionMode,
+                                          selected: _selectedProfileIds
+                                              .contains(featured.id),
+                                          enabled: _canLike(featured),
+                                          processing: _processingProfileIds
+                                              .contains(featured.id),
+                                          radius: 30,
+                                          onToggle: () =>
+                                              _toggleProfileSelection(featured),
+                                          onLongPress: () =>
+                                              _enterSelectionMode(featured),
+                                          child: FeaturedAiMatchCard(
+                                            key: ValueKey(
+                                              'featured-match-${featured.id}',
+                                            ),
+                                            profile: featured,
+                                            horizontal: desktop,
+                                            onOpenProfile: () =>
+                                                _openProfile(featured),
+                                            onMessage: () =>
+                                                _openConversation(featured),
+                                            onWhyMatch: () =>
+                                                _showWhyThisMatch(featured),
+                                          ),
+                                        ),
+                                      ),
+                                      if (feed.isNotEmpty) ...[
+                                        const SizedBox(
+                                          height: AmoraSpacing.space24,
+                                        ),
+                                        const _SectionTitle(
+                                          icon: Icons.favorite_border_rounded,
+                                          title: 'More recommendations',
+                                        ),
+                                        const SizedBox(
+                                          height: AmoraSpacing.space12,
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              if (feed.isNotEmpty)
+                                if (desktop)
+                                  SliverPadding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: AmoraaMainPageHeader
+                                          .contentHorizontalInset,
+                                    ),
+                                    sliver: SliverGrid.builder(
+                                      gridDelegate:
+                                          const SliverGridDelegateWithFixedCrossAxisCount(
+                                            crossAxisCount: 2,
+                                            mainAxisSpacing:
+                                                AmoraSpacing.space16,
+                                            crossAxisSpacing:
+                                                AmoraSpacing.space16,
+                                            mainAxisExtent: 1024,
+                                          ),
+                                      itemCount: feed.length,
+                                      itemBuilder: (context, index) =>
+                                          _buildFeedCard(feed[index], index),
+                                    ),
+                                  )
+                                else
+                                  SliverPadding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: AmoraSpacing.space20,
+                                    ),
+                                    sliver: SliverList.separated(
+                                      itemCount: feed.length,
+                                      separatorBuilder: (_, _) =>
+                                          const SizedBox(
+                                            height: AmoraSpacing.space16,
+                                          ),
+                                      itemBuilder: (context, index) =>
+                                          _buildFeedCard(feed[index], index),
+                                    ),
+                                  ),
+                              SliverToBoxAdapter(
+                                child: SizedBox(
+                                  height:
+                                      _selectionMode &&
+                                          (_selectedProfileIds.isNotEmpty ||
+                                              _bulkSubmitting)
+                                      ? FloatingBottomNav.navigationHeightFor(
+                                              context,
+                                            ) +
+                                            124.0
+                                      : FloatingBottomNav.navigationHeightFor(
+                                              context,
+                                            ) +
+                                            24.0,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
                   if (widget.showNavigation)
                     const Align(
                       alignment: Alignment.bottomCenter,
@@ -737,32 +717,10 @@ class _MatchesScreenState extends State<MatchesScreen> {
   }
 
   Future<void> _openProfile(DummyProfile profile) async {
-    var selected = profile;
-    if (widget.api != null) {
-      final item = _matches
-          .where((match) => match.profile.profile.id == profile.id)
-          .firstOrNull;
-      if (item != null) {
-        try {
-          selected = (await widget.api!.match(item.id)).profile.profile;
-        } catch (_) {
-          if (mounted) {
-            AmoraTopNotificationManager.show(
-              context,
-              message: 'This match is no longer available.',
-              type: AmoraTopNotificationType.system,
-            );
-          }
-          await _loadMatches();
-          return;
-        }
-      }
-    }
     if (!mounted) return;
     await Navigator.of(
       context,
-    ).pushNamed(ProfileDetailScreen.routeName, arguments: selected);
-    if (mounted && widget.api != null) await _loadMatches();
+    ).pushNamed(ProfileDetailScreen.routeName, arguments: profile);
   }
 
   Future<void> _openConversation(DummyProfile profile) async {
@@ -770,6 +728,17 @@ class _MatchesScreenState extends State<MatchesScreen> {
     try {
       conversationId = await ChatRepository.instance
           .createConversationForProfile(profile);
+    } on AuthException catch (error) {
+      if (mounted) {
+        AmoraTopNotificationManager.show(
+          context,
+          message: error.code == 'MATCH_REQUIRED'
+              ? 'Match first to start a conversation.'
+              : 'Chat is no longer available.',
+          type: AmoraTopNotificationType.message,
+        );
+      }
+      return;
     } catch (_) {
       if (mounted) {
         AmoraTopNotificationManager.show(
@@ -1564,7 +1533,6 @@ class AiMatchReason extends StatelessWidget {
       color: isDark
           ? AppColors.primary.withValues(alpha: 0.16)
           : AppColors.softBackground,
-      borderRadius: BorderRadius.circular(16),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
@@ -1609,7 +1577,9 @@ class AiMatchReason extends StatelessWidget {
                     ),
                     const SizedBox(height: AmoraSpacing.space2),
                     Text(
-                      intentCopy,
+                      profile.aiReasons.isNotEmpty
+                          ? profile.aiReasons.first
+                          : intentCopy,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: AmoraTextStyles.bodySmall.copyWith(
@@ -1679,7 +1649,6 @@ class SharedInterestChip extends StatelessWidget {
     );
   }
 }
-
 
 class AiMatchActionBar extends StatelessWidget {
   const AiMatchActionBar({
@@ -2224,6 +2193,24 @@ class WhyThisMatchSheet extends StatelessWidget {
         'Compatibility score',
         '${profile.score}% supplied by AMORAA',
       ),
+      if (profile.compatibilityCoverage != null)
+        _RecommendationFactor(
+          Icons.info_outline_rounded,
+          'Information coverage',
+          '${profile.compatibilityCoverage}% of weighted comparison information available',
+        ),
+      if (profile.aiConfidence != null)
+        _RecommendationFactor(
+          Icons.info_outline_rounded,
+          'Recommendation evidence',
+          '${profile.aiConfidence}/100 evidence support; not a probability of success',
+        ),
+      for (final reason in profile.aiReasons)
+        _RecommendationFactor(
+          Icons.favorite_outline_rounded,
+          'Shared profile details',
+          reason,
+        ),
       _RecommendationFactor(
         Icons.favorite_outline_rounded,
         'Relationship intention',
@@ -2736,10 +2723,3 @@ BoxDecoration _matchCardDecoration({required double radius}) {
 
 bool _isOnline(DummyProfile profile) =>
     profile.status.trim().toLowerCase() == 'online now';
-
-DummyProfile _highestScoring(List<DummyProfile> profiles) {
-  return profiles.reduce(
-    (current, candidate) =>
-        candidate.score > current.score ? candidate : current,
-  );
-}

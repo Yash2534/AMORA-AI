@@ -1,5 +1,6 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
+const os = require('node:os');
 const path = require('node:path');
 const { after, before, test } = require('node:test');
 const jwt = require('jsonwebtoken');
@@ -12,11 +13,14 @@ if (!testDatabase || testDatabase === applicationDatabase || !/test/i.test(testD
 }
 process.env.DB_NAME = testDatabase;
 process.env.NODE_ENV = 'test';
+const mediaTestRoot = path.join(os.tmpdir(), `amora-identity-media-${process.pid}`);
+process.env.AMORA_PRIVATE_UPLOAD_ROOT = mediaTestRoot;
 
 const { migrate } = require('../src/migrations/run');
 const { initializeDatabase, getSequelize } = require('../src/config/db');
 const { getModels } = require('../src/models');
 const { app } = require('../src/server');
+const { absolutePathFor } = require('../src/utils/identityVerificationStorage');
 
 let models;
 let server;
@@ -117,8 +121,8 @@ after(async () => {
     const rows = await models.IdentityVerification.findAll({ where: { userId: userIds } });
     for (const row of rows) {
       storedFiles.push(
-        path.join(__dirname, '..', 'private-uploads', row.aadhaarStoragePath),
-        path.join(__dirname, '..', 'private-uploads', row.selfieStoragePath),
+        absolutePathFor(row.aadhaarStoragePath),
+        absolutePathFor(row.selfieStoragePath),
       );
     }
     await models.IdentityVerification.destroy({ where: { userId: userIds } });
@@ -126,6 +130,9 @@ after(async () => {
     await models.User.destroy({ where: { id: userIds } });
   }
   await Promise.all(storedFiles.map((file) => fs.rm(file, { force: true })));
+  if (path.dirname(mediaTestRoot) === path.resolve(os.tmpdir()) && path.basename(mediaTestRoot).startsWith('amora-identity-media-')) {
+    await fs.rm(mediaTestRoot, { recursive: true, force: true });
+  }
   try { await getSequelize().close(); } catch (_) { /* initialization may have failed */ }
 });
 

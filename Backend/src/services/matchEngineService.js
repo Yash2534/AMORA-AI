@@ -2,21 +2,22 @@ const MATCH_ENGINE_VERSION = 'v2';
 const SCORE_WEIGHTS = Object.freeze({ interests: 35, relationshipGoals: 25, communicationStyle: 10, languages: 10, city: 5, smoking: 5, drinking: 5, weed: 5 });
 const TOTAL_WEIGHT = Object.values(SCORE_WEIGHTS).reduce((sum, value) => sum + value, 0);
 
+const text = (value) => typeof value === 'string' ? value.trim().toLowerCase() : '';
+const usableText = (value) => text(value) === 'prefer not to say' ? '' : text(value);
 const normalise = (value) => (Array.isArray(value)
-  ? [...new Set(value.map((item) => String(item).trim().toLowerCase()).filter(Boolean))]
+  ? [...new Set(value.map(usableText).filter(Boolean))]
   : []);
 const overlap = (left, right) => {
   const rightSet = new Set(normalise(right));
   return normalise(left).filter((item) => rightSet.has(item));
 };
 const clamp = (value) => Math.max(0, Math.min(100, Math.round(value)));
-const text = (value) => String(value || '').trim().toLowerCase();
 const listFactor = (key, weight, viewer, candidate) => {
   const left = normalise(viewer); const right = normalise(candidate); const shared = overlap(left, right);
   return { key, weight, available: Boolean(left.length && right.length), value: left.length && right.length ? shared.length / Math.max(left.length, right.length) : 0, shared };
 };
 const exactFactor = (key, weight, viewer, candidate) => {
-  const left = text(viewer); const right = text(candidate);
+  const left = usableText(viewer); const right = usableText(candidate);
   return { key, weight, available: Boolean(left && right), value: left && right && left === right ? 1 : 0, shared: left && left === right ? [left] : [] };
 };
 
@@ -24,6 +25,8 @@ const exactFactor = (key, weight, viewer, candidate) => {
 // data.  The resulting weighted score is normalised over available weights,
 // so a missing optional field never acts as a negative signal.
 function scoreCompatibility(viewer = {}, candidate = {}) {
+  viewer = viewer || {};
+  candidate = candidate || {};
   const factors = [
     listFactor('interests', SCORE_WEIGHTS.interests, viewer.interests, candidate.interests),
     listFactor('relationshipGoals', SCORE_WEIGHTS.relationshipGoals, viewer.relationshipGoals, candidate.relationshipGoals),
@@ -43,7 +46,21 @@ function scoreCompatibility(viewer = {}, candidate = {}) {
   if (coverage >= 0.8) confidence = 'High';
   else if (coverage >= 0.5) confidence = 'Medium';
 
-  return { score: clamp(50 + ((rawScore - 50) * coverage)), rawScore: clamp(rawScore), coverage: clamp(coverage * 100), confidence, factors, availableWeight };
+  const breakdown = factors.map((factor) => ({
+    ...factor,
+    contribution: factor.weight * factor.value,
+    maximumContribution: factor.available ? factor.weight : 0,
+    // Net contribution relative to the neutral 50 anchor. Missing is neutral.
+    netContribution: factor.available ? factor.weight * (factor.value - 0.5) : 0,
+  }));
+  return {
+    score: clamp(50 + ((rawScore - 50) * coverage)), rawScore: clamp(rawScore),
+    coverage: clamp(coverage * 100), confidence, factors: breakdown, availableWeight,
+    factorBreakdown: Object.fromEntries(breakdown.map((factor) => [factor.key, factor])),
+    positiveFactors: breakdown.filter((factor) => factor.netContribution > 0),
+    neutralFactors: breakdown.filter((factor) => factor.netContribution === 0),
+    negativeFactors: breakdown.filter((factor) => factor.netContribution < 0),
+  };
 }
 
 function compatibilityReasons(viewer, candidate) {
@@ -64,4 +81,4 @@ function compatibilityReasons(viewer, candidate) {
   return reasons.slice(0, 6);
 }
 
-module.exports = { MATCH_ENGINE_VERSION, SCORE_WEIGHTS, TOTAL_WEIGHT, normalise, overlap, scoreCompatibility, compatibilityReasons };
+module.exports = { MATCH_ENGINE_VERSION, SCORE_WEIGHTS, TOTAL_WEIGHT, normalise, usableText, overlap, scoreCompatibility, compatibilityReasons };

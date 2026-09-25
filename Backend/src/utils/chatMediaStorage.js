@@ -3,7 +3,10 @@ const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
 
-const mediaDirectory = path.join(__dirname, '../../private-uploads/chat-media');
+const privateUploadRoot = process.env.AMORA_PRIVATE_UPLOAD_ROOT
+  ? path.resolve(process.env.AMORA_PRIVATE_UPLOAD_ROOT)
+  : path.resolve(__dirname, '../../private-uploads');
+const mediaDirectory = path.join(privateUploadRoot, 'chat-media');
 const maximumMediaBytes = 10 * 1024 * 1024;
 const allowedMimeTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
 fs.mkdirSync(mediaDirectory, { recursive: true });
@@ -42,12 +45,12 @@ async function storeMedia(messageId, file) {
 }
 
 const absolutePathFor = (storagePath) => {
-  const target = path.resolve(path.join(__dirname, '../../private-uploads', storagePath || ''));
-  return target.startsWith(path.resolve(mediaDirectory)) ? target : null;
+  const target = path.resolve(privateUploadRoot, storagePath || '');
+  return target.startsWith(`${path.resolve(mediaDirectory)}${path.sep}`) ? target : null;
 };
 const removeStoredMedia = async (absolutePath) => {
   if (!absolutePath || !path.resolve(absolutePath).startsWith(path.resolve(mediaDirectory))) return;
   await fs.promises.unlink(absolutePath).catch(() => {});
 };
 
-module.exports = { upload, storeMedia, removeStoredMedia, absolutePathFor, maximumMediaBytes, mediaDirectory };
+module.exports = { upload, storeMedia, removeStoredMedia, absolutePathFor, maximumMediaBytes, mediaDirectory, privateUploadRoot };

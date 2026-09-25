@@ -42,6 +42,9 @@ class PublicProfileResult {
 }
 
 PublicProfileResult publicProfileFromJson(Map<String, dynamic> json) {
+  int? percentage(Object? value) => value is num && value.isFinite
+      ? value.round().clamp(0, 100)
+      : null;
   List<String> strings(Object? value) => value is List
       ? value.map((item) => item.toString()).toList(growable: false)
       : const <String>[];
@@ -116,6 +119,10 @@ PublicProfileResult publicProfileFromJson(Map<String, dynamic> json) {
     compatibilityReasons: compatibilityReasons,
     compatibilityMethod: compatibility?['method']?.toString() ?? '',
     compatibilityDisclaimer: compatibility?['disclaimer']?.toString() ?? '',
+    compatibilityCoverage: percentage(json['compatibilityCoverage']),
+    aiConfidence: percentage(json['aiConfidence']),
+    aiMatchScore: percentage(json['aiMatchScore']),
+    aiReasons: strings(json['aiReasons']),
   );
   return PublicProfileResult(
     profile: profile,

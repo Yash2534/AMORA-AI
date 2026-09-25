@@ -3,6 +3,8 @@ const { after, before, test } = require('node:test');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const fs = require('fs');
+const os = require('node:os');
+const path = require('node:path');
 const { Sequelize } = require('sequelize');
 
 require('../src/config/bootstrapEnv');
@@ -12,6 +14,8 @@ const testDatabase = `${baseTestDatabase}_privacy_requests`;
 if (testDatabase === applicationDatabase || !/test/i.test(testDatabase)) throw new Error('Privacy request tests require a separate TEST_DB_NAME containing "test".');
 process.env.DB_NAME = testDatabase;
 process.env.NODE_ENV = 'test';
+const exportTestRoot = path.join(os.tmpdir(), `amora-privacy-export-${process.pid}`);
+process.env.AMORA_PRIVATE_EXPORT_ROOT = path.join(exportTestRoot, 'private-exports');
 
 const { migrate } = require('../src/migrations/run');
 const { initializeDatabase, getSequelize } = require('../src/config/db');
@@ -46,6 +50,9 @@ after(async () => {
     await models.OtpToken.destroy({ where: { email: [owner?.email, other?.email] } });
     await models.IdentityVerification.destroy({ where: { userId: [owner?.id, other?.id] } });
     await models.User.destroy({ where: { id: [owner?.id, other?.id] } });
+  }
+  if (path.dirname(exportTestRoot) === path.resolve(os.tmpdir()) && path.basename(exportTestRoot).startsWith('amora-privacy-export-')) {
+    await fs.promises.rm(exportTestRoot, { recursive: true, force: true });
   }
   try { await getSequelize().close(); } catch (_) {}
 });

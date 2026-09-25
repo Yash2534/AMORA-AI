@@ -44,6 +44,19 @@ class MatchApiItem {
   final String id;
   final PublicProfileResult profile;
   final DateTime? matchedAt;
+
+  factory MatchApiItem.fromAiRecommendation(Map<String, dynamic> item) {
+    return MatchApiItem(
+      id: item['id'].toString(),
+      profile: publicProfileFromJson({
+        ...(item['profile'] as Map).cast<String, dynamic>(),
+        'compatibilityCoverage': item['compatibilityCoverage'],
+        'aiConfidence': item['aiConfidence'],
+        'aiMatchScore': item['aiMatchScore'],
+        'aiReasons': item['aiReasons'],
+      }),
+    );
+  }
 }
 
 class PhaseTwoApiService {
@@ -95,12 +108,7 @@ class PhaseTwoApiService {
     return values
         .map((value) {
           final item = (value as Map).cast<String, dynamic>();
-          return MatchApiItem(
-            id: item['id'].toString(),
-            profile: publicProfileFromJson(
-              (item['profile'] as Map).cast<String, dynamic>(),
-            ),
-          );
+          return MatchApiItem.fromAiRecommendation(item);
         })
         .toList(growable: false);
   }

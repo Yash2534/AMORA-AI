@@ -141,6 +141,10 @@ class DummyProfile {
     this.compatibilityReasons = const <CompatibilityReason>[],
     this.compatibilityMethod = '',
     this.compatibilityDisclaimer = '',
+    this.compatibilityCoverage,
+    this.aiConfidence,
+    this.aiMatchScore,
+    this.aiReasons = const <String>[],
   });
 
   final String id;
@@ -179,6 +183,10 @@ class DummyProfile {
   final List<CompatibilityReason> compatibilityReasons;
   final String compatibilityMethod;
   final String compatibilityDisclaimer;
+  final int? compatibilityCoverage;
+  final int? aiConfidence;
+  final int? aiMatchScore;
+  final List<String> aiReasons;
 
   String get fallbackAsset => gender == Gender.female
       ? AppImages.femaleProfileFallback

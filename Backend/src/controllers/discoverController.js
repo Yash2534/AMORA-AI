@@ -1,6 +1,6 @@
 const { Op, fn, col, where, cast, literal } = require('sequelize');
 const { getModels } = require('../models');
-const { SCORE_WEIGHTS } = require('../services/matchEngineService');
+const { SCORE_WEIGHTS, normalise, usableText, scoreCompatibility } = require('../services/matchEngineService');
 const { areUsersBlocked, notBlockedUserSql } = require('../services/accessControlService');
 const { serializePublicProfile } = require('../services/publicProfileService');
 const { defaults, filtersFor, updateFilters: persistFilters } = require('../services/discoverPreferenceService');
@@ -50,22 +50,10 @@ function interestedInVariants(listOrString) {
 }
 
 async function requireCompleted(res, userId) {
-  const { OnboardingProfile } = getModels();
-  let profile = await profileFor(userId);
-  if (!profile) {
-    profile = await OnboardingProfile.create({
-      userId,
-      gender: 'woman',
-      interestedIn: ['everyone'],
-      stage: 'complete',
-      onboardingCompleted: true,
-      bio: 'Exploring AMORAA',
-    }).catch(() => null);
-  }
-  if (profile && !profile.onboardingCompleted) {
-    profile.onboardingCompleted = true;
-    if (!profile.stage || profile.stage === 'incomplete') profile.stage = 'complete';
-    await profile.save().catch(() => {});
+  const profile = await profileFor(userId);
+  if (!profile?.onboardingCompleted || profile.stage !== 'complete') {
+    fail(res, 403, 'Complete your profile before using Discover.', 'ONBOARDING_INCOMPLETE');
+    return null;
   }
   return profile;
 }
@@ -181,39 +169,37 @@ function compatibilityScoreSql(sequelize, viewer) {
   const quote = (value) => sequelize.getQueryInterface().queryGenerator.quoteIdentifier(value);
   const profileColumn = (name) => `${quote('OnboardingProfile')}.${quote(name)}`;
   const sharedCount = (name, values) => {
-    const candidates = normalizedList(values);
+    const candidates = normalise(values);
     if (!candidates.length) return '0';
     return candidates.map((value) => (
       `CASE WHEN JSON_CONTAINS(LOWER(${profileColumn(name)}), ${sequelize.escape(JSON.stringify(value))}) = 1 THEN 1 ELSE 0 END`
     )).join(' + ');
   };
   const factor = (name, values, weight) => {
-    const candidates = normalizedList(values);
+    const candidates = normalise(values);
     if (!candidates.length) return { numerator: '0', available: '0' };
     const column = profileColumn(name);
     return {
-      numerator: `(${weight} * ((${sharedCount(name, values)}) / GREATEST(${candidates.length}, JSON_LENGTH(${column}))))`,
-      available: `(CASE WHEN JSON_LENGTH(${column}) > 0 THEN ${weight} ELSE 0 END)`,
+      numerator: `(CASE WHEN JSON_TYPE(${column}) = 'ARRAY' AND JSON_LENGTH(${column}) > 0 THEN ${weight} * ((${sharedCount(name, values)}) / GREATEST(${candidates.length}, JSON_LENGTH(${column}))) ELSE 0 END)`,
+      available: `(CASE WHEN JSON_TYPE(${column}) = 'ARRAY' AND JSON_LENGTH(${column}) > 0 THEN ${weight} ELSE 0 END)`,
     };
   };
   const interests = factor('interests', viewer.interests, SCORE_WEIGHTS.interests);
   const goals = factor('relationshipGoals', viewer.relationshipGoals, SCORE_WEIGHTS.relationshipGoals);
   const languages = factor('languages', viewer.languages, SCORE_WEIGHTS.languages);
   const exact = (name, weight) => {
-    const value = lower(viewer[name]);
+    const value = usableText(viewer[name]);
     if (!value) return { numerator: '0', available: '0' };
     const column = profileColumn(name);
-    return { numerator: `(CASE WHEN LOWER(${column}) = ${sequelize.escape(value)} THEN ${weight} ELSE 0 END)`, available: `(CASE WHEN ${column} IS NOT NULL AND ${column} <> '' THEN ${weight} ELSE 0 END)` };
+    return { numerator: `(CASE WHEN LOWER(TRIM(${column})) = ${sequelize.escape(value)} THEN ${weight} ELSE 0 END)`, available: `(CASE WHEN ${column} IS NOT NULL AND LOWER(TRIM(${column})) NOT IN ('', 'prefer not to say') THEN ${weight} ELSE 0 END)` };
   };
-  const style = String(viewer.communicationStyle || '').trim().toLowerCase();
-  const styleAvailable = style ? `(CASE WHEN ${profileColumn('communicationStyle')} IS NOT NULL AND ${profileColumn('communicationStyle')} <> '' THEN ${SCORE_WEIGHTS.communicationStyle} ELSE 0 END)` : '0';
-  const styleNumerator = style ? `(CASE WHEN LOWER(${profileColumn('communicationStyle')}) = ${sequelize.escape(style)} THEN ${SCORE_WEIGHTS.communicationStyle} ELSE 0 END)` : '0';
+  const style = exact('communicationStyle', SCORE_WEIGHTS.communicationStyle);
   const city = exact('city', SCORE_WEIGHTS.city);
   const smoking = exact('smoking', SCORE_WEIGHTS.smoking);
   const drinking = exact('drinking', SCORE_WEIGHTS.drinking);
   const weed = exact('weed', SCORE_WEIGHTS.weed);
-  const numerator = `${interests.numerator} + ${goals.numerator} + ${styleNumerator} + ${languages.numerator} + ${city.numerator} + ${smoking.numerator} + ${drinking.numerator} + ${weed.numerator}`;
-  const available = `${interests.available} + ${goals.available} + ${styleAvailable} + ${languages.available} + ${city.available} + ${smoking.available} + ${drinking.available} + ${weed.available}`;
+  const numerator = `${interests.numerator} + ${goals.numerator} + ${style.numerator} + ${languages.numerator} + ${city.numerator} + ${smoking.numerator} + ${drinking.numerator} + ${weed.numerator}`;
+  const available = `${interests.available} + ${goals.available} + ${style.available} + ${languages.available} + ${city.available} + ${smoking.available} + ${drinking.available} + ${weed.available}`;
   const raw = `(CASE WHEN (${available}) = 0 THEN 50 ELSE (100 * (${numerator}) / (${available})) END)`;
   return `LEAST(100, GREATEST(0, ROUND(50 + ((${raw}) - 50) * ((${available}) / 100))))`;
 }
@@ -233,7 +219,7 @@ exports.getFeed = async (req, res, next) => {
       ]);
     }
 
-    if (String(req.query.reset) === 'true') {
+    if (!req.aiMatches && String(req.query.reset) === 'true') {
       await DiscoverAction.destroy({
         where: {
           actorUserId: req.user.sub,
@@ -271,7 +257,6 @@ exports.getFeed = async (req, res, next) => {
     const profileWhere = buildProfileWhere(filters);
     const preferenceClauses = discoveryPreferenceClauses(viewer);
     const isAiMatches = req.aiMatches === true;
-    const maxAiCandidates = 500;
     const users = await User.findAll({
       where: userWhere,
       include: [{
@@ -289,21 +274,26 @@ exports.getFeed = async (req, res, next) => {
       }, { model: Subscription, as: 'subscription', required: false, attributes: ['status', 'currentPeriodEnd'] }],
       order: [[literal(scoreSql), 'DESC'], ['id', 'ASC']],
       // AI ranking must happen over the eligible set before page slicing.
-      // Bound that set to protect the endpoint from unbounded memory work.
-      offset: isAiMatches ? 0 : (page - 1) * limit,
-      limit: isAiMatches ? maxAiCandidates : limit + 1,
+      // Never silently truncate eligibility at 500. Larger pools need a future
+      // versioned snapshot/cache, not independent per-page ranking.
+      ...(isAiMatches ? {} : { offset: (page - 1) * limit, limit: limit + 1 }),
       subQuery: false,
     });
 
     const hasMore = !isAiMatches && users.length > limit;
     const selected = (hasMore ? users.slice(0, limit) : users)
-      .map((user) => ({ user, score: Number(user.OnboardingProfile?.getDataValue('compatibilityScore') || 85) }));
+      .map((user) => {
+        const queried = user.OnboardingProfile?.getDataValue('compatibilityScore');
+        const score = queried != null && Number.isFinite(Number(queried))
+          ? Number(queried) : scoreCompatibility(viewer, user.OnboardingProfile).score;
+        return { user, score };
+      });
     if (isAiMatches) {
-      const ranked = rankCandidates(viewer, selected.map(({ user, score }) => ({
+      const ranked = rankCandidates(viewer, selected.map(({ user }) => ({
         userId: user.id,
         user,
         profile: user.OnboardingProfile,
-        compatibility: { score, coverage: 100, factors: [] },
+        compatibility: scoreCompatibility(viewer, user.OnboardingProfile),
       })));
       const pageOffset = (page - 1) * limit;
       const pageItems = ranked.slice(pageOffset, pageOffset + limit);

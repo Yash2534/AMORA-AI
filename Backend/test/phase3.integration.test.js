@@ -1,5 +1,6 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
+const os = require('node:os');
 const path = require('node:path');
 const { after, before, test } = require('node:test');
 const jwt = require('jsonwebtoken');
@@ -14,12 +15,15 @@ if (!testDatabase || testDatabase === applicationDatabase || !/test/i.test(testD
 }
 process.env.DB_NAME = testDatabase;
 process.env.NODE_ENV = 'test';
+const mediaTestRoot = path.join(os.tmpdir(), `amora-phase3-media-${process.pid}`);
+process.env.AMORA_PRIVATE_UPLOAD_ROOT = mediaTestRoot;
 
 const { migrate } = require('../src/migrations/run');
 const { initializeDatabase, getSequelize } = require('../src/config/db');
 const { getModels } = require('../src/models');
 const { createHttpServer } = require('../src/server');
 const { closeRealtimeServer } = require('../src/realtime/realtimeHub');
+const { absolutePathFor, privateUploadRoot } = require('../src/utils/chatMediaStorage');
 
 let models;
 let server;
@@ -160,7 +164,7 @@ after(async () => {
     const media = await models.MessageMedia.findAll({
       include: [{ model: models.Message, as: 'message', include: [{ model: models.Conversation, as: 'conversation', include: [{ model: models.ConversationParticipant, as: 'participants', where: { userId: userIds } }] }] }],
     });
-    mediaFiles.push(...media.map((row) => path.join(__dirname, '..', 'private-uploads', row.storagePath)));
+    mediaFiles.push(...media.map((row) => absolutePathFor(row.storagePath)).filter(Boolean));
     const conversations = await models.ConversationParticipant.findAll({ where: { userId: userIds }, attributes: ['conversationId'] });
     const conversationIds = [...new Set(conversations.map((row) => row.conversationId))];
     const messages = await models.Message.findAll({ where: { conversationId: conversationIds }, attributes: ['id'] });
@@ -178,6 +182,9 @@ after(async () => {
     await models.User.destroy({ where: { id: userIds } });
   }
   await Promise.all(mediaFiles.map((file) => fs.rm(file, { force: true })));
+  if (privateUploadRoot === mediaTestRoot && path.dirname(mediaTestRoot) === path.resolve(os.tmpdir()) && path.basename(mediaTestRoot).startsWith('amora-phase3-media-')) {
+    await fs.rm(mediaTestRoot, { recursive: true, force: true });
+  }
   try { await getSequelize().close(); } catch (_) { /* initialization may have failed */ }
 });
 
@@ -194,7 +201,9 @@ test('conversation creation authenticates, enforces eligibility, and is idempote
   assert.equal(reverseDirection.body.data.conversation.id, primaryConversationId);
   assert.equal(await models.Conversation.count({ where: { pairKey: `${Math.min(users.alice.id, users.bob.id)}:${Math.max(users.alice.id, users.bob.id)}` } }), 1);
   assert.equal((await createConversation(users.alice, users.alice)).status, 400);
-  assert.equal((await createConversation(users.alice, users.outsider)).status, 403);
+  const unmatched = await createConversation(users.alice, users.outsider);
+  assert.equal(unmatched.status, 403);
+  assert.equal(unmatched.body.code, 'MATCH_REQUIRED');
   assert.equal((await createConversation(users.alice, users.deactivated)).status, 404);
   assert.equal((await createConversation(users.alice, users.deleted)).status, 404);
   assert.equal((await jsonRequest('/api/conversations', 'POST', users.alice, { targetUserId: 2147483000 })).status, 404);

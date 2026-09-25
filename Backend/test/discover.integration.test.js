@@ -358,6 +358,24 @@ test('SQL ranking score exactly matches the deterministic service across rich an
   }
 });
 
+test('SQL handles null arrays, declined answers, whitespace and genuine zero safely', async () => {
+  const full = { interests: ['music'], relationshipGoals: ['long_term'], communicationStyle: 'calls', languages: ['English'], city: 'Pune', smoking: 'never', drinking: 'never', weed: 'never' };
+  const variants = [
+    { interests: null, relationshipGoals: null, communicationStyle: null, languages: null, city: null, smoking: null, drinking: null, weed: null },
+    { ...full, interests: [], relationshipGoals: [], languages: [], city: '  Pune ', smoking: ' Prefer not to say ', drinking: '', weed: null },
+    { interests: ['other'], relationshipGoals: ['friendship'], communicationStyle: 'voice_notes', languages: ['Hindi'], city: 'Surat', smoking: 'often', drinking: 'often', weed: 'often' },
+  ];
+  const sequelize = models.User.sequelize;
+  for (const candidate of variants) {
+    const columns = Object.entries(candidate).map(([key, value]) => `${sequelize.escape(Array.isArray(value) ? JSON.stringify(value) : value)} AS ${sequelize.getQueryInterface().queryGenerator.quoteIdentifier(key)}`).join(', ');
+    const sql = discoverTest.compatibilityScoreSql(sequelize, full);
+    assert.doesNotMatch(sql, /undefined|NaN|Infinity/);
+    const [rows] = await sequelize.query(`SELECT ${sql} AS score FROM (SELECT ${columns}) AS OnboardingProfile`);
+    assert.notEqual(rows[0].score, null);
+    assert.equal(Number(rows[0].score), scoreCompatibility(full, candidate).score);
+  }
+});
+
 test('onlineNow excludes fixture users without persisted presence', async () => {
   const result = await authorized('/api/discover/feed?onlineNow=true&limit=30&minScore=0');
   assert.equal(result.status, 200);

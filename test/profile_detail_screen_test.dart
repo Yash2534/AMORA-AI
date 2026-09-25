@@ -23,10 +23,7 @@ class _ProfileActionApi extends PhaseTwoApiService {
 
   @override
   Future<PublicProfileResult> profile(String userId) async =>
-      PublicProfileResult(
-        profile: profileValue,
-        relationship: relationship,
-      );
+      PublicProfileResult(profile: profileValue, relationship: relationship);
 
   @override
   Future<void> superLikeProfile(String userId) async {
@@ -164,7 +161,11 @@ void main() {
     await tester.tap(photo);
     await tester.pumpAndSettle();
 
-    expect(find.text('Profile liked successfully'), findsOneWidget);
+    expect(find.text('Liked ❤️'), findsOneWidget);
+    expect(
+      find.text('Liked ${ImageRepository.profiles.first.name}'),
+      findsOneWidget,
+    );
     expect(find.text('Like'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
@@ -194,12 +195,14 @@ void main() {
       profile: profile,
       api: _ProfileActionApi(profile),
     );
-    expect(likeFill(), AppColors.surface);
+    expect(likeFill(), AppColors.primary.withValues(alpha: 0.12));
 
     await tester.tap(find.byKey(const ValueKey('profile-like-button')));
     await tester.pumpAndSettle();
-    expect(likeFill(), AppColors.secondary);
+    expect(likeFill(), AppColors.primary);
 
+    tester.state<NavigatorState>(find.byType(Navigator)).pop();
+    await tester.pumpAndSettle();
     ProfileRelationshipController.instance.clear();
     await pumpProfile(
       tester,
@@ -209,7 +212,7 @@ void main() {
         relationship: const PublicRelationshipState(liked: true),
       ),
     );
-    expect(likeFill(), AppColors.secondary);
+    expect(likeFill(), AppColors.primary);
   });
 
   testWidgets('message action preserves its existing route', (tester) async {

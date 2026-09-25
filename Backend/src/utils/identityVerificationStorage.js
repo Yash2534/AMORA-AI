@@ -3,7 +3,10 @@ const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
 
-const verificationDirectory = path.join(__dirname, '../../private-uploads/identity-verification');
+const privateUploadRoot = process.env.AMORA_PRIVATE_UPLOAD_ROOT
+  ? path.resolve(process.env.AMORA_PRIVATE_UPLOAD_ROOT)
+  : path.resolve(__dirname, '../../private-uploads');
+const verificationDirectory = path.join(privateUploadRoot, 'identity-verification');
 const maximumDocumentBytes = 12 * 1024 * 1024;
 const allowedMimeTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
 fs.mkdirSync(verificationDirectory, { recursive: true });
@@ -68,4 +71,4 @@ async function removeStored(storagePath) {
   if (absolute) await fs.promises.unlink(absolute).catch(() => {});
 }
 
-module.exports = { upload, storeSubmission, removeStored, absolutePathFor, maximumDocumentBytes };
+module.exports = { upload, storeSubmission, removeStored, absolutePathFor, maximumDocumentBytes, verificationDirectory, privateUploadRoot };

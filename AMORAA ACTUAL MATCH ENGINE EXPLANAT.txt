@@ -1,0 +1,254 @@
+AMORAA ACTUAL MATCH ENGINE EXPLANATION
+1. Match Engine in One Paragraph
+AMORAA first decides whether a profile can enter Discover: the viewer must have completed onboarding, and a candidate must be active, completed, within the applicable age range and gender preferences, not blocked, not previously acted on by the viewer, and not already matched with them. It then calculates compatibility from eight weighted profile factors, while separately recording how much of those factors could be compared. For AI Matches, deterministic LOCAL code adds a small coverage adjustment, derives confidence and reasons from the same factor evidence, and ranks the eligible candidates. An AI recommendation is not itself a mutual Match. [discoverController.js (line 207)](D:/Projects/amora_ai/Backend/src/controllers/discoverController.js:207) · [matchEngineService.js (line 27)](D:/Projects/amora_ai/Backend/src/services/matchEngineService.js:27) · [aiMatchProvider.js (line 38)](D:/Projects/amora_ai/Backend/src/services/aiMatchProvider.js:38)
+2. Full Flow
+Completed viewer
+→ candidate eligibility and saved/requested filters
+→ SQL compatibility threshold and Discover ordering
+→ for AI Matches: load all eligible candidates
+→ JavaScript compatibility and LOCAL AI scoring
+→ sort by AI score, confidence, numeric user ID
+→ paginate the AI-ranked results
+→ Flutter loads the first AI page
+When a user likes or Super Likes a profile:
+DiscoverAction
+→ look for the other user's Like or Super Like
+→ if reciprocal: create/find canonical Match and direct Conversation
+→ send match notifications
+3. Eligibility Rules
+The AI Matches endpoint uses the same feed eligibility path as Discover. The viewer must have a completed profile; otherwise the endpoint returns ONBOARDING_INCOMPLETE.
+Rule	Status	Current behavior
+Self exclusion	IMPLEMENTED	Excludes the viewer’s user ID.
+Active account	IMPLEMENTED	Candidate query requires User.accountStatus = active; deactivated and deleted statuses do not qualify.
+Completed onboarding	IMPLEMENTED	Candidate must have onboardingCompleted = true, stage = complete, and a profile row.
+Age	IMPLEMENTED	Uses the effective minAge and maxAge birth-date bounds.
+Viewer’s gender preference	IMPLEMENTED	Candidate gender must match the viewer’s interestedIn, unless that preference is universal (Everyone, all, any, or both).
+Candidate’s reciprocal preference	PARTIAL	Candidate interestedIn is checked against the viewer’s gender. A missing or empty candidate preference is explicitly allowed.
+Sexuality	NOT IMPLEMENTED as eligibility	Sexuality is not used for reciprocal eligibility. It can be a Discover profile filter.
+Blocks	IMPLEMENTED	A block in either direction excludes the candidate.
+Reports	NOT IMPLEMENTED as an exclusion here	getFeed does not query reports or exclude reported users.
+Previous Pass, Like, or Super Like by viewer	IMPLEMENTED	A candidate with any existing viewer→candidate DiscoverAction is excluded.
+Existing Match	IMPLEMENTED	A mutual Match with the viewer excludes the candidate from the feed.
+Profile visibility	PARTIAL	No separate visibility flag is checked here. Active account, completed onboarding, and block checks govern this feed’s visibility.
+Verification	IMPLEMENTED as an optional filter	verifiedOnly can require a verified account. The default preference is true for a newly created preference, but a saved preference can set it false; the seeded master preference does so.
+Online-now	IMPLEMENTED as an optional filter	Uses lastActiveAt within the configured online window; it is not a live-presence or location signal.
+City	IMPLEMENTED as an optional exact filter	When a city filter is set, profile city must equal it case-insensitively.
+Distance	NOT IMPLEMENTED	maxDistanceKm is stored and accepted, but does not filter candidates.
+Saved/current filters	IMPLEMENTED	Stored preferences and query overrides are combined, subject to enabled-filter configuration.
+Minimum compatibility score	IMPLEMENTED as a filter	SQL score must be at least the effective minScore; default is 0.
+
+
+The viewer’s interestedIn and the candidate’s interestedIn are gender preference fields. They do not compare sexuality. The candidate’s missing reciprocal preference being accepted also means reciprocity is not strict.
+4. Discover Filters
+Discover filters are a separate layer from both eligibility and compatibility. The server loads saved preferences, applies request overrides, and resets disabled filters to their runtime defaults.
+Implemented feed filters include:
+- Age range, verified-only, and minimum compatibility score.
+- City, minimum height, hometown, education, profession, community, religion, sexuality, smoking, drinking, and weed.
+- Relationship goals (datingIntentions), languages, pronouns, qualities, preferred talking hours, love languages, and communication styles.
+- Lifestyle tags, presence of prompts, recent activity (onlineNow), and registered event interest.
+Several filters are exact-match or overlap checks; they are not Match Engine factors. For example, sexuality can narrow the feed, but it does not add points to the compatibility score.
+maxDistanceKm appears in the preference model, route validation, defaults, and the HARD_FILTERS set. However, getFeed does not apply it to its candidate query. surface values are also validated, but getFeed does not implement different behavior for near_you or the other surfaces. The AI route sets surface=high_compatibility, but AI behavior is actually selected by the req.aiMatches flag.
+5. Compatibility Factors
+The eight factors total 100 weight points. Every factor is used by the JavaScript Match Engine, the SQL Discover score, and LOCAL AI’s factor evidence. All can supply AI recommendation reasons when there is positive shared evidence.
+Factor	Weight	Calculation	Missing data	Disagreement
+Interests	35	Unique, normalized shared values ÷ the larger unique list length	Unavailable unless both lists have at least one usable value; lowers coverage	Available factor contributes 0
+Relationship goals	25	Same list-overlap formula	Same list behavior	Available factor contributes 0
+Communication style	10	Exact normalized string equality	Unavailable unless both values are usable	Available factor contributes 0
+Languages	10	Same list-overlap formula	Same list behavior	Available factor contributes 0
+City	5	Exact normalized string equality	Unavailable unless both values are usable; completed profiles require a city	Available factor contributes 0
+Smoking	5	Exact normalized string equality	Unavailable unless both values are usable	Available factor contributes 0
+Drinking	5	Exact normalized string equality	Unavailable unless both values are usable	Available factor contributes 0
+Weed	5	Exact normalized string equality	Unavailable unless both values are usable	Available factor contributes 0
+
+
+List values are trimmed, lowercased, deduplicated, and empty values plus Prefer not to say are removed. Exact values are trimmed and lowercased; Prefer not to say is treated as missing.
+A disagreement does not remove the candidate, but it is a zero-valued available factor and can lower the compatibility score. Fields such as gender preference, sexuality, distance, height, profession, and profile completeness are not compatibility factors.
+6. Compatibility Formula
+Let each factor have weight \(w_i\), agreement value \(v_i\) from 0 to 1, and availability \(a_i\), where availability is 1 only when both profiles have comparable usable data.
+Total weight W = 100
+Available weight A = Σ(wᵢ × aᵢ)
+Weighted agreement S = Σ(wᵢ × vᵢ)
+
+If A > 0:
+    rawScore = 100 × S / A
+Otherwise:
+    rawScore = 50
+
+coverage = A / 100
+
+compatibilityScore =
+    round(clamp(50 + (rawScore - 50) × coverage, 0, 100))
+The JavaScript code rounds and clamps the returned scores to integers. The final score uses the unrounded raw value internally. There is no separate floor at 50: a fully evidenced disagreement can score 0. The maximum is 100.
+Plainly: AMORAA computes agreement among factors it can compare, then shrinks that result toward neutral 50 when little of the full factor set is available. With no comparable factors, the score is 50.
+7. Compatibility Coverage
+Coverage is the percentage of the total weight for which both profiles supplied usable data:
+compatibilityCoverage = round(100 × A / 100)
+Because the weights total 100 and are multiples of 5, coverage is the sum of available factor weights, expressed as a percentage.
+Coverage is not agreement. Two profiles can have high compatibility and high coverage, or low compatibility and high coverage. Missing data does not count as disagreement; it lowers coverage and draws the score toward 50.
+Examples:
+- High compatibility, high coverage: Current seed result Mira Joshi: compatibility 87, coverage 100, AI confidence 97.
+- Lower compatibility, high coverage: Naina Rao: compatibility 48, coverage 100, AI confidence 90.
+- Neutral, low coverage: If only the 5-point city factor is available and it agrees, coverage is 5 and compatibility is round(50 + (100−50)×0.05) = 53.
+- No comparable information: raw score defaults to 50, coverage is 0, and compatibility remains 50.
+8. Location / Nearby
+City stored: YES
+Distance stored: YES
+Distance enforced: NO
+GPS: NO
+City-to-city distance: NO
+OnboardingProfile.city and OnboardingProfile.preferredDistance are stored. DiscoverFilterPreference.maxDistanceKm is also stored. The engine uses city equality as a 5-point compatibility factor, and an explicit Discover city filter can restrict results to that exact city. It does not calculate distance between cities, use profile latitude/longitude, enforce preferredDistance, or enforce maxDistanceKm.
+The near_you surface is accepted by route validation but has no nearby-calculation implementation in getFeed.
+For the Ahmedabad example, assuming all other eligibility and filters pass:
+- Ahmedabad: Eligible by city unless some other rule excludes them; same-city factor agrees.
+- Gandhinagar, Vadodara, Surat: Not excluded by distance. The city factor is available but disagrees, reducing compatibility compared with an otherwise identical Ahmedabad profile.
+- An explicit city filter set to Ahmedabad would exclude the other three by exact city, not by distance.
+- A preferred distance of 50 km does not alter these results.
+TARGET / NOT CURRENT: actual city-to-city distance and enforcement of a 50 km radius are not implemented.
+9. LOCAL AI
+Provider: LOCAL
+External AI: NO
+The current provider is fixed to LOCAL; the source says environment or client flags cannot enable an external provider.
+It takes the viewer profile, candidate profile, and JavaScript compatibility result. It outputs AI Match Score, confidence, confidence and match-level labels, highlights, reasons, and provider name.
+- Uses compatibility score: YES
+- Uses coverage: YES
+- Uses factor evidence: YES, for confidence and reasons
+- Uses location distance: NO; city equality exists as a compatibility factor
+- Uses behavioral data to rank: NO
+- Uses chats: NO
+- Uses profile completeness directly: NO; missing factor data affects coverage, and incomplete onboarding is an eligibility failure
+- Calls an external model: NO
+Previously acted-on or matched candidates are filtered out before ranking; that is eligibility, not behavior-based ranking.
+10. AI Match Score
+The actual formula is:
+aiMatchScore =
+    clamp(compatibilityScore + round((compatibilityCoverage - 50) × 0.08),
+          0, 100)
+Coverage adjusts the compatibility score by at most 4 points in either direction. The score is deterministic and integer-rounded.
+Examples from the current feed:
+- Mira Joshi: 87 + round((100−50)×0.08) = 91.
+- Kabir Menon: 62 + 4 = 66.
+- Naina Rao: 48 + 4 = 52.
+Match-level labels are EXCELLENT at 90+, STRONG at 80+, GOOD at 70+, POTENTIAL at 60+, and EXPLORATORY below 60.
+11. AI Confidence
+The current formula is:
+support = 100 × Σ(wᵢ × vᵢ) / 100
+aiConfidence = round(clamp(0.8 × coverage + 0.2 × support, 0, 100))
+Unavailable factors contribute zero to support. This is a deterministic evidence-and-support index, not a probability that two users will match, not compatibility by itself, and not a statistical confidence interval.
+- All factors available and perfect agreement: coverage 100, support 100, confidence 100.
+- All factors available and complete disagreement: coverage 100, support 0, confidence 80. High confidence here means the engine had evidence to compare; it does not mean compatibility is high.
+- No comparable information: coverage 0, support 0, confidence 0.
+- Seed Mira: compatibility/support 87 and coverage 100 produce round(80 + 17.4) = 97.
+12. Recommendation Reasons
+Reason priority is:
+1. Relationship goals
+2. Communication style
+3. Interests
+4. Languages
+5. Smoking
+6. Drinking
+7. Weed
+8. City
+A reason requires an available factor with positive agreement and usable shared values. Reasons are skipped when there is no agreement, values fail the display-safety checks, or a reason cannot be generated. At most 3 reasons are returned; if none qualify, the fallback is: “Explore this profile to learn more about each other.”
+Current sentences include:
+- Relationship goals: You share a relationship goal: …
+- Communication style: You both prefer … for recognized styles such as calls or deep conversations.
+- Interests: You share N interests, including … (up to three displayed values).
+- Languages: You both speak … (up to three).
+- Smoking, drinking, or weed: Some of your stated lifestyle choices align.
+- City: You both live in …
+The three lifestyle factors generate the same generic sentence, so duplicate sentences are suppressed. Reasons are evidence summaries, not extra scoring factors.
+13. Ranking
+Discover: SQL compatibilityScore DESC, then user ID ASC. Stable tie-breaking; not randomized.
+AI Matches: aiMatchScore DESC, then aiConfidence DESC, then numeric user ID ASC. Stable tie-breaking; not randomized. The AI ranker uses JavaScript compatibility results.
+14. Pagination
+Discover: Filter and eligibility query, calculate SQL score, apply minimum score, sort by SQL score and user ID, then apply SQL offset/limit (request limit plus one to determine hasMore).
+AI Matches: Fetch all eligible, filtered candidates without SQL pagination; calculate compatibility and LOCAL AI ranking over that set; sort; then slice the requested page. The route accepts page and limit; limit is capped at 30.
+Flutter: aiRecommendations() calls /api/discover/ai-matches without page or limit and discards pagination metadata. MatchesScreen loads that list once. It currently shows page 1 only and does not request additional AI pages.
+There is no ranking snapshot/cache in this flow. The ranking is recomputed from the current candidate set for each request.
+15. Match Creation
+A Like or Super Like upserts the viewer→candidate DiscoverAction. The controller checks for the other user’s Like or Super Like. A one-sided Like does not create a Match.
+On reciprocal Like/Super Like, within a database transaction the code:
+- Canonicalizes the user pair as lower ID then higher ID.
+- Finds or creates the Match.
+- Finds or creates a direct Conversation using a normalized pair key.
+- Ensures its two participant records match that exact pair.
+The DiscoverAction has a unique actor/target index; Match has a unique canonical pair index; Conversation has a unique pair-key index. A unilateral-like notification is created in its transaction. Match notifications are sent after the transaction commits.
+An AI recommendation does not create a Match. The AI feed also excludes existing mutual Matches.
+16. View Profile / Message
+The AI response’s top-level id is the candidate user ID as a string. Its nested public profile id is also the User ID. The AI response contains no Match ID or Conversation ID. MatchApiItem.id is reused by the app for both AI items and real Match items, so its meaning depends on which response created it.
+- View Profile: Flutter passes the selected profile; the profile API is GET /api/profiles/:userId. The server checks that the target account is active, the profile is onboarded, and the pair is not blocked. It does not require a Match.
+- Message: Flutter passes the candidate’s user ID as targetUserId to POST /api/conversations. The backend checks target eligibility, blocks, and an active mutual Match. Without a Match it returns MATCH_REQUIRED, and the AI screen explains that users must match first. With a Match, the backend resolves/creates the authorized direct Conversation and returns its actual conversation ID.
+Candidate user ID, Match ID, and Conversation ID are distinct in these flows.
+17. Missing Data
+- Interests, relationship goals, and languages: A list factor is unavailable unless both lists contain usable values. Otherwise it is ignored in the weighted agreement and available weight; coverage falls.
+- Communication style, city, smoking, drinking, and weed: An exact factor is unavailable unless both values are usable. Otherwise it does not count against agreement and coverage falls.
+- A disagreement when both values exist: The factor is available with value 0; this lowers the raw score.
+- Other optional fields: Ignored by compatibility scoring. Some are used only by Discover filters.
+- Candidate missing city or relationship goals: These are required by onboarding completion, so a properly completed feed candidate should have them. Other listed factor fields may be absent.
+18. Cold Start
+A. Incomplete onboarding: The viewer receives an onboarding-incomplete response; an incomplete candidate is excluded. The Match Engine does not rank them in the feed.
+B. Completed profile with minimum required information: Completion requires birth date, gender, interestedIn, relationship goals, city, and two photos. Of the scoring factors, relationship goals and city should therefore be available when both profiles are completed. The other factors may be missing.
+C. Most optional factors missing: Coverage is lower; missing fields are not negative signals. Compatibility is pulled toward 50, confidence reflects low coverage/support, AI Match Score gets a small negative coverage adjustment when coverage is under 50, and reasons are limited to matching required factors. If no factors are comparable, compatibility is 50, confidence 0, AI Match Score 46, and the fallback reason is used.
+19. Five Real Seed Examples
+These values were retrieved from the current authenticated feed controller using the existing seeded viewer and an already-saved Discover preference. No login, reseed, or database mutation was performed. These are ranked recommendations, not existing mutual Matches.
+Rank	Candidate	User ID	Compatibility	Coverage	AI Match Score	AI Confidence	Top matching factors / reasons
+1	Mira Joshi	1768	87	100	91	97	Relationship goals; deep conversations; 7 shared interests
+2	Siddharth Soni	1772	87	100	91	Relationship goals; deep conversations; 7 shared interests	
+3	Diya Trivedi	1776	87	100	91	Relationship goals; deep conversations; 7 shared interests	
+4	Arjun Desai	1738	75	100	79	Relationship goal; deep conversations; 6 shared interests	
+5	Rohan Shah	1739	75	100	79	Relationship goal; deep conversations; 6 shared interests	
+
+
+Other specifically named candidates present in the current feed:
+Rank	Candidate	Compatibility	Coverage	AI Match Score	AI Confidence
+12	Kabir Menon	62	100	66	92
+23	Jay Shah	53	100	57	91
+26	Naina Rao	48	100	52	90
+
+
+Dhruv Shah is present in the database but is not in the current AI feed because the viewer already has an outgoing Like to him; any viewer action excludes that candidate. Rhea Patel is not in the current AI feed because she is already mutually matched with the viewer; existing Matches are excluded.
+20. Already Implemented
+- Completed-profile and active-account checks.
+- Age and gender preference checks.
+- Block filtering in either direction.
+- Exclusion of previously acted-on candidates and existing Matches.
+- Saved Discover filters and minimum score.
+- Eight weighted compatibility factors, coverage, deterministic LOCAL AI score, confidence, reasons, and stable tie-breaking.
+- Reciprocal Like/Super Like Match creation and canonical Conversation resolution.
+- Public profile viewing by candidate user ID without requiring a Match.
+- Match-required messaging authorization.
+21. Partial
+- Candidate reciprocal interestedIn is permissive when the candidate field is missing or empty.
+- Verified and online filters are conditional on effective preferences/runtime settings; verification is not always a hard eligibility rule.
+- City affects compatibility through same-city equality, but that is not geographic proximity.
+- SQL and JavaScript compatibility agree for the current examples and ordinary normalized lists, but are not identical for every possible list representation (see below).
+- The recommendation endpoint supports pages, but the Flutter AI Matches screen only requests the first page.
+22. Not Implemented
+- City-to-city distance calculation, GPS-based matching, or preferredDistance/maxDistanceKm enforcement.
+- near_you behavior beyond route validation.
+- External/model-backed AI.
+- Behavioral or chat-based ranking.
+- Diversity ranking.
+- Recommendation snapshots/cache for pagination.
+The telemetry event model/service exists, but I found no call from the current Discover feed path; it does not rank recommendations here.
+SQL versus JavaScript score: Both implement the same eight weights and neutral-50 coverage adjustment, and the current retrieved examples agree. They are not exactly equivalent for every array representation. JavaScript trims, lowercases, deduplicates, and removes “Prefer not to say” from both sides. SQL normalizes the viewer list but uses the candidate JSON array’s raw length and does not trim/deduplicate candidate entries before its containment calculation. For example, a candidate list containing duplicate values can use a different denominator in SQL than in JavaScript. SQL still filters and orders Discover using its score; AI ranking and the returned AI compatibility use the JavaScript score. MySQL JSON columns cannot contain malformed JSON, so malformed stored JSON is not an expected SQL case.
+23. Simple Explanation for Management
+AMORAA first removes profiles that are inactive, incomplete, outside the selected age or gender preferences, blocked, already acted on, or already matched. It can narrow the remaining people with saved Discover filters. The Match Engine compares interests, goals, communication style, languages, city, and three lifestyle preferences. It shows both how well the profiles agree and how much information was available. LOCAL deterministic logic gives a small adjustment for coverage, creates evidence-based reasons, and orders the cards consistently. The “AI” recommendation is not a mutual Match. Messaging still requires a mutual Match.
+24. Exact Important Source Files
+- [matchEngineService.js (line 2)](D:/Projects/amora_ai/Backend/src/services/matchEngineService.js:2) — weights, normalization, scoreCompatibility, compatibility reasons.
+- [aiMatchProvider.js (line 10)](D:/Projects/amora_ai/Backend/src/services/aiMatchProvider.js:10) — LOCAL factor priorities, reason generation, confidence, AI score, ranking.
+- [discoverController.js (line 76)](D:/Projects/amora_ai/Backend/src/controllers/discoverController.js:76) — feed filters; discoveryPreferenceClauses; SQL scorer; getFeed; swipe.
+- [discoverPreferenceService.js (line 4)](D:/Projects/amora_ai/Backend/src/services/discoverPreferenceService.js:4) — filter defaults, saved preference resolution, enabled-filter behavior.
+- [OnboardingProfile.js (line 60)](D:/Projects/amora_ai/Backend/src/models/OnboardingProfile.js:60) — city and stored preferredDistance.
+- [discoverRoutes.js (line 15)](D:/Projects/amora_ai/Backend/src/routes/discoverRoutes.js:15) — AI Matches route, accepted pages/filters, swipe route.
+- [onboardingController.js (line 18)](D:/Projects/amora_ai/Backend/src/controllers/onboardingController.js:18) — required fields for completion.
+- [profileController.js (line 118)](D:/Projects/amora_ai/Backend/src/controllers/profileController.js:118) — public-profile lookup and safety checks.
+- [conversationController.js (line 99)](D:/Projects/amora_ai/Backend/src/controllers/conversationController.js:99) — conversation creation and MATCH_REQUIRED behavior.
+- [conversationAccessService.js (line 10)](D:/Projects/amora_ai/Backend/src/services/conversationAccessService.js:10) — active Match, participant, block, and direct-conversation checks.
+- [phase_two_api_service.dart (line 42)](D:/Projects/amora_ai/lib/core/api/phase_two_api_service.dart:42) — AI response parsing and public profile fetch by user ID.
+- [matches_screen.dart (line 86)](D:/Projects/amora_ai/lib/features/matches/presentation/matches_screen.dart:86) — AI Matches loading, profile navigation, and Message action.
+- [chat_repository.dart (line 310)](D:/Projects/amora_ai/lib/features/chat/data/chat_repository.dart:310) — AI candidate user ID passed to conversation creation.
+- [factory.js (line 17)](D:/Projects/amora_ai/Backend/scripts/dummy-seed/factory.js:17) and [store.js (line 59)](D:/Projects/amora_ai/Backend/scripts/dummy-seed/store.js:59) — deterministic seed candidates, profiles, actions, and saved filters.
+
+
+10:15 PM

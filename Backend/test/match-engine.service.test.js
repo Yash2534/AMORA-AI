@@ -4,6 +4,53 @@ const { MATCH_ENGINE_VERSION, SCORE_WEIGHTS, scoreCompatibility, compatibilityRe
 
 const viewer = { interests: ['music', 'hiking'], relationshipGoals: ['long_term'], communicationStyle: 'calls' };
 
+test('all optional-factor subsets stay bounded, symmetric and deterministic', () => {
+  const full = { interests: ['music', 'hiking'], relationshipGoals: ['long_term'], communicationStyle: 'calls', languages: ['English'], city: 'Pune', smoking: 'never', drinking: 'never', weed: 'never' };
+  const keys = Object.keys(SCORE_WEIGHTS);
+  for (let mask = 0; mask < 256; mask++) {
+    const candidate = Object.fromEntries(keys.filter((_, index) => mask & (1 << index)).map((key) => [key, full[key]]));
+    const result = scoreCompatibility(full, candidate);
+    assert.deepEqual(result, scoreCompatibility(full, candidate));
+    assert.equal(result.score, scoreCompatibility(candidate, full).score);
+    const weight = keys.filter((_, index) => mask & (1 << index)).reduce((sum, key) => sum + SCORE_WEIGHTS[key], 0);
+    assert.equal(result.coverage, weight);
+    assert.equal(result.score, Math.round(50 + weight / 2));
+    for (const value of [result.score, result.rawScore, result.coverage]) assert.ok(Number.isFinite(value) && value >= 0 && value <= 100);
+  }
+});
+
+test('malformed and declined values never become fake shared evidence', () => {
+  for (const value of [null, undefined, 7, NaN, Infinity, {}, [null, undefined, 7, {}, '', '  ', 'Prefer not to say']]) {
+    const malformed = Object.fromEntries(Object.keys(SCORE_WEIGHTS).map((key) => [key, value]));
+    const result = scoreCompatibility(malformed, malformed);
+    assert.equal(result.coverage, 0);
+    assert.equal(result.score, 50);
+    assert.deepEqual(compatibilityReasons(malformed, malformed), []);
+  }
+  assert.equal(scoreCompatibility(null, null).score, 50);
+});
+
+test('factor contributions reconstruct the score and partition available/missing evidence', () => {
+  const result = scoreCompatibility(viewer, { interests: ['MUSIC', 'music', ' hiking '], relationshipGoals: ['friendship'] });
+  assert.equal(result.factorBreakdown.interests.value, 1);
+  assert.equal(result.factorBreakdown.interests.contribution, 35);
+  assert.equal(result.factorBreakdown.relationshipGoals.netContribution, -12.5);
+  assert.equal(result.score, Math.round(50 + result.factors.reduce((sum, f) => sum + f.netContribution, 0)));
+  assert.deepEqual(result.positiveFactors.map((f) => f.key), ['interests']);
+  assert.deepEqual(result.negativeFactors.map((f) => f.key), ['relationshipGoals']);
+  assert.equal(result.neutralFactors.length, 6);
+});
+
+test('deterministic seed known examples retain their certified compatibility scores', () => {
+  const { buildSeedBlueprint } = require('../scripts/dummy-seed/factory');
+  const { users } = buildSeedBlueprint({ randomSeed: 12345, userCount: 40, referenceDate: new Date('2026-08-29T12:00:00Z') });
+  for (const [name, expected] of Object.entries({ 'Dhruv Shah': 92, 'Rhea Patel': 87, 'Kabir Menon': 62, 'Jay Shah': 53, 'Naina Rao': 48 })) {
+    assert.equal(scoreCompatibility(users[0], users.find((user) => user.name === name)).score, expected, name);
+  }
+  const sparse = users.find((user) => !user.completed);
+  assert.equal(scoreCompatibility(users[0], sparse).coverage, 85);
+});
+
 test('match engine score is deterministic, bounded, and centrally weighted', () => {
   const candidate = { interests: ['music', 'hiking'], relationshipGoals: ['long_term'], communicationStyle: 'calls' };
   const first = scoreCompatibility(viewer, candidate);

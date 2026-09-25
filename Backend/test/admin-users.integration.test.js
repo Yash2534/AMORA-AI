@@ -4,6 +4,8 @@ const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
 
 require('../src/config/bootstrapEnv');
 const applicationDatabase = process.env.DB_NAME;
@@ -13,6 +15,8 @@ if (testDatabase === applicationDatabase || !/test/i.test(testDatabase)) {
 }
 process.env.DB_NAME = testDatabase;
 process.env.NODE_ENV = 'test';
+const mediaTestRoot = path.join(os.tmpdir(), `amora-admin-users-media-${process.pid}`);
+process.env.AMORA_PRIVATE_UPLOAD_ROOT = mediaTestRoot;
 require('../src/config/env');
 const { migrate } = require('../src/migrations/run');
 const { initializeDatabase, getSequelize } = require('../src/config/db');
@@ -199,6 +203,9 @@ after(async () => {
     await AdminRole.destroy({ where: { id: role.id } });
   }
   if (verificationStoragePath) await fs.promises.unlink(absolutePathFor(verificationStoragePath)).catch(() => { });
+  if (path.dirname(mediaTestRoot) === path.resolve(os.tmpdir()) && path.basename(mediaTestRoot).startsWith('amora-admin-users-media-')) {
+    await fs.promises.rm(mediaTestRoot, { recursive: true, force: true });
+  }
   await getSequelize().close();
 });
 

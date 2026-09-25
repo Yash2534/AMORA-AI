@@ -308,9 +308,9 @@ class ChatRepository extends ChangeNotifier {
       _conversations.where((item) => item.user.id == profileId).firstOrNull?.id;
 
   Future<String> createConversationForProfile(DummyProfile profile) async {
-    final existing = conversationIdForProfile(profile.id);
-    if (existing != null) return existing;
     if (_testingMode) {
+      final existing = conversationIdForProfile(profile.id);
+      if (existing != null) return existing;
       final value = _testingConversation(
         profile,
         int.tryParse(profile.id) == null ? 'test-${profile.id}' : profile.id,
@@ -328,7 +328,7 @@ class ChatRepository extends ChangeNotifier {
       throw const AuthException('The selected profile is unavailable.');
     }
     final existing = conversationIdForProfile(profileId);
-    if (existing != null) return existing;
+    if (existing != null && _testingMode) return existing;
     final response = await _remote.request(
       'POST',
       '/api/conversations',
@@ -477,7 +477,8 @@ class ChatRepository extends ChangeNotifier {
         'PUT',
         '/api/conversations/$conversationId/mute',
         body: {
-          if (mutedUntil != null) 'mutedUntil': mutedUntil.toUtc().toIso8601String(),
+          if (mutedUntil != null)
+            'mutedUntil': mutedUntil.toUtc().toIso8601String(),
         },
       );
     }
@@ -488,7 +489,10 @@ class ChatRepository extends ChangeNotifier {
     final current = conversation(conversationId);
     if (current == null) return;
     if (!_testingMode) {
-      await _remote.request('DELETE', '/api/conversations/$conversationId/mute');
+      await _remote.request(
+        'DELETE',
+        '/api/conversations/$conversationId/mute',
+      );
     }
     _replace(current.copyWith(muted: false, clearMutedUntil: true));
   }
@@ -594,8 +598,9 @@ class ChatRepository extends ChangeNotifier {
       unread: message.mine ? current.unread : current.unread + 1,
     );
     if (!message.mine) {
-      final senderName =
-          current.user.name.trim().isEmpty ? 'New Message' : current.user.name;
+      final senderName = current.user.name.trim().isEmpty
+          ? 'New Message'
+          : current.user.name;
       final textPreview = message.deleted
           ? 'Message deleted'
           : (message.text.trim().isEmpty ? 'Sent a photo/media' : message.text);
@@ -739,8 +744,9 @@ class ChatRepository extends ChangeNotifier {
 
   void _handleNotificationCreated(dynamic value) {
     if (value is! Map) return;
-    final notif =
-        value['notification'] is Map ? value['notification'] as Map : value;
+    final notif = value['notification'] is Map
+        ? value['notification'] as Map
+        : value;
     final type = notif['type']?.toString() ?? '';
     final title = notif['title']?.toString() ?? 'Notification';
     final message = notif['message']?.toString() ?? '';
@@ -749,14 +755,17 @@ class ChatRepository extends ChangeNotifier {
     if (type == 'superLike' || type == 'new_super_like') {
       AmoraTopNotificationManager.showGlobal(
         title: 'You received a Super Like ⭐',
-        message:
-            actorName.isNotEmpty ? '$actorName Super Liked your profile' : message,
+        message: actorName.isNotEmpty
+            ? '$actorName Super Liked your profile'
+            : message,
         type: AmoraTopNotificationType.superLike,
       );
     } else if (type == 'like' || type == 'new_like') {
       AmoraTopNotificationManager.showGlobal(
         title: 'Someone liked you ❤️',
-        message: actorName.isNotEmpty ? '$actorName liked your profile' : message,
+        message: actorName.isNotEmpty
+            ? '$actorName liked your profile'
+            : message,
         type: AmoraTopNotificationType.like,
       );
     } else if (type == 'match' || type == 'new_match') {

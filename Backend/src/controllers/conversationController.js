@@ -115,7 +115,10 @@ exports.create = async (req, res, next) => {
         denialCode = 'CONVERSATION_NOT_ALLOWED';
         return;
       }
-      if (!(await activeMatch(userId, targetUserId, { transaction }))) return;
+      if (!(await activeMatch(userId, targetUserId, { transaction }))) {
+        denialCode = 'MATCH_REQUIRED';
+        return;
+      }
       ({ conversation, created } = await ensureDirectConversation(userId, targetUserId, { transaction }));
     });
     if (!conversation) {

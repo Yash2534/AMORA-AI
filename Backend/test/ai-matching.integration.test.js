@@ -1,6 +1,10 @@
 const assert = require('node:assert/strict');
 const { after, before, test } = require('node:test');
 const jwt = require('jsonwebtoken');
+const { Op } = require('sequelize');
+const { performance } = require('node:perf_hooks');
+const { scoreCompatibility } = require('../src/services/matchEngineService');
+const { rankCandidates } = require('../src/services/aiMatchProvider');
 
 require('../src/config/bootstrapEnv');
 const applicationDatabase = process.env.DB_NAME;
@@ -128,6 +132,30 @@ test('AI Matches uses Discover eligibility and returns separate safe LOCAL field
   assert.equal(JSON.stringify(item).includes(eligible.email), false);
   assert.equal(JSON.stringify(item).includes('passwordHash'), false);
   assert.equal(JSON.stringify(item).includes('phoneNumber'), false);
+
+  // Recommendation id and public profile id are both canonical user IDs.
+  // A recommendation is directly viewable without an existing Match row.
+  assert.equal(item.id, String(eligible.id));
+  assert.equal(item.profile.id, item.id);
+  assert.equal(await models.Match.findOne({ where: { [Op.or]: [
+    { userOneId: viewer.id, userTwoId: eligible.id },
+    { userOneId: eligible.id, userTwoId: viewer.id },
+  ] } }), null);
+  const publicProfile = await request(`/api/profiles/${item.id}`, { headers: auth(viewer) });
+  assert.equal(publicProfile.status, 200, JSON.stringify(publicProfile.body));
+  assert.equal(publicProfile.body.data.profile.id, item.id);
+  assert.equal(publicProfile.body.data.profile.relationship.matched, false);
+  const messageBeforeMatch = await request('/api/conversations', {
+    method: 'POST', headers: auth(viewer), body: JSON.stringify({ targetUserId: Number(item.id) }),
+  });
+  assert.equal(messageBeforeMatch.status, 403);
+  assert.equal(messageBeforeMatch.body.code, 'MATCH_REQUIRED');
+
+  for (const unavailableUser of [forwardBlocked, reverseBlocked, inactive]) {
+    const inaccessible = await request(`/api/profiles/${unavailableUser.id}`, { headers: auth(viewer) });
+    assert.equal(inaccessible.status, 404, `profile ${unavailableUser.id} must remain unavailable`);
+    assert.equal(inaccessible.body.code, 'PROFILE_NOT_AVAILABLE');
+  }
 });
 
 test('AI Matches performs global deterministic ranking before page slicing without N+1 query growth', async () => {
@@ -195,4 +223,109 @@ test('AI recommendation candidates continue through the canonical Like and Match
 test('AI Matches validates bounded pagination and returns an empty recommendation list safely', async () => {
   assert.equal((await request('/api/discover/ai-matches?page=0', { headers: auth(viewer) })).status, 400);
   assert.equal((await request('/api/discover/ai-matches?limit=31', { headers: auth(viewer) })).status, 400);
+});
+
+test('AI Matches returns actual evidence and truthful sparse confidence without internal leaks', async () => {
+  const sparse = await createMember('AI Sparse Optional', { city: 'SparseEvidenceFixture' });
+  await models.OnboardingProfile.update({ interests: [], relationshipGoals: [], communicationStyle: null, languages: [], smoking: null, drinking: null, weed: null }, { where: { userId: sparse.id } });
+  const result = await request('/api/discover/ai-matches?city=SparseEvidenceFixture', { headers: auth(viewer) });
+  assert.equal(result.status, 200);
+  const item = recommendations(result.body)[0];
+  assert.equal(item.id, String(sparse.id));
+  assert.equal(item.compatibilityCoverage, 5); // Known city mismatch; other factors missing.
+  assert.equal(item.compatibilityScore, 48);
+  assert.equal(item.aiConfidence, 4);
+  assert.deepEqual(item.aiReasons, ['Explore this profile to learn more about each other.']);
+  assert.equal(item.profile.compatibilityCoverage, item.compatibilityCoverage);
+  for (const key of ['factorBreakdown', 'negativeFactors', 'interestedIn', 'passwordHash', 'aiConfidenceScore']) assert.equal(Object.hasOwn(item, key), false);
+});
+
+test('a genuine zero compatibility remains zero in Discover and AI responses', async () => {
+  const candidate = await createMember('Zero Compatibility', { city: 'ZeroCompatibilityFixture', interests: ['unrelated'], relationshipGoals: ['friendship'], communicationStyle: 'voice_notes', languages: ['Hindi'], smoking: 'often', drinking: 'often', weed: 'often' });
+  for (const endpoint of ['feed', 'ai-matches']) {
+    const response = await request(`/api/discover/${endpoint}?city=ZeroCompatibilityFixture`, { headers: auth(viewer) });
+    assert.equal(response.status, 200);
+    const item = endpoint === 'feed' ? response.body.data.profiles[0] : recommendations(response.body)[0];
+    assert.equal(item.id, String(candidate.id));
+    assert.equal(item.compatibilityScore, 0);
+    if (endpoint === 'ai-matches') assert.equal(item.profile.compatibilityScore, 0);
+  }
+});
+
+test('incomplete or absent viewer profiles are rejected without mutation', async () => {
+  const incomplete = await createMember('Incomplete AI Viewer', { onboardingCompleted: false });
+  const missing = await createMember('Missing AI Viewer');
+  await models.OnboardingProfile.destroy({ where: { userId: missing.id } });
+  for (const member of [incomplete, missing]) {
+    for (const path of ['/api/discover/feed', '/api/discover/ai-matches']) {
+      const response = await request(path, { headers: auth(member) });
+      assert.equal(response.status, 403);
+      assert.equal(response.body.code, 'ONBOARDING_INCOMPLETE');
+    }
+  }
+  assert.equal((await models.OnboardingProfile.findOne({ where: { userId: incomplete.id } })).onboardingCompleted, false);
+  assert.equal(await models.OnboardingProfile.findOne({ where: { userId: missing.id } }), null);
+});
+
+test('AI query validation and reset cannot weaken Discover eligibility', async () => {
+  for (const query of ['minAge=undefined', 'maxAge=17', 'minScore=NaN', 'verifiedOnly=invalid', 'communicationStyles=invalid']) {
+    assert.equal((await request(`/api/discover/ai-matches?${query}`, { headers: auth(viewer) })).status, 400);
+  }
+  const passed = await createMember('AI Reset Must Not Restore', { city: 'AIResetFixture' });
+  await models.DiscoverAction.create({ actorUserId: viewer.id, targetUserId: passed.id, action: 'pass' });
+  const result = await request('/api/discover/ai-matches?reset=true&city=AIResetFixture', { headers: auth(viewer) });
+  assert.equal(result.status, 200);
+  assert.deepEqual(recommendations(result.body), []);
+  assert.ok(await models.DiscoverAction.findOne({ where: { actorUserId: viewer.id, targetUserId: passed.id } }));
+});
+
+test('exact 25/50/100 candidate pools use constant bulk query counts', async () => {
+  const city = `Scale${Date.now()}`;
+  const candidates = [];
+  const measurements = [];
+  const sequelize = getSequelize();
+  for (const count of [25, 50, 100]) {
+    while (candidates.length < count) candidates.push(await createMember(`Measured ${candidates.length}`, { city }));
+    await request(`/api/discover/ai-matches?city=${city}`, { headers: auth(viewer) }); // Warm preferences/auth.
+    let queries = 0;
+    const original = sequelize.query;
+    sequelize.query = function (...args) { queries++; return original.apply(this, args); };
+    const started = performance.now();
+    let result;
+    try { result = await request(`/api/discover/ai-matches?city=${city}&limit=30`, { headers: auth(viewer) }); }
+    finally { sequelize.query = original; }
+    assert.equal(result.status, 200);
+    assert.equal(recommendations(result.body).length, Math.min(count, 30));
+    measurements.push({ candidates: count, queries, httpMs: +(performance.now() - started).toFixed(3) });
+  }
+  assert.ok(Math.max(...measurements.map((m) => m.queries)) - Math.min(...measurements.map((m) => m.queries)) <= 1);
+  console.log(`[AI exact performance] ${JSON.stringify(measurements)}`);
+});
+
+test('all eligible candidates beyond 500 are globally ranked before pagination', async () => {
+  const tag = `GlobalPool${Date.now()}`;
+  const members = await models.User.bulkCreate(Array.from({ length: 501 }, (_, index) => ({
+    name: `Global ${index}`, email: `${tag}-${index}@ai-matching.test`, phoneNumber: '', authProvider: 'local', isVerified: true, identityVerifiedAt: new Date(), termsAcceptedAt: new Date(), accountStatus: 'active',
+  })));
+  userIds.push(...members.map((member) => member.id));
+  const profiles = members.map((member, index) => ({
+    userId: member.id, birthDate: birthDateForAge(27), gender: 'Male', interestedIn: ['Female'], profession: tag,
+    onboardingCompleted: true, stage: 'complete', interests: [], relationshipGoals: [], languages: [],
+    ...(index === 500 ? { interests: ['music', 'travel'], relationshipGoals: ['friendship'], languages: ['Hindi'], communicationStyle: 'voice_notes', city: 'Ahmedabad', smoking: 'never', drinking: 'never', weed: 'often' } : {}),
+  }));
+  await models.OnboardingProfile.bulkCreate(profiles);
+  const viewerProfile = await models.OnboardingProfile.findOne({ where: { userId: viewer.id } });
+  const expected = rankCandidates(viewerProfile, profiles.map((profile) => ({ userId: profile.userId, profile, compatibility: scoreCompatibility(viewerProfile, profile) }))).map((row) => String(row.userId));
+  assert.equal(expected[0], String(members[500].id)); // SQL score ties at 50; final candidate has more evidence.
+  const actual = [];
+  for (let page = 1; page <= 17; page++) {
+    const result = await request(`/api/discover/ai-matches?profession=${tag}&page=${page}&limit=30`, { headers: auth(viewer) });
+    assert.equal(result.status, 200);
+    actual.push(...ids(result.body));
+    assert.equal(result.body.data.pagination.hasMore, page < 17);
+  }
+  assert.deepEqual(actual, expected);
+  assert.equal(new Set(actual).size, 501);
+  const repeat = await request(`/api/discover/ai-matches?profession=${tag}&page=1&limit=30`, { headers: auth(viewer) });
+  assert.deepEqual(ids(repeat.body), expected.slice(0, 30));
 });

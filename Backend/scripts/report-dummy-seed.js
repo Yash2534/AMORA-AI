@@ -51,9 +51,7 @@ async function run() {
       if (reason) exclusions[reason] = (exclusions[reason] || 0) + 1;
       else {
         const compatibility = scoreCompatibility(viewer, profile);
-        // Match the current controller contract exactly: the LOCAL provider receives
-        // score/coverage but not Match Engine factor details.
-        const ai = localAiMatch(viewer, profile, { score: compatibility.score, coverage: 100, factors: [] });
+        const ai = localAiMatch(viewer, profile, compatibility);
         eligible.push({ userId: user.id, name: user.name, age, compatibility: compatibility.score, coverage: compatibility.coverage, reasons: compatibilityReasons(viewer, profile), aiConfidence: ai.aiConfidence, aiMatchScore: ai.aiMatchScore, aiReasons: ai.aiReasons });
       }
     }

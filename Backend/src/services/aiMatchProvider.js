@@ -1,71 +1,63 @@
-const { scoreCompatibility } = require('./matchEngineService');
-const clamp = (value) => Math.max(0, Math.min(100, Math.round(value)));
-
-// LOCAL is deliberately the only executable provider in this phase. Future
-// third-party providers must receive this already-minimised structured shape,
-// never a profile payload or private account data.
+const { scoreCompatibility, SCORE_WEIGHTS, TOTAL_WEIGHT, normalise } = require('./matchEngineService');
+const clamp = (value) => Number.isFinite(value) ? Math.max(0, Math.min(100, Math.round(value))) : 0;
 const PROVIDER = 'LOCAL';
 const MAX_HIGHLIGHTS = 3;
 
-function configuredProvider() {
-  // External execution is intentionally unavailable until a separately
-  // reviewed provider is added. A client can never select this value.
-  const enabled = String(process.env.AI_MATCHING_ENABLED || 'true').toLowerCase() === 'true';
-  const requested = String(process.env.AI_MATCH_PROVIDER || 'local').toUpperCase();
-  const external = String(process.env.AI_EXTERNAL_PROVIDER_ENABLED || 'false').toLowerCase() === 'true';
-  return enabled && requested === PROVIDER && !external ? PROVIDER : PROVIDER;
+// No external provider is executable. Environment/client flags cannot enable one.
+const configuredProvider = () => PROVIDER;
+const levelFor = (score) => score >= 90 ? 'EXCELLENT' : score >= 80 ? 'STRONG' : score >= 70 ? 'GOOD' : score >= 60 ? 'POTENTIAL' : 'EXPLORATORY';
+const labels = Object.freeze({ relationshipGoals: 'Relationship goals', communicationStyle: 'Communication style', interests: 'Shared interests', languages: 'Shared languages', smoking: 'Lifestyle alignment', drinking: 'Lifestyle alignment', weed: 'Lifestyle alignment', city: 'Same city' });
+const priority = ['relationshipGoals', 'communicationStyle', 'interests', 'languages', 'smoking', 'drinking', 'weed', 'city'];
+const styles = Object.freeze({ frequent_texting: 'frequent texting', occasional_texting: 'occasional texting', calls: 'calls', voice_notes: 'voice notes', deep_conversations: 'deep conversations', light_fun_conversations: 'light, fun conversations' });
+const readable = (value) => value.replace(/[_-]+/g, ' ');
+// Only public profile factor values; never private preferences or free-text bio.
+const displayValues = (shared) => shared.filter((value) => value.length <= 60 && !/[\u0000-\u001f<>@]/.test(value)).sort();
+
+function reasonFor(factor) {
+  const values = displayValues(factor.shared);
+  if (!values.length) return null;
+  if (factor.key === 'relationshipGoals') return `You share a relationship goal: ${values.slice(0, 2).map(readable).join(' and ')}.`;
+  if (factor.key === 'communicationStyle') return styles[values[0]] ? `You both prefer ${styles[values[0]]}.` : null;
+  if (factor.key === 'interests') return `You share ${factor.shared.length} ${factor.shared.length === 1 ? 'interest' : 'interests'}, including ${values.slice(0, 3).map(readable).join(', ')}.`;
+  if (factor.key === 'languages') return `You both speak ${values.slice(0, 3).map(readable).join(' and ')}.`;
+  if (['smoking', 'drinking', 'weed'].includes(factor.key)) return 'Some of your stated lifestyle choices align.';
+  if (factor.key === 'city') return `You both live in ${values[0].replace(/\b\w/g, (letter) => letter.toUpperCase())}.`;
+  return null;
 }
 
-const levelFor = (score) => {
-  if (score >= 90) return 'EXCELLENT';
-  if (score >= 80) return 'STRONG';
-  if (score >= 70) return 'GOOD';
-  if (score >= 60) return 'POTENTIAL';
-  return 'EXPLORATORY';
-};
-
-const labelFor = Object.freeze({
-  intent: 'Relationship goals',
-  values: 'Core values',
-  lifestyle: 'Lifestyle preferences',
-  communication: 'Communication style',
-  interests: 'Shared interests',
-  personality: 'Personality traits',
-  preferences: 'Partner preferences',
-  behavior: 'Behavioral compatibility',
-});
+// Internal LOCAL contract: current factor keys, canonical weights, shared values.
+// This is not an external provider payload.
+function evidenceFor(base) {
+  return priority.map((key) => {
+    const factor = Array.isArray(base.factors) ? base.factors.find((item) => item?.key === key) : null;
+    const available = factor?.available === true && Number.isFinite(factor.value);
+    return { key, weight: SCORE_WEIGHTS[key], available, value: available ? Math.max(0, Math.min(1, factor.value)) : 0, shared: available ? normalise(factor.shared) : [] };
+  });
+}
 
 function localAiMatch(viewer, candidate, compatibility = null) {
   const base = compatibility || scoreCompatibility(viewer, candidate);
-  const highlights = base.factors
-    .filter((factor) => factor.available && factor.value > 0)
-    .sort((left, right) => (right.weight * right.value) - (left.weight * left.value) || left.key.localeCompare(right.key))
-    .slice(0, MAX_HIGHLIGHTS)
-    .map((factor) => ({ type: factor.key.toUpperCase(), label: labelFor[factor.key], strength: clamp(factor.value * 100) }));
-  
-  const reasons = highlights.map((highlight) => {
-    if (highlight.type === 'INTENT') return 'You appear aligned on relationship goals.';
-    if (highlight.type === 'VALUES') return 'You share similar core values.';
-    if (highlight.type === 'LIFESTYLE') return 'Your lifestyle preferences are broadly aligned.';
-    if (highlight.type === 'COMMUNICATION') return 'Your communication preferences are compatible.';
-    if (highlight.type === 'INTERESTS') return 'You both share several interests.';
-    if (highlight.type === 'PERSONALITY') return 'You have compatible personality traits.';
-    if (highlight.type === 'PREFERENCES') return 'You meet each other\'s partner preferences.';
-    if (highlight.type === 'BEHAVIOR') return 'Your behavioral patterns align well.';
-    return 'You have compatible traits.';
-  });
-
-  if (reasons.length === 0) {
-    reasons.push('Potential match based on shared platform presence.');
+  const factors = evidenceFor(base);
+  const availableWeight = factors.filter((factor) => factor.available).reduce((sum, factor) => sum + factor.weight, 0);
+  const coverage = 100 * availableWeight / TOTAL_WEIGHT;
+  const support = 100 * factors.reduce((sum, factor) => sum + factor.weight * factor.value, 0) / TOTAL_WEIGHT;
+  // Retain the existing 80/20 budget; use ALL evidence, not UI highlight count.
+  // An evidence-support index, never a statistical probability.
+  const aiConfidence = clamp(0.8 * coverage + 0.2 * support);
+  const aiReasons = [];
+  const aiHighlights = [];
+  for (const factor of factors) {
+    if (!factor.available || factor.value <= 0) continue;
+    const reason = reasonFor(factor);
+    if (!reason || aiReasons.includes(reason)) continue;
+    aiReasons.push(reason);
+    aiHighlights.push({ type: factor.key.toUpperCase(), label: labels[factor.key], strength: clamp(100 * factor.value) });
+    if (aiReasons.length === MAX_HIGHLIGHTS) break;
   }
-
-  // The AI score is an explainable presentation score. It never changes the
-  // certified compatibility score or eligibility result.
-  const score = clamp(base.score + Math.round((base.coverage - 50) * 0.08));
-  const confidenceScore = clamp(Math.round((base.coverage * 0.8) + (highlights.length / MAX_HIGHLIGHTS) * 20));
-  const confidenceLevel = base.confidence;
-
-  return { aiMatchScore: score, aiConfidence: confidenceScore, aiConfidenceLevel: confidenceLevel, aiMatchLevel: levelFor(score), aiHighlights: highlights, aiReasons: reasons, provider: PROVIDER };
+  if (!aiReasons.length) aiReasons.push('Explore this profile to learn more about each other.');
+  const score = Number.isFinite(base.score) ? clamp(base.score) : 50;
+  const aiMatchScore = clamp(score + Math.round((coverage - 50) * 0.08));
+  return { aiMatchScore, aiConfidence, aiConfidenceLevel: aiConfidence >= 80 ? 'High' : aiConfidence >= 50 ? 'Medium' : 'Low', aiMatchLevel: levelFor(aiMatchScore), aiHighlights, aiReasons, provider: PROVIDER };
 }
 
 function rankCandidates(viewer, candidates) {
