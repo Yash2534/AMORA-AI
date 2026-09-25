@@ -4,7 +4,7 @@ import 'dart:developer' as developer;
 
 import 'package:amora_ai/core/config/amora_api_config.dart';
 import 'package:amora_ai/core/auth/auth_service.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:amora_ai/core/storage/amora_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
 typedef DiscoverAccessTokenProvider = Future<String?> Function();
@@ -98,7 +98,7 @@ class DiscoverApiService {
 
   static const _accessTokenKey = 'amora_access_token';
   static const _timeout = Duration(seconds: 10);
-  static const _storage = FlutterSecureStorage();
+  static const _storage = AmoraSecureStorage.instance;
   final http.Client _client;
   final DiscoverAccessTokenProvider _accessTokenProvider;
   final DiscoverAuthenticatedRequester? _authenticatedRequester;

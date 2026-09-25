@@ -2,7 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:amora_ai/core/config/amora_api_config.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:amora_ai/core/storage/amora_secure_storage.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
@@ -128,17 +129,50 @@ class AmoraUser {
   );
 }
 
+abstract interface class AuthCredentialStorage {
+  Future<String?> read(String key);
+
+  Future<void> write(String key, String value);
+
+  Future<void> delete(String key);
+}
+
+class SecureAuthCredentialStorage implements AuthCredentialStorage {
+  const SecureAuthCredentialStorage();
+
+  @override
+  Future<String?> read(String key) =>
+      AmoraSecureStorage.instance.read(key: key);
+
+  @override
+  Future<void> write(String key, String value) =>
+      AmoraSecureStorage.instance.write(key: key, value: value);
+
+  @override
+  Future<void> delete(String key) =>
+      AmoraSecureStorage.instance.delete(key: key);
+}
+
 /// Authentication client. Configure a deployed API with
 /// `--dart-define=AMORA_API_BASE_URL=https://api.example.com`.
 class AuthService {
-  AuthService._();
+  AuthService._({AuthCredentialStorage? storage, http.Client? client})
+    : _storage = storage ?? const SecureAuthCredentialStorage(),
+      _client = client ?? http.Client();
 
   static final instance = AuthService._();
+
+  @visibleForTesting
+  factory AuthService.forTesting({
+    required AuthCredentialStorage storage,
+    http.Client? client,
+  }) => AuthService._(storage: storage, client: client);
+
   static const _accessKey = 'amora_access_token';
   static const _refreshKey = 'amora_refresh_token';
-  static const _storage = FlutterSecureStorage();
 
-  final http.Client _client = http.Client();
+  final AuthCredentialStorage _storage;
+  final http.Client _client;
   String? _accessToken;
   String? _refreshToken;
   Future<bool>? _refreshInFlight;
@@ -146,8 +180,63 @@ class AuthService {
   AmoraUser? currentUser;
 
   Future<void> initialize() async {
-    _accessToken = await _storage.read(key: _accessKey);
-    _refreshToken = await _storage.read(key: _refreshKey);
+    _invalidateInMemorySession();
+    try {
+      final accessToken = await _storage.read(_accessKey);
+      final refreshToken = await _storage.read(_refreshKey);
+      if (accessToken == null || refreshToken == null) {
+        if (accessToken != null || refreshToken != null) {
+          await _discardUnusableLocalCredentials();
+        }
+        return;
+      }
+      _accessToken = accessToken;
+      _refreshToken = refreshToken;
+    } on PlatformException catch (error) {
+      if (!isSecureStorageCorruption(error)) rethrow;
+      await _discardUnusableLocalCredentials();
+    }
+  }
+
+  @visibleForTesting
+  static bool isSecureStorageCorruption(PlatformException error) {
+    final description = [
+      error.code,
+      error.message,
+      error.details,
+    ].join(' ').toLowerCase();
+    return const [
+      'bad_decrypt',
+      'bad decrypt',
+      'badpaddingexception',
+      'aeadbadtagexception',
+      'failed to unwrap key',
+      'unwrap key failed',
+      'invalidkeyexception',
+      'keypermanentlyinvalidatedexception',
+    ].any(description.contains);
+  }
+
+  void _invalidateInMemorySession() {
+    _sessionGeneration++;
+    _refreshInFlight = null;
+    _accessToken = null;
+    _refreshToken = null;
+    currentUser = null;
+  }
+
+  Future<void> _discardUnusableLocalCredentials() async {
+    _invalidateInMemorySession();
+    for (final key in const [_accessKey, _refreshKey]) {
+      try {
+        await _storage.delete(key);
+      } on MissingPluginException {
+        // The platform channel is absent in widget tests.
+      } catch (_) {
+        // A provider with an unreadable wrapping key can also reject deletion.
+        // The in-memory session is already signed out; do not retry at startup.
+      }
+    }
   }
 
   Future<bool> restoreSession() async {
@@ -322,14 +411,10 @@ class AuthService {
   }
 
   Future<void> clearSession() async {
-    _sessionGeneration++;
-    _refreshInFlight = null;
-    _accessToken = null;
-    _refreshToken = null;
-    currentUser = null;
+    _invalidateInMemorySession();
     try {
-      await _storage.delete(key: _accessKey);
-      await _storage.delete(key: _refreshKey);
+      await _storage.delete(_accessKey);
+      await _storage.delete(_refreshKey);
     } on MissingPluginException {
       // The secure-storage platform channel is absent in widget tests.
     }
@@ -341,8 +426,8 @@ class AuthService {
     _refreshInFlight = null;
     _accessToken = data['accessToken'] as String;
     _refreshToken = data['refreshToken'] as String;
-    await _storage.write(key: _accessKey, value: _accessToken);
-    await _storage.write(key: _refreshKey, value: _refreshToken);
+    await _storage.write(_accessKey, _accessToken!);
+    await _storage.write(_refreshKey, _refreshToken!);
     currentUser = AmoraUser.fromJson(data['user'] as Map<String, dynamic>);
     return currentUser!;
   }
@@ -578,8 +663,8 @@ class AuthService {
       final data = _data(response);
       _accessToken = data['accessToken'] as String;
       _refreshToken = data['refreshToken'] as String;
-      await _storage.write(key: _accessKey, value: _accessToken);
-      await _storage.write(key: _refreshKey, value: _refreshToken);
+      await _storage.write(_accessKey, _accessToken!);
+      await _storage.write(_refreshKey, _refreshToken!);
       return true;
     } on AuthException {
       return false;

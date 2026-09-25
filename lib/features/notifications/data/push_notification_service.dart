@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:amora_ai/core/auth/auth_service.dart';
+import 'package:amora_ai/core/storage/amora_secure_storage.dart';
 import 'package:amora_ai/core/widgets/amora_top_notification.dart';
 import 'package:amora_ai/features/chat/data/chat_repository.dart';
 import 'package:amora_ai/features/notifications/data/notification_deep_link.dart';
@@ -9,7 +10,6 @@ import 'package:amora_ai/features/notifications/data/notification_inbox_reposito
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/services.dart';
 
 enum PushAuthorizationState { notDetermined, granted, denied }
@@ -153,7 +153,7 @@ class PushNotificationService {
 
   static final instance = PushNotificationService._();
   static const _installationKey = 'amora_push_installation_id';
-  static const _storage = FlutterSecureStorage();
+  static const _storage = AmoraSecureStorage.instance;
 
   PushTokenCoordinator? _coordinator;
   final Set<String> _handledMessageIds = <String>{};
