@@ -166,6 +166,24 @@ class HiddenFirstPageRecommendationApi extends PhaseTwoApiService {
   }
 }
 
+class EmptyPagedRecommendationApi extends PhaseTwoApiService {
+  final List<String?> requestedCursors = [];
+
+  @override
+  Future<AiRecommendationsPage> aiRecommendations({
+    String? cursor,
+    int limit = 10,
+  }) async {
+    requestedCursors.add(cursor);
+    return AiRecommendationsPage(
+      items: const [],
+      hasMore: cursor == null,
+      nextCursor: cursor == null ? 'final-empty-page' : null,
+      limit: limit,
+    );
+  }
+}
+
 void main() {
   tearDown(() => ChatRepository.instance.resetForTesting());
 
@@ -268,6 +286,19 @@ void main() {
     expect(api.requestedCursors, [null, 'next-visible-page']);
     expect(find.byKey(const ValueKey('featured-match-2')), findsOneWidget);
     expect(find.byType(AiMatchesEmptyState), findsNothing);
+  });
+
+  testWidgets('AI page-two exhaustion shows the complete-profile empty state', (
+    tester,
+  ) async {
+    final api = EmptyPagedRecommendationApi();
+    await tester.pumpWidget(MaterialApp(home: MatchesScreen(api: api)));
+    await tester.pumpAndSettle();
+
+    expect(api.requestedCursors, [null, 'final-empty-page']);
+    expect(find.text('No AI matches yet'), findsOneWidget);
+    expect(find.text('Complete your profile first'), findsNothing);
+    expect(find.text('Complete Profile'), findsNothing);
   });
 
   testWidgets('AI screen preserves server order and shows calculated reasons', (

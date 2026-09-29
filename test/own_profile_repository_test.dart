@@ -5,6 +5,7 @@ import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
 import 'package:amora_ai/features/profile/domain/communication_style.dart';
 import 'package:amora_ai/features/profile/domain/profile_form_options.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_form.dart';
+import 'package:amora_ai/features/profile/presentation/profile_completion_metrics.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -129,6 +130,51 @@ void main() {
         containsPair('A perfect day', 'Coffee and a walk.'),
       );
       expect(repository.profile.completionPercent, 74);
+    },
+  );
+
+  test(
+    'server completion percentage is the shared canonical UI state',
+    () async {
+      final remote = _FakeOwnProfileRemote(
+        profile: _canonicalProfile(completion: 100),
+      );
+      final repository = LocalProfileRepository.testing(remote: remote);
+      addTearDown(repository.dispose);
+
+      expect(repository.completionState, ProfileCompletionState.loading);
+      await repository.refreshFromServer();
+
+      expect(repository.profile.presentationCompletionPercent, 100);
+      expect(repository.profile.requiredProfileComplete, isTrue);
+      expect(repository.completionState, ProfileCompletionState.complete);
+
+      remote.profile = _canonicalProfile(completion: 99);
+      await repository.refreshFromServer();
+      expect(repository.profile.presentationCompletionPercent, 99);
+      expect(repository.profile.requiredProfileComplete, isFalse);
+      expect(repository.completionState, ProfileCompletionState.incomplete);
+    },
+  );
+
+  test(
+    'failed initial completion load is error rather than incomplete',
+    () async {
+      final remote = _FakeOwnProfileRemote()
+        ..failure = const AuthException('Profile unavailable.');
+      final repository = LocalProfileRepository.testing(remote: remote);
+      addTearDown(repository.dispose);
+
+      await expectLater(
+        repository.refreshFromServer(),
+        throwsA(isA<AuthException>()),
+      );
+
+      expect(repository.completionState, ProfileCompletionState.error);
+      expect(
+        repository.completionState,
+        isNot(ProfileCompletionState.incomplete),
+      );
     },
   );
 

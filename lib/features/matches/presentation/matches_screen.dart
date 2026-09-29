@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:amora_ai/core/data/image_repository.dart';
 import 'package:amora_ai/core/api/phase_two_api_service.dart';
 import 'package:amora_ai/core/auth/auth_service.dart';
@@ -16,11 +18,15 @@ import 'package:amora_ai/features/chat/presentation/chat_detail_screen.dart';
 import 'package:amora_ai/features/discover/presentation/discover_action_controller.dart';
 import 'package:amora_ai/features/matches/presentation/widgets/amoraa_inline_compatibility_filter.dart';
 import 'package:amora_ai/features/profile/domain/profile_interest_policy.dart';
+import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
 import 'package:amora_ai/features/profile/presentation/controllers/profile_relationship_controller.dart';
 import 'package:amora_ai/features/profile/presentation/profile_completion_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_detail_screen.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/profile_attribute_icons.dart';
 import 'package:flutter/material.dart';
+
+typedef AiMatchesProfileCompletionResolver = ProfileCompletionState Function();
+typedef AiMatchesProfileCompletionRefresher = Future<void> Function();
 
 class MatchesScreen extends StatefulWidget {
   const MatchesScreen({
@@ -28,11 +34,15 @@ class MatchesScreen extends StatefulWidget {
     this.showNavigation = true,
     this.api,
     this.initialProfiles = const <DummyProfile>[],
+    this.profileCompletionResolver,
+    this.refreshProfileCompletion,
   });
 
   static const routeName = '/matches';
   final bool showNavigation;
   final PhaseTwoApiService? api;
+  final AiMatchesProfileCompletionResolver? profileCompletionResolver;
+  final AiMatchesProfileCompletionRefresher? refreshProfileCompletion;
 
   /// Explicit test/preview injection. Production routes leave this empty and
   /// load matches from [api].
@@ -61,18 +71,101 @@ class _MatchesScreenState extends State<MatchesScreen> {
   bool _hasMore = false;
   bool _loadingMore = false;
   String? _loadMoreError;
+  late final LocalProfileRepository _profileRepository;
+  late ProfileCompletionState _lastProfileCompletionState;
+  bool _profileCompletionRefreshing = false;
+  Object? _profileCompletionError;
+  bool _hasRequestedMatches = false;
 
   @override
   void initState() {
     super.initState();
     _relationships.addListener(_refreshReactions);
-    if (widget.api != null) _loadMatches();
+    _profileRepository = LocalProfileRepository.instance;
+    _lastProfileCompletionState = _profileCompletionState;
+    if (widget.profileCompletionResolver == null) {
+      _profileRepository.addListener(_onProfileChanged);
+    }
+    _startForCompletionState();
   }
 
   @override
   void dispose() {
     _relationships.removeListener(_refreshReactions);
+    if (widget.profileCompletionResolver == null) {
+      _profileRepository.removeListener(_onProfileChanged);
+    }
     super.dispose();
+  }
+
+  ProfileCompletionState get _profileCompletionState {
+    if (_profileCompletionRefreshing) return ProfileCompletionState.loading;
+    if (_profileCompletionError != null) return ProfileCompletionState.error;
+    final resolver = widget.profileCompletionResolver;
+    if (resolver != null) return resolver();
+    if (AuthService.instance.currentUser == null) {
+      // Preview/widget-test callers can inject an API without an auth session.
+      // Production reaches this screen only through the authenticated shell.
+      return ProfileCompletionState.complete;
+    }
+    return _profileRepository.completionState;
+  }
+
+  void _onProfileChanged() {
+    if (!mounted) return;
+    final previous = _lastProfileCompletionState;
+    final current = _profileCompletionState;
+    _lastProfileCompletionState = current;
+    setState(() {});
+    if (current == ProfileCompletionState.complete &&
+        (previous != ProfileCompletionState.complete ||
+            !_hasRequestedMatches)) {
+      unawaited(_loadMatches());
+    }
+  }
+
+  void _startForCompletionState() {
+    if (widget.api == null) return;
+    if (_profileCompletionState == ProfileCompletionState.complete) {
+      unawaited(_loadMatches());
+    }
+  }
+
+  Future<void> _refreshCompletionState() async {
+    if (_profileCompletionRefreshing) return;
+    final refresh =
+        widget.refreshProfileCompletion ??
+        (widget.profileCompletionResolver == null &&
+                AuthService.instance.currentUser != null
+            ? _profileRepository.refreshFromServer
+            : null);
+    if (refresh == null) {
+      if (mounted) setState(() {});
+      return;
+    }
+    setState(() {
+      _profileCompletionRefreshing = true;
+      _profileCompletionError = null;
+    });
+    try {
+      await refresh();
+    } catch (error) {
+      _profileCompletionError = error;
+    }
+    if (!mounted) return;
+    setState(() {
+      _profileCompletionRefreshing = false;
+      _lastProfileCompletionState = _profileCompletionState;
+    });
+    if (_profileCompletionState == ProfileCompletionState.complete) {
+      await _loadMatches();
+    }
+  }
+
+  Future<void> _openProfileCompletion() async {
+    await Navigator.of(context).pushNamed(ProfileCompletionScreen.routeName);
+    if (!mounted) return;
+    await _refreshCompletionState();
   }
 
   void _refreshReactions() {
@@ -89,6 +182,8 @@ class _MatchesScreenState extends State<MatchesScreen> {
   }
 
   Future<void> _loadMatches() async {
+    if (widget.api == null || _loading) return;
+    _hasRequestedMatches = true;
     setState(() {
       _loading = true;
       _loadError = null;
@@ -114,8 +209,11 @@ class _MatchesScreenState extends State<MatchesScreen> {
           }
         });
       }
-    } catch (_) {
+    } catch (error) {
       if (mounted) setState(() => _loadError = 'Couldn\'t load matches.');
+      if (error is AuthException && error.code == 'ONBOARDING_INCOMPLETE') {
+        unawaited(_refreshCompletionState());
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -249,7 +347,48 @@ class _MatchesScreenState extends State<MatchesScreen> {
 
               return Stack(
                 children: [
-                  _loading
+                  _profileCompletionState == ProfileCompletionState.loading
+                      ? CustomScrollView(
+                          physics: const BouncingScrollPhysics(
+                            parent: AlwaysScrollableScrollPhysics(),
+                          ),
+                          slivers: [
+                            headerSliver,
+                            const SliverFillRemaining(
+                              child: Center(child: CircularProgressIndicator()),
+                            ),
+                          ],
+                        )
+                      : _profileCompletionState == ProfileCompletionState.error
+                      ? CustomScrollView(
+                          physics: const BouncingScrollPhysics(
+                            parent: AlwaysScrollableScrollPhysics(),
+                          ),
+                          slivers: [
+                            headerSliver,
+                            SliverFillRemaining(
+                              child: AiMatchesErrorState(
+                                onRetry: _refreshCompletionState,
+                              ),
+                            ),
+                          ],
+                        )
+                      : _profileCompletionState ==
+                            ProfileCompletionState.incomplete
+                      ? CustomScrollView(
+                          physics: const BouncingScrollPhysics(
+                            parent: AlwaysScrollableScrollPhysics(),
+                          ),
+                          slivers: [
+                            headerSliver,
+                            SliverFillRemaining(
+                              child: AiMatchesIncompleteProfileState(
+                                onCompleteProfile: _openProfileCompletion,
+                              ),
+                            ),
+                          ],
+                        )
+                      : _loading
                       ? CustomScrollView(
                           physics: const BouncingScrollPhysics(
                             parent: AlwaysScrollableScrollPhysics(),
@@ -285,6 +424,22 @@ class _MatchesScreenState extends State<MatchesScreen> {
                             ),
                           ],
                         )
+                      : _recommendations.isEmpty &&
+                            _loadMoreError != null &&
+                            _hasMore
+                      ? CustomScrollView(
+                          physics: const BouncingScrollPhysics(
+                            parent: AlwaysScrollableScrollPhysics(),
+                          ),
+                          slivers: [
+                            headerSliver,
+                            SliverFillRemaining(
+                              child: AiMatchesErrorState(
+                                onRetry: _loadMoreMatches,
+                              ),
+                            ),
+                          ],
+                        )
                       : _recommendations.isEmpty
                       ? CustomScrollView(
                           physics: const BouncingScrollPhysics(
@@ -293,11 +448,7 @@ class _MatchesScreenState extends State<MatchesScreen> {
                           slivers: [
                             headerSliver,
                             SliverFillRemaining(
-                              child: AiMatchesEmptyState(
-                                onCompleteProfile: () => Navigator.of(
-                                  context,
-                                ).pushNamed(ProfileCompletionScreen.routeName),
-                              ),
+                              child: const AiMatchesEmptyState(),
                             ),
                           ],
                         )
@@ -2369,8 +2520,11 @@ class WhyThisMatchSheet extends StatelessWidget {
   }
 }
 
-class AiMatchesEmptyState extends StatelessWidget {
-  const AiMatchesEmptyState({super.key, required this.onCompleteProfile});
+class AiMatchesIncompleteProfileState extends StatelessWidget {
+  const AiMatchesIncompleteProfileState({
+    super.key,
+    required this.onCompleteProfile,
+  });
 
   final VoidCallback onCompleteProfile;
 
@@ -2383,6 +2537,19 @@ class AiMatchesEmptyState extends StatelessWidget {
           'Add your profile details to receive personalized AI Matches.',
       actionLabel: 'Complete Profile',
       onAction: onCompleteProfile,
+    );
+  }
+}
+
+class AiMatchesEmptyState extends StatelessWidget {
+  const AiMatchesEmptyState({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const _AiMatchesStateLayout(
+      icon: Icons.auto_awesome_outlined,
+      title: 'No AI matches yet',
+      description: 'Check back later for new personalized recommendations.',
     );
   }
 }
@@ -2541,15 +2708,15 @@ class _AiMatchesStateLayout extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.description,
-    required this.actionLabel,
-    required this.onAction,
+    this.actionLabel,
+    this.onAction,
   });
 
   final IconData icon;
   final String title;
   final String description;
-  final String actionLabel;
-  final VoidCallback onAction;
+  final String? actionLabel;
+  final VoidCallback? onAction;
 
   @override
   Widget build(BuildContext context) {
@@ -2586,17 +2753,19 @@ class _AiMatchesStateLayout extends StatelessWidget {
                 color: AppColors.textNeutral.withValues(alpha: .68),
               ),
             ),
-            const SizedBox(height: AmoraSpacing.space20),
-            FilledButton.icon(
-              onPressed: onAction,
-              icon: const Icon(Icons.arrow_forward_rounded),
-              label: Text(actionLabel),
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: AppColors.surface,
-                minimumSize: const Size(168, 48),
+            if (actionLabel != null && onAction != null) ...[
+              const SizedBox(height: AmoraSpacing.space20),
+              FilledButton.icon(
+                onPressed: onAction,
+                icon: const Icon(Icons.arrow_forward_rounded),
+                label: Text(actionLabel!),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: AppColors.surface,
+                  minimumSize: const Size(168, 48),
+                ),
               ),
-            ),
+            ],
           ],
         ),
       ),

@@ -283,6 +283,11 @@ class AuthOwnProfileRemoteDataSource implements OwnProfileRemoteDataSource {
 // profile entity: UserProfile.
 typedef LocalProfileDraft = UserProfile;
 
+/// Canonical UI state for the authenticated user's server-calculated profile
+/// completion. Screens must not infer "incomplete" while the own-profile
+/// response is still loading or unavailable.
+enum ProfileCompletionState { loading, complete, incomplete, error }
+
 enum ProfilePhotoUploadState {
   bundled,
   uploaded,
@@ -369,6 +374,24 @@ class LocalProfileRepository extends ChangeNotifier {
   String? lastSyncError;
   bool _hasHydratedAuthenticatedProfile = false;
   bool get hasHydratedAuthenticatedProfile => _hasHydratedAuthenticatedProfile;
+
+  ProfileCompletionState get completionState {
+    if (AuthService.instance.currentUser != null) {
+      if (!_hasHydratedAuthenticatedProfile) {
+        return lastSyncError == null
+            ? ProfileCompletionState.loading
+            : ProfileCompletionState.error;
+      }
+      final percentage = _profile.serverCompletionPercent;
+      if (percentage == null) return ProfileCompletionState.error;
+      return percentage == 100
+          ? ProfileCompletionState.complete
+          : ProfileCompletionState.incomplete;
+    }
+    return _profile.requiredProfileComplete
+        ? ProfileCompletionState.complete
+        : ProfileCompletionState.incomplete;
+  }
 
   List<ProfilePhotoViewData> get currentPhotos =>
       List.unmodifiable(<ProfilePhotoViewData>[

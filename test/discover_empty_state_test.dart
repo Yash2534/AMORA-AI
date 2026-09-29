@@ -4,6 +4,7 @@ import 'package:amora_ai/core/data/image_repository.dart';
 import 'package:amora_ai/features/discover/data/discover_api_service.dart';
 import 'package:amora_ai/features/discover/presentation/browse_grid_screen.dart';
 import 'package:amora_ai/features/discover/presentation/discover_action_controller.dart';
+import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
 import 'package:amora_ai/features/profile/presentation/profile_completion_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_edit_screen.dart';
 import 'package:flutter/material.dart';
@@ -14,7 +15,7 @@ void main() {
     WidgetTester tester, {
     required _DiscoverFixtureApi api,
     required DiscoverActionController controller,
-    required bool? Function() profileComplete,
+    required ProfileCompletionState Function() profileComplete,
     Future<void> Function()? refreshProfile,
     ValueChanged<RouteSettings>? onRoute,
   }) async {
@@ -62,19 +63,22 @@ void main() {
   );
 
   void expectEmpty({required bool complete}) {
-    expect(find.text('Complete your profile to get matches.'), findsOneWidget);
     expect(
-      find.text(complete ? 'Edit Profile' : 'Complete Profile'),
-      findsOneWidget,
+      find.text('Complete your profile to get matches.'),
+      complete ? findsNothing : findsOneWidget,
     );
     expect(
-      find.text(complete ? 'Complete Profile' : 'Edit Profile'),
-      findsNothing,
+      find.text('You’re all caught up.'),
+      complete ? findsOneWidget : findsNothing,
     );
-    expect(find.text('You are all caught up'), findsNothing);
+    expect(
+      find.text('Complete Profile'),
+      complete ? findsNothing : findsOneWidget,
+    );
+    expect(find.text('Edit Profile'), findsNothing);
     expect(
       find.byKey(const ValueKey('discover-profile-empty-cta')),
-      findsOneWidget,
+      complete ? findsNothing : findsOneWidget,
     );
   }
 
@@ -88,13 +92,13 @@ void main() {
         tester,
         api: api,
         controller: controller,
-        profileComplete: () => false,
+        profileComplete: () => ProfileCompletionState.incomplete,
       );
       expectEmpty(complete: false);
     },
   );
 
-  testWidgets('new user zero results and complete profile use Edit Profile', (
+  testWidgets('new user zero results and complete profile are caught up', (
     tester,
   ) async {
     final api = _DiscoverFixtureApi.empty();
@@ -104,7 +108,7 @@ void main() {
       tester,
       api: api,
       controller: controller,
-      profileComplete: () => true,
+      profileComplete: () => ProfileCompletionState.complete,
     );
     expectEmpty(complete: true);
   });
@@ -119,7 +123,7 @@ void main() {
       tester,
       api: api,
       controller: controller,
-      profileComplete: () => false,
+      profileComplete: () => ProfileCompletionState.incomplete,
     );
     expectEmpty(complete: false);
   });
@@ -134,7 +138,7 @@ void main() {
       tester,
       api: api,
       controller: controller,
-      profileComplete: () => true,
+      profileComplete: () => ProfileCompletionState.complete,
     );
     expectEmpty(complete: true);
   });
@@ -150,7 +154,7 @@ void main() {
       tester,
       api: api,
       controller: controller,
-      profileComplete: () => false,
+      profileComplete: () => ProfileCompletionState.incomplete,
     );
     expect(
       find.byKey(ValueKey('discover-profile-card-${profiles[0].id}')),
@@ -171,7 +175,7 @@ void main() {
     expectEmpty(complete: false);
   });
 
-  testWidgets('final swipe for complete profile uses Edit Profile CTA', (
+  testWidgets('final swipe for complete profile shows caught-up state', (
     tester,
   ) async {
     final profile = ImageRepository.profiles.first;
@@ -182,7 +186,7 @@ void main() {
       tester,
       api: api,
       controller: controller,
-      profileComplete: () => true,
+      profileComplete: () => ProfileCompletionState.complete,
     );
     await tester.tap(find.byKey(const ValueKey('discover-like-button')));
     await tester.pumpAndSettle();
@@ -200,7 +204,7 @@ void main() {
       tester,
       api: api,
       controller: controller,
-      profileComplete: () => false,
+      profileComplete: () => ProfileCompletionState.incomplete,
       onRoute: (value) => route = value,
     );
     await tester.tap(find.text('Complete Profile'));
@@ -208,49 +212,33 @@ void main() {
     expect(route?.name, ProfileCompletionScreen.routeName);
   });
 
-  testWidgets('Edit Profile CTA opens the existing edit route', (tester) async {
+  testWidgets('returning from completion refreshes to caught-up state', (
+    tester,
+  ) async {
+    var complete = false;
+    var refreshes = 0;
     final api = _DiscoverFixtureApi.empty();
     final controller = controllerFor(api, const []);
     addTearDown(controller.dispose);
-    RouteSettings? route;
     await pumpDiscover(
       tester,
       api: api,
       controller: controller,
-      profileComplete: () => true,
-      onRoute: (value) => route = value,
+      profileComplete: () => complete
+          ? ProfileCompletionState.complete
+          : ProfileCompletionState.incomplete,
+      refreshProfile: () async {
+        refreshes += 1;
+      },
     );
-    await tester.tap(find.text('Edit Profile'));
+    await tester.tap(find.text('Complete Profile'));
     await tester.pumpAndSettle();
-    expect(route?.name, ProfileEditScreen.routeName);
+    complete = true;
+    await tester.tap(find.byKey(const ValueKey('profile-flow-done')));
+    await tester.pumpAndSettle();
+    expect(refreshes, 1);
+    expectEmpty(complete: true);
   });
-
-  testWidgets(
-    'returning from completion refreshes Complete Profile to Edit Profile',
-    (tester) async {
-      var complete = false;
-      var refreshes = 0;
-      final api = _DiscoverFixtureApi.empty();
-      final controller = controllerFor(api, const []);
-      addTearDown(controller.dispose);
-      await pumpDiscover(
-        tester,
-        api: api,
-        controller: controller,
-        profileComplete: () => complete,
-        refreshProfile: () async {
-          refreshes += 1;
-        },
-      );
-      await tester.tap(find.text('Complete Profile'));
-      await tester.pumpAndSettle();
-      complete = true;
-      await tester.tap(find.byKey(const ValueKey('profile-flow-done')));
-      await tester.pumpAndSettle();
-      expect(refreshes, 1);
-      expectEmpty(complete: true);
-    },
-  );
 
   testWidgets('loading never prematurely shows the empty state', (
     tester,
@@ -265,7 +253,7 @@ void main() {
           showNavigation: false,
           apiService: api,
           controller: controller,
-          profileCompletionResolver: () => false,
+          profileCompletionResolver: () => ProfileCompletionState.incomplete,
         ),
       ),
     );
@@ -291,7 +279,7 @@ void main() {
       tester,
       api: api,
       controller: controller,
-      profileComplete: () => false,
+      profileComplete: () => ProfileCompletionState.incomplete,
     );
     expect(find.text('Couldn’t load profiles'), findsOneWidget);
     expect(find.text('Try again'), findsOneWidget);
@@ -308,11 +296,29 @@ void main() {
       tester,
       api: api,
       controller: controller,
-      profileComplete: () => null,
+      profileComplete: () => ProfileCompletionState.error,
     );
     expect(find.text('Couldn’t load your profile'), findsOneWidget);
     expect(find.text('Complete Profile'), findsNothing);
     expect(find.text('Edit Profile'), findsNothing);
+  });
+
+  testWidgets('profile completion loading never guesses an incomplete CTA', (
+    tester,
+  ) async {
+    final api = _DiscoverFixtureApi.empty();
+    final controller = controllerFor(api, const []);
+    addTearDown(controller.dispose);
+    await pumpDiscover(
+      tester,
+      api: api,
+      controller: controller,
+      profileComplete: () => ProfileCompletionState.loading,
+    );
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(find.text('Complete Profile'), findsNothing);
+    expect(find.text('Complete your profile to get matches.'), findsNothing);
+    expect(find.text('You’re all caught up.'), findsNothing);
   });
 
   testWidgets('pagination fetches another page before declaring exhaustion', (
@@ -336,7 +342,7 @@ void main() {
       tester,
       api: api,
       controller: controller,
-      profileComplete: () => false,
+      profileComplete: () => ProfileCompletionState.incomplete,
     );
     await tester.tap(find.byKey(const ValueKey('discover-pass-button')));
     await tester.pumpAndSettle();
@@ -379,7 +385,7 @@ void main() {
       tester,
       api: api,
       controller: controller,
-      profileComplete: () => true,
+      profileComplete: () => ProfileCompletionState.complete,
     );
 
     await tester.tap(find.byKey(const ValueKey('discover-pass-button')));
@@ -412,7 +418,7 @@ void main() {
         tester,
         api: api,
         controller: controller,
-        profileComplete: () => false,
+        profileComplete: () => ProfileCompletionState.incomplete,
       );
       await tester.tap(find.byKey(const ValueKey('discover-pass-button')));
       await tester.pumpAndSettle();

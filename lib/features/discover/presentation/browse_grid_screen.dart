@@ -34,7 +34,6 @@ import 'package:amora_ai/features/profile/data/public_profile_mapper.dart';
 import 'package:amora_ai/features/profile/presentation/controllers/profile_relationship_controller.dart';
 import 'package:amora_ai/features/profile/presentation/profile_completion_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_detail_screen.dart';
-import 'package:amora_ai/features/profile/presentation/profile_edit_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
 import 'package:flutter/services.dart';
@@ -53,7 +52,7 @@ List<String> cleanDiscoverPhotoPaths(
   return List<String>.unmodifiable(photos);
 }
 
-typedef DiscoverProfileCompletionResolver = bool? Function();
+typedef DiscoverProfileCompletionResolver = ProfileCompletionState Function();
 typedef DiscoverProfileCompletionRefresher = Future<void> Function();
 
 class BrowseGridScreen extends StatefulWidget {
@@ -115,6 +114,7 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
   late final LocalProfileRepository _profileRepository;
   bool _profileCompletionLoading = false;
   Object? _profileCompletionError;
+  late ProfileCompletionState _lastProfileCompletionState;
 
   DiscoverActionController get _actions => _controller!;
 
@@ -124,6 +124,7 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
     _keyboardFocus = FocusNode(debugLabel: 'Discover keyboard shortcuts');
     _discoverApi = widget.apiService ?? DiscoverApiService();
     _profileRepository = LocalProfileRepository.instance;
+    _lastProfileCompletionState = _profileCompletionState;
     if (widget.profileCompletionResolver == null) {
       _profileRepository.addListener(_onProfileChanged);
     }
@@ -148,17 +149,23 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
   }
 
   void _onProfileChanged() {
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    final previous = _lastProfileCompletionState;
+    final current = _profileCompletionState;
+    _lastProfileCompletionState = current;
+    setState(() {});
+    if (current == ProfileCompletionState.complete &&
+        previous != ProfileCompletionState.complete) {
+      unawaited(_loadProfiles());
+    }
   }
 
-  bool? get _profileComplete {
+  ProfileCompletionState get _profileCompletionState {
+    if (_profileCompletionLoading) return ProfileCompletionState.loading;
+    if (_profileCompletionError != null) return ProfileCompletionState.error;
     final resolver = widget.profileCompletionResolver;
     if (resolver != null) return resolver();
-    if (AuthService.instance.currentUser != null &&
-        !_profileRepository.hasHydratedAuthenticatedProfile) {
-      return null;
-    }
-    return _profileRepository.profile.requiredProfileComplete;
+    return _profileRepository.completionState;
   }
 
   Future<void> _refreshCompletionState() async {
@@ -183,21 +190,41 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
       _profileCompletionError = error;
     }
     if (!mounted) return;
-    setState(() => _profileCompletionLoading = false);
+    setState(() {
+      _profileCompletionLoading = false;
+      _lastProfileCompletionState = _profileCompletionState;
+    });
+    if (_profileCompletionState == ProfileCompletionState.complete) {
+      await _loadProfiles();
+    }
   }
 
-  Future<void> _openProfileCta(bool complete) async {
-    await Navigator.of(context).pushNamed(
-      complete
-          ? ProfileEditScreen.routeName
-          : ProfileCompletionScreen.routeName,
-    );
+  Future<void> _openProfileCta() async {
+    await Navigator.of(context).pushNamed(ProfileCompletionScreen.routeName);
     if (!mounted) return;
     await _refreshCompletionState();
   }
 
   Future<void> _loadProfiles() async {
     _loadingTimer?.cancel();
+    final completionState = _profileCompletionState;
+    final completionGateApplies =
+        widget.profileCompletionResolver != null ||
+        AuthService.instance.currentUser != null;
+    if (completionGateApplies &&
+        (completionState == ProfileCompletionState.loading ||
+            completionState == ProfileCompletionState.error)) {
+      setState(() {
+        _profiles = const <DummyProfile>[];
+        _nextCursor = null;
+        _hasMore = false;
+        _loadMoreError = null;
+        _error = null;
+        _replaceController();
+        _loading = completionState == ProfileCompletionState.loading;
+      });
+      return;
+    }
     setState(() => _loading = true);
     final result = await _discoverApi.getFeed(
       communicationStyles: appliedProfilePreferenceFilters
@@ -207,6 +234,19 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
     );
     if (!mounted) return;
     if (!result.success || result.data == null) {
+      if (_profileCompletionState == ProfileCompletionState.incomplete &&
+          result.statusCode == 403) {
+        setState(() {
+          _profiles = const <DummyProfile>[];
+          _nextCursor = null;
+          _hasMore = false;
+          _loadMoreError = null;
+          _error = null;
+          _replaceController();
+          _loading = false;
+        });
+        return;
+      }
       setState(() {
         _error = result.message;
         _loading = false;
@@ -228,7 +268,7 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
     if (mounted &&
         _actions.currentProfileId == null &&
         !_hasMore &&
-        _profileComplete == null) {
+        _profileCompletionState == ProfileCompletionState.loading) {
       await _refreshCompletionState();
     }
   }
@@ -287,7 +327,7 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
     setState(() => _loadingMore = false);
     if (_actions.currentProfileId == null &&
         !_hasMore &&
-        _profileComplete == null) {
+        _profileCompletionState == ProfileCompletionState.loading) {
       await _refreshCompletionState();
     }
   }
@@ -473,15 +513,16 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
               onRefresh: _resetFiltersAndDeck,
             );
           }
-          if (_profileCompletionLoading) return const _DiscoverSkeleton();
-          if (_profileCompletionError != null || _profileComplete == null) {
-            return _DiscoverProfileError(onRetry: _refreshCompletionState);
-          }
-          final complete = _profileComplete!;
-          return _DiscoverEmpty(
-            complete: complete,
-            onProfile: () => _openProfileCta(complete),
-          );
+          return switch (_profileCompletionState) {
+            ProfileCompletionState.loading => const _DiscoverSkeleton(),
+            ProfileCompletionState.error => _DiscoverProfileError(
+              onRetry: _refreshCompletionState,
+            ),
+            ProfileCompletionState.incomplete => _DiscoverEmpty.incomplete(
+              onProfile: _openProfileCta,
+            ),
+            ProfileCompletionState.complete => const _DiscoverEmpty.complete(),
+          };
         }
 
         final back1Id = remainingIds.length > 1 ? remainingIds[1] : null;
@@ -922,7 +963,7 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
         if (mounted &&
             _actions.currentProfileId == null &&
             !_hasMore &&
-            _profileComplete == null) {
+            _profileCompletionState == ProfileCompletionState.loading) {
           await _refreshCompletionState();
         }
       },
@@ -1863,10 +1904,11 @@ class _SkeletonLine extends StatelessWidget {
 }
 
 class _DiscoverEmpty extends StatelessWidget {
-  const _DiscoverEmpty({required this.complete, required this.onProfile});
+  const _DiscoverEmpty.incomplete({required this.onProfile}) : complete = false;
+  const _DiscoverEmpty.complete() : complete = true, onProfile = null;
 
   final bool complete;
-  final VoidCallback onProfile;
+  final VoidCallback? onProfile;
 
   @override
   Widget build(BuildContext context) {
@@ -1891,21 +1933,23 @@ class _DiscoverEmpty extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'Complete your profile to get matches.',
+                  complete
+                      ? 'You’re all caught up.'
+                      : 'Complete your profile to get matches.',
                   textAlign: TextAlign.center,
                   style: AmoraTextStyles.titleLarge.copyWith(
                     color: AppColors.primary,
                   ),
                 ),
-                const SizedBox(height: 18),
-                AppPrimaryButton(
-                  key: const ValueKey('discover-profile-empty-cta'),
-                  label: complete ? 'Edit Profile' : 'Complete Profile',
-                  onPressed: onProfile,
-                  icon: complete
-                      ? Icons.edit_rounded
-                      : Icons.person_add_alt_1_rounded,
-                ),
+                if (!complete) ...[
+                  const SizedBox(height: 18),
+                  AppPrimaryButton(
+                    key: const ValueKey('discover-profile-empty-cta'),
+                    label: 'Complete Profile',
+                    onPressed: onProfile,
+                    icon: Icons.person_add_alt_1_rounded,
+                  ),
+                ],
               ],
             ),
           ),

@@ -505,6 +505,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _open(String route) async {
     await Navigator.of(context).pushNamed(route);
+    if (!mounted) return;
+    if (AuthService.instance.currentUser != null &&
+        (route == ProfileCompletionScreen.routeName ||
+            route == ProfileEditScreen.routeName)) {
+      try {
+        await _repository.refreshFromServer();
+      } catch (_) {
+        // The profile page keeps the canonical error and retry UI visible.
+      }
+    }
     if (mounted) setState(() {});
   }
 }

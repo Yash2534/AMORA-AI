@@ -8,6 +8,7 @@ import 'package:amora_ai/core/widgets/amoraa_select_field.dart';
 import 'package:amora_ai/features/chat/data/chat_repository.dart';
 import 'package:amora_ai/features/matches/presentation/matches_screen.dart';
 import 'package:amora_ai/features/matches/presentation/widgets/amoraa_inline_compatibility_filter.dart';
+import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
 import 'package:amora_ai/features/profile/presentation/profile_completion_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -245,7 +246,7 @@ void main() {
   });
 
   testWidgets(
-    'successful zero-result response shows profile completion empty state',
+    'incomplete profile shows profile completion state without requesting results',
     (tester) async {
       openedRoute = null;
       await tester.binding.setSurfaceSize(const Size(320, 760));
@@ -259,7 +260,11 @@ void main() {
               builder: (_) => _RouteMarker(settings.name ?? 'unknown'),
             );
           },
-          home: MatchesScreen(showNavigation: false, api: _EmptyMatchesApi()),
+          home: MatchesScreen(
+            showNavigation: false,
+            api: _EmptyMatchesApi(),
+            profileCompletionResolver: () => ProfileCompletionState.incomplete,
+          ),
         ),
       );
       await tester.pumpAndSettle();
@@ -275,6 +280,104 @@ void main() {
       await tester.pumpAndSettle();
       expect(openedRoute?.name, ProfileCompletionScreen.routeName);
       expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('complete zero-result response shows the AI empty state', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MatchesScreen(
+          showNavigation: false,
+          api: _EmptyMatchesApi(),
+          profileCompletionResolver: () => ProfileCompletionState.complete,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('No AI matches yet'), findsOneWidget);
+    expect(find.text('Complete your profile first'), findsNothing);
+    expect(find.text('Complete Profile'), findsNothing);
+  });
+
+  testWidgets('completion loading never shows Complete Profile', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MatchesScreen(
+          showNavigation: false,
+          api: _EmptyMatchesApi(),
+          profileCompletionResolver: () => ProfileCompletionState.loading,
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.text('Complete Profile'), findsNothing);
+  });
+
+  testWidgets('completion error is retryable and not profile-incomplete', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MatchesScreen(
+          showNavigation: false,
+          api: _EmptyMatchesApi(),
+          profileCompletionResolver: () => ProfileCompletionState.error,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Couldn’t load your AI matches'), findsOneWidget);
+    expect(find.text('Try Again'), findsOneWidget);
+    expect(find.text('Complete Profile'), findsNothing);
+  });
+
+  testWidgets(
+    'returning from profile completion refreshes and loads AI matches',
+    (tester) async {
+      var state = ProfileCompletionState.incomplete;
+      var refreshes = 0;
+      final api = _EmptyMatchesApi();
+      await tester.pumpWidget(
+        MaterialApp(
+          onGenerateRoute: (settings) => MaterialPageRoute<void>(
+            settings: settings,
+            builder: (context) => Scaffold(
+              body: FilledButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Finish profile'),
+              ),
+            ),
+          ),
+          home: MatchesScreen(
+            showNavigation: false,
+            api: api,
+            profileCompletionResolver: () => state,
+            refreshProfileCompletion: () async {
+              refreshes += 1;
+            },
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Complete Profile'));
+      await tester.pumpAndSettle();
+      state = ProfileCompletionState.complete;
+      await tester.tap(find.text('Finish profile'));
+      await tester.pumpAndSettle();
+
+      expect(refreshes, 1);
+      expect(api.calls, 1);
+      expect(find.text('No AI matches yet'), findsOneWidget);
+      expect(find.text('Complete Profile'), findsNothing);
     },
   );
 
@@ -503,11 +606,16 @@ class _RouteMarker extends StatelessWidget {
 }
 
 class _EmptyMatchesApi extends PhaseTwoApiService {
+  int calls = 0;
+
   @override
   Future<AiRecommendationsPage> aiRecommendations({
     String? cursor,
     int limit = 10,
-  }) async => AiRecommendationsPage(items: const [], hasMore: false, limit: limit);
+  }) async {
+    calls += 1;
+    return AiRecommendationsPage(items: const [], hasMore: false, limit: limit);
+  }
 }
 
 class _FailingMatchesApi extends PhaseTwoApiService {
@@ -515,6 +623,5 @@ class _FailingMatchesApi extends PhaseTwoApiService {
   Future<AiRecommendationsPage> aiRecommendations({
     String? cursor,
     int limit = 10,
-  }) async =>
-      throw Exception('offline');
+  }) async => throw Exception('offline');
 }
