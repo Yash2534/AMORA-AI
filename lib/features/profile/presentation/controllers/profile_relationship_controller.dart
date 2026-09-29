@@ -55,6 +55,13 @@ class ProfileRelationshipController extends ChangeNotifier {
   final List<String> _likedProfileIds = <String>[];
   final List<String> _superLikedProfileIds = <String>[];
   final List<String> _receivedLikeProfileIds = <String>[];
+  final Map<String, int> _savedRevisions = <String, int>{};
+  final Map<String, int> _likedRevisions = <String, int>{};
+  final Map<String, int> _superLikedRevisions = <String, int>{};
+  final Map<String, Future<void>> _reactionMutations = <String, Future<void>>{};
+  int _relationshipRevision = 0;
+  int _sessionEpoch = 0;
+  int _refreshRequestId = 0;
   int receivedLikesTotal = 0;
   bool receivedLikesLoading = false;
   String? receivedLikesError;
@@ -79,6 +86,9 @@ class ProfileRelationshipController extends ChangeNotifier {
       return;
     }
     final remote = _remote!;
+    final startedAtRevision = _relationshipRevision;
+    final sessionEpoch = _sessionEpoch;
+    final requestId = ++_refreshRequestId;
     loading = true;
     error = null;
     notifyListeners();
@@ -88,9 +98,27 @@ class ProfileRelationshipController extends ChangeNotifier {
         remote.request('GET', '/api/me/likes?page=1&limit=20'),
         remote.request('GET', '/api/me/super-likes?page=1&limit=20'),
       ]);
-      _replaceProfiles(_savedProfileIds, _profiles(results[0]));
-      _replaceProfiles(_likedProfileIds, _profiles(results[1]));
-      _replaceProfiles(_superLikedProfileIds, _profiles(results[2]));
+      if (sessionEpoch != _sessionEpoch || requestId != _refreshRequestId) {
+        return;
+      }
+      _replaceProfilesPreservingNewerMutations(
+        _savedProfileIds,
+        _profiles(results[0]),
+        _savedRevisions,
+        startedAtRevision,
+      );
+      _replaceProfilesPreservingNewerMutations(
+        _likedProfileIds,
+        _profiles(results[1]),
+        _likedRevisions,
+        startedAtRevision,
+      );
+      _replaceProfilesPreservingNewerMutations(
+        _superLikedProfileIds,
+        _profiles(results[2]),
+        _superLikedRevisions,
+        startedAtRevision,
+      );
       final savedPage = _nextPage(results[0]);
       final likesPage = _nextPage(results[1]);
       final superLikesPage = _nextPage(results[2]);
@@ -105,8 +133,10 @@ class ProfileRelationshipController extends ChangeNotifier {
     } catch (_) {
       error = 'Could not load saved profiles and reactions.';
     } finally {
-      loading = false;
-      notifyListeners();
+      if (sessionEpoch == _sessionEpoch && requestId == _refreshRequestId) {
+        loading = false;
+        notifyListeners();
+      }
     }
   }
 
@@ -158,6 +188,31 @@ class ProfileRelationshipController extends ChangeNotifier {
       ..clear()
       ..addAll(profiles.map((profile) => profile.id));
     for (final profile in profiles) {
+      _profilesById[profile.id] = profile;
+    }
+  }
+
+  void _replaceProfilesPreservingNewerMutations(
+    List<String> ids,
+    List<DummyProfile> profiles,
+    Map<String, int> revisions,
+    int startedAtRevision,
+  ) {
+    final changedIds = revisions.entries
+        .where((entry) => entry.value > startedAtRevision)
+        .map((entry) => entry.key)
+        .toSet();
+    final locallyPresentChangedIds = ids
+        .where(changedIds.contains)
+        .toList(growable: false);
+    final remoteProfiles = profiles
+        .where((profile) => !changedIds.contains(profile.id))
+        .toList(growable: false);
+    ids
+      ..clear()
+      ..addAll(remoteProfiles.map((profile) => profile.id))
+      ..addAll(locallyPresentChangedIds);
+    for (final profile in remoteProfiles) {
       _profilesById[profile.id] = profile;
     }
   }
@@ -281,6 +336,47 @@ class ProfileRelationshipController extends ChangeNotifier {
   bool isSuperLiked(String profileId) =>
       _superLikedProfileIds.contains(profileId);
 
+  bool isReactionMutating(String profileId) =>
+      _reactionMutations.containsKey(profileId);
+
+  int relationshipRevisionFor(String profileId) => <int>[
+    _savedRevisions[profileId] ?? 0,
+    _likedRevisions[profileId] ?? 0,
+    _superLikedRevisions[profileId] ?? 0,
+  ].reduce((left, right) => left > right ? left : right);
+
+  void applyAuthoritativeRelationship(
+    DummyProfile profile,
+    PublicRelationshipState relationship, {
+    int? unlessChangedSince,
+  }) {
+    if (unlessChangedSince != null &&
+        relationshipRevisionFor(profile.id) != unlessChangedSince) {
+      _profilesById[profile.id] = profile;
+      return;
+    }
+    _profilesById[profile.id] = profile;
+    _setMembership(
+      _savedProfileIds,
+      _savedRevisions,
+      profile.id,
+      relationship.saved,
+    );
+    _setMembership(
+      _likedProfileIds,
+      _likedRevisions,
+      profile.id,
+      relationship.liked,
+    );
+    _setMembership(
+      _superLikedProfileIds,
+      _superLikedRevisions,
+      profile.id,
+      relationship.superLiked,
+    );
+    notifyListeners();
+  }
+
   void toggleLiked(DummyProfile profile) {
     if (isLiked(profile.id)) {
       removeLike(profile.id);
@@ -291,33 +387,84 @@ class ProfileRelationshipController extends ChangeNotifier {
 
   void likeProfile(DummyProfile profile) {
     _profilesById[profile.id] = profile;
-    if (_likedProfileIds.contains(profile.id)) return;
-    _likedProfileIds.add(profile.id);
+    _setMembership(_likedProfileIds, _likedRevisions, profile.id, true);
     notifyListeners();
   }
 
-  Future<void> likeProfilePersisted(DummyProfile profile) async {
-    if (_canUseRemote) {
-      await _remote!.request(
-        'POST',
-        '/api/discover/swipe',
-        body: {'targetUserId': int.parse(profile.id), 'action': 'like'},
-      );
-    }
-    likeProfile(profile);
-  }
+  Future<void> likeProfilePersisted(DummyProfile profile) =>
+      _serializeReactionMutation(profile.id, () async {
+        final sessionEpoch = _sessionEpoch;
+        if (_canUseRemote) {
+          final response = await _remote!.request(
+            'POST',
+            '/api/discover/swipe',
+            body: {'targetUserId': int.parse(profile.id), 'action': 'like'},
+          );
+          final data = _data(response);
+          final likeStatus = data['likeStatus']?.toString();
+          if (data['liked'] != true &&
+              likeStatus != 'liked' &&
+              likeStatus != 'already_liked') {
+            throw StateError('Like response did not confirm persisted state.');
+          }
+        }
+        if (sessionEpoch == _sessionEpoch) likeProfile(profile);
+      });
 
   void removeLike(String profileId) {
-    if (!_likedProfileIds.remove(profileId)) return;
+    _setMembership(_likedProfileIds, _likedRevisions, profileId, false);
     _removeUnreferencedProfile(profileId);
     notifyListeners();
   }
 
-  Future<void> removeLikePersisted(String profileId) async {
-    if (_canUseRemote) {
-      await _remote!.request('DELETE', '/api/reactions/$profileId');
+  Future<void> removeLikePersisted(String profileId) =>
+      _serializeReactionMutation(profileId, () async {
+        final sessionEpoch = _sessionEpoch;
+        if (_canUseRemote) {
+          final response = await _remote!.request(
+            'DELETE',
+            '/api/reactions/$profileId',
+          );
+          if (_data(response)['liked'] != false) {
+            throw StateError(
+              'Unlike response did not confirm persisted state.',
+            );
+          }
+        }
+        if (sessionEpoch == _sessionEpoch) removeLike(profileId);
+      });
+
+  Future<void> _serializeReactionMutation(
+    String profileId,
+    Future<void> Function() mutation,
+  ) {
+    final existing = _reactionMutations[profileId];
+    if (existing != null) return existing;
+    late final Future<void> operation;
+    operation = mutation().whenComplete(() {
+      if (identical(_reactionMutations[profileId], operation)) {
+        _reactionMutations.remove(profileId);
+        notifyListeners();
+      }
+    });
+    _reactionMutations[profileId] = operation;
+    notifyListeners();
+    return operation;
+  }
+
+  void _setMembership(
+    List<String> ids,
+    Map<String, int> revisions,
+    String profileId,
+    bool present,
+  ) {
+    _relationshipRevision++;
+    revisions[profileId] = _relationshipRevision;
+    if (present) {
+      if (!ids.contains(profileId)) ids.add(profileId);
+    } else {
+      ids.remove(profileId);
     }
-    removeLike(profileId);
   }
 
   void superLikeProfile(DummyProfile profile) {
@@ -392,20 +539,20 @@ class ProfileRelationshipController extends ChangeNotifier {
   void clear() => clearSessionState();
 
   void clearSessionState() {
-    if (_profilesById.isEmpty &&
-        _savedProfileIds.isEmpty &&
-        _blockedProfileIds.isEmpty &&
-        _likedProfileIds.isEmpty &&
-        _superLikedProfileIds.isEmpty &&
-        _receivedLikeProfileIds.isEmpty) {
-      return;
-    }
+    _sessionEpoch++;
+    _refreshRequestId++;
+    loading = false;
+    error = null;
     _profilesById.clear();
     _savedProfileIds.clear();
     _blockedProfileIds.clear();
     _likedProfileIds.clear();
     _superLikedProfileIds.clear();
     _receivedLikeProfileIds.clear();
+    _savedRevisions.clear();
+    _likedRevisions.clear();
+    _superLikedRevisions.clear();
+    _reactionMutations.clear();
     receivedLikesTotal = 0;
     receivedLikesLoading = false;
     receivedLikesError = null;

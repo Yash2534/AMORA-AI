@@ -36,6 +36,20 @@ class _RelationshipRemote implements ProfileRelationshipRemoteDataSource {
     if (failLike && method == 'POST' && path == '/api/discover/swipe') {
       throw const AuthException('Like could not be saved.');
     }
+    if (method == 'POST' && path == '/api/discover/swipe') {
+      return <String, dynamic>{
+        'data': <String, dynamic>{
+          'liked': true,
+          'likeStatus': 'liked',
+          'matched': false,
+        },
+      };
+    }
+    if (method == 'DELETE' && path.startsWith('/api/reactions/')) {
+      return <String, dynamic>{
+        'data': <String, dynamic>{'liked': false, 'superLiked': false},
+      };
+    }
     if (path.startsWith('/api/me/received-likes?')) {
       return <String, dynamic>{
         'data': <String, dynamic>{

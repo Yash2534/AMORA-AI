@@ -130,6 +130,8 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
   }
 
   Future<void> _loadProfile(String userId) async {
+    final relationships = ProfileRelationshipController.instance;
+    final relationshipRevision = relationships.relationshipRevisionFor(userId);
     final currentUser = AuthService.instance.currentUser;
     final loadingOwnProfile =
         currentUser != null && currentUser.id.toString() == userId;
@@ -159,13 +161,11 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
       }
       final result = await widget.api!.profile(userId);
       if (!mounted) return;
-      final relationships = ProfileRelationshipController.instance;
-      if (result.relationship.saved) relationships.saveProfile(result.profile);
-      if (result.relationship.superLiked) {
-        relationships.superLikeProfile(result.profile);
-      } else if (result.relationship.liked) {
-        relationships.likeProfile(result.profile);
-      }
+      relationships.applyAuthoritativeRelationship(
+        result.profile,
+        result.relationship,
+        unlessChangedSince: relationshipRevision,
+      );
       setState(() {
         _routeProfile = result.profile;
         _serverRelationship = result.relationship;
@@ -266,11 +266,14 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
               : ProfileActionBar(
                   profileName: _profile.name,
                   liked: _liked,
+                  matched: _serverRelationship.matched,
+                  likeSending: ProfileRelationshipController.instance
+                      .isReactionMutating(_profile.id),
                   superLiked: _superLiked,
                   superLikeSending: _superLikeSending,
                   roseSending: _roseSheetOpen,
                   onRose: _showRose,
-                  onLike: _toggleLike,
+                  onLike: _serverRelationship.matched ? () {} : _toggleLike,
                   onSuperLike: _sendSuperLike,
                   onMessage: _startChat,
                 ),
@@ -298,6 +301,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
 
   Future<void> _toggleLike() async {
     final relationships = ProfileRelationshipController.instance;
+    if (relationships.isReactionMutating(_profile.id)) return;
     if (_liked) {
       final removed = await showAmoraaProfileActionConfirmation(
         context: context,
@@ -1668,9 +1672,7 @@ class InterestChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: AppColors.softBackground,
-      shape: const StadiumBorder(
-        side: BorderSide(color: AppColors.border),
-      ),
+      shape: const StadiumBorder(side: BorderSide(color: AppColors.border)),
       clipBehavior: Clip.antiAlias,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -1696,7 +1698,6 @@ class InterestChip extends StatelessWidget {
     );
   }
 }
-
 
 class _ProfilePromptsSection extends StatelessWidget {
   const _ProfilePromptsSection({required this.profile, required this.onReply});
@@ -2074,6 +2075,8 @@ class ProfileActionBar extends StatelessWidget {
     super.key,
     this.profileName,
     required this.liked,
+    this.matched = false,
+    this.likeSending = false,
     required this.superLiked,
     required this.superLikeSending,
     required this.roseSending,
@@ -2086,6 +2089,8 @@ class ProfileActionBar extends StatelessWidget {
   static const double height = 82;
 
   final bool liked;
+  final bool matched;
+  final bool likeSending;
   final String? profileName;
   final bool superLiked;
   final bool superLikeSending;
@@ -2170,12 +2175,15 @@ class ProfileActionBar extends StatelessWidget {
                     Expanded(
                       child: _ProfileActionButton(
                         key: const ValueKey('profile-like-button'),
-                        label: 'Like',
-                        semanticLabel: liked
+                        label: matched ? 'Matched' : 'Like',
+                        semanticLabel: matched
+                            ? 'Matched with $safeName'
+                            : liked
                             ? AmoraaProfileAction.unlike.semanticLabel(safeName)
                             : 'Like $safeName',
                         icon: Icons.favorite_rounded,
-                        selected: liked,
+                        selected: liked || matched,
+                        loading: likeSending,
                         onTap: onLike,
                       ),
                     ),
@@ -2276,14 +2284,14 @@ class _ProfileActionButtonState extends State<_ProfileActionButton>
             ),
           ]
         : ((isSuperLike || isLike)
-            ? [
-                BoxShadow(
-                  color: AppColors.primary.withValues(alpha: .15),
-                  blurRadius: 10,
-                  offset: const Offset(0, 2),
-                ),
-              ]
-            : null);
+              ? [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: .15),
+                    blurRadius: 10,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null);
 
     return Semantics(
       button: true,
@@ -2325,15 +2333,19 @@ class _ProfileActionButtonState extends State<_ProfileActionButton>
                                 padding: const EdgeInsets.all(9),
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
-                                  color: filled 
-                                      ? (isSuperLike ? AppColors.textPrimary : Colors.white) 
+                                  color: filled
+                                      ? (isSuperLike
+                                            ? AppColors.textPrimary
+                                            : Colors.white)
                                       : normalIconColor,
                                 ),
                               )
                             : Icon(
                                 widget.icon,
-                                color: filled 
-                                    ? (isSuperLike ? AppColors.textPrimary : Colors.white) 
+                                color: filled
+                                    ? (isSuperLike
+                                          ? AppColors.textPrimary
+                                          : Colors.white)
                                     : normalIconColor,
                                 size: 18,
                               ),

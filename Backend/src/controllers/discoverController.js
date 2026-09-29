@@ -541,7 +541,7 @@ exports.swipe = async (req, res, next) => {
     let match = null;
     let matchedRow = null;
     let conversationRow = null;
-    let createdAction = false;
+    let alreadyLiked = false;
     await User.sequelize.transaction(async (transaction) => {
       const participantIds = [Number(req.user.sub), targetUserId].sort((a, b) => a - b);
       await User.findAll({
@@ -551,10 +551,9 @@ exports.swipe = async (req, res, next) => {
         lock: transaction.LOCK.UPDATE,
       });
       const existingAction = await DiscoverAction.findOne({ where: { actorUserId: req.user.sub, targetUserId }, transaction, lock: transaction.LOCK.UPDATE });
-      const alreadyLiked = existingAction
+      alreadyLiked = existingAction
         && ['like', 'superLike'].includes(existingAction.action)
         && req.body.action === 'like';
-      createdAction = !existingAction;
       if (!alreadyLiked) {
         await DiscoverAction.upsert({ actorUserId: req.user.sub, targetUserId, action: req.body.action, createdAt: existingAction?.createdAt || new Date(), updatedAt: new Date() }, { transaction });
       }
@@ -611,7 +610,8 @@ exports.swipe = async (req, res, next) => {
     return success(res, 'Swipe saved.', {
       action: req.body.action,
       targetUserId: String(targetUserId),
-      likeStatus: req.body.action === 'like' ? (createdAction ? 'liked' : 'already_liked') : undefined,
+      liked: req.body.action === 'like' ? true : undefined,
+      likeStatus: req.body.action === 'like' ? (alreadyLiked ? 'already_liked' : 'liked') : undefined,
       ...(match || { matched: false }),
     });
   } catch (error) {

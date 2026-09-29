@@ -215,6 +215,32 @@ void main() {
     expect(likeFill(), AppColors.primary);
   });
 
+  testWidgets('a Match is rendered as Matched rather than Unlike', (
+    tester,
+  ) async {
+    final profile = publicProfileFromJson({
+      'id': '43',
+      'name': 'Matched Profile',
+    }).profile;
+    await pumpProfile(
+      tester,
+      profile: profile,
+      api: _ProfileActionApi(
+        profile,
+        relationship: const PublicRelationshipState(matched: true),
+      ),
+    );
+
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('profile-like-button')),
+        matching: find.text('Matched'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Unlike'), findsNothing);
+  });
+
   testWidgets('message action preserves its existing route', (tester) async {
     await tester.binding.setSurfaceSize(const Size(430, 900));
     addTearDown(() => tester.binding.setSurfaceSize(null));
