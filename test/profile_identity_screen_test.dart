@@ -58,7 +58,6 @@ void main() {
     final scrollable = find.byType(Scrollable).first;
     for (final section in [
       'Who liked you',
-      'Profile visitors',
       'Support Center',
       'Safety & verification',
       'Notifications',

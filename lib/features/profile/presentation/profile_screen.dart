@@ -283,8 +283,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         child: _ProfileMenuList(
                           onWhoLikedYou: () =>
                               _open(LikesSuperLikesScreen.routeName),
-                          onProfileVisitors: () =>
-                              _open(LikesSuperLikesScreen.routeName),
                           onAiCoach: () => _open(FaqSupportScreen.routeName),
                           onSafety: () => _open(SafetyPrivacyScreen.routeName),
                           onNotifications: () =>
@@ -1801,7 +1799,6 @@ class _AuraPremiumBannerCard extends StatelessWidget {
 class _ProfileMenuList extends StatelessWidget {
   const _ProfileMenuList({
     required this.onWhoLikedYou,
-    required this.onProfileVisitors,
     required this.onAiCoach,
     required this.onSafety,
     required this.onNotifications,
@@ -1811,7 +1808,6 @@ class _ProfileMenuList extends StatelessWidget {
   });
 
   final VoidCallback onWhoLikedYou;
-  final VoidCallback onProfileVisitors;
   final VoidCallback onAiCoach;
   final VoidCallback onSafety;
   final VoidCallback onNotifications;
@@ -1827,12 +1823,6 @@ class _ProfileMenuList extends StatelessWidget {
           icon: Icons.favorite_border_rounded,
           title: 'Who liked you',
           onTap: onWhoLikedYou,
-        ),
-        const SizedBox(height: 12),
-        _ProfileMenuItemRow(
-          icon: Icons.remove_red_eye_outlined,
-          title: 'Profile visitors',
-          onTap: onProfileVisitors,
         ),
         const SizedBox(height: 12),
         _ProfileMenuItemRow(

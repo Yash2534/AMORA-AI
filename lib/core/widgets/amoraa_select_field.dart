@@ -196,12 +196,12 @@ class _AmoraaSelectFieldState<T> extends State<AmoraaSelectField<T>> {
         final selectedValues = _selectedValues;
         final compact = widget.variant == AmoraaSelectVariant.compact;
         final focusColor = _focusNode.hasFocus || _open
-            ? AppColors.secondary
-            : AppColors.tertiary;
-        final borderColor = error != null
             ? AppColors.primary
+            : AppColors.border;
+        final borderColor = error != null
+            ? AppColors.error
             : _hovered
-            ? AppColors.secondary.withValues(alpha: .78)
+            ? AppColors.primary.withValues(alpha: .78)
             : focusColor;
         final disabledOpacity = widget.enabled ? 1.0 : .54;
         final semanticValue = selectedValues.isEmpty
@@ -353,7 +353,7 @@ class _AmoraaSelectFieldState<T> extends State<AmoraaSelectField<T>> {
                                       child: const Icon(
                                         Icons.expand_more_rounded,
                                         size: 22,
-                                        color: AppColors.text,
+                                        color: AppColors.primary,
                                       ),
                                     ),
                                 ],
@@ -420,7 +420,7 @@ class _AmoraaSelectFieldState<T> extends State<AmoraaSelectField<T>> {
               surfaceTintColor: AppColors.surface,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(24),
-                side: const BorderSide(color: AppColors.tertiary),
+                side: const BorderSide(color: AppColors.border),
               ),
               child: ConstrainedBox(
                 constraints: const BoxConstraints(
@@ -583,7 +583,10 @@ class _AmoraaSelectBottomSheetState<T>
                     key: const ValueKey('amoraa-select-close'),
                     tooltip: 'Close selector',
                     onPressed: () => Navigator.of(context).maybePop(),
-                    icon: const Icon(Icons.close_rounded),
+                    icon: const Icon(
+                      Icons.close_rounded,
+                      color: AppColors.primary,
+                    ),
                   ),
                 ],
               ),
@@ -597,8 +600,14 @@ class _AmoraaSelectBottomSheetState<T>
                     controller: _searchController,
                     focusNode: _searchFocus,
                     textInputAction: TextInputAction.search,
+                    style: AmoraTextStyles.bodyMedium.copyWith(
+                      color: AppColors.textPrimary,
+                    ),
                     decoration: InputDecoration(
                       hintText: widget.searchHint,
+                      hintStyle: AmoraTextStyles.bodyMedium.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
                       prefixIcon: const Icon(
                         Icons.search_rounded,
                         color: AppColors.primary,
@@ -614,10 +623,38 @@ class _AmoraaSelectBottomSheetState<T>
                                   _highlightedIndex = 0;
                                 });
                               },
-                              icon: const Icon(Icons.close_rounded),
+                              icon: const Icon(
+                                Icons.close_rounded,
+                                color: AppColors.primary,
+                              ),
                             ),
                       filled: true,
-                      fillColor: AppColors.background,
+                      fillColor: AppColors.surface,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: AmoraSpacing.space16,
+                        vertical: AmoraSpacing.space12,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: const BorderSide(
+                          color: AppColors.primary,
+                          width: 1.2,
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: const BorderSide(
+                          color: AppColors.primary,
+                          width: 1.8,
+                        ),
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: const BorderSide(
+                          color: AppColors.primary,
+                          width: 1.2,
+                        ),
+                      ),
                     ),
                     onChanged: (value) => setState(() {
                       _query = value;
@@ -629,7 +666,7 @@ class _AmoraaSelectBottomSheetState<T>
               const SizedBox(height: AmoraSpacing.space12),
               Divider(
                 height: 1,
-                color: AppColors.tertiary.withValues(alpha: .72),
+                color: AppColors.border,
               ),
               const SizedBox(height: AmoraSpacing.space8),
               Expanded(
@@ -702,7 +739,7 @@ class _AmoraaSelectBottomSheetState<T>
                 const SizedBox(height: AmoraSpacing.space8),
                 Divider(
                   height: 1,
-                  color: AppColors.tertiary.withValues(alpha: .72),
+                  color: AppColors.border,
                 ),
                 const SizedBox(height: AmoraSpacing.space12),
                 FilledButton(
@@ -778,8 +815,8 @@ class _AmoraaClearOptionTile extends StatelessWidget {
               border: Border.all(
                 color: selected
                     ? AppColors.primary
-                    : AppColors.tertiary.withValues(alpha: .72),
-                width: selected ? 2 : 1,
+                    : AppColors.border,
+                width: selected ? 1.8 : 1,
               ),
             ),
             child: Row(
@@ -851,8 +888,8 @@ class AmoraaSelectOptionTile<T> extends StatelessWidget {
           border: Border.all(
             color: selected
                 ? AppColors.primary
-                : AppColors.tertiary.withValues(alpha: .72),
-            width: selected ? 2 : 1,
+                : AppColors.border,
+            width: selected ? 1.8 : 1,
           ),
         ),
         child: Material(
