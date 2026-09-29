@@ -238,7 +238,7 @@ test('likes persist relational actors and receiver sees each current sender name
   assert.ok(receivedLikes.every((item) => String(item.data.targetUserId) === item.actor.userId), JSON.stringify(receivedLikes));
 
   await models.OnboardingProfile.update(
-    { photos: ['/uploads/priya-current.jpg'], primaryPhotoIndex: 0 },
+    { photos: ['/uploads/priya-current.jpg', '/uploads/priya-current-two.jpg'], primaryPhotoIndex: 0 },
     { where: { userId: candidate.id } },
   );
   await models.OnboardingProfile.update(

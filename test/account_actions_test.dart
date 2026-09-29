@@ -74,10 +74,17 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  Future<void> continuePastReason(WidgetTester tester) async {
+    await tapVisible(
+      tester,
+      find.byKey(const ValueKey('delete-reason-continue')),
+    );
+  }
+
   Future<void> reachOtp(
     WidgetTester tester, {
     required Future<void> Function(String) sendOtp,
-    Future<void> Function(String, String)? confirmDeletion,
+    Future<void> Function(String, String, String?, String?)? confirmDeletion,
   }) async {
     await pumpAction(
       tester,
@@ -94,6 +101,7 @@ void main() {
       ),
     );
     await confirmDeletionIntent(tester);
+    await continuePastReason(tester);
     await tapVisible(
       tester,
       find.byKey(const ValueKey('delete-account-send-otp')),
@@ -333,6 +341,12 @@ void main() {
     await tester.pumpAndSettle();
     expect(loads, 0);
     await confirmDeletionIntent(tester);
+    expect(loads, 0);
+    expect(
+      find.text('Why do you want to delete your account?'),
+      findsOneWidget,
+    );
+    await continuePastReason(tester);
     expect(loads, 1);
   });
 
@@ -355,12 +369,267 @@ void main() {
       ),
     );
     await confirmDeletionIntent(tester);
+    await continuePastReason(tester);
     expect(find.text('Email'), findsOneWidget);
     expect(find.text('Phone'), findsOneWidget);
     expect(find.text('y***@example.com'), findsOneWidget);
     expect(find.text('+91 ******1234'), findsOneWidget);
     expect(find.textContaining('yash'), findsNothing);
   });
+
+  testWidgets(
+    'reason step renders the optional question and all seven options',
+    (tester) async {
+      await pumpAction(tester, const DeleteAccountInformationScreen());
+      await confirmDeletionIntent(tester);
+
+      expect(
+        find.text('Why do you want to delete your account?'),
+        findsOneWidget,
+      );
+      expect(
+        find.text(
+          'This is optional. You can continue without selecting a reason.',
+        ),
+        findsOneWidget,
+      );
+      for (final reason in AccountDeletionReason.values) {
+        expect(find.text(reason.label), findsOneWidget);
+      }
+      expect(
+        find.byKey(const ValueKey('delete-reason-continue')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const ValueKey('delete-reason-skip')), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'reason selection is single-choice and switching from Other clears text',
+    (tester) async {
+      String? submittedCode;
+      String? submittedText;
+      await pumpAction(
+        tester,
+        DeleteAccountInformationScreen(
+          loadMethods: () async => const [
+            AccountDeletionMethod(
+              channel: 'EMAIL',
+              maskedDestination: 'y***@example.com',
+            ),
+          ],
+          sendOtp: (_) async {},
+          confirmDeletion: (_, _, code, text) async {
+            submittedCode = code;
+            submittedText = text;
+          },
+          resendCooldown: Duration.zero,
+        ),
+      );
+      await confirmDeletionIntent(tester);
+      await tapVisible(
+        tester,
+        find.byKey(const ValueKey('delete-reason-other')),
+      );
+      expect(
+        find.byKey(const ValueKey('delete-reason-other-text')),
+        findsOneWidget,
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('delete-reason-other-text')),
+        'stale custom text',
+      );
+      await tapVisible(
+        tester,
+        find.byKey(const ValueKey('delete-reason-taking_a_break')),
+      );
+      expect(
+        find.byKey(const ValueKey('delete-reason-other-text')),
+        findsNothing,
+      );
+      await continuePastReason(tester);
+      await tapVisible(
+        tester,
+        find.byKey(const ValueKey('delete-account-send-otp')),
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('otp-native-input')),
+        '123456',
+      );
+      await tapVisible(
+        tester,
+        find.byKey(const ValueKey('delete-account-verify-delete')),
+      );
+      expect(submittedCode, 'TAKING_A_BREAK');
+      expect(submittedText, isNull);
+    },
+  );
+
+  testWidgets('Other with blank optional text continues to deletion', (
+    tester,
+  ) async {
+    String? submittedCode;
+    String? submittedText = 'not-called';
+    await pumpAction(
+      tester,
+      DeleteAccountInformationScreen(
+        loadMethods: () async => const [
+          AccountDeletionMethod(
+            channel: 'EMAIL',
+            maskedDestination: 'y***@example.com',
+          ),
+        ],
+        sendOtp: (_) async {},
+        confirmDeletion: (_, _, code, text) async {
+          submittedCode = code;
+          submittedText = text;
+        },
+        resendCooldown: Duration.zero,
+      ),
+    );
+    await confirmDeletionIntent(tester);
+    await tapVisible(tester, find.byKey(const ValueKey('delete-reason-other')));
+    await continuePastReason(tester);
+    await tapVisible(
+      tester,
+      find.byKey(const ValueKey('delete-account-send-otp')),
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('otp-native-input')),
+      '123456',
+    );
+    await tapVisible(
+      tester,
+      find.byKey(const ValueKey('delete-account-verify-delete')),
+    );
+    expect(submittedCode, 'OTHER');
+    expect(submittedText, isNull);
+  });
+
+  testWidgets('Other custom text is bounded, trimmed, and submitted', (
+    tester,
+  ) async {
+    String? submittedText;
+    await pumpAction(
+      tester,
+      DeleteAccountInformationScreen(
+        loadMethods: () async => const [
+          AccountDeletionMethod(
+            channel: 'EMAIL',
+            maskedDestination: 'y***@example.com',
+          ),
+        ],
+        sendOtp: (_) async {},
+        confirmDeletion: (_, _, code, text) async {
+          expect(code, 'OTHER');
+          submittedText = text;
+        },
+        resendCooldown: Duration.zero,
+      ),
+    );
+    await confirmDeletionIntent(tester);
+    await tapVisible(tester, find.byKey(const ValueKey('delete-reason-other')));
+    final field = tester.widget<TextField>(
+      find.byKey(const ValueKey('delete-reason-other-text')),
+    );
+    expect(field.maxLength, accountDeletionReasonTextMaxLength);
+    await tester.enterText(
+      find.byKey(const ValueKey('delete-reason-other-text')),
+      '  A reason with surrounding space.  ',
+    );
+    await continuePastReason(tester);
+    await tapVisible(
+      tester,
+      find.byKey(const ValueKey('delete-account-send-otp')),
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('otp-native-input')),
+      '123456',
+    );
+    await tapVisible(
+      tester,
+      find.byKey(const ValueKey('delete-account-verify-delete')),
+    );
+    expect(submittedText, 'A reason with surrounding space.');
+  });
+
+  testWidgets('selected reason survives resend and invalid OTP retry', (
+    tester,
+  ) async {
+    final submittedCodes = <String?>[];
+    var confirmations = 0;
+    await pumpAction(
+      tester,
+      DeleteAccountInformationScreen(
+        loadMethods: () async => const [
+          AccountDeletionMethod(
+            channel: 'EMAIL',
+            maskedDestination: 'y***@example.com',
+          ),
+        ],
+        sendOtp: (_) async {},
+        confirmDeletion: (_, _, code, _) async {
+          submittedCodes.add(code);
+          confirmations += 1;
+          if (confirmations == 1) {
+            throw const AuthException('Invalid.', code: 'OTP_INVALID');
+          }
+        },
+        resendCooldown: Duration.zero,
+      ),
+    );
+    await confirmDeletionIntent(tester);
+    await tapVisible(
+      tester,
+      find.byKey(const ValueKey('delete-reason-privacy_concerns')),
+    );
+    await continuePastReason(tester);
+    await tapVisible(
+      tester,
+      find.byKey(const ValueKey('delete-account-send-otp')),
+    );
+    await tapVisible(
+      tester,
+      find.byKey(const ValueKey('delete-account-resend-otp')),
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('otp-native-input')),
+      '123456',
+    );
+    await tapVisible(
+      tester,
+      find.byKey(const ValueKey('delete-account-verify-delete')),
+    );
+    expect(find.text('Invalid verification code.'), findsOneWidget);
+    await tester.enterText(
+      find.byKey(const ValueKey('otp-native-input')),
+      '654321',
+    );
+    await tapVisible(
+      tester,
+      find.byKey(const ValueKey('delete-account-verify-delete')),
+    );
+    expect(submittedCodes, ['PRIVACY_CONCERNS', 'PRIVACY_CONCERNS']);
+  });
+
+  testWidgets(
+    'optional reason layout scrolls without overflow on compact screens',
+    (tester) async {
+      await pumpAction(
+        tester,
+        const DeleteAccountInformationScreen(),
+        size: const Size(320, 568),
+      );
+      await confirmDeletionIntent(tester);
+      await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('delete-reason-continue')),
+        250,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(tester.takeException(), isNull);
+      expect(AmoraSession.isLoggedIn.value, isTrue);
+    },
+  );
 
   testWidgets('Send OTP uses the selected channel and shows OTP entry', (
     tester,
@@ -381,7 +650,7 @@ void main() {
     await reachOtp(
       tester,
       sendOtp: (_) async {},
-      confirmDeletion: (_, _) async =>
+      confirmDeletion: (_, _, _, _) async =>
           throw AuthException('provider detail', code: code, statusCode: 400),
     );
     await tester.enterText(
@@ -426,7 +695,7 @@ void main() {
     await reachOtp(
       tester,
       sendOtp: (_) async {},
-      confirmDeletion: (_, _) async => throw const AuthException(
+      confirmDeletion: (_, _, _, _) async => throw const AuthException(
         'Service unavailable.',
         code: 'NETWORK_ERROR',
       ),
@@ -451,8 +720,10 @@ void main() {
     await reachOtp(
       tester,
       sendOtp: (_) async {},
-      confirmDeletion: (_, otp) async {
+      confirmDeletion: (_, otp, reasonCode, reasonText) async {
         expect(otp, '123456');
+        expect(reasonCode, isNull);
+        expect(reasonText, isNull);
         confirmations += 1;
       },
     );
@@ -477,7 +748,7 @@ void main() {
     await reachOtp(
       tester,
       sendOtp: (_) async {},
-      confirmDeletion: (_, _) {
+      confirmDeletion: (_, _, _, _) {
         calls += 1;
         return completer.future;
       },

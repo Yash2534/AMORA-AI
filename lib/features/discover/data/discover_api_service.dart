@@ -22,19 +22,21 @@ bool isRetryableDiscoverFailure(int statusCode) =>
     statusCode >= 500;
 
 Map<String, String> buildDiscoverFeedQuery({
-  required int page,
+  String? cursor,
   required int limit,
   Iterable<String> communicationStyles = const <String>[],
   bool? onlineNow,
   bool? hasEventInterest,
+  String? surface,
 }) {
   final styles = communicationStyles.toSet().toList(growable: false);
   return {
-    'page': '$page',
     'limit': '$limit',
+    if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
     if (styles.isNotEmpty) 'communicationStyles': styles.join(','),
     if (onlineNow != null) 'onlineNow': '$onlineNow',
     if (hasEventInterest != null) 'hasEventInterest': '$hasEventInterest',
+    if (surface != null && surface.trim().isNotEmpty) 'surface': surface.trim(),
   };
 }
 
@@ -58,12 +60,18 @@ class DiscoverFeedPage {
   const DiscoverFeedPage({
     required this.profiles,
     required this.hasMore,
-    this.nextPage,
+    this.nextCursor,
+    this.rankingVersion = '',
+    this.viewerLocationAvailable = false,
+    this.distanceFilterActive = false,
   });
 
   final List<Map<String, dynamic>> profiles;
   final bool hasMore;
-  final int? nextPage;
+  final String? nextCursor;
+  final String rankingVersion;
+  final bool viewerLocationAvailable;
+  final bool distanceFilterActive;
 }
 
 class DiscoverSwipeResult {
@@ -104,17 +112,19 @@ class DiscoverApiService {
   final DiscoverAuthenticatedRequester? _authenticatedRequester;
 
   Future<DiscoverApiResult<DiscoverFeedPage>> getFeed({
-    required int page,
+    String? cursor,
     int limit = 10,
     Iterable<String> communicationStyles = const <String>[],
+    String? surface,
   }) async {
     final result = await _request(
       'GET',
       '/api/discover/feed',
       query: buildDiscoverFeedQuery(
-        page: page,
+        cursor: cursor,
         limit: limit,
         communicationStyles: communicationStyles,
+        surface: surface,
       ),
     );
     if (!result.success || result.data == null) {
@@ -128,11 +138,16 @@ class DiscoverApiService {
         .map((profile) => profile.cast<String, dynamic>())
         .toList(growable: false);
     final pagination = result.data!['pagination'] as Map?;
+    final locationMatching = result.data!['locationMatching'] as Map?;
     return DiscoverApiResult.success(
       DiscoverFeedPage(
         profiles: profiles,
         hasMore: pagination?['hasMore'] == true,
-        nextPage: (pagination?['nextPage'] as num?)?.toInt(),
+        nextCursor: pagination?['nextCursor']?.toString(),
+        rankingVersion: pagination?['rankingVersion']?.toString() ?? '',
+        viewerLocationAvailable:
+            locationMatching?['viewerLocationAvailable'] == true,
+        distanceFilterActive: locationMatching?['distanceFilterActive'] == true,
       ),
       statusCode: result.statusCode,
       message: result.message,
@@ -204,6 +219,47 @@ class DiscoverApiService {
     final saved = result.data!['preferences'];
     return DiscoverApiResult.success(
       saved is Map ? saved.cast<String, dynamic>() : <String, dynamic>{},
+      statusCode: result.statusCode,
+      message: result.message,
+    );
+  }
+
+  Future<DiscoverApiResult<Map<String, dynamic>>> getLocation() async {
+    final result = await _request('GET', '/api/me/location');
+    return _locationResult(result);
+  }
+
+  Future<DiscoverApiResult<Map<String, dynamic>>> updateLocation({
+    required double latitude,
+    required double longitude,
+  }) async {
+    final result = await _request(
+      'PUT',
+      '/api/me/location',
+      body: <String, dynamic>{'latitude': latitude, 'longitude': longitude},
+    );
+    return _locationResult(result);
+  }
+
+  Future<DiscoverApiResult<Map<String, dynamic>>> clearLocation() async {
+    final result = await _request('DELETE', '/api/me/location');
+    return _locationResult(result);
+  }
+
+  DiscoverApiResult<Map<String, dynamic>> _locationResult(
+    DiscoverApiResult<Map<String, dynamic>> result,
+  ) {
+    if (!result.success || result.data == null) {
+      return DiscoverApiResult.failure(
+        result.message,
+        statusCode: result.statusCode,
+      );
+    }
+    final location = result.data!['location'];
+    return DiscoverApiResult.success(
+      location is Map
+          ? location.cast<String, dynamic>()
+          : const <String, dynamic>{},
       statusCode: result.statusCode,
       message: result.message,
     );

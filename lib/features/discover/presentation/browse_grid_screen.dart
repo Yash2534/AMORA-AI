@@ -83,7 +83,7 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
   static const _velocityThreshold = 650.0;
   static const _quickFilters = <_QuickFilter>[
     _QuickFilter('Verified', Icons.verified_rounded),
-    _QuickFilter('Online', Icons.circle_rounded),
+    _QuickFilter('Active', Icons.circle_rounded),
     _QuickFilter('Nearby', Icons.near_me_rounded),
     _QuickFilter('Most Compatible', Icons.auto_awesome_rounded),
     _QuickFilter('Recently Active', Icons.schedule_rounded),
@@ -107,9 +107,10 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
   final Set<String> _selectedQuickFilters = <String>{};
   final Map<String, int> _photoIndices = <String, int>{};
   String _superLikeProfileName = '';
-  int _nextPage = 1;
+  String? _nextCursor;
   bool _hasMore = true;
   bool _loadingMore = false;
+  Object? _loadMoreError;
   bool _openingProfile = false;
   late final LocalProfileRepository _profileRepository;
   bool _profileCompletionLoading = false;
@@ -199,7 +200,6 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
     _loadingTimer?.cancel();
     setState(() => _loading = true);
     final result = await _discoverApi.getFeed(
-      page: 1,
       communicationStyles: appliedProfilePreferenceFilters
           .value
           .communicationStyles
@@ -217,8 +217,9 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
       _profiles = result.data!.profiles
           .map(_profileFromRemote)
           .toList(growable: false);
-      _nextPage = result.data!.nextPage ?? 2;
+      _nextCursor = result.data!.nextCursor;
       _hasMore = result.data!.hasMore;
+      _loadMoreError = null;
       _error = null;
       _replaceController();
       _loading = false;
@@ -240,9 +241,16 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
         _hasMore &&
         (firstRequest || _actions.currentProfileId == null)) {
       firstRequest = false;
-      final requestedPage = _nextPage;
+      final requestedCursor = _nextCursor;
+      if (requestedCursor == null) {
+        setState(() {
+          _hasMore = false;
+          _loadingMore = false;
+        });
+        return;
+      }
       final result = await _discoverApi.getFeed(
-        page: requestedPage,
+        cursor: requestedCursor,
         communicationStyles: appliedProfilePreferenceFilters
             .value
             .communicationStyles
@@ -252,20 +260,28 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
       if (!result.success || result.data == null) {
         setState(() {
           _loadingMore = false;
-          _error = result.message;
+          _loadMoreError = result.message;
         });
         return;
       }
       final profiles = result.data!.profiles
           .map(_profileFromRemote)
           .toList(growable: false);
-      final nextPage = result.data!.nextPage ?? (requestedPage + 1);
+      final existingIds = _profiles.map((profile) => profile.id).toSet();
+      final uniqueProfiles = profiles
+          .where((profile) => existingIds.add(profile.id))
+          .toList(growable: false);
+      final nextCursor = result.data!.nextCursor;
       setState(() {
-        _profiles = [..._profiles, ...profiles];
-        _nextPage = nextPage;
-        _hasMore = result.data!.hasMore && nextPage != requestedPage;
+        _profiles = [..._profiles, ...uniqueProfiles];
+        _nextCursor = nextCursor;
+        _hasMore =
+            result.data!.hasMore &&
+            nextCursor != null &&
+            nextCursor != requestedCursor;
+        _loadMoreError = null;
       });
-      _actions.appendProfileIds(profiles.map((profile) => profile.id));
+      _actions.appendProfileIds(uniqueProfiles.map((profile) => profile.id));
     }
     if (!mounted) return;
     setState(() => _loadingMore = false);
@@ -283,26 +299,25 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
   List<DummyProfile> get _filteredProfiles {
     return _profiles
         .where((profile) {
-          final distance = int.tryParse(profile.distance.split(' ').first);
+          final distance = profile.distance.startsWith('Less than 1')
+              ? 0
+              : int.tryParse(profile.distance.split(' ').first);
           for (final filter in _selectedQuickFilters) {
             switch (filter) {
               case 'Verified':
                 if (!profile.verified) return false;
                 break;
-              case 'Online':
-                if (profile.status != 'Online now') return false;
+              case 'Active':
+                if (!profile.recentlyActive) return false;
                 break;
               case 'Nearby':
-                if (distance != null && distance > 50) return false;
+                if (distance == null || distance > 50) return false;
                 break;
               case 'Most Compatible':
                 if (profile.score < 90) return false;
                 break;
               case 'Recently Active':
-                if (!profile.status.toLowerCase().contains('active') &&
-                    profile.status != 'Online now') {
-                  return false;
-                }
+                if (!profile.recentlyActive) return false;
                 break;
               case 'Music Lovers':
                 if (!_containsAny(profile.interests, 'music')) {
@@ -447,7 +462,11 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
         final remainingIds = _actions.remainingProfileIds;
         final currentProfile = _profileFor(_actions.currentProfileId);
         if (currentProfile == null) {
-          if (_loadingMore || _hasMore) return const _DiscoverSkeleton();
+          if (_loadingMore) return const _DiscoverSkeleton();
+          if (_loadMoreError != null && _hasMore) {
+            return _DiscoverError(onRetry: _loadNextPage);
+          }
+          if (_hasMore) return const _DiscoverSkeleton();
           if (_selectedQuickFilters.isNotEmpty) {
             return _DiscoverFilteredEmpty(
               onFilters: _openFilters,

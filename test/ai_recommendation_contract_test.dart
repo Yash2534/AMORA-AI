@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:amora_ai/core/api/phase_two_api_service.dart';
 import 'package:amora_ai/core/auth/auth_service.dart';
 import 'package:amora_ai/core/media/amora_media_picker.dart';
@@ -67,15 +69,101 @@ MatchApiItem recommendation(String id, int score, int aiScore) =>
 
 class RecommendationApi extends PhaseTwoApiService {
   @override
-  Future<List<MatchApiItem>> aiRecommendations() async => [
-    recommendation('2', 80, 84),
-    recommendation('1', 81, 81),
-  ];
+  Future<AiRecommendationsPage> aiRecommendations({
+    String? cursor,
+    int limit = 10,
+  }) async => AiRecommendationsPage(
+    items: [recommendation('2', 80, 84), recommendation('1', 81, 81)],
+    hasMore: false,
+    limit: limit,
+  );
 
   @override
   Future<MatchApiItem> match(String matchId) async => throw StateError(
     'AI candidate user IDs must not be fetched as match IDs',
   );
+}
+
+class PagedRecommendationApi extends PhaseTwoApiService {
+  final List<String?> requestedCursors = [];
+
+  @override
+  Future<AiRecommendationsPage> aiRecommendations({
+    String? cursor,
+    int limit = 10,
+  }) async {
+    requestedCursors.add(cursor);
+    if (cursor == null) {
+      return AiRecommendationsPage(
+        items: [recommendation('2', 80, 84)],
+        hasMore: true,
+        nextCursor: 'signed page + 2',
+        limit: limit,
+      );
+    }
+    return AiRecommendationsPage(
+      items: [recommendation('2', 80, 84), recommendation('1', 81, 81)],
+      hasMore: false,
+      limit: limit,
+    );
+  }
+}
+
+class RetryRecommendationApi extends PagedRecommendationApi {
+  var failedOnce = false;
+
+  @override
+  Future<AiRecommendationsPage> aiRecommendations({
+    String? cursor,
+    int limit = 10,
+  }) async {
+    if (cursor != null && !failedOnce) {
+      requestedCursors.add(cursor);
+      failedOnce = true;
+      throw Exception('temporary');
+    }
+    return super.aiRecommendations(cursor: cursor, limit: limit);
+  }
+}
+
+class DeferredRecommendationApi extends PagedRecommendationApi {
+  final secondPage = Completer<AiRecommendationsPage>();
+
+  @override
+  Future<AiRecommendationsPage> aiRecommendations({
+    String? cursor,
+    int limit = 10,
+  }) {
+    if (cursor != null) {
+      requestedCursors.add(cursor);
+      return secondPage.future;
+    }
+    return super.aiRecommendations(limit: limit);
+  }
+}
+
+class HiddenFirstPageRecommendationApi extends PhaseTwoApiService {
+  final List<String?> requestedCursors = [];
+
+  @override
+  Future<AiRecommendationsPage> aiRecommendations({
+    String? cursor,
+    int limit = 10,
+  }) async {
+    requestedCursors.add(cursor);
+    return cursor == null
+        ? AiRecommendationsPage(
+            items: [recommendation('9', 60, 62)],
+            hasMore: true,
+            nextCursor: 'next-visible-page',
+            limit: limit,
+          )
+        : AiRecommendationsPage(
+            items: [recommendation('2', 80, 84)],
+            hasMore: false,
+            limit: limit,
+          );
+  }
 }
 
 void main() {
@@ -101,6 +189,86 @@ void main() {
       );
     },
   );
+
+  testWidgets(
+    'AI Matches loads cursor page two, deduplicates, and preserves server order',
+    (tester) async {
+      final api = PagedRecommendationApi();
+      await tester.pumpWidget(MaterialApp(home: MatchesScreen(api: api)));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('featured-match-2')), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('ai-matches-load-more')),
+        500,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(
+        find.byKey(const ValueKey('ai-matches-load-more')),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byKey(const ValueKey('ai-matches-load-more')));
+      await tester.pumpAndSettle();
+
+      expect(api.requestedCursors, [null, 'signed page + 2']);
+      expect(find.byKey(const ValueKey('featured-match-2')), findsOneWidget);
+      expect(find.byKey(const ValueKey('ai-match-1')), findsOneWidget);
+      expect(find.byKey(const ValueKey('ai-matches-load-more')), findsNothing);
+    },
+  );
+
+  testWidgets('AI load-more failure keeps page one and retry succeeds', (
+    tester,
+  ) async {
+    final api = RetryRecommendationApi();
+    await tester.pumpWidget(MaterialApp(home: MatchesScreen(api: api)));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('ai-matches-load-more')),
+      500,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.byKey(const ValueKey('ai-matches-load-more')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('featured-match-2')), findsOneWidget);
+    expect(find.text('Couldn\'t load more matches.'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('ai-matches-load-more')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('ai-match-1')), findsOneWidget);
+  });
+
+  testWidgets('AI load-more exposes a separate progress indicator', (
+    tester,
+  ) async {
+    final api = DeferredRecommendationApi();
+    await tester.pumpWidget(MaterialApp(home: MatchesScreen(api: api)));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('ai-matches-load-more')),
+      500,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.byKey(const ValueKey('ai-matches-load-more')));
+    await tester.pump();
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.byKey(const ValueKey('featured-match-2')), findsOneWidget);
+    api.secondPage.complete(
+      const AiRecommendationsPage(items: [], hasMore: false, limit: 10),
+    );
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('local threshold does not create a premature AI empty state', (
+    tester,
+  ) async {
+    final api = HiddenFirstPageRecommendationApi();
+    await tester.pumpWidget(MaterialApp(home: MatchesScreen(api: api)));
+    await tester.pumpAndSettle();
+    expect(api.requestedCursors, [null, 'next-visible-page']);
+    expect(find.byKey(const ValueKey('featured-match-2')), findsOneWidget);
+    expect(find.byType(AiMatchesEmptyState), findsNothing);
+  });
 
   testWidgets('AI screen preserves server order and shows calculated reasons', (
     tester,

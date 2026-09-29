@@ -11,6 +11,8 @@ import 'package:amora_ai/core/widgets/premium_motion.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/discover/presentation/browse_grid_screen.dart';
 import 'package:amora_ai/features/discover/data/discover_api_service.dart';
+import 'package:amora_ai/features/discover/data/match_location_service.dart';
+import 'package:amora_ai/core/permissions/amoraa_permission_service.dart';
 import 'package:amora_ai/features/discover/domain/discover_filter_ranges.dart';
 import 'package:amora_ai/features/discover/presentation/widgets/amoraa_minimum_height_picker.dart';
 import 'package:amora_ai/features/profile/domain/profile_form_options.dart';
@@ -59,11 +61,16 @@ final appliedProfilePreferenceFilters =
     );
 
 class AdvancedFiltersScreen extends StatefulWidget {
-  const AdvancedFiltersScreen({super.key, this.apiService});
+  const AdvancedFiltersScreen({
+    super.key,
+    this.apiService,
+    this.locationService,
+  });
 
   static const routeName = '/filters';
 
   final DiscoverApiService? apiService;
+  final MatchLocationService? locationService;
 
   @override
   State<AdvancedFiltersScreen> createState() => _AdvancedFiltersScreenState();
@@ -71,6 +78,7 @@ class AdvancedFiltersScreen extends StatefulWidget {
 
 class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
   late final DiscoverApiService _discoverApi;
+  late final MatchLocationService _locationService;
   RangeValues _age = const RangeValues(
     DiscoverFilterRanges.defaultMinimumAge,
     DiscoverFilterRanges.defaultMaximumAge,
@@ -104,6 +112,8 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
   bool _onlineNow = false;
   bool _hasPrompts = true;
   bool _eventInterest = false;
+  bool _locationAvailable = false;
+  bool _enablingLocation = false;
 
   late final TextEditingController _filterSearchController;
   late final TextEditingController _customEducationController;
@@ -130,6 +140,9 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
   void initState() {
     super.initState();
     _discoverApi = widget.apiService ?? DiscoverApiService();
+    _locationService =
+        widget.locationService ??
+        MatchLocationService(apiService: _discoverApi);
     _filterSearchController = TextEditingController();
     _customEducationController = TextEditingController();
     unawaited(_loadSavedFilters());
@@ -251,7 +264,50 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
       _onlineNow = filters['onlineNow'] == true;
       _hasPrompts = filters['hasPrompts'] == true;
       _eventInterest = filters['hasEventInterest'] == true;
+      _locationAvailable = filters['locationAvailable'] == true;
     });
+  }
+
+  Future<void> _enableCurrentLocation() async {
+    if (_enablingLocation) return;
+    setState(() => _enablingLocation = true);
+    final result = await _locationService.enableCurrentLocation();
+    if (!mounted) return;
+    setState(() {
+      _enablingLocation = false;
+      if (result.enabled) _locationAvailable = true;
+    });
+    if (result.outcome == MatchLocationOutcome.permanentlyDenied) {
+      await showAmoraaPermissionFeedback(
+        context,
+        category: AmoraaPermissionCategory.location,
+        result: AmoraaPermissionResult(
+          AmoraaPermissionState.permanentlyDenied,
+          result.message,
+        ),
+        service: _locationService.permissionService,
+      );
+      return;
+    }
+    if (result.outcome == MatchLocationOutcome.serviceDisabled) {
+      await showAmoraaPermissionFeedback(
+        context,
+        category: AmoraaPermissionCategory.location,
+        result: AmoraaPermissionResult(
+          AmoraaPermissionState.serviceDisabled,
+          result.message,
+        ),
+        service: _locationService.permissionService,
+      );
+      return;
+    }
+    showAmoraSnackBar(
+      context,
+      message: result.message,
+      tone: result.enabled
+          ? AmoraSnackBarTone.success
+          : AmoraSnackBarTone.error,
+    );
   }
 
   @override
@@ -436,6 +492,54 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
               ),
             ],
           ),
+          const SizedBox(height: 10),
+          Container(
+            key: const ValueKey('filters-location-matching-state'),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      _locationAvailable
+                          ? Icons.location_on_rounded
+                          : Icons.location_off_outlined,
+                      color: AppColors.primary,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        _locationAvailable
+                            ? 'Distance matching is using your saved current location.'
+                            : 'Enable location to use distance matching. Discover still works without it.',
+                        style: AmoraTextStyles.bodySmall,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    key: const ValueKey('filters-use-current-location'),
+                    onPressed: _enablingLocation
+                        ? null
+                        : _enableCurrentLocation,
+                    child: Text(
+                      _enablingLocation ? 'Locating…' : 'Use Current Location',
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
           const _FilterDivider(),
           _ResponsivePair(
             children: [
@@ -443,12 +547,12 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
                 key: const ValueKey('filters-city-control'),
                 icon: Icons.location_city_rounded,
                 title: 'City',
-                description: 'Choose preferred cities',
+                description: 'Choose a preferred city',
                 child: AmoraaCompactSelect<String>(
                   key: const ValueKey('filters-city-selector'),
                   label: 'City',
-                  selectionMode: AmoraaSelectionMode.multiple,
-                  selectedValues: _cities,
+                  selectionMode: AmoraaSelectionMode.single,
+                  value: _cities.firstOrNull,
                   hintText: 'Any city',
                   prefixIcon: Icons.location_city_rounded,
                   allowClear: true,
@@ -456,8 +560,10 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
                     for (final option in ProfileFormOptions.cities)
                       AmoraaSelectOption(value: option, label: option),
                   ],
-                  onSelectionChanged: (values) =>
-                      _replaceSelection(_cities, values),
+                  onChanged: (value) => _replaceSelection(
+                    _cities,
+                    value == null ? <String>{} : <String>{value},
+                  ),
                 ),
               ),
               _ControlBlock(

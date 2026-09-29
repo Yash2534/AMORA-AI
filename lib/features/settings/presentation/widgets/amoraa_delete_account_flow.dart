@@ -8,14 +8,20 @@ import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/features/auth/presentation/widgets/amora_otp_input.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 typedef AccountDeletionMethodsLoader =
     Future<List<AccountDeletionMethod>> Function();
 typedef AccountDeletionOtpSender = Future<void> Function(String channel);
 typedef AccountDeletionConfirmer =
-    Future<void> Function(String channel, String otp);
+    Future<void> Function(
+      String channel,
+      String otp,
+      String? reasonCode,
+      String? reasonText,
+    );
 
-enum _DeleteAccountStep { warning, method, otp }
+enum _DeleteAccountStep { warning, reason, method, otp }
 
 class AmoraaDeleteAccountFlow extends StatefulWidget {
   const AmoraaDeleteAccountFlow({
@@ -43,9 +49,11 @@ class AmoraaDeleteAccountFlow extends StatefulWidget {
 class _AmoraaDeleteAccountFlowState extends State<AmoraaDeleteAccountFlow> {
   final _otpControllers = List.generate(6, (_) => TextEditingController());
   final _otpNodes = List.generate(6, (_) => FocusNode());
+  final _otherReasonController = TextEditingController();
   _DeleteAccountStep _step = _DeleteAccountStep.warning;
   List<AccountDeletionMethod> _methods = const [];
   AccountDeletionMethod? _selected;
+  AccountDeletionReason? _reason;
   bool _busy = false;
   String? _error;
   Timer? _timer;
@@ -64,6 +72,7 @@ class _AmoraaDeleteAccountFlowState extends State<AmoraaDeleteAccountFlow> {
     for (final node in _otpNodes) {
       node.dispose();
     }
+    _otherReasonController.dispose();
     super.dispose();
   }
 
@@ -72,9 +81,108 @@ class _AmoraaDeleteAccountFlowState extends State<AmoraaDeleteAccountFlow> {
     duration: const Duration(milliseconds: 220),
     child: switch (_step) {
       _DeleteAccountStep.warning => _warningStep(),
+      _DeleteAccountStep.reason => _reasonStep(),
       _DeleteAccountStep.method => _methodStep(),
       _DeleteAccountStep.otp => _otpStep(),
     },
+  );
+
+  Widget _reasonStep() => Column(
+    key: const ValueKey('delete-account-reason-step'),
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      Text(
+        'Why do you want to delete your account?',
+        style: AmoraTextStyles.titleLarge,
+      ),
+      const SizedBox(height: AmoraSpacing.space8),
+      Text(
+        'This is optional. You can continue without selecting a reason.',
+        style: AmoraTextStyles.bodyMedium.copyWith(
+          color: AppColors.textSecondary,
+          height: 1.45,
+        ),
+      ),
+      const SizedBox(height: AmoraSpacing.space12),
+      RadioGroup<AccountDeletionReason>(
+        groupValue: _reason,
+        onChanged: _busy ? (_) {} : _selectReason,
+        child: Column(
+          children: [
+            for (final reason in AccountDeletionReason.values)
+              Padding(
+                padding: const EdgeInsets.only(bottom: AmoraSpacing.space8),
+                child: Material(
+                  color: _reason == reason
+                      ? AppColors.primary.withValues(alpha: .08)
+                      : AppColors.background,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    side: BorderSide(
+                      color: _reason == reason
+                          ? AppColors.primary
+                          : AppColors.tertiary,
+                    ),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: RadioListTile<AccountDeletionReason>(
+                    key: ValueKey('delete-reason-${reason.code.toLowerCase()}'),
+                    value: reason,
+                    enabled: !_busy,
+                    activeColor: AppColors.primary,
+                    title: Text(reason.label),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: AmoraSpacing.space12,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+      if (_reason == AccountDeletionReason.other) ...[
+        const SizedBox(height: AmoraSpacing.space4),
+        TextField(
+          key: const ValueKey('delete-reason-other-text'),
+          controller: _otherReasonController,
+          enabled: !_busy,
+          minLines: 2,
+          maxLines: 4,
+          maxLength: accountDeletionReasonTextMaxLength,
+          maxLengthEnforcement: MaxLengthEnforcement.enforced,
+          textCapitalization: TextCapitalization.sentences,
+          decoration: const InputDecoration(
+            labelText: 'Tell us more (optional)',
+            alignLabelWithHint: true,
+          ),
+        ),
+      ],
+      const SizedBox(height: AmoraSpacing.space12),
+      AppPrimaryButton(
+        key: const ValueKey('delete-reason-continue'),
+        label: 'Continue',
+        isLoading: _busy,
+        onPressed: _busy ? null : _loadMethods,
+      ),
+      AppPrimaryButton(
+        key: const ValueKey('delete-reason-skip'),
+        label: 'Prefer not to say',
+        variant: AppPrimaryButtonVariant.text,
+        onPressed: _busy
+            ? null
+            : () {
+                _selectReason(null);
+                _loadMethods();
+              },
+      ),
+      AppPrimaryButton(
+        label: 'Go back',
+        variant: AppPrimaryButtonVariant.text,
+        onPressed: _busy
+            ? null
+            : () => setState(() => _step = _DeleteAccountStep.warning),
+      ),
+    ],
   );
 
   Widget _warningStep() => Column(
@@ -154,7 +262,7 @@ class _AmoraaDeleteAccountFlowState extends State<AmoraaDeleteAccountFlow> {
         variant: AppPrimaryButtonVariant.text,
         onPressed: _busy
             ? null
-            : () => setState(() => _step = _DeleteAccountStep.warning),
+            : () => setState(() => _step = _DeleteAccountStep.reason),
       ),
     ],
   );
@@ -235,7 +343,10 @@ class _AmoraaDeleteAccountFlowState extends State<AmoraaDeleteAccountFlow> {
       ),
     );
     if (confirmed != true || !mounted) return;
-    await _loadMethods();
+    setState(() {
+      _error = null;
+      _step = _DeleteAccountStep.reason;
+    });
   }
 
   Future<void> _loadMethods() async {
@@ -302,11 +413,21 @@ class _AmoraaDeleteAccountFlowState extends State<AmoraaDeleteAccountFlow> {
       _error = null;
     });
     try {
+      final reasonCode = _reason?.code;
+      final trimmedOtherText = _reason == AccountDeletionReason.other
+          ? _otherReasonController.text.trim()
+          : '';
+      final reasonText = trimmedOtherText.isEmpty ? null : trimmedOtherText;
       await (widget.confirmDeletion ??
-          ((channel, otp) => PhaseTwoApiService.instance.confirmAccountDeletion(
-            channel: channel,
-            otp: otp,
-          )))(selected.channel, _otp);
+          ((channel, otp, code, text) =>
+              PhaseTwoApiService.instance.confirmAccountDeletion(
+                channel: channel,
+                otp: otp,
+                reasonCode: code,
+                reasonText: text,
+              )))(selected.channel, _otp, reasonCode, reasonText);
+      _reason = null;
+      _otherReasonController.clear();
       await widget.onDeleted();
     } catch (error) {
       if (!mounted) return;
@@ -335,6 +456,16 @@ class _AmoraaDeleteAccountFlowState extends State<AmoraaDeleteAccountFlow> {
     for (final controller in _otpControllers) {
       controller.clear();
     }
+  }
+
+  void _selectReason(AccountDeletionReason? reason) {
+    setState(() {
+      if (reason != AccountDeletionReason.other) {
+        _otherReasonController.clear();
+      }
+      _reason = reason;
+      _error = null;
+    });
   }
 
   String _messageFor(Object error) {

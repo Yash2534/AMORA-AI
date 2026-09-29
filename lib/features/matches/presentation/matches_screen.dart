@@ -57,6 +57,10 @@ class _MatchesScreenState extends State<MatchesScreen> {
   List<MatchApiItem> _matches = const [];
   bool _loading = false;
   String? _loadError;
+  String? _nextCursor;
+  bool _hasMore = false;
+  bool _loadingMore = false;
+  String? _loadMoreError;
 
   @override
   void initState() {
@@ -90,7 +94,8 @@ class _MatchesScreenState extends State<MatchesScreen> {
       _loadError = null;
     });
     try {
-      final matches = await widget.api!.aiRecommendations();
+      final page = await widget.api!.aiRecommendations();
+      final matches = page.items;
       if (mounted) {
         final availableIds = <String>{
           ...matches.map((item) => item.profile.profile.id),
@@ -98,6 +103,9 @@ class _MatchesScreenState extends State<MatchesScreen> {
         };
         setState(() {
           _matches = matches;
+          _nextCursor = page.nextCursor;
+          _hasMore = page.hasMore;
+          _loadMoreError = null;
           _selectedProfileIds.removeWhere((id) => !availableIds.contains(id));
           _likedProfileIds.removeWhere((id) => !availableIds.contains(id));
           _processingProfileIds.removeWhere((id) => !availableIds.contains(id));
@@ -110,6 +118,45 @@ class _MatchesScreenState extends State<MatchesScreen> {
       if (mounted) setState(() => _loadError = 'Couldn\'t load matches.');
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+    if (mounted && _visibleRecommendations.isEmpty && _hasMore) {
+      await _loadMoreMatches();
+    }
+  }
+
+  Future<void> _loadMoreMatches() async {
+    if (_loadingMore || !_hasMore || _nextCursor == null) return;
+    var loaded = false;
+    setState(() {
+      _loadingMore = true;
+      _loadMoreError = null;
+    });
+    try {
+      final requestedCursor = _nextCursor;
+      final page = await widget.api!.aiRecommendations(cursor: requestedCursor);
+      if (!mounted) return;
+      final knownIds = _matches.map((item) => item.id).toSet();
+      final additions = page.items
+          .where((item) => knownIds.add(item.id))
+          .toList(growable: false);
+      setState(() {
+        _matches = [..._matches, ...additions];
+        _nextCursor = page.nextCursor;
+        _hasMore =
+            page.hasMore &&
+            page.nextCursor != null &&
+            page.nextCursor != requestedCursor;
+      });
+      loaded = true;
+    } catch (_) {
+      if (mounted) {
+        setState(() => _loadMoreError = 'Couldn\'t load more matches.');
+      }
+    } finally {
+      if (mounted) setState(() => _loadingMore = false);
+    }
+    if (loaded && mounted && _visibleRecommendations.isEmpty && _hasMore) {
+      await _loadMoreMatches();
     }
   }
 
@@ -128,7 +175,7 @@ class _MatchesScreenState extends State<MatchesScreen> {
           return switch (_filter) {
             AiMatchFilter.all => true,
             AiMatchFilter.bestMatch => profile.id == best.id,
-            AiMatchFilter.activeNow => _isOnline(profile),
+            AiMatchFilter.activeNow => _isRecentlyActive(profile),
             AiMatchFilter.verified => profile.verified,
           };
         })
@@ -441,6 +488,33 @@ class _MatchesScreenState extends State<MatchesScreen> {
                                           _buildFeedCard(feed[index], index),
                                     ),
                                   ),
+                              if (_hasMore ||
+                                  _loadingMore ||
+                                  _loadMoreError != null)
+                                SliverPadding(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    AmoraSpacing.space20,
+                                    AmoraSpacing.space20,
+                                    AmoraSpacing.space20,
+                                    0,
+                                  ),
+                                  sliver: SliverToBoxAdapter(
+                                    child: _loadingMore
+                                        ? const Center(
+                                            child: CircularProgressIndicator(),
+                                          )
+                                        : FilledButton.tonal(
+                                            key: const ValueKey(
+                                              'ai-matches-load-more',
+                                            ),
+                                            onPressed: _loadMoreMatches,
+                                            child: Text(
+                                              _loadMoreError ??
+                                                  'Load more matches',
+                                            ),
+                                          ),
+                                  ),
+                                ),
                               SliverToBoxAdapter(
                                 child: SizedBox(
                                   height:
@@ -1004,7 +1078,7 @@ class AiMatchFilterBar extends StatelessWidget {
 String _aiMatchFilterLabel(AiMatchFilter filter) => switch (filter) {
   AiMatchFilter.all => 'All',
   AiMatchFilter.bestMatch => 'Best Match',
-  AiMatchFilter.activeNow => 'Active Now',
+  AiMatchFilter.activeNow => 'Recently Active',
   AiMatchFilter.verified => 'Verified',
 };
 
@@ -1503,9 +1577,11 @@ class MatchQuickFacts extends StatelessWidget {
       children: [
         _InlineFact(icon: Icons.location_on_rounded, label: profile.distance),
         _InlineFact(
-          icon: _isOnline(profile) ? Icons.circle : Icons.schedule_rounded,
+          icon: _isRecentlyActive(profile)
+              ? Icons.circle
+              : Icons.schedule_rounded,
           label: profile.status,
-          smallIcon: _isOnline(profile),
+          smallIcon: _isRecentlyActive(profile),
         ),
         _InlineFact(
           icon: Icons.favorite_outline_rounded,
@@ -2222,7 +2298,7 @@ class WhyThisMatchSheet extends StatelessWidget {
         profile.distance,
       ),
       _RecommendationFactor(
-        _isOnline(profile) ? Icons.circle : Icons.schedule_rounded,
+        _isRecentlyActive(profile) ? Icons.circle : Icons.schedule_rounded,
         'Activity',
         profile.status,
       ),
@@ -2721,5 +2797,4 @@ BoxDecoration _matchCardDecoration({required double radius}) {
   );
 }
 
-bool _isOnline(DummyProfile profile) =>
-    profile.status.trim().toLowerCase() == 'online now';
+bool _isRecentlyActive(DummyProfile profile) => profile.recentlyActive;

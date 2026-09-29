@@ -5,10 +5,16 @@ const { Op } = require('sequelize');
 const { resolveDummySeedConfig } = require('./dummy-seed/config');
 const { scoreCompatibility, compatibilityReasons } = require('../src/services/matchEngineService');
 const { localAiMatch } = require('../src/services/aiMatchProvider');
+const { defaults } = require('../src/services/discoverPreferenceService');
+const {
+  candidateAcceptsViewer,
+  isDiscoverComplete,
+  normalizeStoredFilterRanges,
+  viewerAcceptsCandidate,
+} = require('../src/services/discoverEligibilityPolicy');
+const { distanceKm, validCoordinates } = require('../src/utils/geoDistance');
 
 const ageAt = (birthDate, reference) => { const birth = new Date(`${birthDate}T00:00:00.000Z`); let age = reference.getUTCFullYear() - birth.getUTCFullYear(); if (reference.getUTCMonth() < birth.getUTCMonth() || (reference.getUTCMonth() === birth.getUTCMonth() && reference.getUTCDate() < birth.getUTCDate())) age -= 1; return age; };
-const lowerList = (value) => (Array.isArray(value) ? value : []).map((item) => String(item).toLowerCase());
-const accepts = (profile, gender) => { const values = lowerList(profile.interestedIn); const target = String(gender || '').toLowerCase(); return !values.length || values.some((value) => ['everyone', 'all', 'any', 'both', target, target === 'female' ? 'woman' : 'man'].includes(value)); };
 const bucket = (score) => score < 50 ? '<50' : score < 60 ? '50-59' : score < 70 ? '60-69' : score < 80 ? '70-79' : score < 90 ? '80-89' : '90-100';
 const median = (values) => { const sorted = [...values].sort((a, b) => a - b); return sorted.length ? (sorted[Math.floor((sorted.length - 1) / 2)] + sorted[Math.floor(sorted.length / 2)]) / 2 : null; };
 
@@ -21,8 +27,8 @@ async function run() {
     const users = await m.User.findAll({ where: { email: { [Op.like]: `%${config.emailSuffix}` } }, include: [{ model: m.OnboardingProfile, required: true }, { model: m.Subscription, as: 'subscription', required: false, include: [{ model: m.SubscriptionPlan, as: 'plan', required: false }] }] });
     const master = users.find((user) => user.email === 'master@seed.amoraa.example.test'); const viewer = master.OnboardingProfile;
     const seedIds = users.map((user) => user.id);
-    const [filters, allActions, allMatches, allBlocks, saved, allRoses, conversations, allMessages, notifications, reports, consents, verifications, allSaved, allNotifications] = await Promise.all([
-      m.DiscoverFilterPreference.findOne({ where: { userId: master.id } }), m.DiscoverAction.findAll({ where: { actorUserId: { [Op.in]: seedIds }, targetUserId: { [Op.in]: seedIds } } }),
+    const [filterRows, allActions, allMatches, allBlocks, saved, allRoses, conversations, allMessages, notifications, reports, consents, verifications, allSaved, allNotifications] = await Promise.all([
+      m.DiscoverFilterPreference.findAll({ where: { userId: { [Op.in]: seedIds } } }), m.DiscoverAction.findAll({ where: { actorUserId: { [Op.in]: seedIds }, targetUserId: { [Op.in]: seedIds } } }),
       m.Match.findAll({ where: { userOneId: { [Op.in]: seedIds }, userTwoId: { [Op.in]: seedIds } } }), m.Block.findAll({ where: { blockerUserId: { [Op.in]: seedIds }, blockedUserId: { [Op.in]: seedIds } } }),
       m.SavedProfile.findAll({ where: { userId: master.id } }), m.RoseTransaction.findAll({ where: { senderId: { [Op.in]: seedIds }, recipientId: { [Op.in]: seedIds } } }),
       m.ConversationParticipant.findAll({ where: { userId: master.id } }), m.Message.findAll(), m.Notification.findAll({ where: { userId: master.id } }),
@@ -30,6 +36,8 @@ async function run() {
       m.ConsentEvent.findAll({ where: { userId: { [Op.in]: users.map((u) => u.id) } } }), m.IdentityVerification.findAll({ where: { userId: { [Op.in]: users.map((u) => u.id) } } }),
       m.SavedProfile.findAll({ where: { userId: { [Op.in]: seedIds }, savedUserId: { [Op.in]: seedIds } } }), m.Notification.findAll({ where: { userId: { [Op.in]: seedIds } } }),
     ]);
+    const filtersByUserId = new Map(filterRows.map((row) => [Number(row.userId), normalizeStoredFilterRanges(row.get({ plain: true }), defaults)]));
+    const filters = filtersByUserId.get(Number(master.id)) || defaults;
     const actions = allActions.filter((row) => row.actorUserId === master.id || row.targetUserId === master.id);
     const matches = allMatches.filter((row) => row.userOneId === master.id || row.userTwoId === master.id);
     const blocks = allBlocks.filter((row) => row.blockerUserId === master.id || row.blockedUserId === master.id);
@@ -40,11 +48,20 @@ async function run() {
     const exclusions = {}; const eligible = [];
     for (const user of users) {
       if (user.id === master.id) continue; const profile = user.OnboardingProfile; let reason = null; const age = ageAt(profile.birthDate, config.referenceDate);
+      const candidateFilters = filtersByUserId.get(Number(user.id)) || defaults;
+      const canMeasureDistance = validCoordinates(viewer.matchLatitude, viewer.matchLongitude);
+      const candidateHasLocation = validCoordinates(profile.matchLatitude, profile.matchLongitude);
+      const distance = canMeasureDistance && candidateHasLocation
+        ? distanceKm(viewer.matchLatitude, viewer.matchLongitude, profile.matchLatitude, profile.matchLongitude)
+        : null;
       if (user.accountStatus !== 'active') reason = 'inactive_account';
-      else if (!profile.onboardingCompleted || profile.stage !== 'complete') reason = 'incomplete_profile';
+      else if (!isDiscoverComplete(profile, { now: config.referenceDate })) reason = 'incomplete_profile';
       else if (age < filters.minAge || age > filters.maxAge) reason = 'age_range_mismatch';
-      else if (!accepts(viewer, profile.gender)) reason = 'viewer_gender_preference';
-      else if (!accepts(profile, viewer.gender)) reason = 'reciprocal_preference_mismatch';
+      else if (!viewerAcceptsCandidate(viewer.interestedIn, profile.gender)) reason = 'viewer_gender_preference';
+      else if (!candidateAcceptsViewer(profile.interestedIn, viewer.gender)) reason = 'reciprocal_gender_mismatch';
+      else if (ageAt(viewer.birthDate, config.referenceDate) < candidateFilters.minAge || ageAt(viewer.birthDate, config.referenceDate) > candidateFilters.maxAge) reason = 'reciprocal_age_mismatch';
+      else if (canMeasureDistance && !candidateHasLocation) reason = 'missing_match_location';
+      else if (distance != null && distance > Math.min(filters.maxDistanceKm, candidateFilters.maxDistanceKm)) reason = 'distance_mismatch';
       else if (blockedIds.has(user.id)) reason = 'block';
       else if (actedIds.has(user.id)) reason = 'previous_action';
       else if (matchedIds.has(user.id)) reason = 'existing_match';
@@ -52,7 +69,7 @@ async function run() {
       else {
         const compatibility = scoreCompatibility(viewer, profile);
         const ai = localAiMatch(viewer, profile, compatibility);
-        eligible.push({ userId: user.id, name: user.name, age, compatibility: compatibility.score, coverage: compatibility.coverage, reasons: compatibilityReasons(viewer, profile), aiConfidence: ai.aiConfidence, aiMatchScore: ai.aiMatchScore, aiReasons: ai.aiReasons });
+        eligible.push({ userId: user.id, name: user.name, age, distanceKm: distance == null ? null : Number(distance.toFixed(3)), compatibility: compatibility.score, coverage: compatibility.coverage, reasons: compatibilityReasons(viewer, profile), aiConfidence: ai.aiConfidence, aiMatchScore: ai.aiMatchScore, aiReasons: ai.aiReasons });
       }
     }
     eligible.sort((a, b) => b.compatibility - a.compatibility || a.userId - b.userId); const scores = eligible.map((row) => row.compatibility); const distribution = { '<50': 0, '50-59': 0, '60-69': 0, '70-79': 0, '80-89': 0, '90-100': 0 }; for (const score of scores) distribution[bucket(score)] += 1;
@@ -62,7 +79,7 @@ async function run() {
     const masterMessages = allMessages.filter((row) => conversationIds.has(row.conversationId));
     const unreadConversations = conversations.filter((participant) => masterMessages.some((message) => message.conversationId === participant.conversationId && message.senderId !== master.id && message.id > Number(participant.lastReadMessageId || 0) && !message.deletedAt)).length;
     const datasetMessages = allMessages.filter((message) => seedIds.includes(message.senderId));
-    const report = { generatedAt: new Date().toISOString(), provider: 'LOCAL', master: { email: master.email, name: master.name, age: ageAt(viewer.birthDate, config.referenceDate), completion: 100, accountStatus: master.accountStatus, onboarding: viewer.onboardingCompleted, premium: master.subscription?.status === 'active', premiumPlan: master.subscription?.plan?.displayName || master.subscription?.plan?.name || null, verified: Boolean(master.identityVerifiedAt), existingMatches: matches.length, conversations: conversations.length, unreadConversations, notifications: notifications.length }, dataset: { users: users.length, completeProfiles: users.filter((u) => u.OnboardingProfile.onboardingCompleted).length, incompleteProfiles: users.filter((u) => !u.OnboardingProfile.onboardingCompleted).length, profileImages: users.reduce((n, u) => n + u.OnboardingProfile.photos.length, 0), verified: verifications.filter((v) => v.status === 'verified').length, premium: users.filter((u) => u.subscription?.status === 'active').length, legalConsentEvents: consents.length }, discover: { eligible: eligible.length, excluded: users.length - 1 - eligible.length, exclusionReasons: exclusions, paginationPagesAt10: Math.ceil(eligible.length / 10) }, matchEngine: { distribution, minimum: Math.min(...scores), average: Number((scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(2)), median: median(scores), maximum: Math.max(...scores), candidates: eligible }, aiMatches: { provider: 'LOCAL', candidates: aiRanking.length, returned: aiRanking.length, paginationPagesAt10: Math.ceil(aiRanking.length / 10), ranking: aiRanking }, masterData: { likes: actions.filter((row) => row.action === 'like').length, superLikes: actions.filter((row) => row.action === 'superLike').length, saved: saved.length, roses: roses.length, matches: matches.length, conversations: conversations.length, messages: masterMessages.length, notifications: notifications.length, blocks: blocks.length }, otherData: { likes: allActions.filter((row) => row.action === 'like').length, superLikes: allActions.filter((row) => row.action === 'superLike').length, saved: allSaved.length, roses: allRoses.length, matches: allMatches.length, conversations: allMatches.length, messages: datasetMessages.length, notifications: allNotifications.length, blocks: allBlocks.length, reports: reports.length }, images: profiles };
+    const report = { generatedAt: new Date().toISOString(), provider: 'LOCAL', master: { email: master.email, name: master.name, age: ageAt(viewer.birthDate, config.referenceDate), completion: 100, accountStatus: master.accountStatus, onboarding: viewer.onboardingCompleted, premium: master.subscription?.status === 'active', premiumPlan: master.subscription?.plan?.displayName || master.subscription?.plan?.name || null, verified: Boolean(master.identityVerifiedAt), existingMatches: matches.length, conversations: conversations.length, unreadConversations, notifications: notifications.length }, dataset: { users: users.length, completeProfiles: users.filter((u) => isDiscoverComplete(u.OnboardingProfile, { now: config.referenceDate })).length, incompleteProfiles: users.filter((u) => !isDiscoverComplete(u.OnboardingProfile, { now: config.referenceDate })).length, profilesWithMatchLocation: users.filter((u) => validCoordinates(u.OnboardingProfile.matchLatitude, u.OnboardingProfile.matchLongitude)).length, distinctMatchLocations: new Set(users.filter((u) => validCoordinates(u.OnboardingProfile.matchLatitude, u.OnboardingProfile.matchLongitude)).map((u) => `${u.OnboardingProfile.matchLatitude}:${u.OnboardingProfile.matchLongitude}`)).size, profileImages: users.reduce((n, u) => n + u.OnboardingProfile.photos.length, 0), verified: verifications.filter((v) => v.status === 'verified').length, premium: users.filter((u) => u.subscription?.status === 'active').length, legalConsentEvents: consents.length }, discover: { eligible: eligible.length, excluded: users.length - 1 - eligible.length, exclusionReasons: exclusions, paginationPagesAt10: Math.ceil(eligible.length / 10) }, matchEngine: { distribution, minimum: scores.length ? Math.min(...scores) : null, average: scores.length ? Number((scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(2)) : null, median: median(scores), maximum: scores.length ? Math.max(...scores) : null, candidates: eligible }, aiMatches: { provider: 'LOCAL', candidates: aiRanking.length, returned: aiRanking.length, paginationPagesAt10: Math.ceil(aiRanking.length / 10), ranking: aiRanking }, masterData: { likes: actions.filter((row) => row.action === 'like').length, superLikes: actions.filter((row) => row.action === 'superLike').length, saved: saved.length, roses: roses.length, matches: matches.length, conversations: conversations.length, messages: masterMessages.length, notifications: notifications.length, blocks: blocks.length }, otherData: { likes: allActions.filter((row) => row.action === 'like').length, superLikes: allActions.filter((row) => row.action === 'superLike').length, saved: allSaved.length, roses: allRoses.length, matches: allMatches.length, conversations: allMatches.length, messages: datasetMessages.length, notifications: allNotifications.length, blocks: allBlocks.length, reports: reports.length }, images: profiles };
     const jsonPath = path.resolve(__dirname, '../tmp/amoraa-v2-seed-report.json'); fs.mkdirSync(path.dirname(jsonPath), { recursive: true }); fs.writeFileSync(jsonPath, `${JSON.stringify(report, null, 2)}\n`);
     console.log(`[DummySeedReport] ${JSON.stringify({ eligible: report.discover.eligible, excluded: report.discover.excluded, distribution, min: report.matchEngine.minimum, median: report.matchEngine.median, average: report.matchEngine.average, max: report.matchEngine.maximum, aiCandidates: report.aiMatches.candidates, jsonPath })}`);
     return report;

@@ -11,6 +11,7 @@ const {
   verifyEmailOtp,
   verifyPhoneOtp,
 } = require('../services/otpService');
+const { ACCOUNT_DELETION_REASON_CODES } = require('../constants/accountDeletionReasons');
 
 const ACCOUNT_DELETION_PURPOSE = 'account_deletion';
 const emailOf = (value) => String(value || '').trim().toLowerCase();
@@ -41,6 +42,14 @@ const otpFailure = (res, checked) => res.status(400).json({
   code: checked.error[0],
   errors: checked.error[2] === undefined ? [] : [{ remainingAttempts: checked.error[2] }],
 });
+const normalizeDeletionReason = (body) => {
+  const reasonCode = typeof body.reasonCode === 'string' && ACCOUNT_DELETION_REASON_CODES.includes(body.reasonCode)
+    ? body.reasonCode
+    : null;
+  if (reasonCode !== 'OTHER') return { reasonCode, reasonText: null };
+  const reasonText = typeof body.reasonText === 'string' ? body.reasonText.trim() : '';
+  return { reasonCode, reasonText: reasonText || null };
+};
 
 const ownProfile = (user) => ({ id: user.id, name: user.name, email: user.email, phoneNumber: user.phoneNumber, isVerified: user.isVerified, accountStatus: user.accountStatus });
 
@@ -148,6 +157,7 @@ exports.sendDeletionOtp = async (req, res, next) => {
 exports.confirmDeletion = async (req, res, next) => {
   const userId = Number(req.user.sub);
   const channel = String(req.body.channel || '').toUpperCase();
+  const { reasonCode, reasonText } = normalizeDeletionReason(req.body);
   try {
     const { User } = getModels();
     const outcome = await User.sequelize.transaction(async (transaction) => {
@@ -163,7 +173,12 @@ exports.confirmDeletion = async (req, res, next) => {
         { userId, transaction },
       );
       if (checked.error) return { checked };
-      const result = await accountDeletionService.execute({ user, transaction });
+      const result = await accountDeletionService.execute({
+        user,
+        transaction,
+        deletionReasonCode: reasonCode,
+        deletionReasonText: reasonText,
+      });
       return { result };
     });
     if (outcome.unavailable) {

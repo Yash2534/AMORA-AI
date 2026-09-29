@@ -1,11 +1,26 @@
 const { filtersFor, updateFilters } = require('../services/discoverPreferenceService');
+const { getModels } = require('../models');
+const { validCoordinates } = require('../utils/geoDistance');
 
 exports.get = async (req, res, next) => {
   try {
+    const [preferences, profile] = await Promise.all([
+      filtersFor(req.user.sub),
+      getModels().OnboardingProfile.findOne({
+        where: { userId: req.user.sub },
+        attributes: ['matchLatitude', 'matchLongitude', 'locationUpdatedAt'],
+      }),
+    ]);
     return res.json({
       success: true,
       message: 'Account preferences retrieved.',
-      data: { preferences: await filtersFor(req.user.sub) },
+      data: {
+        preferences: {
+          ...preferences,
+          locationAvailable: validCoordinates(profile?.matchLatitude, profile?.matchLongitude),
+          locationUpdatedAt: profile?.locationUpdatedAt || null,
+        },
+      },
     });
   } catch (error) { return next(error); }
 };

@@ -1,19 +1,42 @@
 const { Op, fn, col, where, cast, literal } = require('sequelize');
 const { getModels } = require('../models');
-const { SCORE_WEIGHTS, normalise, usableText, scoreCompatibility } = require('../services/matchEngineService');
+const { scoreCompatibility, sqlCompatibilityExpressions } = require('../services/matchEngineService');
 const { areUsersBlocked, notBlockedUserSql } = require('../services/accessControlService');
 const { serializePublicProfile } = require('../services/publicProfileService');
-const { defaults, filtersFor, updateFilters: persistFilters } = require('../services/discoverPreferenceService');
+const { defaults, effectiveDefaultsFor, filtersFor, updateFilters: persistFilters } = require('../services/discoverPreferenceService');
 const { createNotification } = require('../services/notificationService');
 const { ensureDirectConversation } = require('../services/conversationAccessService');
 const { emitConversationEvent } = require('../realtime/realtimeHub');
 const { rankCandidates } = require('../services/aiMatchProvider');
+const matchEngineObservability = require('../services/matchEngineObservabilityService');
+const { sqlDistanceExpression, validCoordinates } = require('../utils/geoDistance');
+const {
+  MATCH_RANKING_VERSION,
+  RecommendationCursorError,
+  createCursor,
+  readCursor,
+} = require('../services/recommendationCursorService');
+const {
+  ACCOUNT_STATUS,
+  EVENT_REGISTRATION_STATUSES,
+  EXCLUDING_DISCOVER_ACTIONS,
+  comparisonString,
+  ageFor,
+  isDiscoverComplete,
+  jsonContainsAny,
+  normalizedStringList,
+  profileCompletionSqlClauses,
+  recentActivityWindowMinutes,
+  reciprocalPreferenceClauses,
+  reciprocalEligibilitySqlClauses,
+  surfaceContract,
+} = require('../services/discoverEligibilityPolicy');
 
 const success = (res, message, data) => res.json({ success: true, message, data });
 const fail = (res, status, message, code, errors = []) => res.status(status).json({ success: false, message, code, errors });
 const list = (value) => (Array.isArray(value) ? value : []);
-const lower = (value) => String(value || '').trim().toLowerCase();
-const normalizedList = (value) => [...new Set(list(value).map(lower).filter(Boolean))];
+const lower = comparisonString;
+const normalizedList = (value) => normalizedStringList(value).map(lower);
 
 
 function yearsAgoDate(years) {
@@ -27,46 +50,23 @@ async function profileFor(userId) {
   return OnboardingProfile.findOne({ where: { userId } });
 }
 
-function genderVariants(genderStr) {
-  const g = lower(genderStr);
-  if (['woman', 'women', 'female'].includes(g)) return ['female', 'woman', 'women'];
-  if (['man', 'men', 'male'].includes(g)) return ['male', 'man', 'men'];
-  if (['other', 'non-binary', 'nonbinary', 'transgender', 'custom'].includes(g)) {
-    return ['other', 'non-binary', 'nonbinary', 'transgender', 'custom'];
-  }
-  return g ? [g] : [];
-}
-
-function interestedInVariants(listOrString) {
-  const items = normalizedList(listOrString);
-  const result = new Set();
-  for (const item of items) {
-    result.add(item);
-    for (const v of genderVariants(item)) {
-      result.add(v);
-    }
-  }
-  return [...result];
-}
-
-async function requireCompleted(res, userId) {
+async function requireCompleted(res, userId, onIncomplete) {
   const profile = await profileFor(userId);
-  if (!profile?.onboardingCompleted || profile.stage !== 'complete') {
+  if (!isDiscoverComplete(profile)) {
+    if (onIncomplete) onIncomplete();
     fail(res, 403, 'Complete your profile before using Discover.', 'ONBOARDING_INCOMPLETE');
     return null;
   }
   return profile;
 }
 
-function profileData(req, user, profile, viewer, score) {
-  return serializePublicProfile(req, user, profile, { viewer, ...(score === undefined ? {} : { score }) });
-}
-
-function jsonContainsAny(columnName, values) {
-  return normalizedList(values).map((value) => where(
-    fn('JSON_CONTAINS', fn('LOWER', col(`OnboardingProfile.${columnName}`)), JSON.stringify(value)),
-    1,
-  ));
+function profileData(req, user, profile, viewer, compatibility, recentActivityMinutes, distanceKm) {
+  return serializePublicProfile(req, user, profile, {
+    viewer,
+    recentActivityWindowMinutes: recentActivityMinutes,
+    distanceKm,
+    ...(compatibility ? { compatibility, score: compatibility.score } : {}),
+  });
 }
 
 function caseInsensitiveEquals(columnName, value) {
@@ -130,91 +130,130 @@ function buildProfileWhere(filters) {
     clauses.push(where(fn('JSON_LENGTH', col('OnboardingProfile.prompts')), { [Op.gt]: 0 }));
   }
 
-  if (clauses.length) whereValues[Op.and] = clauses;
+  whereValues[Op.and] = clauses;
   return whereValues;
 }
 
 function discoveryPreferenceClauses(viewer) {
-  const clauses = [];
-  const interestedIn = normalizedList(viewer.interestedIn);
-  const viewerGender = lower(viewer.gender);
-
-  if (interestedIn.length) {
-    const isUniversal = interestedIn.some((i) => ['everyone', 'all', 'any', 'both'].includes(i));
-    if (!isUniversal) {
-      const targetGenders = interestedInVariants(interestedIn);
-      if (targetGenders.length) {
-        clauses.push(where(fn('LOWER', col('OnboardingProfile.gender')), { [Op.in]: targetGenders }));
-      }
-    }
-  }
-
-  if (viewerGender) {
-    const viewerGenderVars = genderVariants(viewerGender);
-    const reciprocalMatches = viewerGenderVars.flatMap((g) => jsonContainsAny('interestedIn', [g]));
-    const universalMatches = jsonContainsAny('interestedIn', ['everyone', 'all', 'any', 'both']);
-
-    clauses.push({ [Op.or]: [
-      where(col('OnboardingProfile.interestedIn'), null),
-      where(fn('JSON_LENGTH', col('OnboardingProfile.interestedIn')), null),
-      where(fn('JSON_LENGTH', col('OnboardingProfile.interestedIn')), 0),
-      ...reciprocalMatches,
-      ...universalMatches,
-    ] });
-  }
-  return clauses;
+  return reciprocalPreferenceClauses(viewer);
 }
 
 function compatibilityScoreSql(sequelize, viewer) {
-  const quote = (value) => sequelize.getQueryInterface().queryGenerator.quoteIdentifier(value);
-  const profileColumn = (name) => `${quote('OnboardingProfile')}.${quote(name)}`;
-  const sharedCount = (name, values) => {
-    const candidates = normalise(values);
-    if (!candidates.length) return '0';
-    return candidates.map((value) => (
-      `CASE WHEN JSON_CONTAINS(LOWER(${profileColumn(name)}), ${sequelize.escape(JSON.stringify(value))}) = 1 THEN 1 ELSE 0 END`
-    )).join(' + ');
+  return sqlCompatibilityExpressions(sequelize, viewer).score;
+}
+
+function paginationContext({ filters, surface, viewer, activityWindowMinutes, candidatePreferenceDefaults }) {
+  return {
+    filters,
+    surface,
+    activityWindowMinutes,
+    candidatePreferenceDefaults,
+    viewer: {
+      birthDate: viewer.birthDate,
+      gender: viewer.gender,
+      interestedIn: viewer.interestedIn,
+      interests: viewer.interests,
+      relationshipGoals: viewer.relationshipGoals,
+      communicationStyle: viewer.communicationStyle,
+      languages: viewer.languages,
+      city: viewer.city,
+      smoking: viewer.smoking,
+      drinking: viewer.drinking,
+      weed: viewer.weed,
+      matchLatitude: viewer.matchLatitude,
+      matchLongitude: viewer.matchLongitude,
+    },
   };
-  const factor = (name, values, weight) => {
-    const candidates = normalise(values);
-    if (!candidates.length) return { numerator: '0', available: '0' };
-    const column = profileColumn(name);
-    return {
-      numerator: `(CASE WHEN JSON_TYPE(${column}) = 'ARRAY' AND JSON_LENGTH(${column}) > 0 THEN ${weight} * ((${sharedCount(name, values)}) / GREATEST(${candidates.length}, JSON_LENGTH(${column}))) ELSE 0 END)`,
-      available: `(CASE WHEN JSON_TYPE(${column}) = 'ARRAY' AND JSON_LENGTH(${column}) > 0 THEN ${weight} ELSE 0 END)`,
-    };
-  };
-  const interests = factor('interests', viewer.interests, SCORE_WEIGHTS.interests);
-  const goals = factor('relationshipGoals', viewer.relationshipGoals, SCORE_WEIGHTS.relationshipGoals);
-  const languages = factor('languages', viewer.languages, SCORE_WEIGHTS.languages);
-  const exact = (name, weight) => {
-    const value = usableText(viewer[name]);
-    if (!value) return { numerator: '0', available: '0' };
-    const column = profileColumn(name);
-    return { numerator: `(CASE WHEN LOWER(TRIM(${column})) = ${sequelize.escape(value)} THEN ${weight} ELSE 0 END)`, available: `(CASE WHEN ${column} IS NOT NULL AND LOWER(TRIM(${column})) NOT IN ('', 'prefer not to say') THEN ${weight} ELSE 0 END)` };
-  };
-  const style = exact('communicationStyle', SCORE_WEIGHTS.communicationStyle);
-  const city = exact('city', SCORE_WEIGHTS.city);
-  const smoking = exact('smoking', SCORE_WEIGHTS.smoking);
-  const drinking = exact('drinking', SCORE_WEIGHTS.drinking);
-  const weed = exact('weed', SCORE_WEIGHTS.weed);
-  const numerator = `${interests.numerator} + ${goals.numerator} + ${style.numerator} + ${languages.numerator} + ${city.numerator} + ${smoking.numerator} + ${drinking.numerator} + ${weed.numerator}`;
-  const available = `${interests.available} + ${goals.available} + ${style.available} + ${languages.available} + ${city.available} + ${smoking.available} + ${drinking.available} + ${weed.available}`;
-  const raw = `(CASE WHEN (${available}) = 0 THEN 50 ELSE (100 * (${numerator}) / (${available})) END)`;
-  return `LEAST(100, GREATEST(0, ROUND(50 + ((${raw}) - 50) * ((${available}) / 100))))`;
+}
+
+function finiteCursorNumber(value, field) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) throw new RecommendationCursorError(`The pagination cursor ${field} is invalid.`);
+  return parsed;
+}
+
+function positiveCursorId(value) {
+  const parsed = finiteCursorNumber(value, 'id');
+  if (!Number.isInteger(parsed) || parsed < 1) throw new RecommendationCursorError('The pagination cursor id is invalid.');
+  return parsed;
+}
+
+async function observableCandidateCounts({
+  enabled,
+  User,
+  OnboardingProfile,
+  viewerId,
+  userWhereWithoutDistance,
+  userWhereWithDistance,
+  profileWhereWithoutDistance,
+  profileWhereWithDistance,
+  distanceFilterActive,
+}) {
+  if (!enabled) return {};
+  const countWithProfile = (userWhere, profileWhere) => User.count({
+    where: userWhere,
+    include: [{ model: OnboardingProfile, required: true, attributes: [], where: profileWhere }],
+    distinct: true,
+    col: 'id',
+  });
+  const beforeEligibility = await User.count({ where: { id: { [Op.ne]: Number(viewerId) } } });
+  const afterEligibility = await countWithProfile(userWhereWithoutDistance, profileWhereWithoutDistance);
+  const afterDistance = distanceFilterActive
+    ? await countWithProfile(userWhereWithDistance, profileWhereWithDistance)
+    : afterEligibility;
+  return { beforeEligibility, afterEligibility, afterDistance };
 }
 
 exports.getFeed = async (req, res, next) => {
   const startedAt = Date.now();
+  const observabilityEnabled = matchEngineObservability.enabled();
+  let observedSurface = req.aiMatches === true ? 'high_compatibility' : 'default';
+  let observedProvider = req.aiMatches === true ? 'LOCAL' : 'STANDARD';
+  let candidateCounts = {};
+  const observe = (values = {}) => {
+    if (!observabilityEnabled) return null;
+    return matchEngineObservability.emitRecommendationDiagnostic({
+      surface: observedSurface,
+      provider: observedProvider,
+      continuation: Boolean(req.query.cursor),
+      limit: req.query.limit || 10,
+      profiles: [],
+      candidateCounts,
+      startedAt,
+      ...values,
+    });
+  };
+  const observedFail = (status, message, code, errors = []) => {
+    observe({ errorCode: code });
+    return fail(res, status, message, code, errors);
+  };
   try {
-    const viewer = await requireCompleted(res, req.user.sub);
+    const surface = surfaceContract(req.query.surface, { aiMatches: req.aiMatches === true });
+    observedSurface = surface.name === 'recommended' ? 'default' : surface.name;
+    if (!surface.supported) {
+      return observedFail(400, `Discover surface '${surface.name}' is not supported yet.`, 'DISCOVER_SURFACE_UNSUPPORTED', [
+        { field: 'surface', message: `${surface.name} is reserved for a later Match Engine phase.` },
+      ]);
+    }
+    const viewer = await requireCompleted(res, req.user.sub, () => observe({ errorCode: 'ONBOARDING_INCOMPLETE' }));
     if (!viewer) return;
-    const { User, OnboardingProfile, DiscoverAction, Match, Subscription } = getModels();
+    const viewerLocationAvailable = validCoordinates(viewer.matchLatitude, viewer.matchLongitude);
+    if (surface.name === 'near_you' && !viewerLocationAvailable) {
+      return observedFail(409, 'Enable current location to use Near You.', 'LOCATION_REQUIRED', [
+        { field: 'location', message: 'A saved current location is required for Near You.' },
+      ]);
+    }
+    const { User, OnboardingProfile, DiscoverAction, DiscoverFilterPreference, Match, Subscription } = getModels();
     const page = Number(req.query.page || 1);
+    if (page > 1 && !req.query.cursor) {
+      return observedFail(400, 'A continuation cursor is required after the first recommendation page.', 'PAGINATION_CURSOR_REQUIRED', [
+        { field: 'cursor', message: 'Use pagination.nextCursor from the preceding response.' },
+      ]);
+    }
     const limit = Number(req.query.limit || 10);
     const filters = await filtersFor(req.user.sub, req.query);
     if (filters.minAge > filters.maxAge) {
-      return fail(res, 400, 'Minimum age cannot exceed maximum age.', 'VALIDATION_ERROR', [
+      return observedFail(400, 'Minimum age cannot exceed maximum age.', 'VALIDATION_ERROR', [
         { field: 'minAge', message: 'Minimum age cannot exceed maximum age.' },
       ]);
     }
@@ -228,15 +267,38 @@ exports.getFeed = async (req, res, next) => {
       }).catch(() => {});
     }
 
+    const runtime = await require('../services/adminDiscoverConfigurationService').runtimeConfiguration();
+    const activityWindowMinutes = recentActivityWindowMinutes(runtime.defaults.onlineWindowMinutes);
+    const candidatePreferenceDefaults = effectiveDefaultsFor(runtime.defaults);
     const sequelize = User.sequelize;
-    const scoreSql = compatibilityScoreSql(sequelize, viewer);
-    const excludedTargets = literal(`(SELECT ${sequelize.getQueryInterface().queryGenerator.quoteIdentifier('targetUserId')} FROM ${sequelize.getQueryInterface().queryGenerator.quoteIdentifier(DiscoverAction.getTableName())} WHERE ${sequelize.getQueryInterface().queryGenerator.quoteIdentifier('actorUserId')} = ${sequelize.escape(Number(req.user.sub))})`);
+    const scoreExpressions = sqlCompatibilityExpressions(sequelize, viewer);
+    const scoreSql = scoreExpressions.score;
+    const distanceFilterActive = viewerLocationAvailable;
+    const distanceSql = distanceFilterActive ? sqlDistanceExpression(sequelize, {
+      viewerLatitude: viewer.matchLatitude,
+      viewerLongitude: viewer.matchLongitude,
+    }) : null;
+    const distanceRankSql = distanceSql ? `ROUND(${distanceSql}, 6)` : null;
+    const cursorContext = paginationContext({
+      filters,
+      surface: surface.name,
+      viewer,
+      activityWindowMinutes,
+      candidatePreferenceDefaults,
+    });
+    const cursorKeys = req.query.cursor ? readCursor(req.query.cursor, {
+      viewerId: req.user.sub,
+      surface: surface.name,
+      context: cursorContext,
+    }) : null;
     const quote = (value) => sequelize.getQueryInterface().queryGenerator.quoteIdentifier(value);
     const viewerId = sequelize.escape(Number(req.user.sub));
+    const excludedActions = EXCLUDING_DISCOVER_ACTIONS.map((action) => sequelize.escape(action)).join(', ');
+    const excludedTargets = literal(`(SELECT ${quote('targetUserId')} FROM ${quote(DiscoverAction.getTableName())} WHERE ${quote('actorUserId')} = ${viewerId} AND ${quote('action')} IN (${excludedActions}))`);
     const matchedTargets = literal(`(SELECT CASE WHEN ${quote('userOneId')} = ${viewerId} THEN ${quote('userTwoId')} ELSE ${quote('userOneId')} END FROM ${quote(Match.getTableName())} WHERE ${quote('userOneId')} = ${viewerId} OR ${quote('userTwoId')} = ${viewerId})`);
     const userWhere = {
       id: { [Op.ne]: Number(req.user.sub), [Op.notIn]: excludedTargets },
-      accountStatus: 'active',
+      accountStatus: ACCOUNT_STATUS.eligible,
       [Op.and]: [
         notBlockedUserSql(sequelize, req.user.sub),
         where(col('User.id'), { [Op.notIn]: matchedTargets }),
@@ -244,19 +306,64 @@ exports.getFeed = async (req, res, next) => {
     };
     if (filters.verifiedOnly) userWhere.identityVerifiedAt = { [Op.ne]: null };
     if (filters.onlineNow) {
-      const runtime = await require('../services/adminDiscoverConfigurationService').runtimeConfiguration();
-      const thresholdMinutes = Math.max(1, Number(runtime.defaults.onlineWindowMinutes || process.env.ONLINE_NOW_WINDOW_MINUTES || 5));
-      userWhere.lastActiveAt = { [Op.gte]: new Date(Date.now() - thresholdMinutes * 60 * 1000) };
+      userWhere.lastActiveAt = { [Op.gte]: new Date(Date.now() - activityWindowMinutes * 60 * 1000) };
     }
     if (filters.hasEventInterest) {
       const registrations = quote(getModels().EventRegistration.getTableName());
       const candidate = `${quote('User')}.${quote('id')}`;
-      userWhere[Op.and].push(literal(`EXISTS (SELECT 1 FROM ${registrations} AS ${quote('eventInterestRegistration')} WHERE ${quote('eventInterestRegistration')}.${quote('userId')} = ${candidate} AND ${quote('eventInterestRegistration')}.${quote('status')} = 'registered')`));
+      const statuses = EVENT_REGISTRATION_STATUSES.map((status) => sequelize.escape(status)).join(', ');
+      userWhere[Op.and].push(literal(`EXISTS (SELECT 1 FROM ${registrations} AS ${quote('eventInterestRegistration')} WHERE ${quote('eventInterestRegistration')}.${quote('userId')} = ${candidate} AND ${quote('eventInterestRegistration')}.${quote('status')} IN (${statuses}))`));
     }
+
+    const reciprocalWithoutDistance = reciprocalEligibilitySqlClauses(sequelize, {
+      viewerAge: ageFor(viewer.birthDate),
+      viewerMaxDistanceKm: filters.maxDistanceKm,
+      distanceSql: null,
+      preferenceDefaults: candidatePreferenceDefaults,
+      preferenceTableName: DiscoverFilterPreference.getTableName(),
+    });
+    const userWhereWithoutDistance = {
+      ...userWhere,
+      [Op.and]: [...userWhere[Op.and], ...reciprocalWithoutDistance],
+    };
+    userWhere[Op.and].push(...reciprocalEligibilitySqlClauses(sequelize, {
+      viewerAge: ageFor(viewer.birthDate),
+      viewerMaxDistanceKm: filters.maxDistanceKm,
+      distanceSql,
+      preferenceDefaults: candidatePreferenceDefaults,
+      preferenceTableName: DiscoverFilterPreference.getTableName(),
+    }));
 
     const profileWhere = buildProfileWhere(filters);
     const preferenceClauses = discoveryPreferenceClauses(viewer);
+    const distanceClauses = distanceFilterActive ? [
+      where(col('OnboardingProfile.matchLatitude'), { [Op.between]: [-90, 90] }),
+      where(col('OnboardingProfile.matchLongitude'), { [Op.between]: [-180, 180] }),
+    ] : [];
+    const profileWhereWithoutDistance = {
+      ...profileWhere,
+      [Op.and]: [
+        ...(profileWhere[Op.and] || []),
+        ...profileCompletionSqlClauses(sequelize),
+        ...preferenceClauses,
+      ],
+    };
+    const profileWhereWithDistance = {
+      ...profileWhere,
+      [Op.and]: [...profileWhereWithoutDistance[Op.and], ...distanceClauses],
+    };
     const isAiMatches = req.aiMatches === true;
+    const cursorProfileClauses = [];
+    if (cursorKeys && !isAiMatches) {
+      const lastId = positiveCursorId(cursorKeys.id);
+      const lastScore = finiteCursorNumber(cursorKeys.score, 'score');
+      if (surface.name === 'near_you') {
+        const lastDistance = finiteCursorNumber(cursorKeys.distance, 'distance');
+        cursorProfileClauses.push(literal(`(${distanceRankSql} > ${sequelize.escape(lastDistance)} OR (${distanceRankSql} = ${sequelize.escape(lastDistance)} AND (${scoreSql} < ${sequelize.escape(lastScore)} OR (${scoreSql} = ${sequelize.escape(lastScore)} AND ${quote('User')}.${quote('id')} > ${sequelize.escape(lastId)}))))`));
+      } else {
+        cursorProfileClauses.push(literal(`(${scoreSql} < ${sequelize.escape(lastScore)} OR (${scoreSql} = ${sequelize.escape(lastScore)} AND ${quote('User')}.${quote('id')} > ${sequelize.escape(lastId)}))`));
+      }
+    }
     const users = await User.findAll({
       where: userWhere,
       include: [{
@@ -266,59 +373,142 @@ exports.getFeed = async (req, res, next) => {
           ...profileWhere,
           [Op.and]: [
             ...(profileWhere[Op.and] || []),
+            ...profileCompletionSqlClauses(sequelize),
             ...preferenceClauses,
+            ...distanceClauses,
+            ...cursorProfileClauses,
             where(literal(scoreSql), { [Op.gte]: filters.minScore }),
           ],
         },
-        attributes: { include: [[literal(scoreSql), 'compatibilityScore']] },
+        attributes: { include: [
+          [literal(scoreSql), 'compatibilityScore'],
+          [literal(scoreExpressions.coverage), 'compatibilityCoverage'],
+          ...(distanceSql ? [[literal(distanceSql), 'distanceKmPrecise']] : []),
+          ...(surface.name === 'near_you' ? [[literal(distanceRankSql), 'distanceRank']] : []),
+        ] },
       }, { model: Subscription, as: 'subscription', required: false, attributes: ['status', 'currentPeriodEnd'] }],
-      order: [[literal(scoreSql), 'DESC'], ['id', 'ASC']],
+      order: surface.name === 'near_you'
+        ? [[literal(distanceRankSql), 'ASC'], [literal(scoreSql), 'DESC'], ['id', 'ASC']]
+        : [[literal(scoreSql), 'DESC'], ['id', 'ASC']],
       // AI ranking must happen over the eligible set before page slicing.
       // Never silently truncate eligibility at 500. Larger pools need a future
       // versioned snapshot/cache, not independent per-page ranking.
-      ...(isAiMatches ? {} : { offset: (page - 1) * limit, limit: limit + 1 }),
+      ...(isAiMatches ? {} : { limit: limit + 1 }),
       subQuery: false,
+    });
+    candidateCounts = await observableCandidateCounts({
+      enabled: observabilityEnabled,
+      User,
+      OnboardingProfile,
+      viewerId: req.user.sub,
+      userWhereWithoutDistance,
+      userWhereWithDistance: userWhere,
+      profileWhereWithoutDistance,
+      profileWhereWithDistance,
+      distanceFilterActive,
     });
 
     const hasMore = !isAiMatches && users.length > limit;
     const selected = (hasMore ? users.slice(0, limit) : users)
       .map((user) => {
         const queried = user.OnboardingProfile?.getDataValue('compatibilityScore');
+        const canonicalCompatibility = scoreCompatibility(viewer, user.OnboardingProfile);
         const score = queried != null && Number.isFinite(Number(queried))
-          ? Number(queried) : scoreCompatibility(viewer, user.OnboardingProfile).score;
-        return { user, score };
+          ? Number(queried) : canonicalCompatibility.score;
+        const queriedCoverage = user.OnboardingProfile?.getDataValue('compatibilityCoverage');
+        const coverage = queriedCoverage != null && Number.isFinite(Number(queriedCoverage))
+          ? Number(queriedCoverage) : canonicalCompatibility.coverage;
+        const compatibility = {
+          ...canonicalCompatibility,
+          score,
+          coverage,
+          compatibilityScore: score,
+          compatibilityCoverage: coverage,
+        };
+        const queriedDistance = user.OnboardingProfile?.getDataValue('distanceKmPrecise');
+        const distanceKm = queriedDistance != null && Number.isFinite(Number(queriedDistance))
+          ? Number(queriedDistance) : null;
+        return { user, compatibility, distanceKm };
       });
     if (isAiMatches) {
-      const ranked = rankCandidates(viewer, selected.map(({ user }) => ({
+      const distanceByUserId = new Map(selected.map(({ user, distanceKm }) => [Number(user.id), distanceKm]));
+      const selectedByUserId = new Map(selected.map((item) => [Number(item.user.id), item]));
+      // Compatibility is already calculated. Keep user/profile objects and
+      // especially exact coordinates outside the AI provider boundary.
+      const aiRankingStartedAt = Date.now();
+      const ranked = rankCandidates({}, selected.map(({ user, compatibility }) => ({
         userId: user.id,
-        user,
-        profile: user.OnboardingProfile,
-        compatibility: scoreCompatibility(viewer, user.OnboardingProfile),
-      })));
-      const pageOffset = (page - 1) * limit;
-      const pageItems = ranked.slice(pageOffset, pageOffset + limit);
-      const aiHasMore = ranked.length > pageOffset + limit;
+        compatibility,
+      }))).map((item) => ({
+        ...item,
+        user: selectedByUserId.get(Number(item.userId)).user,
+      }));
+      let continuation = ranked;
+      if (cursorKeys) {
+        const lastId = positiveCursorId(cursorKeys.id);
+        const lastAiScore = finiteCursorNumber(cursorKeys.aiScore, 'AI score');
+        const lastConfidence = finiteCursorNumber(cursorKeys.confidence, 'AI confidence');
+        continuation = ranked.filter((item) => (
+          item.aiMatchScore < lastAiScore
+          || (item.aiMatchScore === lastAiScore && (
+            item.aiConfidence < lastConfidence
+            || (item.aiConfidence === lastConfidence && Number(item.userId) > lastId)
+          ))
+        ));
+      }
+      const aiHasMore = continuation.length > limit;
+      const pageItems = continuation.slice(0, limit);
+      const lastItem = pageItems.at(-1);
+      const nextCursor = aiHasMore && lastItem ? createCursor({
+        viewerId: req.user.sub,
+        surface: surface.name,
+        context: cursorContext,
+        keys: { aiScore: lastItem.aiMatchScore, confidence: lastItem.aiConfidence, id: Number(lastItem.userId) },
+      }) : null;
+      const recommendations = pageItems.map((item) => ({
+        id: String(item.user.id),
+        profile: profileData(req, item.user, item.user.OnboardingProfile || {}, viewer, item.compatibility, activityWindowMinutes, distanceByUserId.get(Number(item.user.id))),
+        compatibilityScore: item.compatibility.score,
+        compatibilityCoverage: item.compatibility.coverage,
+        aiMatchScore: item.aiMatchScore,
+        aiConfidence: item.aiConfidence,
+        aiMatchLevel: item.aiMatchLevel,
+        aiHighlights: item.aiHighlights,
+        aiReasons: item.aiReasons,
+      }));
+      observe({ profiles: recommendations, aiRankingDurationMs: Date.now() - aiRankingStartedAt });
       return success(res, ranked.length ? 'AI recommendations retrieved.' : 'No AI recommendations found.', {
         provider: 'LOCAL',
-        recommendations: pageItems.map((item) => ({
-          id: String(item.user.id),
-          profile: profileData(req, item.user, item.profile || {}, viewer, item.compatibility.score),
-          compatibilityScore: item.compatibility.score,
-          compatibilityCoverage: item.compatibility.coverage,
-          aiMatchScore: item.aiMatchScore,
-          aiConfidence: item.aiConfidence,
-          aiMatchLevel: item.aiMatchLevel,
-          aiHighlights: item.aiHighlights,
-          aiReasons: item.aiReasons,
-        })),
-        pagination: { page, limit, hasMore: aiHasMore, nextPage: aiHasMore ? page + 1 : null },
+        recommendations,
+        locationMatching: { viewerLocationAvailable, distanceFilterActive },
+        pagination: { limit, hasMore: aiHasMore, nextCursor, rankingVersion: MATCH_RANKING_VERSION },
       });
     }
+    const lastSelected = selected.at(-1);
+    const nextCursor = hasMore && lastSelected ? createCursor({
+      viewerId: req.user.sub,
+      surface: surface.name,
+      context: cursorContext,
+      keys: {
+        score: lastSelected.compatibility.score,
+        id: Number(lastSelected.user.id),
+        ...(surface.name === 'near_you' ? {
+          distance: Number(lastSelected.user.OnboardingProfile.getDataValue('distanceRank')),
+        } : {}),
+      },
+    }) : null;
+    const profiles = selected.map(({ user, compatibility, distanceKm }) => profileData(req, user, user.OnboardingProfile || {}, viewer, compatibility, activityWindowMinutes, distanceKm));
+    observe({ profiles });
     return success(res, selected.length ? 'Discover feed retrieved.' : 'No discover profiles found.', {
-      profiles: selected.map(({ user, score }) => profileData(req, user, user.OnboardingProfile || {}, viewer, score)),
-      pagination: { page, limit, hasMore, nextPage: hasMore ? page + 1 : null },
+      profiles,
+      locationMatching: { viewerLocationAvailable, distanceFilterActive },
+      pagination: { limit, hasMore, nextCursor, rankingVersion: MATCH_RANKING_VERSION },
     });
   } catch (error) {
+    if (error instanceof RecommendationCursorError) {
+      return observedFail(400, error.message, error.code, [{ field: 'cursor', message: error.message }]);
+    }
+    observe({ errorCode: error.code || 'INTERNAL_ERROR' });
     return next(error);
   }
 };

@@ -1,13 +1,14 @@
 const crypto = require('crypto');
 const { getModels } = require('../models');
 const { recordAudit } = require('./adminAuditService');
+const { DISCOVER_FILTER_RANGES } = require('../constants/discoverFilterRanges');
 
 const settingsRegistry = Object.freeze({
-  default_min_age: { label: 'Default minimum age', type: 'integer', description: 'Minimum age used for new Discover preferences.', minimum: 18, maximum: 99 },
-  default_max_age: { label: 'Default maximum age', type: 'integer', description: 'Maximum age used for new Discover preferences.', minimum: 18, maximum: 99 },
-  default_max_distance_km: { label: 'Default maximum distance', type: 'integer', description: 'Default distance preference in kilometres.', minimum: 1, maximum: 500 },
-  default_minimum_score: { label: 'Default minimum compatibility score', type: 'integer', description: 'Default deterministic compatibility threshold.', minimum: 0, maximum: 100 },
-  online_now_window_minutes: { label: 'Online-now window', type: 'integer', description: 'Recent activity window used by the Online now filter.', minimum: 1, maximum: 60 },
+  default_min_age: { label: 'Default minimum age', type: 'integer', description: 'Minimum age used for new Discover preferences.', minimum: DISCOVER_FILTER_RANGES.age.min, maximum: DISCOVER_FILTER_RANGES.age.max },
+  default_max_age: { label: 'Default maximum age', type: 'integer', description: 'Maximum age used for new Discover preferences.', minimum: DISCOVER_FILTER_RANGES.age.min, maximum: DISCOVER_FILTER_RANGES.age.max },
+  default_max_distance_km: { label: 'Default maximum distance', type: 'integer', description: 'Default distance preference in kilometres. Reserved until real geographic matching is implemented.', minimum: DISCOVER_FILTER_RANGES.distanceKm.min, maximum: DISCOVER_FILTER_RANGES.distanceKm.max },
+  default_minimum_score: { label: 'Default minimum compatibility score', type: 'integer', description: 'Default deterministic compatibility threshold.', minimum: DISCOVER_FILTER_RANGES.score.min, maximum: DISCOVER_FILTER_RANGES.score.max },
+  online_now_window_minutes: { label: 'Recent-activity window', type: 'integer', description: 'Recent activity window used by the activity filter.', minimum: 1, maximum: 60 },
 });
 const runtimeKey = Object.freeze({
   default_min_age: 'minAge', default_max_age: 'maxAge', default_max_distance_km: 'maxDistanceKm',
@@ -87,14 +88,24 @@ function filterPayload(request, rows, includeSensitive) {
   return {
     configurationId: 'discover_filters_v1',
     version: versionFor('discover_filters', sorted),
-    filters: sorted.filter((row) => includeSensitive || !row.sensitive).map((row) => ({
+    filters: sorted.filter((row) => includeSensitive || !row.sensitive).map((row) => {
+      const canonicalRange = {
+        minAge: DISCOVER_FILTER_RANGES.age,
+        maxAge: DISCOVER_FILTER_RANGES.age,
+        maxDistanceKm: DISCOVER_FILTER_RANGES.distanceKm,
+        minScore: DISCOVER_FILTER_RANGES.score,
+        minHeight: DISCOVER_FILTER_RANGES.heightCm,
+      }[row.key];
+      return ({
       id: row.id, key: row.key, label: row.label, type: row.type,
       enabled: row.enabled, visible: row.visible, required: row.required, displayOrder: row.displayOrder,
-      maximumSelections: row.maximumSelections, minimumValue: row.minimumValue == null ? null : Number(row.minimumValue), maximumValue: row.maximumValue == null ? null : Number(row.maximumValue),
+      maximumSelections: row.maximumSelections,
+      minimumValue: canonicalRange?.min ?? (row.minimumValue == null ? null : Number(row.minimumValue)),
+      maximumValue: canonicalRange?.max ?? (row.maximumValue == null ? null : Number(row.maximumValue)),
       supportsSearch: ['text', 'single_selection', 'multiple_selection'].includes(row.type),
       supportsMultipleSelection: row.type === 'multiple_selection', version: `filter_${row.version}`,
       updatedAt: row.updatedAt, adminVisible: true, sensitive: row.sensitive, editable: row.editable && can(request, 'discover.filters.manage'),
-    })),
+    }); }),
     capabilities: { canEdit: can(request, 'discover.filters.manage'), canReorder: can(request, 'discover.filters.manage') },
     updatedAt: sorted.reduce((latest, row) => !latest || row.updatedAt > latest ? row.updatedAt : latest, null),
   };

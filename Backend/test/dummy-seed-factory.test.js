@@ -14,11 +14,15 @@ test('dummy profile generation is deterministic, unique, varied, and onboarding-
   assert.equal(new Set(first.map((value) => value.phoneNumber)).size, 40);
   assert.ok(new Set(first.map((value) => value.bio)).size > 15);
   assert.ok(new Set(first.map((value) => value.city)).size >= 4);
+  assert.ok(new Set(first.map((value) => `${value.matchLatitude}:${value.matchLongitude}`)).size >= 20);
   for (const profile of first.filter((value) => value.completed)) {
     assert.match(profile.email, /@seed\.amoraa\.example\.test$/);
     assert.ok(profile.age >= 18);
     assert.ok(profile.interests.length >= 5 && profile.interests.length <= 10);
     assert.ok(profile.photoCount >= 2 && profile.photoCount <= 6);
+    assert.ok(profile.matchLatitude >= -90 && profile.matchLatitude <= 90);
+    assert.ok(profile.matchLongitude >= -180 && profile.matchLongitude <= 180);
+    assert.ok(profile.locationUpdatedAt instanceof Date);
   }
 });
 

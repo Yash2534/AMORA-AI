@@ -60,7 +60,7 @@ async function createMember(name, values = {}) {
     languages: values.languages || ['English'],
     communicationStyle: values.communicationStyle || 'calls',
     smoking: values.smoking || 'never', drinking: values.drinking || 'never', weed: values.weed || 'never',
-    photos: ['/uploads/ai-matching-test.jpg'],
+    photos: ['/uploads/ai-matching-test.jpg', '/uploads/ai-matching-test-two.jpg'],
     prompts: { idealDate: 'Coffee' },
     lifestyle: {},
     stage: values.onboardingCompleted === false ? 'photos' : 'complete',
@@ -187,17 +187,41 @@ test('AI Matches performs global deterministic ranking before page slicing witho
   assert.equal(hundred.result.status, 200);
   assert.ok(hundred.count - fifty.count <= 2, `query count grew from ${fifty.count} to ${hundred.count}`);
   console.log(`[AI Matches] query counts: approximately 50=${fifty.count}, 100=${hundred.count}`);
-  const page1 = await request('/api/discover/ai-matches?page=1&limit=10', { headers: auth(viewer) });
-  const page2 = await request('/api/discover/ai-matches?page=2&limit=10', { headers: auth(viewer) });
-  const page3 = await request('/api/discover/ai-matches?page=3&limit=10', { headers: auth(viewer) });
-  const repeat = await request('/api/discover/ai-matches?page=1&limit=10', { headers: auth(viewer) });
+  const page1 = await request('/api/discover/ai-matches?limit=10', { headers: auth(viewer) });
+  const page2 = await request(`/api/discover/ai-matches?limit=10&cursor=${encodeURIComponent(page1.body.data.pagination.nextCursor)}`, { headers: auth(viewer) });
+  const page3 = await request(`/api/discover/ai-matches?limit=10&cursor=${encodeURIComponent(page2.body.data.pagination.nextCursor)}`, { headers: auth(viewer) });
+  const repeat = await request('/api/discover/ai-matches?limit=10', { headers: auth(viewer) });
   assert.deepEqual(ids(page1.body), ids(repeat.body));
   assert.equal(new Set([...ids(page1.body), ...ids(page2.body), ...ids(page3.body)]).size, 30);
-  assert.equal(page1.body.data.pagination.page, 1);
-  assert.equal(page1.body.data.pagination.nextPage, 2);
-  assert.equal(page3.body.data.pagination.page, 3);
+  assert.equal(typeof page1.body.data.pagination.nextCursor, 'string');
+  assert.equal(typeof page1.body.data.pagination.rankingVersion, 'string');
+  assert.equal(typeof page3.body.data.pagination.hasMore, 'boolean');
   assert.ok(recommendations(page1.body).every((row) => row.aiMatchScore >= 0 && row.aiMatchScore <= 100));
   assert.ok(eligible.length === 100);
+});
+
+test('AI cursor pagination keeps global rank and live eligibility across mutations', async () => {
+  const city = `AiCursorMutation${Date.now()}`;
+  const fixtures = [];
+  for (let index = 0; index < 6; index += 1) fixtures.push(await createMember(`AI cursor ${index}`, { city }));
+  const first = await request(`/api/discover/ai-matches?city=${city}&limit=2`, { headers: auth(viewer) });
+  assert.equal(first.status, 200);
+  const cursor = first.body.data.pagination.nextCursor;
+  assert.equal(typeof cursor, 'string');
+
+  const inserted = await createMember('AI cursor inserted', { city });
+  await models.DiscoverAction.create({ actorUserId: viewer.id, targetUserId: fixtures[2].id, action: 'pass' });
+  const collected = [...ids(first.body)];
+  let nextCursor = cursor;
+  while (nextCursor) {
+    const page = await request(`/api/discover/ai-matches?city=${city}&limit=2&cursor=${encodeURIComponent(nextCursor)}`, { headers: auth(viewer) });
+    assert.equal(page.status, 200, JSON.stringify(page.body));
+    collected.push(...ids(page.body));
+    nextCursor = page.body.data.pagination.nextCursor;
+  }
+  assert.equal(new Set(collected).size, collected.length);
+  assert.equal(collected.includes(String(fixtures[2].id)), false);
+  assert.equal(collected.includes(String(inserted.id)), true);
 });
 
 test('AI recommendation candidates continue through the canonical Like and Match flow', async () => {
@@ -227,15 +251,15 @@ test('AI Matches validates bounded pagination and returns an empty recommendatio
 
 test('AI Matches returns actual evidence and truthful sparse confidence without internal leaks', async () => {
   const sparse = await createMember('AI Sparse Optional', { city: 'SparseEvidenceFixture' });
-  await models.OnboardingProfile.update({ interests: [], relationshipGoals: [], communicationStyle: null, languages: [], smoking: null, drinking: null, weed: null }, { where: { userId: sparse.id } });
+  await models.OnboardingProfile.update({ interests: [], communicationStyle: null, languages: [], smoking: null, drinking: null, weed: null }, { where: { userId: sparse.id } });
   const result = await request('/api/discover/ai-matches?city=SparseEvidenceFixture', { headers: auth(viewer) });
   assert.equal(result.status, 200);
   const item = recommendations(result.body)[0];
   assert.equal(item.id, String(sparse.id));
-  assert.equal(item.compatibilityCoverage, 5); // Known city mismatch; other factors missing.
-  assert.equal(item.compatibilityScore, 48);
-  assert.equal(item.aiConfidence, 4);
-  assert.deepEqual(item.aiReasons, ['Explore this profile to learn more about each other.']);
+  assert.equal(item.compatibilityCoverage, 30); // Required goal plus known city; optional factors missing.
+  assert.equal(item.compatibilityScore, 60);
+  assert.equal(item.aiConfidence, 29);
+  assert.deepEqual(item.aiReasons, ['You share a relationship goal: long term.']);
   assert.equal(item.profile.compatibilityCoverage, item.compatibilityCoverage);
   for (const key of ['factorBreakdown', 'negativeFactors', 'interestedIn', 'passwordHash', 'aiConfidenceScore']) assert.equal(Object.hasOwn(item, key), false);
 });
@@ -250,6 +274,30 @@ test('a genuine zero compatibility remains zero in Discover and AI responses', a
     assert.equal(item.compatibilityScore, 0);
     if (endpoint === 'ai-matches') assert.equal(item.profile.compatibilityScore, 0);
   }
+});
+
+test('dirty normalized compatibility is identical in Discover and AI Matches', async () => {
+  const profession = `DirtyCompatibility${Date.now()}`;
+  const candidate = await createMember('Dirty Compatibility', { profession });
+  await models.OnboardingProfile.update({
+    profession,
+    interests: [' Music ', 'music', '', 'Prefer not to say'],
+    relationshipGoals: [' long term ', 'long term', 'Prefer not to say'],
+    languages: [' ENGLISH ', 'english', '', 7],
+    communicationStyle: ' DIRECT ', city: ' AHMEDABAD ', smoking: ' NEVER ',
+  }, { where: { userId: candidate.id } });
+  const discover = await request(`/api/discover/feed?profession=${profession}&minScore=0`, { headers: auth(viewer) });
+  const ai = await request(`/api/discover/ai-matches?profession=${profession}&minScore=0`, { headers: auth(viewer) });
+  assert.equal(discover.status, 200, JSON.stringify(discover.body));
+  assert.equal(ai.status, 200, JSON.stringify(ai.body));
+  const discoverProfile = discover.body.data.profiles.find((profile) => profile.id === String(candidate.id));
+  const aiItem = recommendations(ai.body).find((item) => item.id === String(candidate.id));
+  assert.ok(discoverProfile);
+  assert.ok(aiItem);
+  assert.equal(aiItem.compatibilityScore, discoverProfile.compatibilityScore);
+  assert.equal(aiItem.compatibilityCoverage, discoverProfile.compatibilityCoverage);
+  assert.equal(aiItem.profile.compatibilityScore, discoverProfile.compatibilityScore);
+  assert.deepEqual(aiItem.profile.compatibilityReasons, discoverProfile.compatibilityReasons);
 });
 
 test('incomplete or absent viewer profiles are rejected without mutation', async () => {
@@ -310,7 +358,7 @@ test('all eligible candidates beyond 500 are globally ranked before pagination',
   userIds.push(...members.map((member) => member.id));
   const profiles = members.map((member, index) => ({
     userId: member.id, birthDate: birthDateForAge(27), gender: 'Male', interestedIn: ['Female'], profession: tag,
-    onboardingCompleted: true, stage: 'complete', interests: [], relationshipGoals: [], languages: [],
+    onboardingCompleted: true, stage: 'complete', city: 'Surat', photos: ['/uploads/global-one.jpg', '/uploads/global-two.jpg'], interests: [], relationshipGoals: ['friendship'], languages: [],
     ...(index === 500 ? { interests: ['music', 'travel'], relationshipGoals: ['friendship'], languages: ['Hindi'], communicationStyle: 'voice_notes', city: 'Ahmedabad', smoking: 'never', drinking: 'never', weed: 'often' } : {}),
   }));
   await models.OnboardingProfile.bulkCreate(profiles);
@@ -318,14 +366,16 @@ test('all eligible candidates beyond 500 are globally ranked before pagination',
   const expected = rankCandidates(viewerProfile, profiles.map((profile) => ({ userId: profile.userId, profile, compatibility: scoreCompatibility(viewerProfile, profile) }))).map((row) => String(row.userId));
   assert.equal(expected[0], String(members[500].id)); // SQL score ties at 50; final candidate has more evidence.
   const actual = [];
+  let cursor;
   for (let page = 1; page <= 17; page++) {
-    const result = await request(`/api/discover/ai-matches?profession=${tag}&page=${page}&limit=30`, { headers: auth(viewer) });
+    const result = await request(`/api/discover/ai-matches?profession=${tag}&limit=30${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`, { headers: auth(viewer) });
     assert.equal(result.status, 200);
     actual.push(...ids(result.body));
     assert.equal(result.body.data.pagination.hasMore, page < 17);
+    cursor = result.body.data.pagination.nextCursor;
   }
   assert.deepEqual(actual, expected);
   assert.equal(new Set(actual).size, 501);
-  const repeat = await request(`/api/discover/ai-matches?profession=${tag}&page=1&limit=30`, { headers: auth(viewer) });
+  const repeat = await request(`/api/discover/ai-matches?profession=${tag}&limit=30`, { headers: auth(viewer) });
   assert.deepEqual(ids(repeat.body), expected.slice(0, 30));
 });

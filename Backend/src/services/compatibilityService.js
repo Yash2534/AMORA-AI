@@ -1,7 +1,8 @@
-const { overlap, scoreCompatibility, compatibilityReasons } = require('./matchEngineService');
+const { compatibilityReasonsFromFactors, scoreCompatibility } = require('./matchEngineService');
 
-function compatibilityFor(viewer, candidate, explicitScore) {
-  const score = Math.max(0, Math.min(100, Math.round(explicitScore ?? scoreCompatibility(viewer, candidate).score)));
+function compatibilityFor(viewer, candidate, explicitScore, explicitCompatibility = null) {
+  const canonical = explicitCompatibility || scoreCompatibility(viewer, candidate);
+  const score = Math.max(0, Math.min(100, Math.round(explicitScore ?? canonical.score)));
   if (!viewer || !candidate) {
     return {
       score,
@@ -12,7 +13,7 @@ function compatibilityFor(viewer, candidate, explicitScore) {
     };
   }
 
-  const reasonLabels = compatibilityReasons(viewer, candidate);
+  const reasonLabels = compatibilityReasonsFromFactors(canonical);
   const reasons = reasonLabels.map((label) => {
     if (label.includes('shared interest')) return { factor: 'interests', label: `You share ${label.replace(' shared', '')}`, score };
     if (label.includes('relationship')) return { factor: 'relationship_goal', label: 'You share a relationship goal', score };

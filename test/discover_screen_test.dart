@@ -219,11 +219,11 @@ void main() {
       const Offset(-180, 0),
     );
     await tester.pumpAndSettle();
-    final onlineFilter = find.byKey(const ValueKey('discover-filter-Online'));
+    final onlineFilter = find.byKey(const ValueKey('discover-filter-Active'));
     await tester.tap(onlineFilter);
     await tester.pumpAndSettle();
     final firstOnline = ImageRepository.profiles.firstWhere(
-      (profile) => profile.status == 'Online now',
+      (profile) => profile.recentlyActive,
     );
     expect(
       find.byKey(ValueKey('discover-profile-card-${firstOnline.id}')),
@@ -589,13 +589,13 @@ void main() {
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     await pumpDiscover(tester);
-    final onlineFilter = find.byKey(const ValueKey('discover-filter-Online'));
+    final onlineFilter = find.byKey(const ValueKey('discover-filter-Active'));
     await tester.ensureVisible(onlineFilter);
     await tester.pumpAndSettle();
     await tester.tap(onlineFilter);
     await tester.pumpAndSettle();
     final onlineProfiles = ImageRepository.profiles
-        .where((profile) => profile.status == 'Online now')
+        .where((profile) => profile.recentlyActive)
         .toList(growable: false);
 
     for (final profile in onlineProfiles) {
@@ -619,9 +619,10 @@ void main() {
 class _FixtureDiscoverApiService extends DiscoverApiService {
   @override
   Future<DiscoverApiResult<DiscoverFeedPage>> getFeed({
-    required int page,
+    String? cursor,
     int limit = 10,
     Iterable<String> communicationStyles = const <String>[],
+    String? surface,
   }) async {
     final profiles = ImageRepository.profiles.map(_profileJson).toList();
     return DiscoverApiResult.success(
@@ -655,6 +656,7 @@ class _FixtureDiscoverApiService extends DiscoverApiService {
     'score': profile.score,
     'intent': profile.intent,
     'status': profile.status,
+    'recentlyActive': profile.recentlyActive,
     'bio': profile.bio,
     'interests': profile.interests,
     'imageUrl': profile.imageUrl,

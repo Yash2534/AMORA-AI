@@ -1,6 +1,7 @@
 const { body } = require('express-validator');
 const { hasOnlyCommunicationStyles, parseCommunicationStyles } = require('../constants/communicationStyles');
 const { defaults } = require('../services/discoverPreferenceService');
+const { DISCOVER_FILTER_RANGES } = require('../constants/discoverFilterRanges');
 
 const optionalInt = (name, min, max) => body(name).optional({ nullable: true }).isInt({ min, max }).withMessage(`${name} must be between ${min} and ${max}.`).toInt();
 const optionalArray = (name, max = 30) => body(name).optional().isArray({ max }).withMessage(`${name} must be an array with at most ${max} values.`)
@@ -15,12 +16,12 @@ const discoverPreferenceValidation = [
     }
     return true;
   }),
-  optionalInt('minAge', 18, 99),
-  optionalInt('maxAge', 18, 99),
-  optionalInt('maxDistanceKm', 1, 500),
-  optionalInt('minScore', 0, 100),
+  optionalInt('minAge', DISCOVER_FILTER_RANGES.age.min, DISCOVER_FILTER_RANGES.age.max),
+  optionalInt('maxAge', DISCOVER_FILTER_RANGES.age.min, DISCOVER_FILTER_RANGES.age.max),
+  optionalInt('maxDistanceKm', DISCOVER_FILTER_RANGES.distanceKm.min, DISCOVER_FILTER_RANGES.distanceKm.max),
+  optionalInt('minScore', DISCOVER_FILTER_RANGES.score.min, DISCOVER_FILTER_RANGES.score.max),
   optionalString('city'),
-  optionalInt('minHeight', 100, 250),
+  optionalInt('minHeight', DISCOVER_FILTER_RANGES.heightCm.min, DISCOVER_FILTER_RANGES.heightCm.max),
   optionalArray('hometown'),
   optionalArray('datingIntentions'),
   optionalArray('lifestyleTags'),

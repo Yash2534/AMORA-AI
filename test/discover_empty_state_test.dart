@@ -323,10 +323,10 @@ void main() {
       1: DiscoverFeedPage(
         profiles: [_profileJson(profiles[0])],
         hasMore: true,
-        nextPage: 2,
+        nextCursor: '2',
       ),
       2: DiscoverFeedPage(
-        profiles: [_profileJson(profiles[1])],
+        profiles: [_profileJson(profiles[0]), _profileJson(profiles[1])],
         hasMore: false,
       ),
     });
@@ -345,7 +345,58 @@ void main() {
       find.byKey(ValueKey('discover-profile-card-${profiles[1].id}')),
       findsOne,
     );
+    expect(
+      find.byKey(ValueKey('discover-profile-card-${profiles[0].id}')),
+      findsNothing,
+    );
     expect(api.requestedPages, containsAllInOrder([1, 2]));
+  });
+
+  testWidgets('page-two failure keeps loaded cards and cursor retry succeeds', (
+    tester,
+  ) async {
+    final profiles = ImageRepository.profiles.take(3).toList();
+    final api = _DiscoverFixtureApi.pages(
+      {
+        1: DiscoverFeedPage(
+          profiles: profiles.take(2).map(_profileJson).toList(),
+          hasMore: true,
+          nextCursor: '2',
+        ),
+        2: DiscoverFeedPage(
+          profiles: [_profileJson(profiles[2])],
+          hasMore: false,
+        ),
+      },
+      failOncePages: {2},
+    );
+    final controller = controllerFor(
+      api,
+      profiles.take(2).map((profile) => profile.id).toList(),
+    );
+    addTearDown(controller.dispose);
+    await pumpDiscover(
+      tester,
+      api: api,
+      controller: controller,
+      profileComplete: () => true,
+    );
+
+    await tester.tap(find.byKey(const ValueKey('discover-pass-button')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(ValueKey('discover-profile-card-${profiles[1].id}')),
+      findsOneWidget,
+    );
+    expect(find.text('Couldn\'t load profiles'), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('discover-pass-button')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(ValueKey('discover-profile-card-${profiles[2].id}')),
+      findsOneWidget,
+    );
+    expect(api.requestedPages, [1, 2, 2]);
   });
 
   testWidgets(
@@ -380,6 +431,7 @@ class _DiscoverFixtureApi extends DiscoverApiService {
     this.feedFailure = false,
     this.swipeSuccess = true,
     this.pendingFeed,
+    this.failOncePages = const <int>{},
   });
 
   factory _DiscoverFixtureApi.empty() => _DiscoverFixtureApi.pages({
@@ -399,8 +451,10 @@ class _DiscoverFixtureApi extends DiscoverApiService {
     swipeSuccess: swipeSuccess,
   );
 
-  factory _DiscoverFixtureApi.pages(Map<int, DiscoverFeedPage> pages) =>
-      _DiscoverFixtureApi._(feedPages: pages);
+  factory _DiscoverFixtureApi.pages(
+    Map<int, DiscoverFeedPage> pages, {
+    Set<int> failOncePages = const <int>{},
+  }) => _DiscoverFixtureApi._(feedPages: pages, failOncePages: failOncePages);
 
   factory _DiscoverFixtureApi.failure() =>
       _DiscoverFixtureApi._(feedFailure: true);
@@ -413,16 +467,26 @@ class _DiscoverFixtureApi extends DiscoverApiService {
   final bool feedFailure;
   final bool swipeSuccess;
   final Future<DiscoverApiResult<DiscoverFeedPage>>? pendingFeed;
+  final Set<int> failOncePages;
+  final Set<int> _failedPages = <int>{};
   final List<int> requestedPages = [];
 
   @override
   Future<DiscoverApiResult<DiscoverFeedPage>> getFeed({
-    required int page,
+    String? cursor,
     int limit = 10,
     Iterable<String> communicationStyles = const [],
+    String? surface,
   }) async {
+    final page = int.tryParse(cursor ?? '') ?? 1;
     requestedPages.add(page);
     if (pendingFeed != null) return pendingFeed!;
+    if (failOncePages.contains(page) && _failedPages.add(page)) {
+      return const DiscoverApiResult.failure(
+        'Page unavailable.',
+        statusCode: 503,
+      );
+    }
     if (feedFailure) {
       return const DiscoverApiResult.failure(
         'Network unavailable.',

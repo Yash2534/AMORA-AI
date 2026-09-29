@@ -51,8 +51,8 @@ async function createUser(key, values = {}) {
   await models.OnboardingProfile.create({
     userId: user.id,
     birthDate: '1997-05-12',
-    gender: 'Woman',
-    interestedIn: ['Men'],
+    gender: 'Female',
+    interestedIn: ['Male'],
     relationshipGoals: ['long_term'],
     city: 'Ahmedabad',
     profession: 'Engineer',
@@ -66,7 +66,7 @@ async function createUser(key, values = {}) {
     loveLanguages: ['quality_time'],
     preferredTalkingHours: ['evening'],
     communicationStyle: 'calls',
-    photos: ['/uploads/relationships.jpg'],
+    photos: ['/uploads/relationships.jpg', '/uploads/relationships-two.jpg'],
     stage: 'complete',
     onboardingCompleted: true,
   });

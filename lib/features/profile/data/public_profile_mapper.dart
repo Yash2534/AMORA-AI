@@ -42,15 +42,23 @@ class PublicProfileResult {
 }
 
 PublicProfileResult publicProfileFromJson(Map<String, dynamic> json) {
-  int? percentage(Object? value) => value is num && value.isFinite
-      ? value.round().clamp(0, 100)
-      : null;
+  int? percentage(Object? value) =>
+      value is num && value.isFinite ? value.round().clamp(0, 100) : null;
   List<String> strings(Object? value) => value is List
       ? value.map((item) => item.toString()).toList(growable: false)
       : const <String>[];
   Map<String, String> stringMap(Object? value) => value is Map
       ? value.map((key, item) => MapEntry(key.toString(), item.toString()))
       : const <String, String>{};
+  String distanceLabel(Object? value) {
+    final parsed = value is num
+        ? value.toDouble()
+        : double.tryParse(value?.toString() ?? '');
+    if (parsed == null || !parsed.isFinite || parsed < 0) return '';
+    final rounded = parsed.round();
+    return rounded < 1 ? 'Less than 1 km' : '$rounded km';
+  }
+
   final storedGender = json['gender']?.toString().toLowerCase() ?? '';
   final gender = (storedGender == 'man' || storedGender == 'male')
       ? Gender.male
@@ -84,12 +92,11 @@ PublicProfileResult publicProfileFromJson(Map<String, dynamic> json) {
     city: json['city']?.toString() ?? '',
     profession: json['profession']?.toString() ?? '',
     education: json['education']?.toString() ?? '',
-    distance: json['distance'] is num
-        ? '${(json['distance'] as num).round()} km'
-        : json['distance']?.toString() ?? '',
+    distance: distanceLabel(json['distanceKm'] ?? json['distance']),
     score: (json['score'] as num?)?.round() ?? 0,
     intent: json['intent']?.toString() ?? '',
     status: json['status']?.toString() ?? '',
+    recentlyActive: json['recentlyActive'] == true,
     bio: json['bio']?.toString() ?? '',
     interests: strings(json['interests']),
     imageUrl: imageUrl,

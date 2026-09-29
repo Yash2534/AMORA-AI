@@ -70,11 +70,11 @@ async function sendOtp(fixtureValue, channel, extra = {}) {
   });
 }
 
-async function confirm(fixtureValue, channel = 'EMAIL', otp = '111111') {
+async function confirm(fixtureValue, channel = 'EMAIL', otp = '111111', extra = {}) {
   return request('/api/account/delete/confirm', {
     method: 'POST',
     token: fixtureValue.accessToken,
-    body: { channel, otp },
+    body: { channel, otp, ...extra },
   });
 }
 
@@ -161,6 +161,7 @@ test('wrong, expired, other-purpose, and another-user OTPs are rejected', async 
   const wrongResult = await confirm(wrong, 'EMAIL', '222222');
   assert.equal(wrongResult.status, 400);
   assert.equal(wrongResult.body.code, 'OTP_INVALID');
+  assert.equal(await models.DeletedUser.count({ where: { originalUserId: wrong.user.id } }), 0);
 
   const expired = await fixture();
   await sendOtp(expired, 'EMAIL');
@@ -170,6 +171,7 @@ test('wrong, expired, other-purpose, and another-user OTPs are rejected', async 
   );
   const expiredResult = await confirm(expired);
   assert.equal(expiredResult.body.code, 'OTP_EXPIRED');
+  assert.equal(await models.DeletedUser.count({ where: { originalUserId: expired.user.id } }), 0);
 
   const otherPurpose = await fixture();
   await models.OtpToken.create({
@@ -201,6 +203,121 @@ test('attempt limit consumes the deletion OTP and prevents replay', async () => 
   assert.equal((await confirm(member)).body.code, 'RATE_LIMITED');
 });
 
+test('deletion succeeds without a reason and stores nullable archive fields', async () => {
+  const member = await fixture();
+  await sendOtp(member, 'EMAIL');
+  const deleted = await confirm(member);
+  assert.equal(deleted.status, 200, JSON.stringify(deleted.body));
+  const archive = await models.DeletedUser.findOne({ where: { originalUserId: member.user.id } });
+  assert.equal(archive.deletionReasonCode, null);
+  assert.equal(archive.deletionReasonText, null);
+});
+
+test('deletion archives an allowlisted standard reason without unrelated text', async () => {
+  const member = await fixture();
+  await sendOtp(member, 'EMAIL');
+  const deleted = await confirm(member, 'EMAIL', '111111', {
+    reasonCode: 'TAKING_A_BREAK',
+    reasonText: 'should not be retained',
+  });
+  assert.equal(deleted.status, 200, JSON.stringify(deleted.body));
+  const archive = await models.DeletedUser.findOne({ where: { originalUserId: member.user.id } });
+  assert.equal(archive.deletionReasonCode, 'TAKING_A_BREAK');
+  assert.equal(archive.deletionReasonText, null);
+});
+
+test('OTHER deletion reason accepts optional text and trims supplied text', async () => {
+  const withText = await fixture();
+  await sendOtp(withText, 'EMAIL');
+  assert.equal((await confirm(withText, 'EMAIL', '111111', {
+    reasonCode: 'OTHER',
+    reasonText: '  Moving to another country.  ',
+  })).status, 200);
+  const textArchive = await models.DeletedUser.findOne({ where: { originalUserId: withText.user.id } });
+  assert.equal(textArchive.deletionReasonCode, 'OTHER');
+  assert.equal(textArchive.deletionReasonText, 'Moving to another country.');
+
+  const blank = await fixture();
+  await sendOtp(blank, 'EMAIL');
+  assert.equal((await confirm(blank, 'EMAIL', '111111', {
+    reasonCode: 'OTHER',
+    reasonText: '   ',
+  })).status, 200);
+  const blankArchive = await models.DeletedUser.findOne({ where: { originalUserId: blank.user.id } });
+  assert.equal(blankArchive.deletionReasonCode, 'OTHER');
+  assert.equal(blankArchive.deletionReasonText, null);
+});
+
+test('reason text without a reason code is discarded', async () => {
+  const member = await fixture();
+  await sendOtp(member, 'EMAIL');
+  const deleted = await confirm(member, 'EMAIL', '111111', {
+    reasonText: 'must not be stored independently',
+  });
+  assert.equal(deleted.status, 200, JSON.stringify(deleted.body));
+  const archive = await models.DeletedUser.findOne({ where: { originalUserId: member.user.id } });
+  assert.equal(archive.deletionReasonCode, null);
+  assert.equal(archive.deletionReasonText, null);
+});
+
+test('invalid deletion reason code is rejected before OTP consumption', async () => {
+  const member = await fixture();
+  await sendOtp(member, 'EMAIL');
+  const invalid = await confirm(member, 'EMAIL', '111111', { reasonCode: 'ARBITRARY_CLIENT_CODE' });
+  assert.equal(invalid.status, 400);
+  assert.equal(invalid.body.code, 'VALIDATION_ERROR');
+  assert.equal(await models.DeletedUser.count({ where: { originalUserId: member.user.id } }), 0);
+  await member.user.reload();
+  assert.equal(member.user.accountStatus, 'active');
+  const otp = await models.OtpToken.findOne({ where: { userId: member.user.id, purpose: 'account_deletion' } });
+  assert.equal(otp.consumed, false);
+});
+
+test('deletion reason text rejects malformed and over-limit values', async () => {
+  const malformedMember = await fixture();
+  await sendOtp(malformedMember, 'EMAIL');
+  const malformed = await confirm(malformedMember, 'EMAIL', '111111', {
+    reasonCode: 'OTHER',
+    reasonText: { unexpected: true },
+  });
+  assert.equal(malformed.status, 400);
+  assert.equal(malformed.body.code, 'VALIDATION_ERROR');
+
+  const longMember = await fixture();
+  await sendOtp(longMember, 'EMAIL');
+  const tooLong = await confirm(longMember, 'EMAIL', '111111', {
+    reasonCode: 'OTHER',
+    reasonText: 'x'.repeat(501),
+  });
+  assert.equal(tooLong.status, 400);
+  assert.equal(tooLong.body.code, 'VALIDATION_ERROR');
+  assert.equal(await models.DeletedUser.count({
+    where: { originalUserId: [malformedMember.user.id, longMember.user.id] },
+  }), 0);
+});
+
+test('wrong and expired OTPs never archive a submitted deletion reason', async () => {
+  const wrong = await fixture();
+  await sendOtp(wrong, 'EMAIL');
+  assert.equal((await confirm(wrong, 'EMAIL', '222222', {
+    reasonCode: 'PRIVACY_CONCERNS',
+  })).body.code, 'OTP_INVALID');
+
+  const expired = await fixture();
+  await sendOtp(expired, 'EMAIL');
+  await models.OtpToken.update(
+    { expiresAt: new Date(Date.now() - 1000) },
+    { where: { userId: expired.user.id, purpose: 'account_deletion' } },
+  );
+  assert.equal((await confirm(expired, 'EMAIL', '111111', {
+    reasonCode: 'OTHER',
+    reasonText: 'not archived',
+  })).body.code, 'OTP_EXPIRED');
+  assert.equal(await models.DeletedUser.count({
+    where: { originalUserId: [wrong.user.id, expired.user.id] },
+  }), 0);
+});
+
 test('successful OTP immediately archives and removes the account from active state', async () => {
   const member = await fixture();
   await models.UserDevice.create({
@@ -221,6 +338,8 @@ test('successful OTP immediately archives and removes the account from active st
   assert.equal(member.user.isVerified, false);
   const archive = await models.DeletedUser.findOne({ where: { originalUserId: member.user.id } });
   assert.equal(archive.deletionMechanism, 'USER_INITIATED_OTP');
+  assert.equal(archive.deletionReasonCode, null);
+  assert.equal(archive.deletionReasonText, null);
   assert.equal(await models.RefreshToken.count({ where: { userId: member.user.id } }), 0);
   assert.equal(await models.UserDevice.count({ where: { userId: member.user.id } }), 0);
   assert.equal(await models.AccountDeletionRequest.count(), requestCount);
@@ -240,7 +359,10 @@ test('archive failure rolls back OTP consumption and active-user mutation', asyn
   await sendOtp(member, 'EMAIL');
   const originalCreate = models.DeletedUser.create;
   models.DeletedUser.create = async () => { throw new Error('forced archive failure'); };
-  const failed = await confirm(member);
+  const failed = await confirm(member, 'EMAIL', '111111', {
+    reasonCode: 'OTHER',
+    reasonText: 'transaction must roll back',
+  });
   models.DeletedUser.create = originalCreate;
   assert.equal(failed.status, 500);
   await member.user.reload();

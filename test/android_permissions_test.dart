@@ -39,6 +39,20 @@ void main() {
     });
   });
 
+  group('iOS location configuration', () {
+    test('uses only when-in-use location purpose and permission macro', () {
+      final plist = File('ios/Runner/Info.plist').readAsStringSync();
+      final podfile = File('ios/Podfile').readAsStringSync();
+      expect(plist, contains('NSLocationWhenInUseUsageDescription'));
+      expect(plist, isNot(contains('NSLocationAlwaysUsageDescription')));
+      expect(
+        plist,
+        isNot(contains('NSLocationAlwaysAndWhenInUseUsageDescription')),
+      );
+      expect(podfile, contains('PERMISSION_LOCATION=1'));
+    });
+  });
+
   group('typed permission service', () {
     test('constructing the service never requests a permission', () {
       final gateway = _FakePermissionGateway();

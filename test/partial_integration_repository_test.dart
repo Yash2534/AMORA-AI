@@ -142,7 +142,6 @@ void main() {
   test('Discover query sends server-backed online and event filters', () {
     expect(
       buildDiscoverFeedQuery(
-        page: 1,
         limit: 10,
         onlineNow: true,
         hasEventInterest: true,
@@ -151,7 +150,6 @@ void main() {
     );
     expect(
       buildDiscoverFeedQuery(
-        page: 1,
         limit: 10,
         onlineNow: true,
         hasEventInterest: true,

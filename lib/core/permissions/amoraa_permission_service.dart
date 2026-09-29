@@ -282,7 +282,7 @@ class AmoraaPermissionService {
     AmoraaPermissionCategory.camera =>
       'Camera access is needed to take profile photos and complete selfie verification.',
     AmoraaPermissionCategory.location =>
-      'Location access helps AMORAA use the existing location-based experience.',
+      'Location access lets AMORAA calculate distance for profile recommendations when you choose to enable it.',
     AmoraaPermissionCategory.notifications =>
       'Notification access lets AMORAA deliver supported messages and account updates.',
     AmoraaPermissionCategory.photos =>
@@ -297,7 +297,7 @@ class AmoraaPermissionService {
     AmoraaPermissionCategory.camera =>
       'Camera access is needed to take profile photos and complete selfie verification.',
     AmoraaPermissionCategory.location =>
-      'Location access helps AMORAA use the existing location-based experience.',
+      'Location access is needed to calculate distance for profile recommendations.',
     AmoraaPermissionCategory.notifications =>
       'Notifications are turned off. Enable notifications in Settings to receive messages, matches, and important account updates.',
     AmoraaPermissionCategory.photos =>

@@ -1,5 +1,6 @@
-const computeCompatibilityScore = require('../utils/computeCompatibilityScore');
 const { compatibilityFor } = require('./compatibilityService');
+const { isRecentlyActive } = require('./discoverEligibilityPolicy');
+const { scoreCompatibility } = require('./matchEngineService');
 
 const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -25,15 +26,24 @@ function serializePublicProfile(req, user, profile, options = {}) {
     : [];
   const primary = photos[profile.primaryPhotoIndex] || photos[0] || null;
   const queriedScore = profile.getDataValue?.('compatibilityScore');
+  const canonicalCompatibility = options.compatibility
+    || (options.viewer ? scoreCompatibility(options.viewer, profile) : null);
   const score = options.score ?? (queriedScore === undefined || queriedScore === null
-    ? (options.viewer ? computeCompatibilityScore(options.viewer, profile) : 0)
+    ? (canonicalCompatibility?.score ?? 0)
     : Number(queriedScore));
   const subscription = user.subscription;
   const premium = Boolean(subscription
     && ['active', 'trialing', 'cancelled'].includes(subscription.status)
     && new Date(subscription.currentPeriodEnd) > new Date());
-  const compatibility = compatibilityFor(options.viewer, profile, score);
-  const coverage = options.viewer ? require('./matchEngineService').scoreCompatibility(options.viewer, profile).coverage : 0;
+  const compatibility = compatibilityFor(options.viewer, profile, score, canonicalCompatibility);
+  const coverage = canonicalCompatibility?.coverage ?? 0;
+  const recentlyActive = isRecentlyActive(user.lastActiveAt, {
+    windowMinutes: options.recentActivityWindowMinutes,
+  });
+  const preciseDistance = options.distanceKm === null || options.distanceKm === undefined
+    ? Number.NaN : Number(options.distanceKm);
+  const publicDistanceKm = Number.isFinite(preciseDistance) && preciseDistance >= 0
+    ? Math.round(preciseDistance) : null;
   return {
     id: String(user.id),
     gender: profile.gender || '',
@@ -43,14 +53,16 @@ function serializePublicProfile(req, user, profile, options = {}) {
     city: profile.city || '',
     profession: profile.profession || '',
     education: profile.education || '',
-    distance: null,
+    distance: publicDistanceKm,
+    distanceKm: publicDistanceKm,
     score,
     compatibilityScore: score,
     compatibilityCoverage: coverage,
     compatibilityReasons: compatibility.reasons.map((reason) => reason.label),
     compatibility,
     intent: list(profile.relationshipGoals)[0] || '',
-    status: null,
+    recentlyActive,
+    status: recentlyActive ? 'Recently active' : null,
     bio: profile.bio || '',
     interests: list(profile.interests),
     imageUrl: publicUrl(req, primary),

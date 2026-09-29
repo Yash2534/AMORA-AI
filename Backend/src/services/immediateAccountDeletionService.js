@@ -8,7 +8,12 @@ class ImmediateAccountDeletionService {
     this.models = models;
   }
 
-  async execute({ user, transaction }) {
+  async execute({
+    user,
+    transaction,
+    deletionReasonCode = null,
+    deletionReasonText = null,
+  }) {
     const models = this.models();
     const userId = Number(user.id);
     const deletedAt = new Date();
@@ -35,6 +40,8 @@ class ImmediateAccountDeletionService {
     const archive = await models.DeletedUser.create({
       originalUserId: userId,
       deletionMechanism: DELETION_MECHANISM,
+      deletionReasonCode,
+      deletionReasonText,
       accountCreatedAt: user.createdAt,
       deletedAt,
     }, { transaction });

@@ -1,6 +1,23 @@
 import 'package:amora_ai/core/auth/auth_service.dart';
 import 'package:amora_ai/features/profile/data/public_profile_mapper.dart';
 
+const accountDeletionReasonTextMaxLength = 500;
+
+enum AccountDeletionReason {
+  foundSomeone('FOUND_SOMEONE', 'I found someone'),
+  takingABreak('TAKING_A_BREAK', 'I am taking a break'),
+  notEnoughMatches('NOT_ENOUGH_MATCHES', 'I am not getting enough matches'),
+  privacyConcerns('PRIVACY_CONCERNS', 'I have privacy concerns'),
+  technicalIssues('TECHNICAL_ISSUES', 'I am facing technical issues'),
+  noLongerUseApp('NO_LONGER_USE_APP', 'I do not use the app anymore'),
+  other('OTHER', 'Other');
+
+  const AccountDeletionReason(this.code, this.label);
+
+  final String code;
+  final String label;
+}
+
 class AccountDeletionMethod {
   const AccountDeletionMethod({
     required this.channel,
@@ -35,6 +52,22 @@ class MatchApiItem {
       }),
     );
   }
+}
+
+class AiRecommendationsPage {
+  const AiRecommendationsPage({
+    required this.items,
+    required this.hasMore,
+    required this.limit,
+    this.nextCursor,
+    this.rankingVersion = '',
+  });
+
+  final List<MatchApiItem> items;
+  final bool hasMore;
+  final int limit;
+  final String? nextCursor;
+  final String rankingVersion;
 }
 
 class PhaseTwoApiService {
@@ -77,18 +110,33 @@ class PhaseTwoApiService {
         .toList();
   }
 
-  Future<List<MatchApiItem>> aiRecommendations() async {
-    final response = await _auth.authenticatedRequest(
-      'GET',
-      '/api/discover/ai-matches',
+  Future<AiRecommendationsPage> aiRecommendations({
+    String? cursor,
+    int limit = 10,
+  }) async {
+    final path = Uri(
+      path: '/api/discover/ai-matches',
+      queryParameters: <String, String>{
+        'limit': '$limit',
+        if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
+      },
+    ).toString();
+    final response = await _auth.authenticatedRequest('GET', path);
+    final data = _data(response);
+    final values = data['recommendations'] as List? ?? const [];
+    final pagination = data['pagination'] as Map?;
+    return AiRecommendationsPage(
+      items: values
+          .map((value) {
+            final item = (value as Map).cast<String, dynamic>();
+            return MatchApiItem.fromAiRecommendation(item);
+          })
+          .toList(growable: false),
+      hasMore: pagination?['hasMore'] == true,
+      limit: (pagination?['limit'] as num?)?.toInt() ?? limit,
+      nextCursor: pagination?['nextCursor']?.toString(),
+      rankingVersion: pagination?['rankingVersion']?.toString() ?? '',
     );
-    final values = _data(response)['recommendations'] as List? ?? const [];
-    return values
-        .map((value) {
-          final item = (value as Map).cast<String, dynamic>();
-          return MatchApiItem.fromAiRecommendation(item);
-        })
-        .toList(growable: false);
   }
 
   Future<MatchApiItem> match(String matchId) async {
@@ -185,9 +233,16 @@ class PhaseTwoApiService {
   Future<void> confirmAccountDeletion({
     required String channel,
     required String otp,
+    String? reasonCode,
+    String? reasonText,
   }) async => _auth.authenticatedRequest(
     'POST',
     '/api/account/delete/confirm',
-    body: {'channel': channel, 'otp': otp},
+    body: {
+      'channel': channel,
+      'otp': otp,
+      'reasonCode': reasonCode,
+      'reasonText': reasonText,
+    },
   );
 }

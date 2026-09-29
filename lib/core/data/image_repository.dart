@@ -145,6 +145,7 @@ class DummyProfile {
     this.aiConfidence,
     this.aiMatchScore,
     this.aiReasons = const <String>[],
+    this.recentlyActive = false,
   });
 
   final String id;
@@ -158,6 +159,7 @@ class DummyProfile {
   final int score;
   final String intent;
   final String status;
+  final bool recentlyActive;
   final String bio;
   final List<String> interests;
   final String imageUrl;
@@ -297,6 +299,7 @@ DummyProfile _profile(int index, Gender gender) {
         : index % 3 == 0
         ? 'Recently active'
         : 'Verified',
+    recentlyActive: index % 5 == 0 || index % 3 == 0,
     bio:
         '${_bioOpeners[index % _bioOpeners.length]} ${_bioClosers[(index * 2) % _bioClosers.length]}',
     interests: interests,

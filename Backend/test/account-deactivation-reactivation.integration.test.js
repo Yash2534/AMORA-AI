@@ -43,8 +43,8 @@ async function createMember(label) {
   await models.OnboardingProfile.create({
     userId: user.id,
     birthDate: '1997-04-12',
-    gender: 'Woman',
-    interestedIn: ['Men'],
+    gender: 'Female',
+    interestedIn: ['Male'],
     relationshipGoals: ['long_term'],
     city: 'Ahmedabad',
     profession: 'Engineer',

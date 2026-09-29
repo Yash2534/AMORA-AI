@@ -44,7 +44,7 @@ void main() {
       ),
     );
 
-    final result = await service.getFeed(page: 1);
+    final result = await service.getFeed();
 
     expect(result.success, isFalse);
     expect(result.statusCode, 401);
@@ -150,4 +150,61 @@ void main() {
     expect(result.statusCode, 401);
     expect(requested, isFalse);
   });
+
+  test(
+    'current location is uploaded only to the authenticated self endpoint',
+    () async {
+      String? capturedMethod;
+      String? capturedPath;
+      Map<String, dynamic>? capturedBody;
+      final service = DiscoverApiService(
+        authenticatedRequester: (method, path, {body}) async {
+          capturedMethod = method;
+          capturedPath = path;
+          capturedBody = body;
+          return {
+            'success': true,
+            'data': {
+              'location': {'locationAvailable': true},
+            },
+          };
+        },
+      );
+      final result = await service.updateLocation(
+        latitude: 23.0225,
+        longitude: 72.5714,
+      );
+      expect(result.success, isTrue);
+      expect(capturedMethod, 'PUT');
+      expect(capturedPath, '/api/me/location');
+      expect(capturedBody, {'latitude': 23.0225, 'longitude': 72.5714});
+    },
+  );
+
+  test(
+    'near-you query is explicit and retains server location metadata',
+    () async {
+      String? capturedPath;
+      final service = DiscoverApiService(
+        authenticatedRequester: (_, path, {body}) async {
+          capturedPath = path;
+          return {
+            'success': true,
+            'data': {
+              'profiles': <dynamic>[],
+              'locationMatching': {
+                'viewerLocationAvailable': true,
+                'distanceFilterActive': true,
+              },
+              'pagination': {'hasMore': false},
+            },
+          };
+        },
+      );
+      final result = await service.getFeed(surface: 'near_you');
+      expect(capturedPath, contains('surface=near_you'));
+      expect(result.data?.viewerLocationAvailable, isTrue);
+      expect(result.data?.distanceFilterActive, isTrue);
+    },
+  );
 }

@@ -7,6 +7,8 @@ module.exports = (sequelize) => sequelize.define('DeletedUser', {
     type: DataTypes.ENUM('USER_INITIATED_OTP'),
     allowNull: false,
   },
+  deletionReasonCode: { type: DataTypes.STRING(40), allowNull: true },
+  deletionReasonText: { type: DataTypes.STRING(500), allowNull: true },
   accountCreatedAt: { type: DataTypes.DATE, allowNull: false },
   deletedAt: { type: DataTypes.DATE, allowNull: false },
 }, {

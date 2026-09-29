@@ -54,11 +54,11 @@ async function createUser(key) {
   await models.OnboardingProfile.create({
     userId: user.id,
     birthDate: '1997-05-12',
-    gender: 'Woman',
-    interestedIn: ['Men'],
+    gender: 'Female',
+    interestedIn: ['Male'],
     relationshipGoals: ['long_term'],
     city: 'Ahmedabad',
-    photos: ['/uploads/mutual-chat.jpg'],
+    photos: ['/uploads/mutual-chat.jpg', '/uploads/mutual-chat-two.jpg'],
     stage: 'complete',
     onboardingCompleted: true,
   });

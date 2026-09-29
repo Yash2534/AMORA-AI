@@ -1,6 +1,14 @@
 const crypto = require('crypto');
 
 const CITIES = ['Ahmedabad', 'Gandhinagar', 'Surat', 'Vadodara', 'Pune', 'Mumbai'];
+const CITY_COORDINATES = Object.freeze({
+  Ahmedabad: [23.0225, 72.5714],
+  Gandhinagar: [23.2156, 72.6369],
+  Surat: [21.1702, 72.8311],
+  Vadodara: [22.3072, 73.1812],
+  Pune: [18.5204, 73.8567],
+  Mumbai: [19.0760, 72.8777],
+});
 const PROFESSIONS = ['Software Engineer', 'Architect', 'Doctor', 'Product Designer', 'Entrepreneur', 'Marketing Strategist', 'Financial Analyst', 'Researcher', 'Chef', 'Photographer'];
 const EDUCATION = ['Undergraduate', 'Postgraduate', 'Doctorate & Research', 'Professional'];
 const GOALS = ['Marriage Minded', 'Long-Term Relationship', 'Meaningful Dating', 'Exploring Possibilities', 'Friendship First', 'Casual Connection'];
@@ -85,7 +93,9 @@ function buildSeedBlueprint(config) {
     const sequence = index + 1; const template = compatibilityTemplate(scenario.scoreBand || 'medium', random); const isMaster = scenario.key === 'master';
     const completed = scenario.completed !== false; const gender = scenario.gender || 'Male'; const age = scenario.age || integer(random, 22, 36);
     const languages = isMaster ? ['English', 'Hindi', 'Gujarati'] : template.languages; const interests = isMaster ? MASTER_INTERESTS : (completed ? template.interests : ['Coffee']); const city = scenario.city || template.city;
-    const createdAt = dateDaysBefore(config.referenceDate, 120 - Math.min(100, index * 2), index); const religion = ['Hindu', 'Jain', 'Muslim', 'Sikh', 'Spiritual', 'Open'][index % 6]; const heightCm = 158 + (index % 32);
+    const createdAt = dateDaysBefore(config.referenceDate, 120 - Math.min(100, index * 2), index); const updatedAt = dateDaysBefore(config.referenceDate, Math.min(10, index % 12), index); const religion = ['Hindu', 'Jain', 'Muslim', 'Sikh', 'Spiritual', 'Open'][index % 6]; const heightCm = 158 + (index % 32);
+    const [cityLatitude, cityLongitude] = CITY_COORDINATES[city];
+    const coordinateOffset = ((index % 7) - 3) * 0.0025;
     return { ...scenario, sequence, completed, age, gender, city,
       email: scenario.email || `${slug(scenario.key)}.${slug(scenario.name)}@seed.amoraa.example.test`, phoneNumber: `+919991${String(sequence).padStart(6, '0')}`, birthDate: dateForAge(config.referenceDate, age, index % 300),
       profession: scenario.profession || PROFESSIONS[index % PROFESSIONS.length], company: ['Daylight Design', 'Bluebird Labs', 'Aster Health', 'Riverstone', 'Independent'][index % 5], education: scenario.education || EDUCATION[index % EDUCATION.length],
@@ -97,11 +107,15 @@ function buildSeedBlueprint(config) {
       community: ['Gujarati', 'Indian', 'Global', 'Open'][index % 4], pronouns: gender === 'Male' ? ['He/Him'] : gender === 'Female' ? ['She/Her'] : ['They/Them'], sexuality: isMaster ? 'Bisexual' : (index % 7 === 0 ? 'Bisexual' : 'Straight'),
       valuedQualities: sample(random, QUALITIES, 3), loveLanguages: sample(random, LOVE_LANGUAGES, 2), preferredTalkingHours: sample(random, TALKING_HOURS, 2), communicationStyle: isMaster ? 'deep_conversations' : template.style,
       prompts: completed ? { 'A perfect Sunday looks like': 'Coffee, a long walk, and cooking dinner together.', 'The way to win me over is': 'Be curious, kind, and communicate clearly.' } : {}, iceBreaker: completed ? 'What is a small thing that made your week better?' : '',
-      preferredDistance: 120, photoCount: 2, accountStatus: scenario.accountStatus || 'active', identityVerified: Boolean(isMaster || scenario.identityVerified), premium: Boolean(isMaster || scenario.premium),
-      createdAt, updatedAt: dateDaysBefore(config.referenceDate, Math.min(10, index % 12), index), lastActiveAt: dateDaysBefore(config.referenceDate, 0, index * 7) };
+      preferredDistance: 120, photoCount: 2,
+      matchLatitude: Number((cityLatitude + coordinateOffset).toFixed(6)),
+      matchLongitude: Number((cityLongitude - coordinateOffset).toFixed(6)),
+      locationUpdatedAt: updatedAt,
+      accountStatus: scenario.accountStatus || 'active', identityVerified: Boolean(isMaster || scenario.identityVerified), premium: Boolean(isMaster || scenario.premium),
+      createdAt, updatedAt, lastActiveAt: dateDaysBefore(config.referenceDate, 0, index * 7) };
   });
   return { users, random };
 }
 
 function shortHash(value) { return crypto.createHash('sha256').update(String(value)).digest('hex').slice(0, 12); }
-module.exports = { CITIES, EDUCATION, GOALS, INTERESTS, LANGUAGES, MESSAGE_LINES, SCENARIOS, buildSeedBlueprint, createRandom, dateDaysBefore, integer, pairKey, pick, sample, shortHash, stablePair };
+module.exports = { CITIES, CITY_COORDINATES, EDUCATION, GOALS, INTERESTS, LANGUAGES, MESSAGE_LINES, SCENARIOS, buildSeedBlueprint, createRandom, dateDaysBefore, integer, pairKey, pick, sample, shortHash, stablePair };

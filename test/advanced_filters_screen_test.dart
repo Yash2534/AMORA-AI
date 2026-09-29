@@ -1,5 +1,6 @@
 import 'package:amora_ai/core/theme/amora_theme.dart';
 import 'package:amora_ai/features/discover/data/discover_api_service.dart';
+import 'package:amora_ai/features/discover/data/match_location_service.dart';
 import 'package:amora_ai/features/discover/presentation/advanced_filters_screen.dart';
 import 'package:amora_ai/features/discover/presentation/widgets/amoraa_minimum_height_picker.dart';
 import 'package:flutter/material.dart';
@@ -45,11 +46,25 @@ class _SinglePreferenceDiscoverApi extends DiscoverApiService {
   ) async => DiscoverApiResult.success(filters, statusCode: 200);
 }
 
+class _FakeMatchLocationService extends MatchLocationService {
+  _FakeMatchLocationService(this.result);
+
+  final MatchLocationResult result;
+  int calls = 0;
+
+  @override
+  Future<MatchLocationResult> enableCurrentLocation() async {
+    calls += 1;
+    return result;
+  }
+}
+
 void main() {
   Future<void> pumpFilters(
     WidgetTester tester, {
     Size size = const Size(320, 700),
     DiscoverApiService? apiService,
+    MatchLocationService? locationService,
   }) async {
     await tester.binding.setSurfaceSize(size);
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -59,6 +74,7 @@ void main() {
         home: AdvancedFiltersScreen(
           key: UniqueKey(),
           apiService: apiService ?? _SuccessfulDiscoverApi(),
+          locationService: locationService,
         ),
         routes: {
           '/browse': (_) =>
@@ -68,6 +84,35 @@ void main() {
     );
     await tester.pumpAndSettle();
   }
+
+  testWidgets('distance filter explains and explicitly enables location', (
+    tester,
+  ) async {
+    final location = _FakeMatchLocationService(
+      const MatchLocationResult(
+        MatchLocationOutcome.enabled,
+        'Current location enabled for distance matching.',
+      ),
+    );
+    await pumpFilters(tester, locationService: location);
+    final state = find.byKey(const ValueKey('filters-location-matching-state'));
+    await tester.ensureVisible(state);
+    expect(
+      find.textContaining('Enable location to use distance matching'),
+      findsOneWidget,
+    );
+    await tester.tap(
+      find.byKey(const ValueKey('filters-use-current-location')),
+    );
+    await tester.pumpAndSettle();
+    expect(location.calls, 1);
+    expect(
+      find.textContaining('Distance matching is using your saved current'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('23.0225'), findsNothing);
+    expect(find.textContaining('72.5714'), findsNothing);
+  });
 
   Future<void> updateMultiSelect(
     WidgetTester tester,
@@ -345,7 +390,7 @@ void main() {
     }
   });
 
-  testWidgets('city selector contains exactly four multi-select choices', (
+  testWidgets('city selector contains exactly four single-select choices', (
     tester,
   ) async {
     await pumpFilters(tester, size: const Size(390, 844));
@@ -376,16 +421,12 @@ void main() {
     }
 
     await tester.tap(find.byKey(const ValueKey('amoraa-select-option-Surat')));
-    await tester.tap(
-      find.byKey(const ValueKey('amoraa-select-option-Vadodara')),
-    );
-    await tester.tap(find.byKey(const ValueKey('amoraa-select-done')));
     await tester.pumpAndSettle();
     expect(
-      find.descendant(of: citySelector, matching: find.text('3 selected')),
+      find.descendant(of: citySelector, matching: find.text('Surat')),
       findsOneWidget,
     );
-    expect(find.text('9 preferences selected'), findsOneWidget);
+    expect(find.text('7 preferences selected'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

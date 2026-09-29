@@ -68,6 +68,21 @@ module.exports = (sequelize) => {
         defaultValue: 50,
       },
 
+      matchLatitude: {
+        type: DataTypes.DECIMAL(9, 6),
+        allowNull: true,
+      },
+
+      matchLongitude: {
+        type: DataTypes.DECIMAL(9, 6),
+        allowNull: true,
+      },
+
+      locationUpdatedAt: {
+        type: DataTypes.DATE,
+        allowNull: true,
+      },
+
       profession: {
         type: DataTypes.STRING,
         allowNull: true,

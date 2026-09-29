@@ -106,12 +106,14 @@ before(async () => {
   consumerProfile = await OnboardingProfile.create({
     userId: consumer.id,
     birthDate: '1995-04-20',
-    gender: 'Woman',
+    gender: 'Female',
+    interestedIn: ['Male'],
+    relationshipGoals: ['long_term'],
     city: 'Pune',
     bio: 'A real integration profile persisted in the isolated test database.',
     interests: ['music', 'travel'],
     languages: ['English', 'Hindi'],
-    photos: ['/uploads/integration-profile.jpg'],
+    photos: ['/uploads/integration-profile.jpg', '/uploads/integration-profile-two.jpg'],
     primaryPhotoIndex: 0,
     onboardingCompleted: true,
     stage: 'complete',
@@ -142,10 +144,10 @@ before(async () => {
   });
   matchingPeerProfile = await OnboardingProfile.create({
     userId: matchingPeer.id,
-    birthDate: '1994-03-19', gender: 'Woman', city: 'Pune',
+    birthDate: '1994-03-19', gender: 'Female', interestedIn: ['Male'], city: 'Pune',
     bio: 'Authoritative matching integration peer.',
     interests: ['music'], languages: ['English'], relationshipGoals: ['long_term'],
-    photos: ['/uploads/matching-peer.jpg'], primaryPhotoIndex: 0,
+    photos: ['/uploads/matching-peer.jpg', '/uploads/matching-peer-two.jpg'], primaryPhotoIndex: 0,
     onboardingCompleted: true, stage: 'complete',
   });
   const { DiscoverAction, Match, RoseTransaction } = getModels();
@@ -333,7 +335,7 @@ test('admin user reads and lifecycle mutations commit to the client-authoritativ
   const profileDetails = await request(`/api/admin/v1/profiles/${consumerProfile.id}`, { accessToken: adminToken });
   assert.equal(profileDetails.status, 200);
   assert.equal(profileDetails.body.data.about, 'A real integration profile persisted in the isolated test database.');
-  assert.equal(profileDetails.body.data.photos.length, 1);
+  assert.equal(profileDetails.body.data.photos.length, 2);
 
   const educationTaxonomy = await request('/api/admin/v1/profiles/options/education', { accessToken: adminToken });
   assert.equal(educationTaxonomy.status, 200);
@@ -382,7 +384,8 @@ test('admin user reads and lifecycle mutations commit to the client-authoritativ
   assert.equal(clientProfile.body.data.profile.bio, updatedBio);
   assert.equal(clientProfile.body.data.profile.location, 'Bengaluru');
 
-  const photoId = profileUpdate.body.data.photos[0].photoId;
+  const photoIds = profileUpdate.body.data.photos.map((photo) => photo.photoId);
+  const photoId = photoIds[0];
   const primary = await request(`/api/admin/v1/profiles/${consumerProfile.id}/photos/${photoId}`, {
     method: 'PATCH',
     accessToken: adminToken,
@@ -392,7 +395,7 @@ test('admin user reads and lifecycle mutations commit to the client-authoritativ
   const reordered = await request(`/api/admin/v1/profiles/${consumerProfile.id}/photos/reorder`, {
     method: 'PATCH',
     accessToken: adminToken,
-    body: { photoIds: [photoId] },
+    body: { photoIds: [...photoIds].reverse() },
   });
   assert.equal(reordered.status, 200);
   const profileAudit = await request(`/api/admin/v1/profiles/${consumerProfile.id}/audit-history`, {

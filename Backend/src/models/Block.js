@@ -6,5 +6,8 @@ module.exports = (sequelize) => sequelize.define('Block', {
   blockedUserId: { type: DataTypes.INTEGER, allowNull: false },
 }, {
   tableName: 'Blocks',
-  indexes: [{ unique: true, fields: ['blockerUserId', 'blockedUserId'] }],
+  indexes: [
+    { unique: true, fields: ['blockerUserId', 'blockedUserId'] },
+    { fields: ['blockedUserId', 'blockerUserId'] },
+  ],
 });

@@ -4,6 +4,59 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('Discover Target User ID Validation Tests', () {
+    test(
+      'public profile distance mapping is approximate and malformed-safe',
+      () {
+        expect(
+          publicProfileFromJson({'id': 1, 'distanceKm': 12}).profile.distance,
+          '12 km',
+        );
+        expect(
+          publicProfileFromJson({'id': 1, 'distanceKm': 0}).profile.distance,
+          'Less than 1 km',
+        );
+        expect(
+          publicProfileFromJson({'id': 1, 'distanceKm': '7'}).profile.distance,
+          '7 km',
+        );
+        expect(
+          publicProfileFromJson({
+            'id': 1,
+            'distanceKm': 'bad',
+          }).profile.distance,
+          '',
+        );
+        expect(
+          publicProfileFromJson({'id': 1, 'distanceKm': null}).profile.distance,
+          '',
+        );
+      },
+    );
+
+    test('public mapper uses canonical recent activity and null is false', () {
+      expect(
+        publicProfileFromJson({
+          'id': '1',
+          'recentlyActive': true,
+        }).profile.recentlyActive,
+        isTrue,
+      );
+      expect(
+        publicProfileFromJson({
+          'id': '2',
+          'recentlyActive': false,
+        }).profile.recentlyActive,
+        isFalse,
+      );
+      expect(
+        publicProfileFromJson({
+          'id': '3',
+          'recentlyActive': null,
+        }).profile.recentlyActive,
+        isFalse,
+      );
+    });
+
     test('publicProfileFromJson maps only the canonical backend id', () {
       final res1 = publicProfileFromJson({'id': 123, 'name': 'Test User'});
       expect(res1.profile.id, '123');

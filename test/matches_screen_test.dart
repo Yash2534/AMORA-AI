@@ -361,6 +361,13 @@ void main() {
   );
 
   testWidgets('supported filters use existing profile fields', (tester) async {
+    expect(
+      ImageRepository.profiles
+          .skip(18)
+          .take(12)
+          .where((profile) => profile.recentlyActive),
+      isNotEmpty,
+    );
     await pumpMatches(tester);
 
     await tester.tap(find.byKey(const ValueKey('ai-match-filter-Best Match')));
@@ -376,20 +383,17 @@ void main() {
     expect(find.byType(FeaturedAiMatchCard), findsOneWidget);
     expect(find.text('More recommendations'), findsNothing);
 
-    await tester.tap(find.byKey(const ValueKey('ai-match-filter-Active Now')));
+    final recentlyActiveFilter = find.byKey(
+      const ValueKey('ai-match-filter-Recently Active'),
+    );
+    await tester.ensureVisible(recentlyActiveFilter);
+    await tester.pumpAndSettle();
+    await tester.tap(recentlyActiveFilter);
     await tester.pumpAndSettle();
     expect(
       tester
           .widget<AmoraFilterChip>(
-            find.byKey(const ValueKey('ai-match-filter-Best Match')),
-          )
-          .selected,
-      isFalse,
-    );
-    expect(
-      tester
-          .widget<AmoraFilterChip>(
-            find.byKey(const ValueKey('ai-match-filter-Active Now')),
+            find.byKey(const ValueKey('ai-match-filter-Recently Active')),
           )
           .selected,
       isTrue,
@@ -397,7 +401,7 @@ void main() {
     final visible = tester.widget<FeaturedAiMatchCard>(
       find.byType(FeaturedAiMatchCard),
     );
-    expect(visible.profile.status.toLowerCase(), 'online now');
+    expect(visible.profile.recentlyActive, isTrue);
     expect(tester.takeException(), isNull);
   });
 
@@ -500,11 +504,17 @@ class _RouteMarker extends StatelessWidget {
 
 class _EmptyMatchesApi extends PhaseTwoApiService {
   @override
-  Future<List<MatchApiItem>> aiRecommendations() async => const [];
+  Future<AiRecommendationsPage> aiRecommendations({
+    String? cursor,
+    int limit = 10,
+  }) async => AiRecommendationsPage(items: const [], hasMore: false, limit: limit);
 }
 
 class _FailingMatchesApi extends PhaseTwoApiService {
   @override
-  Future<List<MatchApiItem>> aiRecommendations() async =>
+  Future<AiRecommendationsPage> aiRecommendations({
+    String? cursor,
+    int limit = 10,
+  }) async =>
       throw Exception('offline');
 }

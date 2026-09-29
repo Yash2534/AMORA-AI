@@ -120,12 +120,12 @@ void main() {
     );
     expect(
       buildDiscoverFeedQuery(
-        page: 2,
+        cursor: 'opaque-cursor',
         limit: 10,
         communicationStyles: const <String>['calls', 'voice_notes', 'calls'],
       ),
       <String, String>{
-        'page': '2',
+        'cursor': 'opaque-cursor',
         'limit': '10',
         'communicationStyles': 'calls,voice_notes',
       },

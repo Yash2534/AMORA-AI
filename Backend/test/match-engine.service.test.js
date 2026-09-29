@@ -1,6 +1,13 @@
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
-const { MATCH_ENGINE_VERSION, SCORE_WEIGHTS, scoreCompatibility, compatibilityReasons } = require('../src/services/matchEngineService');
+const {
+  MATCH_ENGINE_VERSION,
+  MATCH_FACTORS,
+  SCORE_WEIGHTS,
+  TOTAL_WEIGHT,
+  scoreCompatibility,
+  compatibilityReasons,
+} = require('../src/services/matchEngineService');
 
 const viewer = { interests: ['music', 'hiking'], relationshipGoals: ['long_term'], communicationStyle: 'calls' };
 
@@ -28,6 +35,67 @@ test('malformed and declined values never become fake shared evidence', () => {
     assert.deepEqual(compatibilityReasons(malformed, malformed), []);
   }
   assert.equal(scoreCompatibility(null, null).score, 50);
+});
+
+test('one canonical factor definition owns types, weights, and the total', () => {
+  assert.deepEqual(MATCH_FACTORS.map(({ key, weight, type }) => ({ key, weight, type })), [
+    { key: 'interests', weight: 35, type: 'list' },
+    { key: 'relationshipGoals', weight: 25, type: 'list' },
+    { key: 'communicationStyle', weight: 10, type: 'scalar' },
+    { key: 'languages', weight: 10, type: 'list' },
+    { key: 'city', weight: 5, type: 'scalar' },
+    { key: 'smoking', weight: 5, type: 'scalar' },
+    { key: 'drinking', weight: 5, type: 'scalar' },
+    { key: 'weed', weight: 5, type: 'scalar' },
+  ]);
+  assert.equal(TOTAL_WEIGHT, 100);
+  assert.equal(Object.values(SCORE_WEIGHTS).reduce((sum, weight) => sum + weight, 0), TOTAL_WEIGHT);
+});
+
+test('every list factor shares one dirty-data normalization contract', () => {
+  const dirtyCases = [
+    ['duplicates', ['Travel'], ['travel', 'Travel']],
+    ['empty strings', ['', 'Travel', '   '], ['travel']],
+    ['declined values', ['Travel', 'Prefer not to say'], ['travel']],
+    ['case differences', ['MUSIC'], ['music']],
+    ['whitespace', ['  Travel  '], ['travel']],
+    ['combined', ['', ' Travel ', 'travel', 'Prefer not to say'], ['TRAVEL', '']],
+    ['mixed non-string', [null, 7, {}, 'Travel'], ['travel', false]],
+  ];
+  for (const key of ['interests', 'relationshipGoals', 'languages']) {
+    for (const [label, left, right] of dirtyCases) {
+      const result = scoreCompatibility({ [key]: left }, { [key]: right });
+      const factor = result.factorBreakdown[key];
+      assert.equal(factor.available, true, `${key}: ${label}`);
+      assert.equal(factor.agreement, 1, `${key}: ${label}`);
+      assert.deepEqual(factor.sharedValues, [label === 'case differences' ? 'music' : 'travel'], `${key}: ${label}`);
+    }
+    for (const unavailable of [null, [], {}, 'travel', [null, '', 'Prefer not to say']]) {
+      assert.equal(scoreCompatibility({ [key]: ['travel'] }, { [key]: unavailable }).factorBreakdown[key].available, false);
+    }
+  }
+});
+
+test('scalar normalization is case-insensitive, trimmed, and unavailable when declined', () => {
+  for (const key of ['communicationStyle', 'city', 'smoking', 'drinking', 'weed']) {
+    const equal = scoreCompatibility({ [key]: ' Ahmedabad ' }, { [key]: 'ahmedabad' }).factorBreakdown[key];
+    assert.equal(equal.available, true, key);
+    assert.equal(equal.agreement, 1, key);
+    for (const unavailable of [null, '', '   ', 'Prefer not to say', 7, {}]) {
+      assert.equal(scoreCompatibility({ [key]: 'value' }, { [key]: unavailable }).factorBreakdown[key].available, false, key);
+    }
+  }
+});
+
+test('no-data and low-coverage evidence remain calibrated around neutral', () => {
+  const none = scoreCompatibility({}, {});
+  assert.equal(none.compatibilityScore, 50);
+  assert.equal(none.compatibilityRawScore, 50);
+  assert.equal(none.compatibilityCoverage, 0);
+  const onePerfectFivePointFactor = scoreCompatibility({ city: 'Pune' }, { city: ' pune ' });
+  assert.equal(onePerfectFivePointFactor.score, 53);
+  assert.equal(onePerfectFivePointFactor.rawScore, 100);
+  assert.equal(onePerfectFivePointFactor.coverage, 5);
 });
 
 test('factor contributions reconstruct the score and partition available/missing evidence', () => {
