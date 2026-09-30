@@ -81,7 +81,7 @@ class AmoraaProfilePromptSelector extends StatelessWidget {
                     ),
                     child: const Icon(
                       Icons.format_quote_rounded,
-                      color: AppColors.secondary,
+                      color: AppColors.primary,
                     ),
                   ),
                   const SizedBox(width: AmoraSpacing.space12),

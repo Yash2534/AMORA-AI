@@ -751,7 +751,10 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
                     decoration: InputDecoration(
                       labelText: 'Specify education',
                       hintText: 'Enter your education',
-                      prefixIcon: const Icon(Icons.edit_note_rounded),
+                      prefixIcon: const Icon(
+                        Icons.edit_note_rounded,
+                        color: AppColors.primary,
+                      ),
                       counterText: '',
                       errorText: _customEducationError,
                     ),
@@ -1811,7 +1814,7 @@ class _SelectedFiltersSummary extends StatelessWidget {
                   ),
                   child: const Icon(
                     Icons.auto_awesome_rounded,
-                    color: AppColors.secondary,
+                    color: AppColors.primary,
                     size: 18,
                   ),
                 ),
@@ -1990,7 +1993,10 @@ class _SelectedPreferencesSheet extends StatelessWidget {
                       key: const ValueKey('selected-preferences-close'),
                       tooltip: 'Close selected preferences',
                       onPressed: onClose,
-                      icon: const Icon(Icons.close_rounded),
+                      icon: const Icon(
+                        Icons.close_rounded,
+                        color: AppColors.primary,
+                      ),
                     ),
                   ],
                 ),
@@ -2070,13 +2076,16 @@ class _FilterSearchField extends StatelessWidget {
         helperText: noMatch ? 'No matching filter section' : null,
         prefixIcon: const Icon(
           Icons.search_rounded,
-          color: AppColors.secondary,
+          color: AppColors.primary,
         ),
         suffixIcon: hasQuery
             ? IconButton(
                 tooltip: 'Clear filter search',
                 onPressed: onClear,
-                icon: const Icon(Icons.close_rounded),
+                icon: const Icon(
+                  Icons.close_rounded,
+                  color: AppColors.primary,
+                ),
               )
             : null,
         filled: true,
@@ -2162,7 +2171,7 @@ class _CategoryChip extends StatelessWidget {
               Icon(
                 category.icon,
                 size: 17,
-                color: selected ? AppColors.surface : AppColors.secondary,
+                color: selected ? AppColors.surface : AppColors.primary,
               ),
               const SizedBox(width: 6),
               Text(
@@ -2429,7 +2438,7 @@ class _ControlBlock extends StatelessWidget {
       children: [
         Row(
           children: [
-            Icon(icon, color: AppColors.secondary, size: 19),
+            Icon(icon, color: AppColors.primary, size: 19),
             const SizedBox(width: 7),
             Expanded(
               child: Text(
@@ -2564,7 +2573,7 @@ class _ValueSliderControl extends StatelessWidget {
                   ),
                   icon: const Icon(
                     Icons.info_outline_rounded,
-                    color: AppColors.secondary,
+                    color: AppColors.primary,
                     size: 19,
                   ),
                 ),
@@ -2705,7 +2714,7 @@ class _HeightFilterEntry extends StatelessWidget {
                 ),
                 const Icon(
                   Icons.chevron_right_rounded,
-                  color: AppColors.secondary,
+                  color: AppColors.primary,
                 ),
               ],
             ),
@@ -2764,7 +2773,7 @@ class _PremiumFilterChip extends StatelessWidget {
                   Icon(
                     value,
                     size: 17,
-                    color: selected ? AppColors.surface : AppColors.secondary,
+                    color: selected ? AppColors.surface : AppColors.primary,
                   ),
                 if (emoji != null || icon != null) const SizedBox(width: 7),
                 Flexible(
@@ -2899,7 +2908,7 @@ class _CompactSearchField extends StatelessWidget {
         hintText: hintText,
         prefixIcon: const Icon(
           Icons.search_rounded,
-          color: AppColors.secondary,
+          color: AppColors.primary,
           size: 20,
         ),
         filled: true,
@@ -2936,7 +2945,7 @@ class _InlineEmpty extends StatelessWidget {
         children: [
           const Icon(
             Icons.search_off_rounded,
-            color: AppColors.secondary,
+            color: AppColors.primary,
             size: 19,
           ),
           const SizedBox(width: 8),

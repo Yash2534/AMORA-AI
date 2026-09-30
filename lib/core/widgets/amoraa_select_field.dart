@@ -495,6 +495,7 @@ class _AmoraaSelectBottomSheetState<T>
   late final Set<T> _selectedValues;
   String _query = '';
   int _highlightedIndex = 0;
+  bool _keyboardNavigated = false;
 
   List<AmoraaSelectOption<T>> get _visibleOptions {
     final query = _query.trim().toLowerCase();
@@ -518,6 +519,7 @@ class _AmoraaSelectBottomSheetState<T>
       (option) => option.value == widget.selectedValue,
     );
     _highlightedIndex = selectedIndex < 0 ? 0 : selectedIndex;
+    _keyboardNavigated = selectedIndex >= 0;
     if (widget.searchable) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _searchFocus.requestFocus();
@@ -620,7 +622,7 @@ class _AmoraaSelectBottomSheetState<T>
                                 _searchController.clear();
                                 setState(() {
                                   _query = '';
-                                  _highlightedIndex = 0;
+                                  _highlightedIndex = -1;
                                 });
                               },
                               icon: const Icon(
@@ -658,7 +660,7 @@ class _AmoraaSelectBottomSheetState<T>
                     ),
                     onChanged: (value) => setState(() {
                       _query = value;
-                      _highlightedIndex = 0;
+                      _highlightedIndex = -1;
                     }),
                   ),
                 ),
@@ -715,7 +717,9 @@ class _AmoraaSelectBottomSheetState<T>
                                     AmoraaSelectionMode.multiple
                                 ? _selectedValues.contains(option.value)
                                 : option.value == widget.selectedValue,
-                            highlighted: optionIndex == _highlightedIndex,
+                            highlighted:
+                                _keyboardNavigated &&
+                                optionIndex == _highlightedIndex,
                             selectionMode: widget.selectionMode,
                             onTap: () {
                               if (widget.selectionMode ==
@@ -764,13 +768,15 @@ class _AmoraaSelectBottomSheetState<T>
   void _moveHighlight(int delta, int length) {
     if (length == 0) return;
     setState(() {
+      _keyboardNavigated = true;
       _highlightedIndex = (_highlightedIndex + delta).clamp(0, length - 1);
     });
   }
 
   void _selectHighlighted(List<AmoraaSelectOption<T>> options) {
     if (options.isEmpty) return;
-    final option = options[_highlightedIndex.clamp(0, options.length - 1)];
+    final index = _highlightedIndex.clamp(0, options.length - 1);
+    final option = options[index];
     if (widget.selectionMode == AmoraaSelectionMode.multiple) {
       setState(() {
         _selectedValues.contains(option.value)
@@ -881,9 +887,7 @@ class AmoraaSelectOptionTile<T> extends StatelessWidget {
         decoration: BoxDecoration(
           color: selected
               ? AppColors.primary.withValues(alpha: .08)
-              : highlighted
-                  ? AppColors.primary.withValues(alpha: .04)
-                  : AppColors.surface,
+              : AppColors.surface,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: selected

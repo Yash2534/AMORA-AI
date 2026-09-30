@@ -933,7 +933,7 @@ class _GlassIconButtonState extends State<_GlassIconButton> {
               filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
               child: Material(
                 color: widget.selected
-                    ? AppColors.secondary
+                    ? AppColors.primary
                     : AppColors.surface.withValues(alpha: .90),
                 child: InkWell(
                   onTap: widget.onTap,

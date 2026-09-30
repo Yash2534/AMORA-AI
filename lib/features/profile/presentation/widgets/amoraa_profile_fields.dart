@@ -1354,7 +1354,7 @@ class _PromptTitle extends StatelessWidget {
       overflow: TextOverflow.ellipsis,
       textAlign: TextAlign.left,
       style: AmoraTextStyles.titleSmall.copyWith(
-        color: AppColors.secondary,
+        color: AppColors.primary,
         fontWeight: FontWeight.w600,
         height: 1.4,
       ),

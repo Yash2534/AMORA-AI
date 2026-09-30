@@ -1,5 +1,6 @@
 import 'package:amora_ai/core/config/app_feature_flags.dart';
 import 'package:amora_ai/core/auth/auth_service.dart';
+import 'package:amora_ai/core/theme/amora_shadows.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
@@ -207,7 +208,13 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                         const SizedBox(height: 8),
                         TextButton.icon(
                           onPressed: _restoreOrManage,
-                          icon: const Icon(Icons.restore_rounded),
+                          style: TextButton.styleFrom(
+                            foregroundColor: AppColors.primary,
+                          ),
+                          icon: const Icon(
+                            Icons.restore_rounded,
+                            color: AppColors.primary,
+                          ),
                           label: Text(
                             memberActive
                                 ? 'Manage Membership'
@@ -649,12 +656,23 @@ class SubscriptionPlanCard extends StatelessWidget {
       child: AnimatedContainer(
         duration: AmoraMotion.selection,
         decoration: BoxDecoration(
-          color: selected ? AppColors.tertiary : AppColors.surface,
+          color: selected
+              ? AppColors.tertiary.withValues(alpha: .5)
+              : AppColors.surface,
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
-            color: selected ? AppColors.primary : AppColors.secondary,
+            color: selected ? AppColors.primary : AppColors.border,
             width: selected ? 2 : 1,
           ),
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: .08),
+                    blurRadius: 16,
+                    spreadRadius: -4,
+                  ),
+                ]
+              : AmoraShadows.level1,
         ),
         child: Material(
           color: AppColors.transparent,
@@ -677,7 +695,12 @@ class SubscriptionPlanCard extends StatelessWidget {
                               ? AppColors.primary
                               : AppColors.surface,
                           shape: BoxShape.circle,
-                          border: Border.all(color: AppColors.primary),
+                          border: Border.all(
+                            color: selected
+                                ? AppColors.primary
+                                : AppColors.secondaryText.withValues(alpha: .5),
+                            width: selected ? 2 : 1.5,
+                          ),
                         ),
                         child: selected
                             ? const Icon(
@@ -713,7 +736,7 @@ class SubscriptionPlanCard extends StatelessWidget {
                               '$_duration · '
                               '${formatMembershipAmount(_monthly)}/month',
                               style: const TextStyle(
-                                color: AppColors.text,
+                                color: AppColors.textSecondary,
                                 fontSize: 13,
                                 fontWeight: FontWeight.w500,
                               ),
@@ -737,7 +760,7 @@ class SubscriptionPlanCard extends StatelessWidget {
                     Text(
                       _tagline,
                       style: const TextStyle(
-                        color: AppColors.text,
+                        color: AppColors.plumBlack,
                         height: 1.35,
                       ),
                     ),
@@ -751,12 +774,21 @@ class SubscriptionPlanCard extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Icon(
-                              Icons.check_circle_outline_rounded,
+                              Icons.check_circle_rounded,
                               color: AppColors.primary,
                               size: 18,
                             ),
                             const SizedBox(width: 8),
-                            Expanded(child: Text(feature)),
+                            Expanded(
+                              child: Text(
+                                feature,
+                                style: const TextStyle(
+                                  color: AppColors.plumBlack,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -765,7 +797,7 @@ class SubscriptionPlanCard extends StatelessWidget {
                   Text(
                     _billingTerms,
                     style: const TextStyle(
-                      color: AppColors.text,
+                      color: AppColors.textSecondary,
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                     ),
@@ -1029,9 +1061,9 @@ class _BillingTrustCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.background,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.tertiary),
+        border: Border.all(color: AppColors.border),
       ),
       child: const Row(
         children: [
@@ -1042,7 +1074,7 @@ class _BillingTrustCard extends StatelessWidget {
               'Review your selected plan before continuing. Payment details '
               'are handled by the configured payment experience.',
               style: TextStyle(
-                color: AppColors.text,
+                color: AppColors.textSecondary,
                 fontSize: 13,
                 height: 1.4,
               ),
@@ -1109,7 +1141,7 @@ class _SectionTitle extends StatelessWidget {
         Text(
           subtitle,
           style: const TextStyle(
-            color: AppColors.text,
+            color: AppColors.textSecondary,
             fontSize: 13,
             height: 1.35,
           ),
