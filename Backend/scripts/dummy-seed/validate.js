@@ -11,7 +11,7 @@ function invariant(condition, message) {
 }
 
 async function validateDummyData(sequelize, models, config) {
-  const { User, OnboardingProfile, DiscoverAction, Match, Conversation, ConversationParticipant, Message, MessageMedia,
+  const { User, OnboardingProfile, DiscoverAction, Match, Conversation, ConversationParticipant, Message,
     RoseTransaction, SavedProfile, Block, DiscoverFilterPreference, NotificationPreference, ConsentEvent,
     Subscription, IdentityVerification, Notification, Report } = models;
   const users = await findSeedUsers(User, config);
@@ -51,11 +51,11 @@ async function validateDummyData(sequelize, models, config) {
     invariant(Array.isArray(profile.interests) && profile.interests.length >= 5 && profile.interests.length <= 10, `profile ${profile.id} has an invalid interest count`);
   }
 
-  const [actions, matches, conversations, participants, messages, messageMedia, roses, savedProfiles, blocks, filters, notificationPreferences, consents, subscriptions, verifications, notifications, reports] = await Promise.all([
+  const [actions, matches, conversations, participants, messages, roses, savedProfiles, blocks, filters, notificationPreferences, consents, subscriptions, verifications, notifications, reports] = await Promise.all([
     DiscoverAction.findAll({ where: { actorUserId: { [Op.in]: userIds }, targetUserId: { [Op.in]: userIds } } }),
     Match.findAll({ where: { userOneId: { [Op.in]: userIds }, userTwoId: { [Op.in]: userIds } } }),
     Conversation.findAll(), ConversationParticipant.findAll({ where: { userId: { [Op.in]: userIds } } }),
-    Message.findAll({ where: { senderId: { [Op.in]: userIds } } }), MessageMedia.findAll(),
+    Message.findAll({ where: { senderId: { [Op.in]: userIds } } }),
     RoseTransaction.findAll({ where: { senderId: { [Op.in]: userIds } } }), SavedProfile.findAll({ where: { userId: { [Op.in]: userIds } } }),
     Block.findAll({ where: { blockerUserId: { [Op.in]: userIds } } }), DiscoverFilterPreference.findAll({ where: { userId: { [Op.in]: userIds } } }),
     NotificationPreference.findAll({ where: { userId: { [Op.in]: userIds } } }), ConsentEvent.findAll({ where: { userId: { [Op.in]: userIds } } }),
@@ -110,7 +110,8 @@ async function validateDummyData(sequelize, models, config) {
   invariant(calculateProfileCompletion(master, profilesByUserId.get(master.id)).percentage === 100, 'MASTER profile must be 100% complete');
   invariant(roses.some((rose) => rose.recipientId === master.id && rose.conversationId != null), 'MASTER must have an incoming Rose on an existing match');
   invariant(messages.some((message) => message.type === 'rose' && message.roseTransactionId), 'a structured Rose message is required');
-  invariant(messages.some((message) => message.type === 'image') && messageMedia.length > 0, 'an image message with media is required');
+  invariant(messages.filter((message) => message.type === 'text').length >= 20, 'text-only chat history must include at least 20 messages');
+  invariant(!messages.some((message) => message.type === 'image'), 'walkthrough chat history must not depend on image messages');
   invariant(actions.filter((action) => action.targetUserId === master.id && action.action !== 'pass').length >= 10, 'MASTER must have a substantial likes inbox');
   invariant(savedProfiles.some((row) => row.userId === master.id), 'MASTER must have a saved profile');
   invariant(blocks.some((row) => row.blockerUserId === master.id), 'MASTER must have a blocked exclusion');
@@ -123,7 +124,7 @@ async function validateDummyData(sequelize, models, config) {
     actions: actions.length, likes: actions.filter((value) => value.action === 'like').length,
     superLikes: actions.filter((value) => value.action === 'superLike').length,
     roses: roses.length, matches: matches.length, conversations: matches.length,
-    messages: messages.length, imageMessages: messages.filter((row) => row.type === 'image').length,
+    messages: messages.length, textMessages: messages.filter((row) => row.type === 'text').length,
     roseMessages: messages.filter((row) => row.type === 'rose').length, savedProfiles: savedProfiles.length, blocks: blocks.length,
     reports: reports.length, notifications: notifications.length, subscriptions: subscriptions.length,
     verified: verifications.length, consentEvents: consents.length,

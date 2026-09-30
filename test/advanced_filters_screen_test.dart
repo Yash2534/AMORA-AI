@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:amora_ai/core/theme/amora_theme.dart';
 import 'package:amora_ai/features/discover/data/discover_api_service.dart';
 import 'package:amora_ai/features/discover/data/match_location_service.dart';
 import 'package:amora_ai/features/discover/presentation/advanced_filters_screen.dart';
+import 'package:amora_ai/features/discover/presentation/browse_grid_screen.dart';
 import 'package:amora_ai/features/discover/presentation/widgets/amoraa_minimum_height_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -46,6 +49,37 @@ class _SinglePreferenceDiscoverApi extends DiscoverApiService {
   ) async => DiscoverApiResult.success(filters, statusCode: 200);
 }
 
+class _DuplicatePreferenceDiscoverApi extends _SuccessfulDiscoverApi {
+  Map<String, dynamic>? submittedFilters;
+
+  @override
+  Future<DiscoverApiResult<Map<String, dynamic>>> getFilters() async =>
+      const DiscoverApiResult.success(<String, dynamic>{
+        'minAge': 24,
+        'maxAge': 34,
+        'maxDistanceKm': 80,
+        'minScore': 80,
+        'city': 'Ahmedabad',
+        'hometown': <String>['Ahmedabad', ' Ahmedabad ', 'ahmedabad'],
+        'datingIntentions': <String>[
+          'Long-Term Relationship',
+          ' long-term relationship ',
+        ],
+        'lifestyleTags': <String>['Coffee Dates'],
+        'community': 'Open to all',
+        'languages': <String>['Gujarati', ' GUJARATI '],
+        'verifiedOnly': true,
+      }, statusCode: 200);
+
+  @override
+  Future<DiscoverApiResult<Map<String, dynamic>>> updateFilters(
+    Map<String, dynamic> filters,
+  ) async {
+    submittedFilters = Map<String, dynamic>.from(filters);
+    return DiscoverApiResult.success(filters, statusCode: 200);
+  }
+}
+
 class _FakeMatchLocationService extends MatchLocationService {
   _FakeMatchLocationService(this.result);
 
@@ -57,6 +91,63 @@ class _FakeMatchLocationService extends MatchLocationService {
     calls += 1;
     return result;
   }
+}
+
+class _FilterFlowApi extends _SuccessfulDiscoverApi {
+  int updates = 0;
+  int feedRequests = 0;
+
+  @override
+  Future<DiscoverApiResult<DiscoverFeedPage>> getFeed({
+    String? cursor,
+    int limit = 10,
+    Iterable<String> communicationStyles = const <String>[],
+    String? surface,
+  }) async {
+    feedRequests += 1;
+    return const DiscoverApiResult.success(
+      DiscoverFeedPage(profiles: <Map<String, dynamic>>[], hasMore: false),
+      statusCode: 200,
+    );
+  }
+
+  @override
+  Future<DiscoverApiResult<Map<String, dynamic>>> updateFilters(
+    Map<String, dynamic> filters,
+  ) async {
+    updates += 1;
+    return DiscoverApiResult.success(filters, statusCode: 200);
+  }
+}
+
+class _DelayedFilterFlowApi extends _FilterFlowApi {
+  final Completer<DiscoverApiResult<Map<String, dynamic>>> saveCompleter =
+      Completer<DiscoverApiResult<Map<String, dynamic>>>();
+
+  @override
+  Future<DiscoverApiResult<Map<String, dynamic>>> updateFilters(
+    Map<String, dynamic> filters,
+  ) {
+    updates += 1;
+    return saveCompleter.future;
+  }
+}
+
+class _NewUserFilterFlowApi extends _FilterFlowApi {
+  @override
+  Future<DiscoverApiResult<Map<String, dynamic>>> getFilters() async =>
+      const DiscoverApiResult.success(<String, dynamic>{
+        'minAge': 18,
+        'maxAge': 45,
+        'maxDistanceKm': 80,
+        'minScore': 0,
+        'city': '',
+        'datingIntentions': <String>[],
+        'hometown': <String>[],
+        'lifestyleTags': <String>[],
+        'languages': <String>[],
+        'verifiedOnly': true,
+      }, statusCode: 200);
 }
 
 void main() {
@@ -204,7 +295,7 @@ void main() {
         find.byKey(const ValueKey('filters-preference-summary-description')),
       );
       final chip = tester.getRect(
-        find.byKey(const ValueKey('selected-preference-Verified only')),
+        find.byKey(const ValueKey('selected-preference-trust-verified only')),
       );
 
       expect(find.text('1 preference selected'), findsOneWidget);
@@ -239,6 +330,50 @@ void main() {
     expect(find.text('Languages'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+    'duplicate API preferences normalize and keep domain keys unique',
+    (tester) async {
+      final api = _DuplicatePreferenceDiscoverApi();
+      await pumpFilters(tester, size: const Size(430, 850), apiService: api);
+
+      final city = find.byKey(
+        const ValueKey('selected-preference-city-ahmedabad'),
+      );
+      final hometown = find.byKey(
+        const ValueKey('selected-preference-hometown-ahmedabad'),
+      );
+      expect(city, findsOneWidget);
+      expect(hometown, findsOneWidget);
+      expect(find.text('7 preferences selected'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+
+      await tester.tap(find.byKey(const ValueKey('selected-preferences-more')));
+      await tester.pumpAndSettle();
+      final sheet = find.byKey(const ValueKey('selected-preferences-sheet'));
+      final homeGroup = find.descendant(
+        of: sheet,
+        matching: find.text('Hometown'),
+      );
+      expect(homeGroup, findsOneWidget);
+      final homeAhmedabad = find.descendant(
+        of: sheet,
+        matching: find.text('Ahmedabad'),
+      );
+      expect(homeAhmedabad, findsNWidgets(2));
+      expect(tester.takeException(), isNull);
+      await tester.tap(
+        find.byKey(const ValueKey('selected-preferences-close')),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('filters-apply-button')));
+      await tester.pumpAndSettle();
+      expect(api.submittedFilters?['hometown'], <String>['Ahmedabad']);
+      expect(api.submittedFilters?['datingIntentions'], <String>[
+        'Long-Term Relationship',
+      ]);
+    },
+  );
 
   testWidgets('dynamic more chip reveals every active preference and closes', (
     tester,
@@ -298,7 +433,7 @@ void main() {
       await pumpFilters(tester, size: Size(width, 700));
 
       final regular = find.byKey(
-        const ValueKey('selected-preference-Verified only'),
+        const ValueKey('selected-preference-trust-verified only'),
       );
       final more = find.byKey(const ValueKey('selected-preferences-more'));
       expect(regular, findsOneWidget);
@@ -460,7 +595,9 @@ void main() {
     await tester.ensureVisible(lifestyle);
 
     for (final option in const ['Travel Companion', 'Adventure Seeker']) {
-      final chip = find.byKey(ValueKey('filter-option-$option'));
+      final chip = find.byKey(
+        ValueKey('filter-option-${option.toLowerCase()}'),
+      );
       await tester.ensureVisible(chip);
       await tester.tap(chip);
       await tester.pump();
@@ -579,6 +716,184 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Discover route'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('apply and reopen filters repeatedly without route exceptions', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(430, 850));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final api = _FilterFlowApi();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AmoraTheme.light(),
+        home: BrowseGridScreen(apiService: api),
+        onGenerateRoute: (settings) {
+          if (settings.name == AdvancedFiltersScreen.routeName) {
+            return MaterialPageRoute<bool>(
+              settings: settings,
+              builder: (_) => AdvancedFiltersScreen(apiService: api),
+            );
+          }
+          return null;
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    for (var cycle = 0; cycle < 10; cycle += 1) {
+      await tester.tap(find.byKey(const ValueKey('discover-filters-button')));
+      await tester.pumpAndSettle();
+      expect(find.byType(AdvancedFiltersScreen), findsOneWidget);
+
+      final ageSlider = find.byKey(const ValueKey('filters-age-range-slider'));
+      await tester.ensureVisible(ageSlider);
+      await tester.drag(ageSlider, const Offset(32, 0));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('filters-apply-button')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(BrowseGridScreen), findsOneWidget);
+      expect(api.updates, cycle + 1);
+      expect(tester.takeException(), isNull);
+    }
+    expect(api.feedRequests, 11);
+  });
+
+  testWidgets('new-user defaults open, select, apply and refresh Discover', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(430, 850));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final api = _NewUserFilterFlowApi();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AmoraTheme.light(),
+        home: BrowseGridScreen(apiService: api),
+        onGenerateRoute: (settings) {
+          if (settings.name == AdvancedFiltersScreen.routeName) {
+            return MaterialPageRoute<bool>(
+              settings: settings,
+              builder: (_) => AdvancedFiltersScreen(apiService: api),
+            );
+          }
+          return null;
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('discover-filters-button')));
+    await tester.pumpAndSettle();
+    expect(find.byType(AdvancedFiltersScreen), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('selected-preferences-more')),
+      findsNothing,
+    );
+
+    final citySelector = find.byKey(const ValueKey('filters-city-selector'));
+    await tester.ensureVisible(citySelector);
+    await tester.tap(citySelector);
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey('amoraa-select-option-Ahmedabad')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('filters-apply-button')));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(BrowseGridScreen), findsOneWidget);
+    expect(api.updates, 1);
+    expect(api.feedRequests, 2);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('double Apply while saving submits once and pops once', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(430, 850));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final api = _DelayedFilterFlowApi();
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AmoraTheme.light(),
+        home: BrowseGridScreen(apiService: api),
+        onGenerateRoute: (settings) {
+          if (settings.name == AdvancedFiltersScreen.routeName) {
+            return MaterialPageRoute<bool>(
+              settings: settings,
+              builder: (_) => AdvancedFiltersScreen(apiService: api),
+            );
+          }
+          return null;
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('discover-filters-button')));
+    await tester.pumpAndSettle();
+    final apply = find.byKey(const ValueKey('filters-apply-button'));
+    await tester.tap(apply);
+    await tester.pump();
+    expect(api.updates, 1);
+    await tester.tap(apply, warnIfMissed: false);
+    await tester.pump();
+    expect(api.updates, 1);
+
+    api.saveCompleter.complete(
+      const DiscoverApiResult.success(<String, dynamic>{}, statusCode: 200),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byType(AdvancedFiltersScreen), findsNothing);
+    expect(api.feedRequests, 2);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('toolbar and system back discard edits without saving', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(430, 850));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final api = _FilterFlowApi();
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AmoraTheme.light(),
+        home: BrowseGridScreen(apiService: api),
+        onGenerateRoute: (settings) {
+          if (settings.name == AdvancedFiltersScreen.routeName) {
+            return MaterialPageRoute<bool>(
+              settings: settings,
+              builder: (_) => AdvancedFiltersScreen(apiService: api),
+            );
+          }
+          return null;
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    for (var cycle = 0; cycle < 2; cycle += 1) {
+      await tester.tap(find.byKey(const ValueKey('discover-filters-button')));
+      await tester.pumpAndSettle();
+      final verified = find.widgetWithText(
+        SwitchListTile,
+        'Verified profiles only',
+      );
+      await tester.ensureVisible(verified);
+      await tester.tap(verified);
+      await tester.pump();
+      if (cycle == 0) {
+        await tester.tap(find.byIcon(Icons.arrow_back_rounded).first);
+      } else {
+        await tester.binding.handlePopRoute();
+      }
+      await tester.pumpAndSettle();
+      expect(find.byType(AdvancedFiltersScreen), findsNothing);
+      expect(api.updates, 0);
+      expect(api.feedRequests, 1);
+      expect(tester.takeException(), isNull);
+    }
   });
 
   testWidgets('desktop layout remains centered and overflow-free', (

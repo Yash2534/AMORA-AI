@@ -40,15 +40,6 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
   List<ChatConversation> get _allChats => _repository.conversations;
 
-  List<ChatConversation> get _activeChats {
-    final participantIds = <String>{};
-    final online = _allChats
-        .where((chat) => chat.online && participantIds.add(chat.user.id))
-        .toList(growable: false);
-    if (online.isNotEmpty) return online;
-    return _allChats.take(8).toList(growable: false);
-  }
-
   List<ChatConversation> get _visibleChats {
     final normalizedQuery = _query.trim().toLowerCase();
     return _allChats
@@ -163,13 +154,6 @@ class _ChatListScreenState extends State<ChatListScreen> {
                               ),
                             )
                           else ...[
-                            if (_activeChats.isNotEmpty && _query.isEmpty)
-                              SliverToBoxAdapter(
-                                child: ActiveMatchesSection(
-                                  chats: _activeChats,
-                                  onOpen: _openConversation,
-                                ),
-                              ),
                             SliverToBoxAdapter(
                               child: Padding(
                                 padding: const EdgeInsets.fromLTRB(
@@ -789,115 +773,6 @@ class _ChatSearchFieldState extends State<ChatSearchField> {
   }
 }
 
-class ActiveMatchesSection extends StatelessWidget {
-  const ActiveMatchesSection({
-    super.key,
-    required this.chats,
-    required this.onOpen,
-  });
-
-  final List<ChatConversation> chats;
-  final ValueChanged<ChatConversation> onOpen;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: AmoraSpacing.space4),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const ConversationSectionHeader(title: 'Active now'),
-          SizedBox(
-            key: const ValueKey('active-matches-list'),
-            height: 96,
-            child: ListView.separated(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AmoraSpacing.space20,
-              ),
-              scrollDirection: Axis.horizontal,
-              itemCount: chats.length,
-              separatorBuilder: (_, _) =>
-                  const SizedBox(width: AmoraSpacing.space12),
-              itemBuilder: (context, index) {
-                final chat = chats[index];
-                return ActiveMatchAvatar(
-                  key: ValueKey('active-match-${chat.user.id}'),
-                  chat: chat,
-                  onTap: () => onOpen(chat),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class ActiveMatchAvatar extends StatelessWidget {
-  const ActiveMatchAvatar({super.key, required this.chat, required this.onTap});
-
-  final ChatConversation chat;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final firstName = chat.user.name.trim().split(RegExp(r'\s+')).first;
-    return Semantics(
-      button: true,
-      label: 'Open chat with $firstName, online now',
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(AmoraRadius.large),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(16),
-          child: SizedBox(
-            width: 68,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(2.5),
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      begin: Alignment.topRight,
-                      end: Alignment.bottomLeft,
-                      colors: [
-                        Color(0xFFD300C5),
-                        Color(0xFFDE0046),
-                        Color(0xFFF7A34B),
-                      ],
-                    ),
-                  ),
-                  child: ConversationAvatar(
-                    profile: chat.user,
-                    online: chat.online,
-                    radius: 26,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  firstName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: AmoraTextStyles.labelSmall.copyWith(
-                    color: AppColors.text,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class ChatFilterBar extends StatelessWidget {
   const ChatFilterBar({
     super.key,
@@ -1143,12 +1018,6 @@ class _ConversationTileState extends State<ConversationTile>
                                               ),
                                             ),
                                           ],
-                                          const SizedBox(width: AmoraSpacing.space12),
-                                          Icon(
-                                            Icons.camera_alt_outlined,
-                                            color: AppColors.text.withValues(alpha: 0.35),
-                                            size: 19,
-                                          ),
                                         ],
                                       ),
                                     ],

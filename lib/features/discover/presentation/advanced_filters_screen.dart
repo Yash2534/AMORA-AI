@@ -25,6 +25,19 @@ const int visiblePreferenceChipLimit = 4;
 
 const approvedFilterCities = ProfileFormOptions.cities;
 
+String canonicalFilterIdentity(String value) => value.trim().toLowerCase();
+
+List<String> normalizeFilterStrings(Iterable<dynamic> values) {
+  final seen = <String>{};
+  final normalized = <String>[];
+  for (final rawValue in values) {
+    final value = rawValue?.toString().trim() ?? '';
+    final identity = canonicalFilterIdentity(value);
+    if (identity.isNotEmpty && seen.add(identity)) normalized.add(value);
+  }
+  return normalized;
+}
+
 @immutable
 class ProfilePreferenceFilterState {
   const ProfilePreferenceFilterState({
@@ -114,6 +127,7 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
   bool _eventInterest = false;
   bool _locationAvailable = false;
   bool _enablingLocation = false;
+  bool _applying = false;
 
   late final TextEditingController _filterSearchController;
   late final TextEditingController _customEducationController;
@@ -160,16 +174,14 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
       return;
     }
     final filters = result.data!;
-    Set<String> values(String key) =>
-        ((filters[key] as List?) ?? const <dynamic>[])
-            .map((value) => value.toString())
-            .where((value) => value.isNotEmpty)
-            .toSet();
+    Set<String> values(String key) => normalizeFilterStrings(
+      (filters[key] as List?) ?? const <dynamic>[],
+    ).toSet();
     String value(String key) => filters[key]?.toString() ?? '';
     void replace(Set<String> target, Iterable<String> source) {
       target
         ..clear()
-        ..addAll(source);
+        ..addAll(normalizeFilterStrings(source));
     }
 
     setState(() {
@@ -416,6 +428,7 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
                       bottom: 0,
                       child: _StickyFiltersActionBar(
                         horizontalPadding: horizontalPadding,
+                        applying: _applying,
                         onReset: _reset,
                         onApply: _apply,
                       ),
@@ -1189,8 +1202,11 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
 
     void add(String category, String label) {
       final normalized = label.trim();
+      final identity = canonicalFilterIdentity(normalized);
       if (normalized.isEmpty ||
-          !seenPreferences.add('$category\u0000$normalized')) {
+          !seenPreferences.add(
+            '${canonicalFilterIdentity(category)}\u0000$identity',
+          )) {
         return;
       }
       preferences.add(_ActivePreference(category: category, label: normalized));
@@ -1275,14 +1291,16 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
   }
 
   List<String> get _visibleLifestyleOptions {
-    if (_showAllLifestyle) return ProfileFormOptions.datingTypes;
+    if (_showAllLifestyle) {
+      return normalizeFilterStrings(ProfileFormOptions.datingTypes);
+    }
     final visible = <String>{
       ...ProfileFormOptions.datingTypes.take(8),
       ..._lifestyles,
     };
-    return ProfileFormOptions.datingTypes
-        .where(visible.contains)
-        .toList(growable: false);
+    return normalizeFilterStrings(
+      ProfileFormOptions.datingTypes.where(visible.contains),
+    );
   }
 
   String get _basicsSummary {
@@ -1335,12 +1353,15 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
   }
 
   void _toggle(Set<String> selected, String option) {
+    final identity = canonicalFilterIdentity(option);
     setState(() {
-      if (selected.contains(option)) {
-        selected.remove(option);
-      } else {
-        selected.add(option);
-      }
+      final wasSelected = selected.any(
+        (value) => canonicalFilterIdentity(value) == identity,
+      );
+      selected.removeWhere(
+        (value) => canonicalFilterIdentity(value) == identity,
+      );
+      if (!wasSelected && identity.isNotEmpty) selected.add(option.trim());
     });
   }
 
@@ -1348,7 +1369,7 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
     setState(() {
       selected
         ..clear()
-        ..addAll(values);
+        ..addAll(normalizeFilterStrings(values));
     });
   }
 
@@ -1364,14 +1385,14 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
     setState(() {
       _education
         ..clear()
-        ..addAll(values);
+        ..addAll(normalizeFilterStrings(values));
       if (!_education.contains('Other')) _customEducationError = null;
     });
   }
 
   void _setHabitSelection(Set<String> selected, Set<String> values) {
     setState(() {
-      final normalized = Set<String>.of(values);
+      final normalized = normalizeFilterStrings(values).toSet();
       if (normalized.remove('Any') && selected.isNotEmpty) {
         normalized.clear();
       }
@@ -1599,6 +1620,7 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
   }
 
   void _reset() {
+    if (_applying) return;
     setState(() {
       _age = const RangeValues(
         DiscoverFilterRanges.defaultMinimumAge,
@@ -1658,6 +1680,7 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
   }
 
   Future<void> _apply() async {
+    if (_applying) return;
     final educationError = ProfileFormValidators.customEducation(
       _education.contains('Other') ? 'Other' : null,
       _customEducationController.text,
@@ -1695,6 +1718,7 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
     );
     final safeHeight = normalizeMinimumHeight(_minimumHeightCm);
     setState(() {
+      _applying = true;
       _age = RangeValues(safeAge.start, safeAge.end);
       _distance = safeDistance;
       _score = safeScore;
@@ -1738,6 +1762,7 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
     };
     final saved = await _discoverApi.updateFilters(filters);
     if (!mounted) return;
+    setState(() => _applying = false);
     if (!saved.success) {
       showAmoraSnackBar(
         context,
@@ -1758,7 +1783,6 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
         _communicationStyles,
       ),
     );
-    showAmoraSnackBar(context, message: 'Filters applied');
     if (navigator.canPop()) {
       navigator.pop(true);
     } else {
@@ -1863,7 +1887,11 @@ class _SelectedFiltersSummary extends StatelessWidget {
                 children: [
                   for (final preview in visible)
                     _SelectedPreview(
-                      key: ValueKey('selected-preference-${preview.label}'),
+                      key: ValueKey(
+                        'selected-preference-'
+                        '${canonicalFilterIdentity(preview.category)}-'
+                        '${canonicalFilterIdentity(preview.label)}',
+                      ),
                       label: preview.label,
                     ),
                   if (remainingCount > 0)
@@ -2074,18 +2102,12 @@ class _FilterSearchField extends StatelessWidget {
       decoration: InputDecoration(
         hintText: 'Search filters',
         helperText: noMatch ? 'No matching filter section' : null,
-        prefixIcon: const Icon(
-          Icons.search_rounded,
-          color: AppColors.primary,
-        ),
+        prefixIcon: const Icon(Icons.search_rounded, color: AppColors.primary),
         suffixIcon: hasQuery
             ? IconButton(
                 tooltip: 'Clear filter search',
                 onPressed: onClear,
-                icon: const Icon(
-                  Icons.close_rounded,
-                  color: AppColors.primary,
-                ),
+                icon: const Icon(Icons.close_rounded, color: AppColors.primary),
               )
             : null,
         filled: true,
@@ -2654,15 +2676,20 @@ class _OptionWrap extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final uniqueOptions = normalizeFilterStrings(options);
     return Wrap(
       spacing: 8,
       runSpacing: 8,
       children: [
-        for (final option in options)
+        for (final option in uniqueOptions)
           _PremiumFilterChip(
-            key: ValueKey('filter-option-$option'),
+            key: ValueKey('filter-option-${canonicalFilterIdentity(option)}'),
             label: option,
-            selected: selected.contains(option),
+            selected: selected.any(
+              (value) =>
+                  canonicalFilterIdentity(value) ==
+                  canonicalFilterIdentity(option),
+            ),
             icon: iconFor?.call(option) ?? icon,
             emoji: emojiFor?.call(option),
             onTap: () => onToggle(selected, option),
@@ -2974,11 +3001,13 @@ class _FilterDivider extends StatelessWidget {
 class _StickyFiltersActionBar extends StatelessWidget {
   const _StickyFiltersActionBar({
     required this.horizontalPadding,
+    required this.applying,
     required this.onReset,
     required this.onApply,
   });
 
   final double horizontalPadding;
+  final bool applying;
   final VoidCallback onReset;
   final VoidCallback onApply;
 
@@ -3008,7 +3037,7 @@ class _StickyFiltersActionBar extends StatelessWidget {
                 label: 'Reset',
                 icon: Icons.refresh_rounded,
                 outlined: true,
-                onPressed: onReset,
+                onPressed: applying ? null : onReset,
               ),
             ),
             const SizedBox(width: 10),
@@ -3018,7 +3047,7 @@ class _StickyFiltersActionBar extends StatelessWidget {
                 key: const ValueKey('filters-apply-button'),
                 label: 'Apply Filters',
                 icon: Icons.check_rounded,
-                onPressed: onApply,
+                onPressed: applying ? null : onApply,
               ),
             ),
           ],
@@ -3039,7 +3068,7 @@ class _FilterActionButton extends StatelessWidget {
 
   final String label;
   final IconData icon;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
   final bool outlined;
 
   @override

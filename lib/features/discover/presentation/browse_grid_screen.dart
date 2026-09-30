@@ -24,6 +24,7 @@ import 'package:amora_ai/core/widgets/floating_bottom_nav.dart';
 import 'package:amora_ai/core/widgets/premium_motion.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/core/widgets/amora_top_notification.dart';
+import 'package:amora_ai/core/widgets/amora_snackbar.dart';
 import 'package:amora_ai/features/discover/presentation/advanced_filters_screen.dart';
 import 'package:amora_ai/features/discover/presentation/discover_action_controller.dart';
 import 'package:amora_ai/features/discover/data/discover_api_service.dart';
@@ -107,6 +108,7 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
   final Map<String, int> _photoIndices = <String, int>{};
   String _superLikeProfileName = '';
   String? _nextCursor;
+  int _loadGeneration = 0;
   bool _hasMore = true;
   bool _loadingMore = false;
   Object? _loadMoreError;
@@ -206,6 +208,7 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
   }
 
   Future<void> _loadProfiles() async {
+    final generation = ++_loadGeneration;
     _loadingTimer?.cancel();
     final completionState = _profileCompletionState;
     final completionGateApplies =
@@ -225,14 +228,20 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
       });
       return;
     }
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _nextCursor = null;
+      _hasMore = false;
+      _loadingMore = false;
+      _loadMoreError = null;
+    });
     final result = await _discoverApi.getFeed(
       communicationStyles: appliedProfilePreferenceFilters
           .value
           .communicationStyles
           .map((style) => style.storageValue),
     );
-    if (!mounted) return;
+    if (!mounted || generation != _loadGeneration) return;
     if (!result.success || result.data == null) {
       if (_profileCompletionState == ProfileCompletionState.incomplete &&
           result.statusCode == 403) {
@@ -264,8 +273,11 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
       _replaceController();
       _loading = false;
     });
-    if (_profiles.isEmpty && _hasMore) await _loadNextPage();
+    if (_profiles.isEmpty && _hasMore) {
+      await _loadNextPage(generation: generation);
+    }
     if (mounted &&
+        generation == _loadGeneration &&
         _actions.currentProfileId == null &&
         !_hasMore &&
         _profileCompletionState == ProfileCompletionState.loading) {
@@ -273,11 +285,13 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
     }
   }
 
-  Future<void> _loadNextPage() async {
+  Future<void> _loadNextPage({int? generation}) async {
+    final requestGeneration = generation ?? _loadGeneration;
     if (_loadingMore || !_hasMore) return;
     setState(() => _loadingMore = true);
     var firstRequest = true;
     while (mounted &&
+        requestGeneration == _loadGeneration &&
         _hasMore &&
         (firstRequest || _actions.currentProfileId == null)) {
       firstRequest = false;
@@ -296,7 +310,7 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
             .communicationStyles
             .map((style) => style.storageValue),
       );
-      if (!mounted) return;
+      if (!mounted || requestGeneration != _loadGeneration) return;
       if (!result.success || result.data == null) {
         setState(() {
           _loadingMore = false;
@@ -1013,7 +1027,9 @@ class _BrowseGridScreenState extends State<BrowseGridScreen>
     final applied = await Navigator.of(
       context,
     ).pushNamed(AdvancedFiltersScreen.routeName);
-    if (mounted && applied == true) await _loadProfiles();
+    if (!mounted || applied != true) return;
+    await _loadProfiles();
+    if (mounted) showAmoraSnackBar(context, message: 'Filters applied');
   }
 
   void _toggleQuickFilter(String filter) {

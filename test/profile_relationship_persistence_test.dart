@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 class _RelationshipRemote implements ProfileRelationshipRemoteDataSource {
   int likeCalls = 0;
   int unlikeCalls = 0;
+  final List<String> mutationOrder = <String>[];
   bool failLike = false;
   bool failUnlike = false;
   Completer<Map<String, dynamic>>? pendingLike;
@@ -36,6 +37,7 @@ class _RelationshipRemote implements ProfileRelationshipRemoteDataSource {
     if (method == 'GET') return response();
     if (method == 'POST' && path == '/api/discover/swipe') {
       likeCalls++;
+      mutationOrder.add('like');
       if (failLike) throw StateError('like failed');
       final pending = pendingLike;
       if (pending != null) return pending.future;
@@ -51,6 +53,7 @@ class _RelationshipRemote implements ProfileRelationshipRemoteDataSource {
     }
     if (method == 'DELETE' && path.startsWith('/api/reactions/')) {
       unlikeCalls++;
+      mutationOrder.add('unlike');
       if (failUnlike) throw StateError('unlike failed');
       return <String, dynamic>{
         'success': true,
@@ -96,8 +99,30 @@ void main() {
       await Future.wait(<Future<void>>[first, duplicate]);
       expect(controller.isLiked(profile.id), isTrue);
       expect(controller.isReactionMutating(profile.id), isFalse);
+      await controller.likeProfilePersisted(profile);
+      expect(remote.likeCalls, 1);
     },
   );
+
+  test('Like, explicit Unlike, Like runs in order for one profile', () async {
+    remote.pendingLike = Completer<Map<String, dynamic>>();
+    final firstLike = controller.likeProfilePersisted(profile);
+    final unlike = controller.removeLikePersisted(profile.id);
+    final secondLike = controller.likeProfilePersisted(profile);
+
+    expect(remote.mutationOrder, <String>['like']);
+    expect(controller.isReactionMutating(profile.id), isTrue);
+
+    remote.pendingLike!.complete(<String, dynamic>{
+      'success': true,
+      'data': <String, dynamic>{'likeStatus': 'liked', 'matched': false},
+    });
+    await Future.wait(<Future<void>>[firstLike, unlike, secondLike]);
+
+    expect(remote.mutationOrder, <String>['like', 'unlike', 'like']);
+    expect(controller.isLiked(profile.id), isTrue);
+    expect(controller.isReactionMutating(profile.id), isFalse);
+  });
 
   test('a failed Like does not leave false success state', () async {
     remote.failLike = true;

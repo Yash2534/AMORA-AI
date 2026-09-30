@@ -38,6 +38,9 @@ function resolveDummySeedConfig(
   }
 
   const databaseName = String(env.DB_NAME || '').trim();
+  if (/(^|[_-])(prod|production|live|primary)([_-]|$)/i.test(databaseName)) {
+    throw new Error('Dummy data seeding is blocked for production-like database names.');
+  }
   const allowedDatabases = String(env.DUMMY_SEED_DATABASES || '')
     .split(',')
     .map((value) => value.trim())
@@ -71,9 +74,8 @@ function resolveDummySeedConfig(
     emailSuffix: SEED_EMAIL_SUFFIX,
     mediaPrefix: SEED_MEDIA_PREFIX,
     uploadsDirectory: path.resolve(__dirname, '../../uploads/onboarding-photos'),
-    chatMediaDirectory: path.resolve(__dirname, '../../private-uploads/chat-media'),
     portraitAssetsDirectory: path.resolve(__dirname, '../../demo-assets/amoraa-v2-generated/profiles'),
-    mode: argv.includes('--reset-only') ? 'reset' : argv.includes('--validate-only') ? 'validate' : 'seed',
+    mode: argv.includes('--reset') || argv.includes('--reset-only') ? 'reset' : argv.includes('--validate-only') ? 'validate' : 'seed',
   });
 }
 

@@ -388,6 +388,13 @@ void main() {
     final conversation = repository.conversations.first;
     await pumpConversation(tester, conversation.id);
 
+    expect(find.byKey(const ValueKey('chat-attach-button')), findsNothing);
+    expect(find.byTooltip('Send photo'), findsNothing);
+    expect(find.byTooltip('Camera'), findsNothing);
+    expect(find.byTooltip('Gallery'), findsNothing);
+    expect(find.byKey(const ValueKey('chat-message-field')), findsOneWidget);
+    expect(find.byKey(const ValueKey('chat-send-button')), findsOneWidget);
+
     await tester.enterText(
       find.byKey(const ValueKey('chat-message-field')),
       'A real message',
@@ -414,6 +421,35 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(repository.conversation(conversation.id)!.messages.last.text, '😊✨');
+  });
+
+  testWidgets('historical image messages remain renderable', (tester) async {
+    final profile = ImageRepository.profiles.first;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: MessageBubble(
+            message: ChatMessage(
+              id: 'historical-image',
+              conversationId: '55',
+              senderId: '2',
+              text: '',
+              mine: false,
+              time: '10:00',
+              createdAtEpochMs: DateTime(2026).millisecondsSinceEpoch,
+              type: 'image',
+              mediaUrl: '/api/conversations/55/media/old-image',
+            ),
+            profile: profile,
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byType(MessageBubble), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('emoji picker inserts multiple emoji at the current cursor', (

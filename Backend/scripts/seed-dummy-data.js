@@ -24,7 +24,7 @@ async function run() {
     const blueprint = buildSeedBlueprint(config);
     const mediaUrls = config.mode === 'reset' ? [] : createSeedMedia(config, blueprint);
     await sequelize.transaction(async (transaction) => {
-      resetCounts = await resetSeedData(models, config, transaction);
+      resetCounts = await resetSeedData(models, config, transaction, { preserveExternalConversations: config.mode === 'seed' });
       if (config.mode === 'seed') result = await seedDummyData(models, config, mediaUrls, transaction, blueprint);
     });
     if (config.mode === 'reset') {

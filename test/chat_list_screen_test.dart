@@ -44,8 +44,12 @@ void main() {
     expect(find.byTooltip('Search chats'), findsNothing);
     expect(find.byTooltip('Compose message'), findsOneWidget);
     expect(find.byTooltip('More'), findsNothing);
-    expect(find.text('Active now'), findsOneWidget);
+    expect(find.text('Active now'), findsNothing);
+    expect(find.byKey(const ValueKey('active-matches-list')), findsNothing);
     expect(find.byKey(const ValueKey('chats-filter-bar')), findsOneWidget);
+    for (final label in const ['All', 'Unread', 'Online']) {
+      expect(find.byKey(ValueKey('chats-filter-$label')), findsOneWidget);
+    }
     expect(find.byType(AmoraaCompactSelect<ChatInboxFilter>), findsNothing);
     expect(
       tester
@@ -55,6 +59,22 @@ void main() {
     );
     expect(find.text('Conversations'), findsOneWidget);
     expect(find.byType(ConversationTile), findsWidgets);
+    final searchTop = tester.getTopLeft(
+      find.byKey(const ValueKey('chats-search-field')),
+    );
+    final filterTop = tester.getTopLeft(
+      find.byKey(const ValueKey('chats-filter-bar')),
+    );
+    final conversationsTop = tester.getTopLeft(find.text('Conversations'));
+    expect(searchTop.dy, lessThan(filterTop.dy));
+    expect(filterTop.dy, lessThan(conversationsTop.dy));
+    expect(
+      conversationsTop.dy -
+          tester
+              .getBottomRight(find.byKey(const ValueKey('chats-filter-bar')))
+              .dy,
+      lessThan(64),
+    );
     expect(find.textContaining('Date invite'), findsNothing);
     expect(find.text('Draft'), findsNothing);
     expect(find.text('Pinned'), findsNothing);
@@ -183,7 +203,8 @@ void main() {
       find.byKey(ValueKey('conversation-verified-badge-${chat.id}')),
     );
 
-    expect(avatarRect.size, const Size.square(52));
+    expect(avatarRect.width, closeTo(52, .1));
+    expect(avatarRect.height, closeTo(52, .1));
     expect(avatarRect.left, closeTo(tileRect.left + 28, 1));
     expect(timeRect.right, closeTo(tileRect.right - 28, 1));
     expect(verifiedRect.center.dy, closeTo(nameRect.center.dy, 2));
@@ -215,6 +236,48 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(ValueKey('conversation-${readChat.id}')), findsNothing);
+    expect(
+      find.byKey(ValueKey('conversation-${unreadChat.id}')),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('online filter and search continue to compose', (tester) async {
+    await pumpChats(tester);
+    final onlineChat = repository.conversations.firstWhere(
+      (chat) => chat.online,
+    );
+    final offlineChat = repository.conversations.firstWhere(
+      (chat) => !chat.online,
+    );
+    final unreadChat = repository.conversations.firstWhere(
+      (chat) => chat.unread > 0,
+    );
+    final search = find.byKey(const ValueKey('chats-search-field'));
+
+    await tester.tap(find.byKey(const ValueKey('chats-filter-Online')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(ValueKey('conversation-${onlineChat.id}')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(ValueKey('conversation-${offlineChat.id}')),
+      findsNothing,
+    );
+
+    await tester.enterText(search, onlineChat.user.name);
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(ValueKey('conversation-${onlineChat.id}')),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(const ValueKey('chats-filter-Unread')));
+    await tester.pumpAndSettle();
+    await tester.enterText(search, unreadChat.user.name);
+    await tester.pumpAndSettle();
     expect(
       find.byKey(ValueKey('conversation-${unreadChat.id}')),
       findsOneWidget,

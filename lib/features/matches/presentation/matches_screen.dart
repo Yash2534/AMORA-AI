@@ -1722,18 +1722,23 @@ class MatchQuickFacts extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final preferredTalkingHours = profile.preferredTalkingHours
+        .map((value) => value.trim())
+        .where((value) => value.isNotEmpty)
+        .join(' · ');
+
     return Wrap(
       spacing: AmoraSpacing.space12,
       runSpacing: AmoraSpacing.space8,
       children: [
         _InlineFact(icon: Icons.location_on_rounded, label: profile.distance),
-        _InlineFact(
-          icon: _isRecentlyActive(profile)
-              ? Icons.circle
-              : Icons.schedule_rounded,
-          label: profile.status,
-          smallIcon: _isRecentlyActive(profile),
-        ),
+        if (preferredTalkingHours.isNotEmpty)
+          _InlineFact(
+            icon: Icons.schedule_rounded,
+            label: preferredTalkingHours,
+            maxLabelLines: 1,
+            maxLabelWidth: 190,
+          ),
         _InlineFact(
           icon: Icons.favorite_outline_rounded,
           label: profile.intent,
@@ -2825,11 +2830,15 @@ class _InlineFact extends StatelessWidget {
     required this.icon,
     required this.label,
     this.smallIcon = false,
+    this.maxLabelLines,
+    this.maxLabelWidth,
   });
 
   final IconData icon;
   final String label;
   final bool smallIcon;
+  final int? maxLabelLines;
+  final double? maxLabelWidth;
 
   @override
   Widget build(BuildContext context) {
@@ -2838,10 +2847,17 @@ class _InlineFact extends StatelessWidget {
       children: [
         Icon(icon, color: AppColors.secondary, size: smallIcon ? 9 : 16),
         const SizedBox(width: AmoraSpacing.space4),
-        Text(
-          label,
-          style: AmoraTextStyles.labelSmall.copyWith(
-            color: AppColors.textNeutral.withValues(alpha: .72),
+        ConstrainedBox(
+          constraints: BoxConstraints(
+            maxWidth: maxLabelWidth ?? double.infinity,
+          ),
+          child: Text(
+            label,
+            maxLines: maxLabelLines,
+            overflow: maxLabelLines == null ? null : TextOverflow.ellipsis,
+            style: AmoraTextStyles.labelSmall.copyWith(
+              color: AppColors.textNeutral.withValues(alpha: .72),
+            ),
           ),
         ),
       ],

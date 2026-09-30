@@ -26,6 +26,13 @@ class AuthProfileRelationshipRemoteDataSource
   }) => AuthService.instance.authenticatedRequest(method, path, body: body);
 }
 
+class _PendingReactionMutation {
+  const _PendingReactionMutation({required this.liked, required this.future});
+
+  final bool liked;
+  final Future<void> future;
+}
+
 class ProfileRelationshipController extends ChangeNotifier {
   factory ProfileRelationshipController({
     ProfileRelationshipRemoteDataSource? remote,
@@ -58,7 +65,8 @@ class ProfileRelationshipController extends ChangeNotifier {
   final Map<String, int> _savedRevisions = <String, int>{};
   final Map<String, int> _likedRevisions = <String, int>{};
   final Map<String, int> _superLikedRevisions = <String, int>{};
-  final Map<String, Future<void>> _reactionMutations = <String, Future<void>>{};
+  final Map<String, _PendingReactionMutation> _reactionMutations =
+      <String, _PendingReactionMutation>{};
   int _relationshipRevision = 0;
   int _sessionEpoch = 0;
   int _refreshRequestId = 0;
@@ -391,25 +399,29 @@ class ProfileRelationshipController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> likeProfilePersisted(DummyProfile profile) =>
-      _serializeReactionMutation(profile.id, () async {
-        final sessionEpoch = _sessionEpoch;
-        if (_canUseRemote) {
-          final response = await _remote!.request(
-            'POST',
-            '/api/discover/swipe',
-            body: {'targetUserId': int.parse(profile.id), 'action': 'like'},
-          );
-          final data = _data(response);
-          final likeStatus = data['likeStatus']?.toString();
-          if (data['liked'] != true &&
-              likeStatus != 'liked' &&
-              likeStatus != 'already_liked') {
-            throw StateError('Like response did not confirm persisted state.');
-          }
+  Future<void> likeProfilePersisted(DummyProfile profile) {
+    if (isLiked(profile.id) && !isReactionMutating(profile.id)) {
+      return Future<void>.value();
+    }
+    return _serializeReactionMutation(profile.id, true, () async {
+      final sessionEpoch = _sessionEpoch;
+      if (_canUseRemote) {
+        final response = await _remote!.request(
+          'POST',
+          '/api/discover/swipe',
+          body: {'targetUserId': int.parse(profile.id), 'action': 'like'},
+        );
+        final data = _data(response);
+        final likeStatus = data['likeStatus']?.toString();
+        if (data['liked'] != true &&
+            likeStatus != 'liked' &&
+            likeStatus != 'already_liked') {
+          throw StateError('Like response did not confirm persisted state.');
         }
-        if (sessionEpoch == _sessionEpoch) likeProfile(profile);
-      });
+      }
+      if (sessionEpoch == _sessionEpoch) likeProfile(profile);
+    });
+  }
 
   void removeLike(String profileId) {
     _setMembership(_likedProfileIds, _likedRevisions, profileId, false);
@@ -418,7 +430,7 @@ class ProfileRelationshipController extends ChangeNotifier {
   }
 
   Future<void> removeLikePersisted(String profileId) =>
-      _serializeReactionMutation(profileId, () async {
+      _serializeReactionMutation(profileId, false, () async {
         final sessionEpoch = _sessionEpoch;
         if (_canUseRemote) {
           final response = await _remote!.request(
@@ -436,18 +448,32 @@ class ProfileRelationshipController extends ChangeNotifier {
 
   Future<void> _serializeReactionMutation(
     String profileId,
+    bool liked,
     Future<void> Function() mutation,
   ) {
     final existing = _reactionMutations[profileId];
-    if (existing != null) return existing;
+    if (existing != null && existing.liked == liked) return existing.future;
     late final Future<void> operation;
-    operation = mutation().whenComplete(() {
-      if (identical(_reactionMutations[profileId], operation)) {
-        _reactionMutations.remove(profileId);
-        notifyListeners();
-      }
-    });
-    _reactionMutations[profileId] = operation;
+    operation =
+        (() async {
+          if (existing != null) {
+            try {
+              await existing.future;
+            } catch (_) {
+              // A later explicit mutation still runs after a failed request.
+            }
+          }
+          await mutation();
+        })().whenComplete(() {
+          if (identical(_reactionMutations[profileId]?.future, operation)) {
+            _reactionMutations.remove(profileId);
+            notifyListeners();
+          }
+        });
+    _reactionMutations[profileId] = _PendingReactionMutation(
+      liked: liked,
+      future: operation,
+    );
     notifyListeners();
     return operation;
   }

@@ -32,14 +32,9 @@ function assignSourceImages(config, entries) {
 
 function removeSeedMedia(config) {
   if (!fs.existsSync(config.uploadsDirectory)) return 0;
-  const files = fs.readdirSync(config.uploadsDirectory).filter((name) => name.startsWith(config.mediaPrefix) || name.startsWith('amoraa-demo-profile-') || name.startsWith('amoraa-seed-avatar-'));
+  const files = fs.readdirSync(config.uploadsDirectory).filter((name) => name.startsWith(config.mediaPrefix));
   for (const name of files) fs.unlinkSync(path.join(config.uploadsDirectory, name));
-  let chatFiles = [];
-  if (fs.existsSync(config.chatMediaDirectory)) {
-    chatFiles = fs.readdirSync(config.chatMediaDirectory).filter((name) => name.startsWith('amoraa-v2-seed-chat-'));
-    for (const name of chatFiles) fs.unlinkSync(path.join(config.chatMediaDirectory, name));
-  }
-  return files.length + chatFiles.length;
+  return files.length;
 }
 
 function createSeedMedia(config, blueprint) {
@@ -48,8 +43,6 @@ function createSeedMedia(config, blueprint) {
   const assignments = assignSourceImages(config, blueprint.users); const hashes = assignments.flat().map((source) => source.hash);
   if (new Set(hashes).size !== hashes.length) throw new Error('Generated portrait pack contains duplicate image content.');
   removeSeedMedia(config);
-  fs.mkdirSync(config.chatMediaDirectory, { recursive: true });
-  fs.copyFileSync(sourcePath(config, 0, 1), path.join(config.chatMediaDirectory, 'amoraa-v2-seed-chat-image.webp'), fs.constants.COPYFILE_EXCL);
   return assignments.map((photos, profileIndex) => photos.map((source, photoIndex) => {
     const filename = `${config.mediaPrefix}${String(profileIndex + 1).padStart(3, '0')}-${String(photoIndex + 1).padStart(2, '0')}.webp`;
     fs.copyFileSync(source.file, path.join(config.uploadsDirectory, filename), fs.constants.COPYFILE_EXCL);

@@ -9,6 +9,7 @@ import 'package:amora_ai/features/chat/data/chat_repository.dart';
 import 'package:amora_ai/features/matches/presentation/matches_screen.dart';
 import 'package:amora_ai/features/matches/presentation/widgets/amoraa_inline_compatibility_filter.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
+import 'package:amora_ai/features/profile/data/public_profile_mapper.dart';
 import 'package:amora_ai/features/profile/presentation/profile_completion_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -95,6 +96,55 @@ void main() {
     );
     expect(find.text('${featured.profile.score}%'), findsNothing);
     expect(find.text('High confidence'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('AI match quick facts show the profile preferred talk time', (
+    tester,
+  ) async {
+    final profile = publicProfileFromJson(<String, dynamic>{
+      'id': 'talk-time-42',
+      'name': 'Talk Time',
+      'distanceKm': 17,
+      'intent': 'Long-term relationship',
+      'preferredTalkingHours': <String>['Late Night', 'Evening'],
+    }).profile;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: MatchQuickFacts(profile: profile)),
+      ),
+    );
+
+    expect(find.byIcon(Icons.schedule_rounded), findsOneWidget);
+    expect(find.text('Late Night · Evening'), findsOneWidget);
+    expect(find.text('17 km'), findsOneWidget);
+    expect(find.text('Long-term relationship'), findsOneWidget);
+    expect(find.text('null'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('AI match hides the preferred-time fact when unavailable', (
+    tester,
+  ) async {
+    final profile = publicProfileFromJson(<String, dynamic>{
+      'id': 'talk-time-empty',
+      'name': 'No Time',
+      'distanceKm': 17,
+      'intent': 'Long-term relationship',
+      'preferredTalkingHours': <String>[],
+    }).profile;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: MatchQuickFacts(profile: profile)),
+      ),
+    );
+
+    expect(find.byIcon(Icons.schedule_rounded), findsNothing);
+    expect(find.text('17 km'), findsOneWidget);
+    expect(find.text('Long-term relationship'), findsOneWidget);
+    expect(find.text('null'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 

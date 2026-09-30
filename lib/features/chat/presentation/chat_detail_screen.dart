@@ -3,7 +3,6 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:amora_ai/core/data/image_repository.dart';
-import 'package:amora_ai/core/media/amora_media_picker.dart';
 import 'package:amora_ai/core/api/phase_two_api_service.dart';
 import 'package:amora_ai/core/theme/amora_icon_sizes.dart';
 import 'package:amora_ai/core/theme/amora_header_tokens.dart';
@@ -191,7 +190,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             controller: _controller,
             sending: _sending,
             onSend: _send,
-            onAttach: _sendPhoto,
             onDraftChanged: _saveDraft,
             enabled: _conversation!.canMessage,
             disabledReason:
@@ -333,36 +331,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       await _repository.retryMessage(conversationId, message.id);
     } catch (_) {
       if (mounted) _snack('Message is still queued. Try again when connected.');
-    }
-  }
-
-  Future<void> _sendPhoto() async {
-    final conversationId = _conversationId;
-    if (conversationId == null || _sending) return;
-    const picker = DeviceAmoraMediaPicker();
-    final result = await picker.pickImage(source: AmoraMediaSource.gallery);
-    if (!mounted) return;
-    if (!result.succeeded) {
-      showAmoraMediaResult(
-        context,
-        result: result,
-        picker: picker,
-        onRetry: _sendPhoto,
-      );
-      return;
-    }
-    if (result.media!.byteLength > 10 * 1024 * 1024) {
-      _snack('Choose an image smaller than 10 MB.');
-      return;
-    }
-    setState(() => _sending = true);
-    try {
-      await _repository.sendMedia(conversationId, result.media!);
-      _scrollToNewest();
-    } catch (_) {
-      if (mounted) _snack('Photo could not be sent. Try again.');
-    } finally {
-      if (mounted) setState(() => _sending = false);
     }
   }
 

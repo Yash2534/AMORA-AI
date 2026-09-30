@@ -1,6 +1,4 @@
 const bcrypt = require('bcrypt');
-const fs = require('fs');
-const path = require('path');
 const { Op } = require('sequelize');
 const { plans } = require('../seed-subscription-plans');
 const { MESSAGE_LINES, buildSeedBlueprint, dateDaysBefore, pairKey, shortHash, stablePair } = require('./factory');
@@ -20,15 +18,27 @@ async function findSeedUsers(User, config, transaction) {
   });
 }
 
-async function resetSeedData(models, config, transaction) {
+async function resetSeedData(models, config, transaction, { preserveExternalConversations = false } = {}) {
   const { User, ConversationParticipant, Conversation, Message, MessageMedia, RoseTransaction, Notification, NotificationDelivery, UserDevice, DiscoverAction, Match, SavedProfile, Block, DiscoverFilterPreference, NotificationPreference, Subscription, Payment, PaymentEvent, Event, EventRegistration, EventWaitlist, Report, IdentityVerification, IdentityVerificationDecisionEvent, RefreshToken, OnboardingProfile, ConsentEvent } = models;
   const seedUsers = await findSeedUsers(User, config, transaction); const userIds = seedUsers.map((user) => user.id);
   if (!userIds.length) return { users: 0, conversations: 0 };
-  const memberships = await ConversationParticipant.findAll({ where: { userId: { [Op.in]: userIds } }, attributes: ['conversationId'], transaction });
-  const conversationIds = [...new Set(memberships.map((row) => row.conversationId))];
+  const memberships = await ConversationParticipant.findAll({ where: { userId: { [Op.in]: userIds } }, attributes: ['conversationId', 'userId'], transaction });
+  const allConversationIds = [...new Set(memberships.map((row) => row.conversationId))];
+  const allMembers = allConversationIds.length
+    ? await ConversationParticipant.findAll({ where: { conversationId: { [Op.in]: allConversationIds } }, attributes: ['conversationId', 'userId'], transaction })
+    : [];
+  const seedSet = new Set(userIds);
+  const protectedConversationIds = new Set(allConversationIds.filter((conversationId) => allMembers.some((row) => row.conversationId === conversationId && !seedSet.has(row.userId))));
+  if (protectedConversationIds.size && !preserveExternalConversations) {
+    throw new Error('Refusing to reset: a demo conversation includes a non-demo account; use the walkthrough seed to preserve it safely.');
+  }
+  const protectedPairs = new Set(allMembers.filter((row) => protectedConversationIds.has(row.conversationId)).flatMap((row) => {
+    const seedParticipant = allMembers.find((member) => member.conversationId === row.conversationId && seedSet.has(member.userId));
+    return seedParticipant ? [`${seedParticipant.userId}:${row.userId}`, `${row.userId}:${seedParticipant.userId}`] : [];
+  }));
+  const protectedSeedUserIds = new Set(allMembers.filter((row) => protectedConversationIds.has(row.conversationId) && seedSet.has(row.userId)).map((row) => row.userId));
+  const conversationIds = allConversationIds.filter((conversationId) => !protectedConversationIds.has(conversationId));
   if (conversationIds.length) {
-    const members = await ConversationParticipant.findAll({ where: { conversationId: { [Op.in]: conversationIds } }, attributes: ['userId'], transaction }); const seedSet = new Set(userIds);
-    if (members.some((row) => !seedSet.has(row.userId))) throw new Error('Refusing to reset: a seed user is in a conversation with a non-seed user.');
     const messages = await Message.findAll({ where: { conversationId: { [Op.in]: conversationIds } }, attributes: ['id'], transaction }); const messageIds = messages.map((row) => row.id);
     await Conversation.update({ lastMessageId: null, lastMessageAt: null }, { where: { id: { [Op.in]: conversationIds } }, transaction });
     await ConversationParticipant.update({ lastReadMessageId: null, lastReadAt: null }, { where: { conversationId: { [Op.in]: conversationIds } }, transaction });
@@ -56,19 +66,34 @@ async function resetSeedData(models, config, transaction) {
   );
   await IdentityVerification.destroy({ where: { userId: { [Op.in]: userIds } }, transaction }); await ConsentEvent.destroy({ where: { userId: { [Op.in]: userIds } }, transaction });
   await Report.destroy({ where: { [Op.or]: [{ reporterUserId: { [Op.in]: userIds } }, { reportedUserId: { [Op.in]: userIds } }] }, transaction });
-  await RoseTransaction.destroy({ where: { [Op.or]: [{ senderId: { [Op.in]: userIds } }, { recipientId: { [Op.in]: userIds } }] }, transaction });
-  await DiscoverAction.destroy({ where: { [Op.or]: [{ actorUserId: { [Op.in]: userIds } }, { targetUserId: { [Op.in]: userIds } }] }, transaction });
-  await Match.destroy({ where: { [Op.or]: [{ userOneId: { [Op.in]: userIds } }, { userTwoId: { [Op.in]: userIds } }] }, transaction });
+  const rosesToRemove = await RoseTransaction.findAll({ where: { [Op.or]: [{ senderId: { [Op.in]: userIds } }, { recipientId: { [Op.in]: userIds } }] }, transaction });
+  const roseIdsToRemove = rosesToRemove.filter((row) => !protectedConversationIds.has(row.conversationId)).map((row) => row.id);
+  if (roseIdsToRemove.length) await RoseTransaction.destroy({ where: { id: { [Op.in]: roseIdsToRemove } }, transaction });
+  const actionsToRemove = await DiscoverAction.findAll({ where: { [Op.or]: [{ actorUserId: { [Op.in]: userIds } }, { targetUserId: { [Op.in]: userIds } }] }, transaction });
+  const actionIdsToRemove = actionsToRemove.filter((row) => !protectedPairs.has(`${row.actorUserId}:${row.targetUserId}`)).map((row) => row.id);
+  if (actionIdsToRemove.length) await DiscoverAction.destroy({ where: { id: { [Op.in]: actionIdsToRemove } }, transaction });
+  const matchesToRemove = await Match.findAll({ where: { [Op.or]: [{ userOneId: { [Op.in]: userIds } }, { userTwoId: { [Op.in]: userIds } }] }, transaction });
+  const matchIdsToRemove = matchesToRemove.filter((row) => !protectedPairs.has(`${row.userOneId}:${row.userTwoId}`) && !protectedPairs.has(`${row.userTwoId}:${row.userOneId}`)).map((row) => row.id);
+  if (matchIdsToRemove.length) await Match.destroy({ where: { id: { [Op.in]: matchIdsToRemove } }, transaction });
   await SavedProfile.destroy({ where: { [Op.or]: [{ userId: { [Op.in]: userIds } }, { savedUserId: { [Op.in]: userIds } }] }, transaction });
   await Block.destroy({ where: { [Op.or]: [{ blockerUserId: { [Op.in]: userIds } }, { blockedUserId: { [Op.in]: userIds } }] }, transaction });
-  await DiscoverFilterPreference.destroy({ where: { userId: { [Op.in]: userIds } }, transaction }); await NotificationPreference.destroy({ where: { userId: { [Op.in]: userIds } }, transaction }); await Subscription.destroy({ where: { userId: { [Op.in]: userIds } }, transaction }); await RefreshToken.destroy({ where: { userId: { [Op.in]: userIds } }, transaction }); await OnboardingProfile.destroy({ where: { userId: { [Op.in]: userIds } }, transaction }); await User.destroy({ where: { id: { [Op.in]: userIds } }, transaction });
-  return { users: userIds.length, conversations: conversationIds.length };
+  await DiscoverFilterPreference.destroy({ where: { userId: { [Op.in]: userIds } }, transaction }); await NotificationPreference.destroy({ where: { userId: { [Op.in]: userIds } }, transaction }); await Subscription.destroy({ where: { userId: { [Op.in]: userIds } }, transaction }); await RefreshToken.destroy({ where: { userId: { [Op.in]: userIds } }, transaction }); await OnboardingProfile.destroy({ where: { userId: { [Op.in]: userIds } }, transaction });
+  const userIdsToRemove = userIds.filter((id) => !protectedSeedUserIds.has(id));
+  if (userIdsToRemove.length) await User.destroy({ where: { id: { [Op.in]: userIdsToRemove } }, transaction });
+  return { users: userIdsToRemove.length, preservedUsers: protectedSeedUserIds.size, conversations: conversationIds.length, preservedExternalConversations: protectedConversationIds.size };
 }
 
 async function seedDummyData(models, config, mediaUrls, transaction, suppliedBlueprint) {
-  const { User, OnboardingProfile, DiscoverAction, Match, Conversation, ConversationParticipant, Message, MessageMedia, RoseTransaction, SavedProfile, Block, DiscoverFilterPreference, NotificationPreference, Notification, SubscriptionPlan, Subscription, LegalDocumentVersion, ConsentEvent, IdentityVerification, Report } = models;
+  const { User, OnboardingProfile, DiscoverAction, Match, Conversation, ConversationParticipant, Message, RoseTransaction, SavedProfile, Block, DiscoverFilterPreference, NotificationPreference, Notification, SubscriptionPlan, Subscription, LegalDocumentVersion, ConsentEvent, IdentityVerification, Report } = models;
   const blueprint = suppliedBlueprint || buildSeedBlueprint(config); const passwordHash = await bcrypt.hash(config.password, 10);
-  await User.bulkCreate(blueprint.users.map((entry) => ({ name: entry.name, email: entry.email, phoneNumber: entry.phoneNumber, passwordHash, authProvider: 'local', isVerified: true, termsAcceptedAt: entry.createdAt, accountStatus: entry.accountStatus, deactivatedAt: entry.accountStatus === 'deactivated' ? entry.updatedAt : null, lastActiveAt: entry.lastActiveAt, identityVerifiedAt: entry.identityVerified ? entry.updatedAt : null, createdAt: entry.createdAt, updatedAt: entry.updatedAt })), { transaction, validate: true });
+  const existingUsers = await findSeedUsers(User, config, transaction); const existingByEmail = new Map(existingUsers.map((row) => [row.email, row]));
+  const userValues = (entry) => ({ name: entry.name, email: entry.email, phoneNumber: entry.phoneNumber, passwordHash, authProvider: 'local', isVerified: true, termsAcceptedAt: entry.createdAt, accountStatus: entry.accountStatus, deactivatedAt: entry.accountStatus === 'deactivated' ? entry.updatedAt : null, lastActiveAt: entry.lastActiveAt, identityVerifiedAt: entry.identityVerified ? entry.updatedAt : null, createdAt: entry.createdAt, updatedAt: entry.updatedAt });
+  const newUsers = blueprint.users.filter((entry) => !existingByEmail.has(entry.email));
+  if (newUsers.length) await User.bulkCreate(newUsers.map(userValues), { transaction, validate: true });
+  for (const entry of blueprint.users) {
+    const existing = existingByEmail.get(entry.email);
+    if (existing) await existing.update(userValues(entry), { transaction, validate: true });
+  }
   const createdUsers = await findSeedUsers(User, config, transaction); const byEmail = new Map(createdUsers.map((row) => [row.email, row]));
   const entries = blueprint.users.map((entry) => ({ ...entry, id: byEmail.get(entry.email).id })); const byKey = new Map(entries.map((entry) => [entry.key, entry])); const master = byKey.get('master');
 
@@ -112,11 +137,9 @@ async function seedDummyData(models, config, mediaUrls, transaction, suppliedBlu
   for (const [key, count] of Object.entries(messageCounts)) { const other = byKey.get(key); const conversation = conversationByPair.get(pairKey(master.id, other.id)); for (let i = 0; i < count; i += 1) { const incoming = i % 2 === 0; messageRows.push({ conversationId: conversation.id, senderId: incoming ? other.id : master.id, type: 'text', text: MESSAGE_LINES[(i + other.sequence) % MESSAGE_LINES.length], context: null, status: key === 'candidate-k' && incoming && i >= count - 3 ? 'delivered' : 'read', deliveredAt: dateDaysBefore(now, Math.max(1, 20 - i)), readAt: key === 'candidate-k' && incoming && i >= count - 3 ? null : dateDaysBefore(now, Math.max(1, 20 - i), -5), createdAt: dateDaysBefore(now, Math.max(1, 20 - i)), updatedAt: dateDaysBefore(now, Math.max(1, 20 - i)) }); } }
   if (messageRows.length) await Message.bulkCreate(messageRows, { transaction, validate: true });
   const roseMessage = await Message.create({ conversationId: roseConversation.id, senderId: byKey.get('candidate-l').id, type: 'rose', roseTransactionId: chatRose.id, text: chatRose.note, context: { type: 'rose', title: 'Rose', detail: 'A special AMORAA Rose' }, status: 'delivered', deliveredAt: dateDaysBefore(now, 3), createdAt: dateDaysBefore(now, 3), updatedAt: dateDaysBefore(now, 3) }, { transaction });
-  const imageConversation = conversationByPair.get(pairKey(master.id, byKey.get('candidate-j').id)); const imageMessage = await Message.create({ conversationId: imageConversation.id, senderId: byKey.get('candidate-j').id, type: 'image', text: 'The view from my walk today.', status: 'delivered', deliveredAt: dateDaysBefore(now, 1), createdAt: dateDaysBefore(now, 1), updatedAt: dateDaysBefore(now, 1) }, { transaction });
-  const chatFile = path.join(config.chatMediaDirectory, 'amoraa-v2-seed-chat-image.webp'); const chatSize = fs.statSync(chatFile).size;
-  await MessageMedia.create({ messageId: imageMessage.id, mediaType: 'image', originalName: 'development-walk.webp', storagePath: 'chat-media/amoraa-v2-seed-chat-image.webp', mimeType: 'image/webp', sizeBytes: chatSize, createdAt: imageMessage.createdAt }, { transaction });
+  const mutedConversation = conversationByPair.get(pairKey(master.id, byKey.get('candidate-j').id));
   const allMessages = await Message.findAll({ where: { conversationId: { [Op.in]: conversations.map((row) => row.id) } }, order: [['id', 'ASC']], transaction });
-  for (const conversation of conversations) { const values = allMessages.filter((row) => row.conversationId === conversation.id); if (!values.length) continue; const last = values[values.length - 1]; await conversation.update({ lastMessageId: last.id, lastMessageAt: last.createdAt }, { transaction }); const participants = await ConversationParticipant.findAll({ where: { conversationId: conversation.id }, transaction }); for (const participant of participants) { const unreadScenario = conversation.id === conversationByPair.get(pairKey(master.id, byKey.get('candidate-k').id)).id && participant.userId === master.id; const readTo = unreadScenario ? values[Math.max(0, values.length - 4)] : last; await participant.update({ lastReadMessageId: readTo?.id || null, lastReadAt: readTo?.createdAt || null, mutedAt: conversation.id === imageConversation.id && participant.userId === master.id ? dateDaysBefore(now, 1) : null }, { transaction }); } }
+  for (const conversation of conversations) { const values = allMessages.filter((row) => row.conversationId === conversation.id); if (!values.length) continue; const last = values[values.length - 1]; await conversation.update({ lastMessageId: last.id, lastMessageAt: last.createdAt }, { transaction }); const participants = await ConversationParticipant.findAll({ where: { conversationId: conversation.id }, transaction }); for (const participant of participants) { const unreadScenario = conversation.id === conversationByPair.get(pairKey(master.id, byKey.get('candidate-k').id)).id && participant.userId === master.id; const readTo = unreadScenario ? values[Math.max(0, values.length - 4)] : last; await participant.update({ lastReadMessageId: readTo?.id || null, lastReadAt: readTo?.createdAt || null, mutedAt: conversation.id === mutedConversation.id && participant.userId === master.id ? dateDaysBefore(now, 1) : null }, { transaction }); } }
 
   await SavedProfile.bulkCreate(['candidate-m', 'candidate-r'].map((key, index) => ({ userId: master.id, savedUserId: byKey.get(key).id, createdAt: dateDaysBefore(now, 2 + index), updatedAt: now })), { transaction, validate: true });
   await Block.create({ blockerUserId: master.id, blockedUserId: byKey.get('candidate-n').id, createdAt: dateDaysBefore(now, 2), updatedAt: now }, { transaction });

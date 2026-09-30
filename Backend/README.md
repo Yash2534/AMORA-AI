@@ -102,6 +102,7 @@ The command refuses to run unless all of these conditions are satisfied:
 - `NODE_ENV` is `development`, `test`, `qa`, or `staging` (production is always rejected).
 - `ALLOW_DUMMY_SEED=true` is set explicitly.
 - the exact `DB_NAME` appears in the comma-separated `DUMMY_SEED_DATABASES` allowlist.
+- production-like database names are rejected even if accidentally allowlisted.
 - the command contains `--confirm-development-db` (the npm scripts include it).
 
 Configure a local ignored `.env`—never a production environment—with values such as:
@@ -118,9 +119,8 @@ AMORAA_DEMO_PASSWORD=<fixed local walkthrough password>
 Then run:
 
 ```bash
-npm run db:seed:dummy
-npm run db:seed:demo-walkthrough:reset
-npm run db:seed:dummy:validate
+npm run db:seed:demo-walkthrough
+npm run db:seed:demo-walkthrough:validate
 npm run verify:dummy-seed
 npm run verify:demo-walkthrough
 npm run verify:demo-profile-images
@@ -128,12 +128,31 @@ npm run verify:master-flow
 npm run report:dummy-seed
 ```
 
+For Windows Command Prompt, the direct walkthrough commands are:
+
+```cmd
+cd /d D:\Projects\amora_ai\Backend
+set "AMORAA_DEMO_PASSWORD=AmoraaDemo@2026"
+node scripts\seed-demo-walkthrough.js --confirm-development-db
+```
+
+To reset only this demo dataset:
+
+```cmd
+cd /d D:\Projects\amora_ai\Backend
+set "AMORAA_DEMO_PASSWORD=AmoraaDemo@2026"
+node scripts\seed-demo-walkthrough.js --confirm-development-db --reset
+```
+
+The password is for local demo/testing only. Never run these commands in production.
+The reset command refuses to remove a demo account if its chat includes a non-demo participant; reseeding preserves that shared conversation, match, and relationship rows.
+
 The current dataset uses 53 synthetic, locally stored portraits under `demo-assets/amoraa-v2-generated/`: five unique images for the walkthrough account and two unique images for each of 24 supporting profiles. The seed copies them through the existing upload/media architecture. The application never fetches portrait media at runtime.
 
-`db:seed:dummy` is deterministic and idempotent: it removes the previous isolated seed dataset and recreates it in one database transaction. To remove only generated dummy data and its prefixed local media:
+`db:seed:demo-walkthrough` is deterministic and idempotent: it removes the previous isolated walkthrough dataset and recreates it in one database transaction. Chat history uses text messages and structured Roses; profile portraits remain local synthetic assets. To remove only walkthrough accounts and their generated profile media:
 
 ```bash
-npm run db:seed:dummy:reset
+npm run db:seed:demo-walkthrough:reset
 ```
 
 The primary manual-test account is:

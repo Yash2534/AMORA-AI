@@ -18,10 +18,12 @@ test('dummy seed config accepts an explicitly approved development database', ()
   assert.equal(config.userCount, 25);
   assert.equal(config.demoEmail, 'demo.walkthrough@amoraa.test');
   assert.equal(config.mode, 'seed');
+  assert.equal(resolveDummySeedConfig(validEnv, ['--confirm-development-db', '--reset'], options).mode, 'reset');
 });
 
 test('dummy seed config always blocks production', () => {
   assert.throws(() => resolveDummySeedConfig({ ...validEnv, NODE_ENV: 'production' }, ['--confirm-development-db'], options), /blocked in production/);
+  assert.throws(() => resolveDummySeedConfig({ ...validEnv, DB_NAME: 'amora_ai_prod' }, ['--confirm-development-db'], options), /production-like database names/);
 });
 
 test('dummy seed config requires the opt-in, allowlist, and confirmation', () => {
