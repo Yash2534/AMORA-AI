@@ -44,9 +44,9 @@ class WhyWeMatchedScreen extends StatelessWidget {
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(
               AmoraSpacing.space16,
-              AmoraSpacing.space20,
-              AmoraSpacing.space20,
-              AmoraSpacing.navigationContentInset,
+              AmoraSpacing.space16,
+              AmoraSpacing.space16,
+              110,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -95,13 +95,13 @@ class WhyWeMatchedScreen extends StatelessWidget {
                           crossAxisCount: 2,
                           mainAxisSpacing: AmoraSpacing.space12,
                           crossAxisSpacing: AmoraSpacing.space12,
-                          childAspectRatio: .94,
+                          childAspectRatio: 1.22,
                         ),
                     itemBuilder: (context, index) => _ReasonCard(
                       reason: profile.compatibilityReasons[index],
                     ),
                   ),
-                const SizedBox(height: AmoraSpacing.space8),
+                const SizedBox(height: AmoraSpacing.space16),
                 Row(
                   children: [
                     Expanded(
@@ -155,52 +155,69 @@ class _ReasonCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PremiumCard(
-      padding: const EdgeInsets.all(AmoraSpacing.space16),
-      radius: AmoraRadius.extraLarge,
-      child: FittedBox(
-        fit: BoxFit.scaleDown,
-        alignment: Alignment.topLeft,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              children: [
-                Icon(
+      padding: const EdgeInsets.all(14),
+      radius: AmoraRadius.large,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(7),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryPurple.withValues(alpha: .08),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
                   _factorIcon(reason.factor),
                   color: AppColors.primaryPurple,
+                  size: 20,
                 ),
-                const SizedBox(width: AmoraSpacing.space8),
-                SizedBox(
-                  width: 34,
-                  height: 34,
-                  child: CircularProgressIndicator(
-                    value: reason.score / 100,
-                    strokeWidth: 4,
-                    strokeCap: StrokeCap.round,
-                    backgroundColor: AppColors.borderGray,
+              ),
+              SizedBox(
+                width: 28,
+                height: 28,
+                child: CircularProgressIndicator(
+                  value: reason.score / 100,
+                  strokeWidth: 3.5,
+                  strokeCap: StrokeCap.round,
+                  color: AppColors.primaryPurple,
+                  backgroundColor: AppColors.borderGray,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  reason.label,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.deepWine,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    height: 1.25,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${reason.score}% signal',
+                  style: const TextStyle(
+                    color: AppColors.primaryPurple,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: AmoraSpacing.space12),
-            Text(
-              reason.label,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: AmoraTextStyles.titleSmall.copyWith(
-                color: AppColors.deepWine,
-              ),
-            ),
-            const SizedBox(height: AmoraSpacing.space8),
-            Text(
-              '${reason.score}% signal',
-              style: AmoraTextStyles.labelLarge.copyWith(
-                color: AppColors.primaryPurple,
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

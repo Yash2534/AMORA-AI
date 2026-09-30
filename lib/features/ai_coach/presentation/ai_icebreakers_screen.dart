@@ -83,8 +83,8 @@ class _AiIcebreakersScreenState extends State<AiIcebreakersScreen> {
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(
                 AmoraSpacing.space16,
-                AmoraSpacing.x5,
-                AmoraSpacing.x5,
+                AmoraSpacing.space16,
+                AmoraSpacing.space16,
                 110,
               ),
               child: Column(

@@ -365,27 +365,67 @@ class IcebreakerCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 14),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
+          Row(
             children: [
-              OutlinedButton.icon(
-                onPressed: () {
-                  Clipboard.setData(ClipboardData(text: text));
-                  showPremiumSnack(context, 'Copied opening message');
-                },
-                icon: const Icon(Icons.copy_rounded, size: 18),
-                label: const Text('Copy'),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    Clipboard.setData(ClipboardData(text: text));
+                    showPremiumSnack(context, 'Copied opening message');
+                  },
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
+                    minimumSize: const Size(0, 42),
+                    side: const BorderSide(color: AppColors.border, width: 1.2),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  icon: const Icon(Icons.copy_rounded, size: 17),
+                  label: const FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text('Copy'),
+                  ),
+                ),
               ),
-              OutlinedButton.icon(
-                onPressed: onCustomize,
-                icon: const Icon(Icons.edit_rounded, size: 18),
-                label: const Text('Edit'),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: onCustomize,
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
+                    minimumSize: const Size(0, 42),
+                    side: const BorderSide(color: AppColors.border, width: 1.2),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  icon: const Icon(Icons.edit_rounded, size: 17),
+                  label: const FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text('Edit'),
+                  ),
+                ),
               ),
-              FilledButton.icon(
-                onPressed: onSend,
-                icon: const Icon(Icons.send_rounded, size: 18),
-                label: const Text('Send'),
+              const SizedBox(width: 8),
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: onSend,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.deepWine,
+                    foregroundColor: AppColors.surface,
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
+                    minimumSize: const Size(0, 42),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  icon: const Icon(Icons.send_rounded, size: 17),
+                  label: const FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text('Send'),
+                  ),
+                ),
               ),
             ],
           ),
