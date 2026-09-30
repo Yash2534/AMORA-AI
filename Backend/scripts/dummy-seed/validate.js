@@ -24,7 +24,8 @@ async function validateDummyData(sequelize, models, config) {
   const imageOwners = new Map();
   const imageHashes = new Map();
   for (const profile of profiles) {
-    invariant(Array.isArray(profile.photos) && profile.photos.length === 2, `profile ${profile.id} must have exactly two demo photos`);
+    const expectedPhotoCount = users.find((user) => user.id === profile.userId)?.email === config.demoEmail ? 5 : 2;
+    invariant(Array.isArray(profile.photos) && profile.photos.length === expectedPhotoCount, `profile ${profile.id} must have ${expectedPhotoCount} demo photos`);
     invariant(Number(profile.primaryPhotoIndex) === 0, `profile ${profile.id} must have primaryPhotoIndex 0`);
     for (const [photoIndex, photo] of profile.photos.entries()) {
       invariant(photo.startsWith(`/uploads/onboarding-photos/${config.mediaPrefix}`), `profile ${profile.id} has an unexpected demo media URL`);
@@ -41,7 +42,7 @@ async function validateDummyData(sequelize, models, config) {
       imageHashes.set(hash, { photo, profileId: profile.id, userId: profile.userId, photoIndex });
     }
   }
-  invariant(imageOwners.size === users.length * 2, 'each seed user must own two unique image files');
+  invariant(imageOwners.size === (users.length * 2) + 3, 'walkthrough profiles must own the expected unique image files');
   invariant(imageHashes.size === imageOwners.size, 'every seeded image must have a unique SHA-256 hash');
   for (const profile of completed) {
     invariant(profile.birthDate && profile.gender && profile.city && profile.profession && profile.education, `profile ${profile.id} is missing onboarding data`);
@@ -96,15 +97,15 @@ async function validateDummyData(sequelize, models, config) {
   invariant(invalidForeignKeys.every((row) => Number(row.count) === 0), 'orphaned foreign key found');
 
   const byEmail = new Map(users.map((user) => [user.email, user]));
-  const master = byEmail.get('master@seed.amoraa.example.test');
+  const master = byEmail.get(config.demoEmail);
   invariant(master, 'MASTER account is required');
   const byName = new Map(users.map((user) => [user.name, user]));
-  const reciprocal = byName.get('Neel Vyas'); const longChat = byName.get('Reyan Kapoor'); const roseMatch = byName.get('Yash Trivedi');
-  invariant(reciprocal && longChat && roseMatch, 'named MASTER supporting scenarios are required');
+  const reciprocal = byName.get('Naina Vyas'); const longChat = byName.get('Sara Khan'); const roseMatch = byName.get('Riya Trivedi');
+  invariant(reciprocal && longChat && roseMatch, 'named walkthrough supporting scenarios are required');
   invariant(positiveKeys.has(`${reciprocal.id}:${master.id}`), 'reciprocal trigger must like MASTER');
   invariant(!actionKeys.has(`${master.id}:${reciprocal.id}`), 'MASTER must be free to like the reciprocal trigger');
   const longConversation = conversationPairs.get(pairKey(master.id, longChat.id));
-  invariant(longConversation && messages.filter((message) => message.conversationId === longConversation.id).length >= 50, 'MASTER long conversation must exercise message pagination');
+  invariant(longConversation && messages.filter((message) => message.conversationId === longConversation.id).length >= 8, 'walkthrough conversation must contain realistic history');
   const profilesByUserId = new Map(profiles.map((profile) => [profile.userId, profile]));
   invariant(calculateProfileCompletion(master, profilesByUserId.get(master.id)).percentage === 100, 'MASTER profile must be 100% complete');
   invariant(roses.some((rose) => rose.recipientId === master.id && rose.conversationId != null), 'MASTER must have an incoming Rose on an existing match');
@@ -115,7 +116,7 @@ async function validateDummyData(sequelize, models, config) {
   invariant(blocks.some((row) => row.blockerUserId === master.id), 'MASTER must have a blocked exclusion');
   invariant(subscriptions.some((row) => row.userId === master.id && row.status === 'active'), 'MASTER must have an active premium development subscription');
   invariant(verifications.some((row) => row.userId === master.id && row.status === 'verified'), 'MASTER must have verified identity state');
-  invariant(completed.length > 20 && messages.length > 40 && notifications.length > 0 && reports.length > 0, 'seed volume is insufficient for application testing');
+  invariant(matches.length === 4 && completed.length > 20 && messages.length >= 20 && notifications.length >= 5 && reports.length > 0, 'seed volume is insufficient for walkthrough testing');
 
   return {
     users: users.length, profiles: profiles.length, completedProfiles: completed.length,

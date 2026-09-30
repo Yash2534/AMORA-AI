@@ -111,8 +111,8 @@ test('factor contributions reconstruct the score and partition available/missing
 
 test('deterministic seed known examples retain their certified compatibility scores', () => {
   const { buildSeedBlueprint } = require('../scripts/dummy-seed/factory');
-  const { users } = buildSeedBlueprint({ randomSeed: 12345, userCount: 40, referenceDate: new Date('2026-08-29T12:00:00Z') });
-  for (const [name, expected] of Object.entries({ 'Dhruv Shah': 92, 'Rhea Patel': 87, 'Kabir Menon': 62, 'Jay Shah': 53, 'Naina Rao': 48 })) {
+  const { users } = buildSeedBlueprint({ randomSeed: 12345, userCount: 25, referenceDate: new Date('2026-08-29T12:00:00Z') });
+  for (const [name, expected] of Object.entries({ 'Myra Shah': 92, 'Aarohi Desai': 88, 'Meera Menon': 74, 'Mira Joshi': 52, 'Neha Patel': 11 })) {
     assert.equal(scoreCompatibility(users[0], users.find((user) => user.name === name)).score, expected, name);
   }
   const sparse = users.find((user) => !user.completed);

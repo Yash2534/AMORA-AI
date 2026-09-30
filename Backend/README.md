@@ -95,7 +95,7 @@ Successful responses use `{ "success": true, "message": "...", "data": {} }`. Er
 
 ## Development dummy data
 
-The repeatable dummy-data workflow creates realistic synthetic profiles, development-only local portrait media, discover actions (likes, passes, and Super Likes), Roses, mutual matches, conversations, messages, saved profiles, filters, notification preferences, and a subset of development subscriptions. It never sends email or SMS. All generated accounts use the reserved non-deliverable domain `seed.amoraa.example.test`, and reset removes only that namespace and its dependent records.
+The repeatable walkthrough-data workflow creates realistic synthetic profiles, development-only local portrait media, discover actions (likes, passes, and Super Likes), Roses, mutual matches, conversations, messages, saved profiles, filters, notification preferences, and a subset of development subscriptions. It never sends email or SMS. Supporting accounts use the reserved non-deliverable domain `seed.amoraa.example.test`; the fixed walkthrough account is tracked explicitly as `demo.walkthrough@amoraa.test`. Reset removes only those sanctioned accounts and their dependent records.
 
 The command refuses to run unless all of these conditions are satisfied:
 
@@ -109,24 +109,26 @@ Configure a local ignored `.env`—never a production environment—with values 
 ```dotenv
 ALLOW_DUMMY_SEED=true
 DUMMY_SEED_DATABASES=amora_ai,amora_ai_test
-SEED_USER_COUNT=40
+AMORAA_DEMO_USER_COUNT=25
 SEED_RANDOM_SEED=20260922
 SEED_REFERENCE_DATE=2026-09-22
-SEED_TEST_PASSWORD=Amoraa-Dev-Only-2026!
+AMORAA_DEMO_PASSWORD=<fixed local walkthrough password>
 ```
 
 Then run:
 
 ```bash
 npm run db:seed:dummy
+npm run db:seed:demo-walkthrough:reset
 npm run db:seed:dummy:validate
 npm run verify:dummy-seed
+npm run verify:demo-walkthrough
 npm run verify:demo-profile-images
 npm run verify:master-flow
 npm run report:dummy-seed
 ```
 
-The current dataset uses 80 new synthetic, locally stored portraits under `demo-assets/amoraa-v2-generated/`: exactly two unique age-appropriate images for each of 40 profiles. The seed copies them through the existing upload/media architecture. The application never fetches portrait media at runtime and the old Faker portrait cache is no longer used by this seed.
+The current dataset uses 53 synthetic, locally stored portraits under `demo-assets/amoraa-v2-generated/`: five unique images for the walkthrough account and two unique images for each of 24 supporting profiles. The seed copies them through the existing upload/media architecture. The application never fetches portrait media at runtime.
 
 `db:seed:dummy` is deterministic and idempotent: it removes the previous isolated seed dataset and recreates it in one database transaction. To remove only generated dummy data and its prefixed local media:
 
@@ -138,8 +140,8 @@ The primary manual-test account is:
 
 | Role | Login | Scenario |
 | --- | --- | --- |
-| MASTER — Aisha Mehta | `master@seed.amoraa.example.test` | Complete premium/verified profile; Discover/AI pagination; incoming reactions; seven existing chat states; all primary manual workflows |
+| AMORAA Demo | `demo.walkthrough@amoraa.test` | Complete premium/verified profile; populated Discover/AI, Likes, four Matches/Chats, notifications, filters, profile and account flows |
 
-The MASTER and all supporting accounts use `SEED_TEST_PASSWORD`. Candidate F has already liked MASTER but has no existing match, so MASTER's normal Like action creates the match. Other deterministic supporting profiles cover untouched actions, Super Likes, Roses, saved state, blocked/non-reciprocal/out-of-range/incomplete/inactive exclusions, verified/premium presentation, seven chat states, and multiple Discover/AI pages. Seeded phone numbers use an internal deterministic pattern and work with the existing guarded development OTP flow; the seeder does not add or invoke any OTP bypass.
+All supporting accounts use the runtime `AMORAA_DEMO_PASSWORD`. Candidate F has already liked the walkthrough account but has no existing match, so the normal Like action creates a match. Other deterministic profiles cover untouched actions, Super Likes, Roses, saved state, blocked/non-reciprocal/out-of-range/incomplete/inactive exclusions, verified/premium presentation, four chat states, filters, and populated Discover/AI pages. Seeded phone numbers use an internal deterministic pattern and work with the existing guarded development OTP flow; the seeder does not add or invoke any OTP bypass.
 
-The current schema has no coordinates, so discovery returns `distance: null` and true geospatial distance filtering cannot be populated without a future schema/business-logic change. Interests are JSON values validated against the mobile app's existing options rather than lookup-table foreign keys. Super Likes are `DiscoverActions.action = 'superLike'`; there is no separate Super Likes table.
+The walkthrough profiles use deterministic synthetic `matchLatitude`, `matchLongitude`, and `locationUpdatedAt` values around Ahmedabad/Gandhinagar so age and distance filters visibly change results. Exact coordinates remain excluded from public profile payloads. Super Likes use `DiscoverActions.action = 'superLike'`; there is no separate Super Likes table.

@@ -29,7 +29,7 @@ function assertPublicProfileImage(value, profileByUserId, baseUrl, label) {
   // the isolated seed namespace; only assert the seed-owned rows here.
   if (!profile) return;
   const expectedPrimary = `${baseUrl}${profile.photos[0]}`;
-  if (value.imageUrl !== expectedPrimary || !Array.isArray(value.gallery) || value.gallery.length !== 2
+  if (value.imageUrl !== expectedPrimary || !Array.isArray(value.gallery) || value.gallery.length !== profile.photos.length
     || value.gallery[0] !== expectedPrimary) {
     fail(`${label} returned an incorrect image contract for profile ${profile.id}`);
   }
@@ -64,7 +64,7 @@ async function run() {
     const seedCounts = await validateDummyData(sequelize, getModels(), config);
     const { User, OnboardingProfile, Block } = getModels();
     const users = (await findSeedUsers(User, config)).sort((left, right) => left.email.localeCompare(right.email));
-    if (users.length !== 40) fail(`expected 40 seed users, found ${users.length}`);
+    if (users.length !== config.userCount) fail(`expected ${config.userCount} seed users, found ${users.length}`);
     const profiles = await OnboardingProfile.findAll({ where: { userId: users.map((user) => user.id) } });
     const profileByUserId = new Map(profiles.map((profile) => [Number(profile.userId), profile]));
     const paths = new Map();
@@ -74,7 +74,8 @@ async function run() {
       const profile = profileByUserId.get(Number(user.id));
       if (!profile) fail(`user ${user.id} has no profile`);
       const photos = Array.isArray(profile.photos) ? profile.photos : [];
-      if (photos.length !== 2 || Number(profile.primaryPhotoIndex) !== 0) fail(`profile ${profile.id} has invalid gallery ordering`);
+      const expectedPhotos = user.email === config.demoEmail ? 5 : 2;
+      if (photos.length !== expectedPhotos || Number(profile.primaryPhotoIndex) !== 0) fail(`profile ${profile.id} has invalid gallery ordering`);
       const age = Math.floor((config.referenceDate - new Date(`${profile.birthDate}T12:00:00.000Z`)) / 31557600000);
       const row = { seed: seedIndex + 1, user: user.name, age, genderPresentation: profile.gender, ageAppearanceAppropriate: true, sourceType: 'synthetic-generated-local', userId: String(user.id), profileId: String(profile.id), primaryImage: photos[0], galleryImages: photos, hashes: [] };
       for (const [photoIndex, photo] of photos.entries()) {
@@ -92,7 +93,8 @@ async function run() {
       }
       reportRows.push(row);
     }
-    if (paths.size !== 80 || hashes.size !== 80) fail(`expected 80 unique image files and hashes, found ${paths.size} paths and ${hashes.size} hashes`);
+    const expectedImages = (config.userCount * 2) + 3;
+    if (paths.size !== expectedImages || hashes.size !== expectedImages) fail(`expected ${expectedImages} unique image files and hashes, found ${paths.size} paths and ${hashes.size} hashes`);
 
     server = createHttpServer();
     await new Promise((resolve, reject) => { server.once('error', reject); server.listen(0, '127.0.0.1', resolve); });
@@ -102,7 +104,7 @@ async function run() {
       const profile = profileByUserId.get(Number(user.id));
       const serialized = serializePublicProfile(serializerRequest, user, profile);
       if (!serialized.imageUrl || serialized.imageUrl !== `${baseUrl}${profile.photos[0]}`) fail(`profile ${profile.id} generated an invalid primary URL`);
-      if (serialized.gallery.length !== 2 || serialized.gallery[0] !== serialized.imageUrl) fail(`profile ${profile.id} generated an invalid gallery response`);
+      if (serialized.gallery.length !== profile.photos.length || serialized.gallery[0] !== serialized.imageUrl) fail(`profile ${profile.id} generated an invalid gallery response`);
     }
     let successfulResponses = 0;
     for (const photo of paths.keys()) {
@@ -114,7 +116,7 @@ async function run() {
       successfulResponses += 1;
     }
 
-    const viewerUsers = ['master@seed.amoraa.example.test', 'candidate.a.arjun.desai@seed.amoraa.example.test', 'candidate.b.rohan.shah@seed.amoraa.example.test'].map((email) => users.find((user) => user.email === email));
+    const viewerUsers = [config.demoEmail, 'candidate.a.aarohi.desai@seed.amoraa.example.test', 'candidate.b.kavya.shah@seed.amoraa.example.test'].map((email) => users.find((user) => user.email === email));
     const viewers = [];
     for (const user of viewerUsers) viewers.push({ id: user.id, token: await login(baseUrl, user.email, config.password) });
     const tokenA = viewers[0].token;
@@ -128,7 +130,7 @@ async function run() {
         && !blockedPairs.has(`${user.id}:${candidate.id}`));
       if (!viewer) fail(`no unblocked API viewer is available for seeded user ${user.id}`);
       const data = await apiRequest(baseUrl, `/api/profiles/${user.id}`, viewer.token);
-      if (data.profile?.imageUrl !== `${baseUrl}${profile.photos[0]}` || data.profile?.gallery?.length !== 2) fail(`public profile API image mapping failed for profile ${profile.id}`);
+      if (data.profile?.imageUrl !== `${baseUrl}${profile.photos[0]}` || data.profile?.gallery?.length !== profile.photos.length) fail(`public profile API image mapping failed for profile ${profile.id}`);
     }
     const [feed, likes, superLikes, receivedLikes, matches, conversations, notifications] = await Promise.all([
       apiRequest(baseUrl, '/api/discover/feed?page=1&limit=30&verifiedOnly=false', tokenA),
@@ -158,7 +160,7 @@ async function run() {
     fs.mkdirSync(path.dirname(reportPath), { recursive: true });
     fs.writeFileSync(reportPath, `${JSON.stringify({
       generatedAt: new Date().toISOString(),
-      expectedProfiles: 40,
+      expectedProfiles: config.userCount,
       profilesFound: users.length,
       profilesWithPrimaryImages: users.length,
       totalImageRecords: paths.size,
@@ -166,7 +168,7 @@ async function run() {
       imageUrlsTested: successfulResponses,
       rows: reportRows,
     }, null, 2)}\n`);
-    console.log(`[DemoProfileImages] PASS profiles=40 primary=40 imageRecords=${paths.size} uniqueSha256=${hashes.size} http200=${successfulResponses} duplicates=0`);
+    console.log(`[DemoProfileImages] PASS profiles=${config.userCount} primary=${config.userCount} imageRecords=${paths.size} uniqueSha256=${hashes.size} http200=${successfulResponses} duplicates=0`);
     console.log(`[DemoProfileImages] Mapping report: ${reportPath}`);
     return { ...seedCounts, profileImages: paths.size, uniqueImageHashes: hashes.size, http200: successfulResponses, reportPath };
   } finally {

@@ -1,11 +1,14 @@
+const crypto = require('crypto');
 const path = require('path');
 
 const SAFE_ENVIRONMENTS = new Set(['development', 'test', 'qa', 'staging']);
-const DEFAULT_USER_COUNT = 40;
-const MIN_USER_COUNT = 40;
-const MAX_USER_COUNT = 40;
+const DEFAULT_USER_COUNT = 25;
+const MIN_USER_COUNT = 25;
+const MAX_USER_COUNT = 25;
 const SEED_EMAIL_SUFFIX = '@seed.amoraa.example.test';
 const SEED_MEDIA_PREFIX = 'amoraa-v2-profile-';
+const DEMO_EMAIL = 'demo.walkthrough@amoraa.test';
+const EXPECTED_DEMO_PASSWORD_HASH = '0267164411c64fee737a0e29122f6c540617fe04c02a77d7ebcfd862f6ec9120';
 
 function parseInteger(name, raw, fallback, minimum, maximum) {
   const value = raw === undefined || raw === '' ? fallback : Number(raw);
@@ -15,7 +18,11 @@ function parseInteger(name, raw, fallback, minimum, maximum) {
   return value;
 }
 
-function resolveDummySeedConfig(env = process.env, argv = process.argv.slice(2)) {
+function resolveDummySeedConfig(
+  env = process.env,
+  argv = process.argv.slice(2),
+  { expectedDemoPasswordHash = EXPECTED_DEMO_PASSWORD_HASH } = {},
+) {
   const environment = String(env.NODE_ENV || '').trim().toLowerCase();
   if (environment === 'production') {
     throw new Error('Dummy data seeding is blocked in production.');
@@ -45,19 +52,22 @@ function resolveDummySeedConfig(env = process.env, argv = process.argv.slice(2))
     throw new Error('SEED_REFERENCE_DATE must use YYYY-MM-DD.');
   }
 
-  const password = String(env.SEED_TEST_PASSWORD || 'Amoraa-Dev-Only-2026!');
-  if (password.length < 12 || password.length > 72) {
-    throw new Error('SEED_TEST_PASSWORD must contain 12 to 72 characters.');
+  const password = String(env.AMORAA_DEMO_PASSWORD || '');
+  const passwordHash = crypto.createHash('sha256').update(password).digest('hex');
+  if (!password || passwordHash !== expectedDemoPasswordHash) {
+    throw new Error('AMORAA_DEMO_PASSWORD must contain the approved local walkthrough password.');
   }
 
   return Object.freeze({
     environment,
     databaseName,
-    userCount: parseInteger('SEED_USER_COUNT', env.SEED_USER_COUNT, DEFAULT_USER_COUNT, MIN_USER_COUNT, MAX_USER_COUNT),
+    userCount: parseInteger('AMORAA_DEMO_USER_COUNT', env.AMORAA_DEMO_USER_COUNT, DEFAULT_USER_COUNT, MIN_USER_COUNT, MAX_USER_COUNT),
     randomSeed: parseInteger('SEED_RANDOM_SEED', env.SEED_RANDOM_SEED, 12345, 1, 2147483647),
     referenceDate: new Date(`${referenceDateText}T12:00:00.000Z`),
     referenceDateText,
     password,
+    demoEmail: DEMO_EMAIL,
+    ownedEmails: [DEMO_EMAIL],
     emailSuffix: SEED_EMAIL_SUFFIX,
     mediaPrefix: SEED_MEDIA_PREFIX,
     uploadsDirectory: path.resolve(__dirname, '../../uploads/onboarding-photos'),
@@ -74,5 +84,7 @@ module.exports = {
   SAFE_ENVIRONMENTS,
   SEED_EMAIL_SUFFIX,
   SEED_MEDIA_PREFIX,
+  DEMO_EMAIL,
+  EXPECTED_DEMO_PASSWORD_HASH,
   resolveDummySeedConfig,
 };

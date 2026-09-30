@@ -13,6 +13,7 @@ const {
   viewerAcceptsCandidate,
 } = require('../src/services/discoverEligibilityPolicy');
 const { distanceKm, validCoordinates } = require('../src/utils/geoDistance');
+const { findSeedUsers } = require('./dummy-seed/store');
 
 const ageAt = (birthDate, reference) => { const birth = new Date(`${birthDate}T00:00:00.000Z`); let age = reference.getUTCFullYear() - birth.getUTCFullYear(); if (reference.getUTCMonth() < birth.getUTCMonth() || (reference.getUTCMonth() === birth.getUTCMonth() && reference.getUTCDate() < birth.getUTCDate())) age -= 1; return age; };
 const bucket = (score) => score < 50 ? '<50' : score < 60 ? '50-59' : score < 70 ? '60-69' : score < 80 ? '70-79' : score < 90 ? '80-89' : '90-100';
@@ -24,8 +25,9 @@ async function run() {
   await initializeDatabase(); const sequelize = getSequelize();
   try {
     const m = getModels();
-    const users = await m.User.findAll({ where: { email: { [Op.like]: `%${config.emailSuffix}` } }, include: [{ model: m.OnboardingProfile, required: true }, { model: m.Subscription, as: 'subscription', required: false, include: [{ model: m.SubscriptionPlan, as: 'plan', required: false }] }] });
-    const master = users.find((user) => user.email === 'master@seed.amoraa.example.test'); const viewer = master.OnboardingProfile;
+    const owned = await findSeedUsers(m.User, config);
+    const users = await m.User.findAll({ where: { id: owned.map((user) => user.id) }, include: [{ model: m.OnboardingProfile, required: true }, { model: m.Subscription, as: 'subscription', required: false, include: [{ model: m.SubscriptionPlan, as: 'plan', required: false }] }] });
+    const master = users.find((user) => user.email === config.demoEmail); const viewer = master.OnboardingProfile;
     const seedIds = users.map((user) => user.id);
     const [filterRows, allActions, allMatches, allBlocks, saved, allRoses, conversations, allMessages, notifications, reports, consents, verifications, allSaved, allNotifications] = await Promise.all([
       m.DiscoverFilterPreference.findAll({ where: { userId: { [Op.in]: seedIds } } }), m.DiscoverAction.findAll({ where: { actorUserId: { [Op.in]: seedIds }, targetUserId: { [Op.in]: seedIds } } }),

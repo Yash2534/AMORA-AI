@@ -18,43 +18,47 @@ const QUALITIES = ['Kindness', 'Curiosity', 'Humour', 'Ambition', 'Empathy', 'Ho
 const LOVE_LANGUAGES = ['Quality time', 'Words of affirmation', 'Acts of service', 'Physical touch', 'Receiving gifts'];
 const TALKING_HOURS = ['Morning', 'Afternoon', 'Evening', 'Late night'];
 const MESSAGE_LINES = ['Hey! Your profile made me smile.', 'That place looks amazing. Where was that photo taken?', 'I have been meaning to try that restaurant.', 'How is your week going?', 'A sunrise walk sounds like a very good plan.', 'What is the best book you have read this year?', 'Your coffee recommendation was excellent, by the way.', 'I would absolutely join that heritage walk.', 'Do you have a favourite live music spot in the city?', 'That made me laugh. I needed that today.', 'I am free Saturday afternoon if you want to continue this in person.', 'Perfect. Shall we meet near the riverfront around four?'];
-const MASTER_INTERESTS = ['Coffee', 'Reading', 'Cooking', 'Road trips', 'Heritage walks', 'Photography', 'Yoga', 'Live music'];
+const MASTER_INTERESTS = ['Travel', 'Music', 'Movies', 'Fitness', 'Food', 'Photography', 'Technology'];
 
 const SCENARIOS = [
-  ['master', 'MASTER_TEST_ACCOUNT', 'Aisha Mehta', 'Female', 27, 'very-high'],
-  ['candidate-a', 'UNTOUCHED_DISCOVER', 'Arjun Desai', 'Male', 28, 'high'],
-  ['candidate-b', 'HIGH_COMPATIBILITY', 'Rohan Shah', 'Male', 29, 'high'],
-  ['candidate-c', 'MEDIUM_COMPATIBILITY', 'Kabir Menon', 'Male', 30, 'medium'],
-  ['candidate-d', 'LOW_COMPATIBILITY', 'Dev Nair', 'Male', 26, 'low'],
-  ['candidate-e', 'MASTER_SENT_LIKE', 'Ishaan Patel', 'Male', 31, 'medium'],
-  ['candidate-f', 'RECIPROCAL_LIKE_TRIGGER', 'Neel Vyas', 'Male', 28, 'high'],
-  ['candidate-g', 'SUPER_LIKED_MASTER', 'Veer Kapoor', 'Male', 30, 'medium'],
-  ['candidate-h', 'UNTOUCHED_ROSE_TARGET', 'Mihir Joshi', 'Male', 27, 'low'],
-  ['candidate-i', 'MATCH_NO_MESSAGES', 'Samir Khan', 'Male', 29, 'medium'],
-  ['candidate-j', 'MATCH_SHORT_CHAT', 'Pranav Rao', 'Male', 32, 'high'],
-  ['candidate-k', 'MATCH_UNREAD_CHAT', 'Aarav Singh', 'Male', 25, 'medium'],
-  ['candidate-l', 'MATCH_ROSE_CHAT', 'Yash Trivedi', 'Male', 31, 'high'],
-  ['candidate-m', 'SAVED_PROFILE', 'Harsh Bhat', 'Male', 28, 'medium'],
-  ['candidate-n', 'BLOCKED_EXCLUDED', 'Shaurya Verma', 'Male', 29, 'high'],
-  ['candidate-o', 'NON_RECIPROCAL_EXCLUDED', 'Krish Soni', 'Male', 27, 'medium'],
-  ['candidate-p', 'AGE_EXCLUDED', 'Vikram Mehta', 'Male', 39, 'high'],
-  ['candidate-q', 'INCOMPLETE_EXCLUDED', 'Aditya Patel', 'Male', 26, 'sparse'],
-  ['candidate-r', 'VERIFIED_DISCOVER', 'Nikhil Iyer', 'Male', 30, 'high'],
-  ['candidate-s', 'PREMIUM_DISCOVER', 'Karan Desai', 'Male', 32, 'medium'],
-  ['candidate-t', 'VERY_HIGH_AI', 'Dhruv Shah', 'Male', 28, 'very-high'],
-  ['candidate-u', 'MATCH_LONG_CHAT', 'Reyan Kapoor', 'Male', 29, 'high'],
-  ['candidate-v', 'MATCH_READ_CHAT', 'Manav Nair', 'Male', 30, 'medium'],
-  ['candidate-w', 'MATCH_IMAGE_CHAT', 'Vivaan Rao', 'Male', 27, 'high'],
-  ['candidate-x', 'INACTIVE_EXCLUDED', 'Atharv Singh', 'Male', 28, 'high'],
+  ['master', 'MASTER_TEST_ACCOUNT', 'AMORAA Demo', 'Male', 28, 'very-high'],
+  ['candidate-a', 'UNTOUCHED_DISCOVER', 'Aarohi Desai', 'Female', 24, 'high'],
+  ['candidate-b', 'HIGH_COMPATIBILITY', 'Kavya Shah', 'Female', 26, 'high'],
+  ['candidate-c', 'MEDIUM_COMPATIBILITY', 'Meera Menon', 'Female', 28, 'medium'],
+  ['candidate-d', 'LOW_COMPATIBILITY', 'Diya Nair', 'Female', 30, 'low'],
+  ['candidate-e', 'MASTER_SENT_LIKE', 'Isha Patel', 'Female', 32, 'medium'],
+  ['candidate-f', 'RECIPROCAL_LIKE_TRIGGER', 'Naina Vyas', 'Female', 27, 'high'],
+  ['candidate-g', 'SUPER_LIKED_MASTER', 'Tara Kapoor', 'Female', 29, 'medium'],
+  ['candidate-h', 'UNTOUCHED_ROSE_TARGET', 'Mira Joshi', 'Female', 34, 'low'],
+  ['candidate-i', 'MATCH_WEEKEND_CHAT', 'Sara Khan', 'Female', 29, 'medium'],
+  ['candidate-j', 'MATCH_COFFEE_CHAT', 'Priya Rao', 'Female', 31, 'high'],
+  ['candidate-k', 'MATCH_UNREAD_CHAT', 'Ananya Singh', 'Female', 25, 'medium'],
+  ['candidate-l', 'MATCH_ROSE_CHAT', 'Riya Trivedi', 'Female', 30, 'high'],
+  ['candidate-m', 'SAVED_PROFILE', 'Avni Bhat', 'Female', 28, 'medium'],
+  ['candidate-n', 'BLOCKED_EXCLUDED', 'Sana Verma', 'Female', 29, 'high'],
+  ['candidate-o', 'NON_RECIPROCAL_EXCLUDED', 'Leela Soni', 'Male', 27, 'medium'],
+  ['candidate-p', 'AGE_EXCLUDED', 'Zoya Mehta', 'Male', 39, 'high'],
+  ['candidate-q', 'INCOMPLETE_EXCLUDED', 'Neha Patel', 'Male', 26, 'sparse'],
+  ['candidate-r', 'VERIFIED_DISCOVER', 'Ira Iyer', 'Female', 30, 'high'],
+  ['candidate-s', 'PREMIUM_DISCOVER', 'Rhea Desai', 'Female', 32, 'medium'],
+  ['candidate-t', 'VERY_HIGH_AI', 'Myra Shah', 'Female', 28, 'very-high'],
+  ['candidate-u', 'PASSED_EXCLUDED', 'Aditi Kapoor', 'Male', 29, 'high'],
+  ['candidate-v', 'PASSED_EXCLUDED', 'Pooja Nair', 'Male', 30, 'medium'],
+  ['candidate-w', 'PASSED_EXCLUDED', 'Siya Rao', 'Male', 27, 'high'],
+  ['candidate-x', 'INACTIVE_EXCLUDED', 'Vanya Singh', 'Male', 28, 'high'],
 ].map(([key, role, name, gender, age, scoreBand]) => ({ key, role, name, gender, age, scoreBand }));
 
-Object.assign(SCENARIOS[0], { email: 'master@seed.amoraa.example.test', city: 'Ahmedabad', profession: 'Product Designer', education: 'Postgraduate', premium: true, identityVerified: true });
-Object.assign(SCENARIOS[15], { interestedIn: ['Male'] });
+Object.assign(SCENARIOS[0], { email: 'demo.walkthrough@amoraa.test', city: 'Ahmedabad', profession: 'Product Designer', education: 'Graduate', premium: true, identityVerified: true, heightCm: 178 });
+Object.assign(SCENARIOS[15], { interestedIn: ['Female'] });
 Object.assign(SCENARIOS[17], { completed: false });
 Object.assign(SCENARIOS[18], { identityVerified: true });
 Object.assign(SCENARIOS[19], { premium: true });
 Object.assign(SCENARIOS[20], { identityVerified: true });
 Object.assign(SCENARIOS[24], { accountStatus: 'deactivated' });
+Object.assign(SCENARIOS[4], { city: 'Gandhinagar' });
+Object.assign(SCENARIOS[8], { city: 'Gandhinagar' });
+Object.assign(SCENARIOS[16], { city: 'Surat' });
+Object.assign(SCENARIOS[17], { city: 'Vadodara' });
 
 const POOL_NAMES = ['Anaya Iyer', 'Zoya Khan', 'Rhea Patel', 'Tara Menon', 'Avni Desai', 'Sana Sheikh', 'Mira Joshi', 'Naina Rao', 'Rahul Verma', 'Om Bhat', 'Siddharth Soni', 'Jay Shah', 'Meera Nair', 'Ira Kapoor', 'Diya Trivedi'];
 
@@ -70,9 +74,9 @@ function pairKey(firstId, secondId) { return stablePair(firstId, secondId).join(
 
 function compatibilityTemplate(band, random) {
   const templates = {
-    'very-high': [MASTER_INTERESTS.slice(0, 7), ['Long-Term Relationship', 'Marriage Minded'], 'deep_conversations', ['English', 'Hindi', 'Gujarati'], 'Ahmedabad', 'Never', 'Sometimes', 'Never'],
-    high: [MASTER_INTERESTS.slice(0, 6), ['Long-Term Relationship'], 'deep_conversations', ['English', 'Hindi'], 'Ahmedabad', 'Never', 'Sometimes', 'Never'],
-    medium: [[...MASTER_INTERESTS.slice(0, 4), 'Running', 'Dogs'], ['Long-Term Relationship'], 'deep_conversations', ['English', 'Hindi'], 'Ahmedabad', 'Never', 'Never', 'Never'],
+    'very-high': [MASTER_INTERESTS.slice(0, 7), ['Long-Term Relationship'], 'deep_conversations', ['English', 'Hindi', 'Gujarati'], 'Ahmedabad', 'No', 'Occasionally', 'No'],
+    high: [MASTER_INTERESTS.slice(0, 6), ['Long-Term Relationship'], 'deep_conversations', ['English', 'Hindi'], 'Ahmedabad', 'No', 'Occasionally', 'No'],
+    medium: [[...MASTER_INTERESTS.slice(0, 4), 'Running', 'Dogs'], ['Long-Term Relationship'], 'deep_conversations', ['English', 'Hindi'], 'Ahmedabad', 'No', 'Never', 'No'],
     low: [[...MASTER_INTERESTS.slice(0, 2), 'Cycling', 'Wildlife', 'Street food'], ['Long-Term Relationship'], 'deep_conversations', ['English', 'Hindi'], 'Ahmedabad', 'Never', 'Never', 'Never'],
     sparse: [['Coffee'], ['Exploring Possibilities'], 'occasional_texting', ['Hindi'], 'Vadodara', 'Prefer not to say', 'Prefer not to say', 'Prefer not to say'],
   };
@@ -93,21 +97,22 @@ function buildSeedBlueprint(config) {
     const sequence = index + 1; const template = compatibilityTemplate(scenario.scoreBand || 'medium', random); const isMaster = scenario.key === 'master';
     const completed = scenario.completed !== false; const gender = scenario.gender || 'Male'; const age = scenario.age || integer(random, 22, 36);
     const languages = isMaster ? ['English', 'Hindi', 'Gujarati'] : template.languages; const interests = isMaster ? MASTER_INTERESTS : (completed ? template.interests : ['Coffee']); const city = scenario.city || template.city;
-    const createdAt = dateDaysBefore(config.referenceDate, 120 - Math.min(100, index * 2), index); const updatedAt = dateDaysBefore(config.referenceDate, Math.min(10, index % 12), index); const religion = ['Hindu', 'Jain', 'Muslim', 'Sikh', 'Spiritual', 'Open'][index % 6]; const heightCm = 158 + (index % 32);
+    const createdAt = dateDaysBefore(config.referenceDate, 120 - Math.min(100, index * 2), index); const updatedAt = dateDaysBefore(config.referenceDate, Math.min(10, index % 12), index); const religion = ['Hindu', 'Jain', 'Muslim', 'Sikh', 'Spiritual', 'Open'][index % 6]; const heightCm = scenario.heightCm || 158 + (index % 32);
     const [cityLatitude, cityLongitude] = CITY_COORDINATES[city];
-    const coordinateOffset = ((index % 7) - 3) * 0.0025;
+    const distanceOffsets = [0, 0.009, 0.027, 0.063, 0.108, 0.18, 0.315, 0.54];
+    const coordinateOffset = distanceOffsets[index % distanceOffsets.length] + (index * 0.0001);
     return { ...scenario, sequence, completed, age, gender, city,
       email: scenario.email || `${slug(scenario.key)}.${slug(scenario.name)}@seed.amoraa.example.test`, phoneNumber: `+919991${String(sequence).padStart(6, '0')}`, birthDate: dateForAge(config.referenceDate, age, index % 300),
       profession: scenario.profession || PROFESSIONS[index % PROFESSIONS.length], company: ['Daylight Design', 'Bluebird Labs', 'Aster Health', 'Riverstone', 'Independent'][index % 5], education: scenario.education || EDUCATION[index % EDUCATION.length],
-      relationshipGoals: isMaster ? ['Long-Term Relationship', 'Marriage Minded'] : template.goals, interestedIn: scenario.interestedIn || (isMaster ? ['Everyone'] : ['Female']),
-      bio: completed ? `${scenario.name.split(' ')[0]} enjoys ${interests.slice(0, 3).join(', ').toLowerCase()} and values honest conversation. Looking for a grounded connection with curiosity, laughter, and room to grow.` : 'Still finishing this profile.',
+      relationshipGoals: isMaster ? ['Long-Term Relationship'] : template.goals, interestedIn: scenario.interestedIn || (isMaster ? ['Female'] : ['Male']),
+      bio: isMaster ? 'I enjoy travel, good food, music, fitness, photography and meaningful conversations. I am here to meet someone genuine and build a strong connection.' : (completed ? `${scenario.name.split(' ')[0]} enjoys ${interests.slice(0, 3).join(', ').toLowerCase()} and values honest conversation. Looking for a grounded connection with curiosity, laughter, and room to grow.` : 'Still finishing this profile.'),
       interests, languages, hometown: CITIES[index % 4], religion, heightCm,
       lifestyle: { Height: `${heightCm} cm`, Languages: languages.join(' & '), Religion: religion, Exercise: ['Daily', 'A few times a week', 'Occasionally'][index % 3], 'Food preference': ['Vegetarian', 'Vegan', 'Everything'][index % 3], Pets: ['Dog person', 'Cat person', 'Love all pets'][index % 3], 'Sleep habits': ['Early bird', 'Night owl', 'Flexible'][index % 3] },
-      smoking: isMaster ? 'Never' : template.smoking, drinking: isMaster ? 'Sometimes' : template.drinking, weed: isMaster ? 'Never' : template.weed,
+      smoking: isMaster ? 'No' : template.smoking, drinking: isMaster ? 'Occasionally' : template.drinking, weed: isMaster ? 'No' : template.weed,
       community: ['Gujarati', 'Indian', 'Global', 'Open'][index % 4], pronouns: gender === 'Male' ? ['He/Him'] : gender === 'Female' ? ['She/Her'] : ['They/Them'], sexuality: isMaster ? 'Bisexual' : (index % 7 === 0 ? 'Bisexual' : 'Straight'),
       valuedQualities: sample(random, QUALITIES, 3), loveLanguages: sample(random, LOVE_LANGUAGES, 2), preferredTalkingHours: sample(random, TALKING_HOURS, 2), communicationStyle: isMaster ? 'deep_conversations' : template.style,
-      prompts: completed ? { 'A perfect Sunday looks like': 'Coffee, a long walk, and cooking dinner together.', 'The way to win me over is': 'Be curious, kind, and communicate clearly.' } : {}, iceBreaker: completed ? 'What is a small thing that made your week better?' : '',
-      preferredDistance: 120, photoCount: 2,
+      prompts: completed ? { 'A perfect Sunday looks like': 'Coffee, a long walk, and cooking dinner together.', 'The way to win me over is': 'Be curious, kind, and communicate clearly.', 'A trip I still think about': 'A slow week exploring food, music, and old streets.' } : {}, iceBreaker: completed ? 'What is a small thing that made your week better?' : '',
+      preferredDistance: 100, photoCount: isMaster ? 5 : 2,
       matchLatitude: Number((cityLatitude + coordinateOffset).toFixed(6)),
       matchLongitude: Number((cityLongitude - coordinateOffset).toFixed(6)),
       locationUpdatedAt: updatedAt,

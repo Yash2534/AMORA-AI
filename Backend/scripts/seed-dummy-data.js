@@ -36,8 +36,8 @@ async function run() {
     console.log(`[DummySeed] Seeded and validated ${config.databaseName}.`);
     console.log(`[DummySeed] Deterministic fingerprint: ${result.fingerprint}`);
     console.log(`[DummySeed] Counts: ${JSON.stringify(validated)}`);
-    console.log('[DummySeed] MASTER login: master@seed.amoraa.example.test');
-    console.log('[DummySeed] Password is the configured SEED_TEST_PASSWORD; no email or SMS was sent.');
+    console.log(`[DummySeed] Walkthrough login: ${config.demoEmail}`);
+    console.log('[DummySeed] Password is the configured AMORAA_DEMO_PASSWORD; no email or SMS was sent.');
     return validated;
   } finally {
     await sequelize.close();

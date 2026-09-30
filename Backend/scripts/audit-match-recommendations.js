@@ -7,6 +7,7 @@ const { Sequelize, Op } = require('sequelize');
 const { resolveDummySeedConfig } = require('./dummy-seed/config');
 const { scoreCompatibility } = require('../src/services/matchEngineService');
 const { localAiMatch, rankCandidates } = require('../src/services/aiMatchProvider');
+const { findSeedUsers } = require('./dummy-seed/store');
 
 const stats = (values) => {
   const sorted = [...values].sort((a, b) => a - b);
@@ -32,9 +33,10 @@ async function run() {
     await db.authenticate();
     require('../src/models').initModels(db);
     const m = require('../src/models').getModels();
-    const users = await m.User.findAll({ where: { email: { [Op.like]: `%${config.emailSuffix}` } }, include: [m.OnboardingProfile] });
-    assert.equal(users.length, 40);
-    const master = users.find((user) => user.email === 'master@seed.amoraa.example.test');
+    const owned = await findSeedUsers(m.User, config);
+    const users = await m.User.findAll({ where: { id: owned.map((user) => user.id) }, include: [m.OnboardingProfile] });
+    assert.equal(users.length, config.userCount);
+    const master = users.find((user) => user.email === config.demoEmail);
     assert.ok(master);
     assert.ok(await m.DiscoverFilterPreference.findOne({ where: { userId: master.id } }), 'Stored master filters required; audit never creates them');
     const controller = require('../src/controllers/discoverController');

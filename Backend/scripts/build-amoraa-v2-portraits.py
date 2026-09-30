@@ -32,13 +32,16 @@ def portrait_crop(image: Image.Image, zoom: float = 1.0) -> Image.Image:
     return image.crop((left, top, left + crop_width, top + crop_height)).resize((800, 1000), Image.Resampling.LANCZOS)
 
 
-def save_pair(source: Image.Image, profile_number: int) -> None:
-    primary = portrait_crop(source, 1.0)
-    secondary = portrait_crop(source, 1.16)
-    secondary = ImageOps.mirror(secondary)
-    secondary = ImageEnhance.Color(secondary).enhance(0.96)
-    secondary = ImageEnhance.Brightness(secondary).enhance(1.025)
-    for photo_number, image in enumerate((primary, secondary), start=1):
+def save_profile(source: Image.Image, profile_number: int, photo_count: int = 2) -> None:
+    images = []
+    for photo_index in range(photo_count):
+        image = portrait_crop(source, 1.0 + (photo_index * 0.055))
+        if photo_index % 2:
+            image = ImageOps.mirror(image)
+        image = ImageEnhance.Color(image).enhance(0.94 + (photo_index * 0.025))
+        image = ImageEnhance.Brightness(image).enhance(0.985 + (photo_index * 0.015))
+        images.append(image)
+    for photo_number, image in enumerate(images, start=1):
         image.save(
             OUTPUT / f"amoraa-v2-profile-{profile_number:03d}-{photo_number:02d}.webp",
             "WEBP",
@@ -51,10 +54,6 @@ def main() -> None:
     OUTPUT.mkdir(parents=True, exist_ok=True)
     for old in OUTPUT.glob("amoraa-v2-profile-*.webp"):
         old.unlink()
-
-    master = Image.open(SOURCE / "master-aisha-diptych.png").convert("RGB")
-    divider = master.size[0] // 2
-    save_pair(master.crop((0, 0, divider - 4, master.size[1])), 1)
 
     sheet_metadata = {
         1: [('Male', 25), ('Male', 28), ('Male', 30), ('Male', 32)],
@@ -77,15 +76,16 @@ def main() -> None:
         for quadrant, (gender, age) in enumerate(metadata):
             sources.append({'gender': gender, 'age': age, 'image': square_quadrant(image, quadrant), 'sheet': sheet_number, 'quadrant': quadrant})
 
-    targets = [('Male', age) for age in [28, 29, 30, 26, 31, 28, 30, 27, 29, 32, 25, 31, 28, 29, 27, 39, 26, 30, 32, 28, 29, 30, 27, 28]]
-    targets += [('Other', 33), ('Male', 34), ('Female', 35), ('Male', 22), ('Male', 23), ('Other', 24), ('Male', 25), ('Male', 26), ('Female', 27), ('Male', 28), ('Other', 29), ('Female', 30), ('Male', 31), ('Male', 32), ('Female', 33)]
-    for profile_number, (gender, age) in enumerate(targets, start=2):
+    targets = [('Male', 28)]
+    targets += [('Female', age) for age in [24, 26, 28, 30, 32, 27, 29, 34, 29, 31, 25, 30, 28, 29, 30, 32, 28]]
+    targets += [('Male', age) for age in [27, 39, 26, 29, 30, 27, 28]]
+    for profile_number, (gender, age) in enumerate(targets, start=1):
         choices = [source for source in sources if source['gender'] == gender]
         if not choices:
             raise RuntimeError(f"No unused {gender} portrait remains for profile {profile_number}.")
         selected = min(choices, key=lambda source: (abs(source['age'] - age), source['sheet'], source['quadrant']))
         sources.remove(selected)
-        save_pair(selected['image'], profile_number)
+        save_profile(selected['image'], profile_number, 5 if profile_number == 1 else 2)
 
 
 if __name__ == "__main__":
