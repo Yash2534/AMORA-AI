@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:amora_ai/core/auth/auth_service.dart';
 import 'package:amora_ai/core/media/amora_media_picker.dart';
 import 'package:amora_ai/features/chat/data/chat_repository.dart';
@@ -30,6 +32,30 @@ class _FakeChatRemote implements ChatRemoteDataSource {
     final value = responses['UPLOAD $path'];
     if (value is Exception) throw value;
     return (value as Map).cast<String, dynamic>();
+  }
+}
+
+class _DelayedReadRemote extends _FakeChatRemote {
+  final readStarted = Completer<void>();
+  final _readCompleted = Completer<void>();
+
+  void completeRead() => _readCompleted.complete();
+
+  @override
+  Future<Map<String, dynamic>> request(
+    String method,
+    String path, {
+    Map<String, dynamic>? body,
+  }) async {
+    if (method == 'PUT' && path == '/api/conversations/10/read') {
+      readStarted.complete();
+      await _readCompleted.future;
+      return {
+        'success': true,
+        'data': {'unreadCount': 0},
+      };
+    }
+    return super.request(method, path, body: body);
   }
 }
 
@@ -283,6 +309,73 @@ void main() {
       );
     },
   );
+
+  test(
+    'incoming messages update true unread count and deduplicate by id',
+    () async {
+      final remote = _FakeChatRemote();
+      remote.responses['GET /api/conversations?page=1&limit=20'] =
+          _listResponse([_summary()]);
+      await repository.resetForTesting(remote: remote);
+      await repository.refreshConversations();
+
+      for (var id = 51; id <= 53; id++) {
+        final message = ChatMessage(
+          id: '$id',
+          text: 'Incoming $id',
+          mine: false,
+          conversationId: '10',
+          senderId: '2',
+          time: '10:0${id - 50}',
+          createdAtEpochMs: id,
+        );
+        repository.receiveMessage('10', message);
+        repository.receiveMessage('10', message);
+        expect(repository.conversation('10')!.unread, id - 50);
+      }
+    },
+  );
+
+  test('mark read preserves a newer message received in flight', () async {
+    final remote = _DelayedReadRemote();
+    remote.responses['GET /api/conversations?page=1&limit=20'] = _listResponse([
+      _summary(unread: 1),
+    ]);
+    await repository.resetForTesting(remote: remote);
+    await repository.refreshConversations();
+    repository.receiveMessage(
+      '10',
+      const ChatMessage(
+        id: '50',
+        text: 'Read boundary',
+        mine: false,
+        conversationId: '10',
+        senderId: '2',
+        time: '10:00',
+        createdAtEpochMs: 50,
+      ),
+    );
+
+    final read = repository.markRead('10');
+    await remote.readStarted.future;
+    repository.receiveMessage(
+      '10',
+      const ChatMessage(
+        id: '51',
+        text: 'Arrived during mark read',
+        mine: false,
+        conversationId: '10',
+        senderId: '2',
+        time: '10:01',
+        createdAtEpochMs: 51,
+      ),
+    );
+    remote.completeRead();
+    await read;
+
+    expect(repository.conversation('10')!.unread, 1);
+    expect(repository.conversation('10')!.messages.last.id, '51');
+  });
 
   test(
     'send access failure is surfaced and no fake message is inserted',

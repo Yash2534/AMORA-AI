@@ -197,9 +197,9 @@ test('production gives the configured test value no special treatment', async ()
   assert.equal(active.consumed, false);
 });
 
-test('restricted production live test OTP still requires a valid, unused challenge', async () => {
+test('restricted staging test OTP still requires a valid, unused challenge', async () => {
   setEnvironment({
-    nodeEnv: 'production',
+    nodeEnv: 'staging',
     enabled: 'false',
     fixedOtp: '',
     skipDelivery: 'false',

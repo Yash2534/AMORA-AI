@@ -14,6 +14,7 @@ import 'package:amora_ai/core/widgets/floating_bottom_nav.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/chat/presentation/chat_detail_screen.dart';
 import 'package:amora_ai/features/chat/data/chat_repository.dart';
+import 'package:amora_ai/features/chat/presentation/unread_message_label.dart';
 import 'package:amora_ai/features/chat/presentation/widgets/chat_presence_avatar.dart';
 import 'package:amora_ai/features/profile/presentation/profile_detail_screen.dart';
 import 'package:flutter/material.dart';
@@ -223,12 +224,15 @@ class _ChatListScreenState extends State<ChatListScreen> {
                                               : 'Load more',
                                         ),
                                       ),
-                                      SizedBox(
-                                        height: keyboardIsOpen
-                                            ? AmoraSpacing.space16
-                                            : FloatingBottomNav.navigationHeightFor(context) + 24.0,
-                                      ),
-                                    ],
+                                    SizedBox(
+                                      height: keyboardIsOpen
+                                          ? AmoraSpacing.space16
+                                          : FloatingBottomNav.navigationHeightFor(
+                                                  context,
+                                                ) +
+                                                24.0,
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
@@ -293,10 +297,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
     if (_openingProfile) return;
     setState(() => _openingProfile = true);
     try {
-      await Navigator.of(context).pushNamed(
-        ProfileDetailScreen.routeName,
-        arguments: chat.user,
-      );
+      await Navigator.of(
+        context,
+      ).pushNamed(ProfileDetailScreen.routeName, arguments: chat.user);
     } finally {
       if (mounted) setState(() => _openingProfile = false);
     }
@@ -441,7 +444,7 @@ class ChatsAppBar extends StatelessWidget {
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: isDark 
+                      color: isDark
                           ? Colors.black.withValues(alpha: 0.2)
                           : AppColors.primary.withValues(alpha: 0.08),
                       blurRadius: 12,
@@ -453,18 +456,21 @@ class ChatsAppBar extends StatelessWidget {
                   child: BackdropFilter(
                     filter: ui.ImageFilter.blur(sigmaX: 18, sigmaY: 18),
                     child: Material(
-                      color: isDark 
+                      color: isDark
                           ? const Color(0xFF1E1428).withValues(alpha: 0.5)
                           : Colors.white.withValues(alpha: 0.6),
                       child: InkWell(
                         onTap: onCompose,
                         child: Container(
-                          constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                          constraints: const BoxConstraints(
+                            minWidth: 48,
+                            minHeight: 48,
+                          ),
                           padding: const EdgeInsets.all(13),
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             border: Border.all(
-                              color: isDark 
+                              color: isDark
                                   ? Colors.white.withValues(alpha: 0.15)
                                   : Colors.white.withValues(alpha: 0.8),
                               width: 1.2,
@@ -650,8 +656,12 @@ class _ChatSearchFieldState extends State<ChatSearchField> {
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
                       colors: [
-                        const Color(0xFF281C35).withValues(alpha: focused ? 0.75 : 0.60),
-                        const Color(0xFF1E1428).withValues(alpha: focused ? 0.60 : 0.45),
+                        const Color(
+                          0xFF281C35,
+                        ).withValues(alpha: focused ? 0.75 : 0.60),
+                        const Color(
+                          0xFF1E1428,
+                        ).withValues(alpha: focused ? 0.60 : 0.45),
                       ],
                     )
                   : LinearGradient(
@@ -667,8 +677,8 @@ class _ChatSearchFieldState extends State<ChatSearchField> {
                 color: focused
                     ? AppColors.primary.withValues(alpha: 0.6)
                     : (isDark
-                        ? Colors.white.withValues(alpha: 0.18)
-                        : Colors.white.withValues(alpha: 0.85)),
+                          ? Colors.white.withValues(alpha: 0.18)
+                          : Colors.white.withValues(alpha: 0.85)),
                 width: focused ? 1.5 : 1.2,
               ),
             ),
@@ -873,14 +883,19 @@ class _ConversationTileState extends State<ConversationTile>
   Widget build(BuildContext context) {
     final chat = widget.chat;
     final unread = chat.unread > 0;
+    final unreadLabel = formatUnreadMessageLabel(chat.unread);
     final highlighted = _hovered || _focused;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final Color rowColor = highlighted
-        ? (isDark ? Colors.white.withValues(alpha: 0.08) : AppColors.primary.withValues(alpha: 0.06))
+        ? (isDark
+              ? Colors.white.withValues(alpha: 0.08)
+              : AppColors.primary.withValues(alpha: 0.06))
         : unread
-            ? (isDark ? Colors.white.withValues(alpha: 0.04) : AppColors.primary.withValues(alpha: 0.03))
-            : Colors.transparent;
+        ? (isDark
+              ? Colors.white.withValues(alpha: 0.04)
+              : AppColors.primary.withValues(alpha: 0.03))
+        : Colors.transparent;
 
     return CallbackShortcuts(
       bindings: <ShortcutActivator, VoidCallback>{
@@ -931,7 +946,9 @@ class _ConversationTileState extends State<ConversationTile>
                               child: GestureDetector(
                                 onTap: widget.onOpenProfile,
                                 child: ConversationAvatar(
-                                  key: ValueKey('conversation-avatar-${chat.id}'),
+                                  key: ValueKey(
+                                    'conversation-avatar-${chat.id}',
+                                  ),
                                   profile: chat.user,
                                   online: chat.online,
                                   radius: 26,
@@ -947,16 +964,21 @@ class _ConversationTileState extends State<ConversationTile>
                                     bottom: BorderSide(
                                       color: isDark
                                           ? Colors.white.withValues(alpha: 0.05)
-                                          : AppColors.primary.withValues(alpha: 0.08),
+                                          : AppColors.primary.withValues(
+                                              alpha: 0.08,
+                                            ),
                                     ),
                                   ),
                                 ),
                                 child: Padding(
-                                  padding: const EdgeInsets.only(bottom: AmoraSpacing.space8),
+                                  padding: const EdgeInsets.only(
+                                    bottom: AmoraSpacing.space8,
+                                  ),
                                   child: Column(
                                     mainAxisSize: MainAxisSize.min,
                                     mainAxisAlignment: MainAxisAlignment.center,
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Row(
                                         children: [
@@ -965,56 +987,94 @@ class _ConversationTileState extends State<ConversationTile>
                                               children: [
                                                 Flexible(
                                                   child: Text(
-                                                    key: ValueKey('conversation-name-${chat.id}'),
+                                                    key: ValueKey(
+                                                      'conversation-name-${chat.id}',
+                                                    ),
                                                     chat.user.name,
                                                     maxLines: 1,
-                                                    overflow: TextOverflow.ellipsis,
-                                                    style: AmoraTextStyles.titleMedium.copyWith(
-                                                      color: AppColors.text,
-                                                      fontWeight: unread ? FontWeight.w800 : FontWeight.w600,
-                                                    ),
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                    style: AmoraTextStyles
+                                                        .titleMedium
+                                                        .copyWith(
+                                                          color: AppColors.text,
+                                                          fontWeight: unread
+                                                              ? FontWeight.w800
+                                                              : FontWeight.w600,
+                                                        ),
                                                   ),
                                                 ),
                                                 if (chat.user.verified) ...[
-                                                  const SizedBox(width: AmoraSpacing.space4),
+                                                  const SizedBox(
+                                                    width: AmoraSpacing.space4,
+                                                  ),
                                                   AmoraaVerifiedIcon(
-                                                    key: ValueKey('conversation-verified-badge-${chat.id}'),
+                                                    key: ValueKey(
+                                                      'conversation-verified-badge-${chat.id}',
+                                                    ),
                                                   ),
                                                 ],
                                               ],
                                             ),
                                           ),
-                                          const SizedBox(width: AmoraSpacing.space8),
+                                          const SizedBox(
+                                            width: AmoraSpacing.space8,
+                                          ),
                                           Text(
-                                            key: ValueKey('conversation-time-${chat.id}'),
+                                            key: ValueKey(
+                                              'conversation-time-${chat.id}',
+                                            ),
                                             _formatInstagramTime(chat.time),
                                             maxLines: 1,
-                                            style: AmoraTextStyles.labelSmall.copyWith(
-                                              color: unread ? AppColors.primary : AppColors.text.withValues(alpha: .5),
-                                              fontSize: 12,
-                                              fontWeight: unread ? FontWeight.w700 : FontWeight.w600,
-                                            ),
+                                            style: AmoraTextStyles.labelSmall
+                                                .copyWith(
+                                                  color: unread
+                                                      ? AppColors.primary
+                                                      : AppColors.text
+                                                            .withValues(
+                                                              alpha: .5,
+                                                            ),
+                                                  fontSize: 12,
+                                                  fontWeight: unread
+                                                      ? FontWeight.w700
+                                                      : FontWeight.w600,
+                                                ),
                                           ),
                                         ],
                                       ),
-                                      const SizedBox(height: AmoraSpacing.space4),
+                                      const SizedBox(
+                                        height: AmoraSpacing.space4,
+                                      ),
                                       Row(
                                         children: [
                                           Expanded(
                                             child: MessagePreview(
-                                              key: ValueKey('conversation-message-${chat.id}'),
+                                              key: ValueKey(
+                                                'conversation-message-${chat.id}',
+                                              ),
                                               message: chat.lastMessage,
                                               unread: unread,
                                             ),
                                           ),
-                                          if (unread) ...[
-                                            const SizedBox(width: AmoraSpacing.space8),
-                                            Container(
-                                              width: 8,
-                                              height: 8,
-                                              decoration: const BoxDecoration(
-                                                color: AppColors.primary,
-                                                shape: BoxShape.circle,
+                                          if (unreadLabel.isNotEmpty) ...[
+                                            const SizedBox(
+                                              width: AmoraSpacing.space8,
+                                            ),
+                                            Flexible(
+                                              child: Text(
+                                                key: ValueKey(
+                                                  'conversation-unread-${chat.id}',
+                                                ),
+                                                unreadLabel,
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: AmoraTextStyles
+                                                    .labelSmall
+                                                    .copyWith(
+                                                      color: AppColors.primary,
+                                                      fontWeight:
+                                                          FontWeight.w800,
+                                                    ),
                                               ),
                                             ),
                                           ],
@@ -1325,7 +1385,7 @@ class _ChatsStateLayout extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
               decoration: BoxDecoration(
-                color: isDark 
+                color: isDark
                     ? const Color(0xFF1E1428).withValues(alpha: 0.5)
                     : Colors.white.withValues(alpha: 0.6),
                 borderRadius: BorderRadius.circular(32),
@@ -1348,7 +1408,7 @@ class _ChatsStateLayout extends StatelessWidget {
                 children: [
                   DecoratedBox(
                     decoration: BoxDecoration(
-                      color: isDark 
+                      color: isDark
                           ? Colors.white.withValues(alpha: 0.1)
                           : AppColors.primary.withValues(alpha: 0.08),
                       shape: BoxShape.circle,

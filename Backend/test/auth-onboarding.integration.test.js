@@ -196,12 +196,12 @@ test('registration provider failure rolls back the account and returns a safe de
   }
 });
 
-test('restricted live test signup skips SMS only for the allowlisted phone and never exposes its OTP', async () => {
+test('restricted staging test signup skips SMS only for the allowlisted phone and never exposes its OTP', async () => {
   const suffix = `${Date.now()}${Math.floor(Math.random() * 1000)}`;
   const testPhone = `+916${suffix.slice(-9)}`;
   const testEmail = `restricted-live-${suffix}@auth-flow.test`;
   const sentBefore = sentSms.length;
-  process.env.NODE_ENV = 'production';
+  process.env.NODE_ENV = 'staging';
   process.env.TEST_FIXED_OTP_ENABLED = 'false';
   process.env.TEST_FIXED_OTP = '';
   process.env.TEST_OTP_SKIP_DELIVERY = 'false';

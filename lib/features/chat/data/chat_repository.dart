@@ -426,14 +426,30 @@ class ChatRepository extends ChangeNotifier {
     final current = conversation(conversationId);
     if (current == null) return;
     final latest = current.messages.isEmpty ? null : current.messages.last.id;
+    var authoritativeUnread = 0;
     if (!_testingMode) {
-      await _remote.request(
+      final response = await _remote.request(
         'PUT',
         '/api/conversations/$conversationId/read',
         body: {if (latest != null) 'messageId': int.parse(latest)},
       );
+      authoritativeUnread =
+          (_data(response)['unreadCount'] as num?)?.toInt() ?? 0;
     }
-    _replace(current.copyWith(unread: 0));
+    final latestCurrent = conversation(conversationId);
+    if (latestCurrent == null) return;
+    final readBoundary = int.tryParse(latest ?? '') ?? 0;
+    final newerLocalUnread = latestCurrent.messages.where((message) {
+      final messageId = int.tryParse(message.id);
+      return !message.mine && messageId != null && messageId > readBoundary;
+    }).length;
+    _replace(
+      latestCurrent.copyWith(
+        unread: authoritativeUnread > newerLocalUnread
+            ? authoritativeUnread
+            : newerLocalUnread,
+      ),
+    );
   }
 
   String draftForConversation(String conversationId) =>
@@ -836,7 +852,10 @@ class ChatRepository extends ChangeNotifier {
       }
       return message;
     }).toList();
-    _replace(current.copyWith(messages: messages));
+    final unreadCount = readerId == currentUserId
+        ? (value['unreadCount'] as num?)?.toInt() ?? current.unread
+        : current.unread;
+    _replace(current.copyWith(messages: messages, unread: unreadCount));
   }
 
   void _handleDelivered(dynamic value) {

@@ -23,9 +23,20 @@ function parseAllowlist(value) {
 }
 
 function resolveLiveTestOtpConfig(env = process.env, now = new Date()) {
-  const production = String(env.NODE_ENV || '').trim().toLowerCase() === 'production';
+  const environment = String(env.NODE_ENV || '').trim().toLowerCase();
   const requested = booleanValue(env, 'LIVE_TEST_OTP_ENABLED');
-  if (!production || !requested) {
+  const configured = requested || [
+    'LIVE_TEST_OTP_VALUE',
+    'LIVE_TEST_OTP_PHONE_ALLOWLIST',
+    'LIVE_TEST_OTP_EXPIRES_AT',
+  ].some((key) => Boolean(String(env[key] || '').trim()));
+
+  if (environment === 'production' && configured) {
+    throw new Error(
+      'Production must not configure LIVE_TEST_OTP_ENABLED, LIVE_TEST_OTP_VALUE, LIVE_TEST_OTP_PHONE_ALLOWLIST, or LIVE_TEST_OTP_EXPIRES_AT.',
+    );
+  }
+  if (environment !== 'staging' || !requested) {
     return Object.freeze({ enabled: false, allowlist: new Set(), expiresAt: null, value: '' });
   }
 

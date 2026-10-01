@@ -35,6 +35,54 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  testWidgets('conversation rows show exact independent unread labels', (
+    tester,
+  ) async {
+    final profile = repository.conversations.first.user;
+    ChatConversation conversation(String id, int unread) => ChatConversation(
+      id: id,
+      user: profile,
+      messages: const [],
+      lastMessage: 'Preview $id',
+      time: '10:00',
+      unread: unread,
+      online: false,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Column(
+            children: [
+              for (final chat in [
+                conversation('A', 1),
+                conversation('B', 2),
+                conversation('C', 3),
+                conversation('D', 0),
+              ])
+                ConversationTile(
+                  key: ValueKey('conversation-${chat.id}'),
+                  chat: chat,
+                  onOpen: () {},
+                  onOpenProfile: () {},
+                  onLongPress: () {},
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('New message'), findsOneWidget);
+    expect(find.text('1+ message'), findsOneWidget);
+    expect(find.text('2+ messages'), findsOneWidget);
+    expect(find.byKey(const ValueKey('conversation-unread-D')), findsNothing);
+    for (final id in const ['A', 'B', 'C', 'D']) {
+      expect(find.text('Preview $id'), findsOneWidget);
+    }
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('renders a compact real-data inbox at 320px', (tester) async {
     await pumpChats(tester, size: const Size(320, 760));
 

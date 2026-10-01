@@ -26,33 +26,14 @@ test('production validates optional admin reset URL and preserves OTP production
   assert.throws(() => validateEnvironment(unsafeOtp), /Production must not configure/);
 });
 
-test('production enables restricted live OTP testing only with a valid temporary allowlist', () => {
-  const originalInfo = console.info;
-  const messages = [];
-  console.info = (message) => messages.push(message);
-  try {
-    const enabled = validateEnvironment({
-      ...productionEnv(),
-      LIVE_TEST_OTP_ENABLED: 'true',
-      LIVE_TEST_OTP_VALUE: '111111',
-      LIVE_TEST_OTP_PHONE_ALLOWLIST: '+919876543210',
-      LIVE_TEST_OTP_EXPIRES_AT: new Date(Date.now() + 60_000).toISOString(),
-    });
-    assert.equal(enabled.liveTestOtp.enabled, true);
-    assert.match(messages[0], /1 allowlisted test account/);
-    assert.equal(messages[0].includes('111111'), false);
-
-    const expired = validateEnvironment({
-      ...productionEnv(),
-      LIVE_TEST_OTP_ENABLED: 'true',
-      LIVE_TEST_OTP_VALUE: '111111',
-      LIVE_TEST_OTP_PHONE_ALLOWLIST: '+919876543210',
-      LIVE_TEST_OTP_EXPIRES_AT: '2000-01-01T00:00:00.000Z',
-    });
-    assert.equal(expired.liveTestOtp.enabled, false);
-  } finally {
-    console.info = originalInfo;
-  }
+test('production fails closed when restricted live OTP testing is configured', () => {
+  assert.throws(() => validateEnvironment({
+    ...productionEnv(),
+    LIVE_TEST_OTP_ENABLED: 'true',
+    LIVE_TEST_OTP_VALUE: '111111',
+    LIVE_TEST_OTP_PHONE_ALLOWLIST: '+919876543210',
+    LIVE_TEST_OTP_EXPIRES_AT: new Date(Date.now() + 60_000).toISOString(),
+  }), /Production must not configure/);
 });
 
 test('administrator reset fails closed when no reset URL is configured', async () => {
