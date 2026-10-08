@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "e8e3599b-3552-410e-a044-9b353bb614a0",
+  "status": "current",
+  "command": "deliver",
+  "type": "architecture",
+  "input": "D:\\Projects\\amora_ai\\docs\\architecture\\amoraa-runtime.architecture.json",
+  "output": "D:\\Projects\\amora_ai\\docs\\architecture\\AMORAA_RUNTIME_ARCHITECTURE.html",
+  "specification": {
+    "sha256": "005d0ff4e4d058bc42948ecddc75d5936fb23c7120ce096212e0d3a65be1cb81",
+    "bytes": 14078
+  },
+  "artifact": {
+    "sha256": "21a87acdfd8145d7edea56d195e8209d1ded4811fd7b6fc904e17dd4f206066d",
+    "bytes": 784533
+  }
+}

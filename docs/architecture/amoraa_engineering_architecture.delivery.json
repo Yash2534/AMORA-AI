@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "71a15a3f-7ff7-4dd9-a3d0-995f01f4c33f",
+  "status": "current",
+  "command": "deliver",
+  "type": "architecture",
+  "input": "D:\\Projects\\amora_ai\\docs\\architecture\\amoraa-engineering.architecture.json",
+  "output": "D:\\Projects\\amora_ai\\docs\\architecture\\AMORAA_ENGINEERING_ARCHITECTURE.html",
+  "specification": {
+    "sha256": "af90ca39fb3d5124124c5f8b5730e50d711eb9a6550c3df89b753e9bb7d05e88",
+    "bytes": 13538
+  },
+  "artifact": {
+    "sha256": "17dacf677fb012ac790ebc3fd7f52da4d412296681e4dd2c10f63013426b0191",
+    "bytes": 787444
+  }
+}

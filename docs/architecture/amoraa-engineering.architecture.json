@@ -1,0 +1,256 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "AMORAA Engineering Runtime Architecture",
+    "output": "docs/architecture/AMORAA_ENGINEERING_ARCHITECTURE.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/Yash2534/AMORA-AI.git",
+      "provider": "github",
+      "link_mode": "web",
+      "revision": "3eece809667c4f62247b9cd055e94e965d2d4b7c"
+    }
+  },
+  "components": [
+    {
+      "id": "flutter",
+      "type": "frontend",
+      "label": "Flutter Mobile App",
+      "sublabel": "screens, repositories, API clients",
+      "pos": [40, 340],
+      "size": [180, 72],
+      "sources": [
+        { "path": "lib/main.dart", "line": 68, "end_line": 81, "label": "main" },
+        { "path": "lib/features/discover/data/discover_api_service.dart", "line": 114, "end_line": 154, "label": "DiscoverApiService.getFeed" }
+      ]
+    },
+    {
+      "id": "mobileSession",
+      "type": "security",
+      "label": "Mobile Session",
+      "sublabel": "secure access + refresh tokens",
+      "tag": "client trust boundary",
+      "pos": [40, 570],
+      "size": [180, 72],
+      "sources": [
+        { "path": "lib/core/auth/auth_service.dart", "line": 171, "end_line": 199, "label": "AuthService.initialize" },
+        { "path": "lib/core/auth/auth_service.dart", "line": 648, "end_line": 668, "label": "AuthService._performRefresh" }
+      ]
+    },
+    {
+      "id": "expressApi",
+      "type": "backend",
+      "label": "Express API Surface",
+      "sublabel": "REST routes + shared HTTP server",
+      "tag": "Node.js",
+      "pos": [320, 570],
+      "size": [180, 72],
+      "sources": [
+        { "path": "Backend/src/server.js", "line": 41, "end_line": 116, "label": "app and route registration" },
+        { "path": "Backend/src/server.js", "line": 117, "end_line": 136, "label": "server startup" },
+        { "path": "lib/core/config/amora_api_config.dart", "line": 12, "end_line": 38, "label": "AmoraApiConfig.baseUrl" }
+      ]
+    },
+    {
+      "id": "backendAuth",
+      "type": "security",
+      "label": "Backend Auth & Account",
+      "sublabel": "JWT validation, refresh, lifecycle",
+      "pos": [320, 90],
+      "size": [190, 72],
+      "sources": [
+        { "path": "Backend/src/middleware/authMiddleware.js", "line": 4, "end_line": 30, "label": "authenticationMiddleware" },
+        { "path": "Backend/src/utils/generateTokens.js", "line": 3, "end_line": 13, "label": "accessToken/issueTokens" },
+        { "path": "Backend/src/controllers/accountController.js", "line": 56, "end_line": 86, "label": "deactivate" }
+      ]
+    },
+    {
+      "id": "profiles",
+      "type": "backend",
+      "label": "Profile & Onboarding",
+      "sublabel": "completion, preferences, photos",
+      "pos": [610, 340],
+      "size": [205, 72],
+      "sources": [
+        { "path": "Backend/src/controllers/onboardingController.js", "line": 10, "end_line": 24, "label": "onboarding handlers" },
+        { "path": "Backend/src/controllers/profileController.js", "line": 52, "end_line": 119, "label": "profile read/update" }
+      ]
+    },
+    {
+      "id": "eligibility",
+      "type": "backend",
+      "label": "Discover Eligibility",
+      "sublabel": "status, completion, blocks, reciprocity",
+      "pos": [610, 570],
+      "size": [205, 72],
+      "sources": [
+        { "path": "Backend/src/controllers/discoverController.js", "line": 230, "end_line": 354, "label": "getFeed filters" },
+        { "path": "Backend/src/services/discoverEligibilityPolicy.js", "line": 101, "end_line": 237, "label": "eligibility policy" },
+        { "path": "Backend/src/routes/discoverRoutes.js", "line": 15, "end_line": 19, "label": "protected discover routes" }
+      ]
+    },
+    {
+      "id": "ranking",
+      "type": "backend",
+      "label": "Compatibility + LOCAL Ranking",
+      "sublabel": "SQL score, deterministic local ranker",
+      "tag": "provider: LOCAL",
+      "pos": [610, 800],
+      "size": [205, 72],
+      "sources": [
+        { "path": "Backend/src/controllers/discoverController.js", "line": 367, "end_line": 505, "label": "query/rank/response" },
+        { "path": "Backend/src/services/compatibilityScoringService.js", "line": 81, "end_line": 128, "label": "scoreCompatibility" },
+        { "path": "Backend/src/services/aiMatchProvider.js", "line": 38, "end_line": 65, "label": "localAiMatch/rankCandidates" }
+      ]
+    },
+    {
+      "id": "relationships",
+      "type": "backend",
+      "label": "Likes, Matches & Conversations",
+      "sublabel": "reciprocal-like transaction",
+      "pos": [320, 800],
+      "size": [190, 72],
+      "sources": [
+        { "path": "Backend/src/controllers/discoverController.js", "line": 545, "end_line": 608, "label": "swipe match creation" },
+        { "path": "Backend/src/services/conversationAccessService.js", "line": 57, "end_line": 82, "label": "ensureDirectConversation" }
+      ]
+    },
+    {
+      "id": "chat",
+      "type": "messagebus",
+      "label": "Chat & Socket.IO",
+      "sublabel": "persisted messages, presence, events",
+      "pos": [320, 1030],
+      "size": [190, 72],
+      "sources": [
+        { "path": "Backend/src/controllers/messageController.js", "line": 134, "end_line": 192, "label": "send/read messages" },
+        { "path": "Backend/src/realtime/realtimeHub.js", "line": 76, "end_line": 160, "label": "attachRealtimeServer" },
+        { "path": "lib/features/chat/data/chat_repository.dart", "line": 677, "end_line": 719, "label": "Flutter Socket.IO client" }
+      ]
+    },
+    {
+      "id": "notificationsOtp",
+      "type": "backend",
+      "label": "Notifications & OTP",
+      "sublabel": "in-app records, push, SMS/email OTP",
+      "pos": [320, 1260],
+      "size": [190, 72],
+      "sources": [
+        { "path": "Backend/src/services/notificationService.js", "line": 26, "end_line": 82, "label": "push/notification creation" },
+        { "path": "Backend/src/services/otpService.js", "line": 43, "end_line": 139, "label": "createOtp/verifyOtp" },
+        { "path": "Backend/src/utils/sendSms.js", "line": 1, "end_line": 15, "label": "sendSms" }
+      ]
+    },
+    {
+      "id": "mysql",
+      "type": "database",
+      "label": "MySQL Persistence",
+      "sublabel": "Sequelize models + transactions",
+      "tag": "authoritative state",
+      "pos": [610, 1030],
+      "size": [205, 72],
+      "sources": [
+        { "path": "Backend/src/config/db.js", "line": 23, "end_line": 38, "label": "initializeDatabase" },
+        { "path": "Backend/src/models/index.js", "line": 30, "end_line": 80, "label": "initModels/associations" }
+      ]
+    },
+    {
+      "id": "external",
+      "type": "external",
+      "label": "External Providers",
+      "sublabel": "Google, FCM, Twilio, SMTP, Razorpay",
+      "tag": "tracked defaults: unconfigured",
+      "pos": [320, 1490],
+      "size": [225, 88],
+      "sources": [
+        { "path": "Backend/.env.example", "line": 53, "end_line": 85, "label": "provider defaults" },
+        { "path": "Backend/src/services/firebasePushProvider.js", "line": 3, "end_line": 44, "label": "FCM provider" },
+        { "path": "Backend/src/services/razorpayProvider.js", "line": 15, "end_line": 53, "label": "Razorpay provider" }
+      ]
+    }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "User device runtime", "wraps": ["flutter", "mobileSession"], "pad": 24 },
+    { "kind": "region", "label": "Trusted Node.js backend process", "wraps": ["expressApi", "backendAuth", "profiles", "eligibility", "ranking", "relationships", "chat", "notificationsOtp"], "pad": 28 },
+    { "kind": "security-group", "label": "Public Express API surface", "wraps": ["expressApi"], "pad": 22 },
+    { "kind": "security-group", "label": "JWT-protected application services", "wraps": ["profiles", "eligibility", "ranking", "relationships", "chat", "notificationsOtp"], "pad": 18 },
+    { "kind": "security-group", "label": "MySQL persistence boundary", "wraps": ["mysql"], "pad": 24 },
+    { "kind": "region", "label": "Credential-gated third parties", "wraps": ["external"], "pad": 24 }
+  ],
+  "connections": [
+    { "id": "flutter-session", "from": "flutter", "to": "mobileSession", "label": "sign in / restore", "variant": "emphasis" },
+    { "id": "session-api", "from": "mobileSession", "to": "expressApi", "label": "Bearer JWT", "variant": "security" },
+    { "id": "api-auth", "from": "expressApi", "to": "backendAuth", "label": "auth routes", "variant": "security" },
+    { "id": "api-profile", "from": "expressApi", "to": "profiles", "label": "profile / onboarding", "variant": "dashed" },
+    { "id": "api-eligibility", "from": "expressApi", "to": "eligibility", "label": "discover", "variant": "emphasis" },
+    { "id": "eligibility-ranking", "from": "eligibility", "to": "ranking", "label": "eligible profiles", "variant": "emphasis" },
+    { "id": "ranking-mysql", "from": "ranking", "to": "mysql", "label": "SQL profiles + score", "variant": "emphasis" },
+    { "id": "api-relationships", "from": "expressApi", "to": "relationships", "label": "swipe", "variant": "dashed" },
+    { "id": "relationships-chat", "from": "relationships", "to": "chat", "label": "mutual match", "variant": "default" },
+    { "id": "chat-notifications", "from": "chat", "to": "notificationsOtp", "label": "message event", "variant": "dashed" },
+    { "id": "notifications-external", "from": "notificationsOtp", "to": "external", "label": "provider delivery", "variant": "dashed" }
+  ],
+  "cards": [
+    {
+      "dot": "rose",
+      "title": "Authentication and account state",
+      "items": [
+        "Access JWTs carry user id + tokenVersion; middleware verifies both and rejects deactivated/deleted users — authenticationMiddleware (Backend/src/middleware/authMiddleware.js:4-30).",
+        "Refresh tokens are random, bcrypt-hashed database records; rotation is transactional — issueTokens (Backend/src/utils/generateTokens.js:4-13), refreshToken (Backend/src/controllers/authController.js:411-445).",
+        "Deactivation invalidates refresh tokens/devices; reactivation uses a signed 10-minute challenge — deactivate/reactivate (Backend/src/controllers/accountController.js:56-86; Backend/src/controllers/authController.js:277-305)."
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Discover eligibility",
+      "items": [
+        "Completed onboarding is mandatory; candidate SQL excludes self, prior actions, existing matches, blocks, and non-active accounts — getFeed (Backend/src/controllers/discoverController.js:238-354).",
+        "Reciprocal age, gender, and distance rules plus profile completeness are compiled into SQL — discoverEligibilityPolicy (Backend/src/services/discoverEligibilityPolicy.js:101-237)."
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Compatibility and LOCAL ranking",
+      "items": [
+        "Compatibility uses weighted interests, goals, communication, languages, city, and lifestyle factors — scoreCompatibility (Backend/src/services/compatibilityScoringService.js:81-128).",
+        "AI Matches ranks the complete eligible set before pagination and returns provider LOCAL — getFeed (Backend/src/controllers/discoverController.js:393-485).",
+        "localAiMatch/rankCandidates are deterministic in-process functions; no remote model call is present — Backend/src/services/aiMatchProvider.js:38-65."
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Relationship and messaging invariants",
+      "items": [
+        "A reciprocal like/super-like creates Match and direct Conversation in one transaction — swipe (Backend/src/controllers/discoverController.js:545-592).",
+        "Conversation access requires an active match, active completed profiles, and no block — conversationAccess (Backend/src/services/conversationAccessService.js:19-44).",
+        "Messages persist before Socket.IO events and notification creation — send (Backend/src/controllers/messageController.js:134-161)."
+      ]
+    },
+    {
+      "dot": "orange",
+      "title": "Realtime and notification delivery",
+      "items": [
+        "Socket.IO shares the HTTP server, verifies JWT/tokenVersion, and keeps presence in an in-process connection map — attachRealtimeServer (Backend/src/realtime/realtimeHub.js:76-160).",
+        "Notification records are preference/mute aware; push delivery records credentials_required when FCM is not configured — notificationService (Backend/src/services/notificationService.js:26-82)."
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "OTP and deletion",
+      "items": [
+        "OTPs are bcrypt-hashed, expire after 10 minutes, allow five attempts, and are purpose-bound — createOtp/verifyOtp (Backend/src/services/otpService.js:43-139).",
+        "OTP-confirmed deletion writes DeletedUsers, removes relationship/profile state, scrubs messages, anonymizes User, and increments tokenVersion — ImmediateAccountDeletionService.execute (Backend/src/services/immediateAccountDeletionService.js:11-132)."
+      ]
+    },
+    {
+      "dot": "slate",
+      "title": "External integration state",
+      "items": [
+        "Implemented: Google ID-token verification, FCM HTTP v1, Twilio SMS, SMTP email, and Razorpay payments.",
+        "Tracked defaults: Google is skip-for-now; Firebase, Twilio/SMS, SMTP, and Razorpay credentials are blank — Backend/.env.example:53-85.",
+        "Runtime deployment activation is unknown because secrets are not committed; the diagram does not claim these providers are active."
+      ]
+    }
+  ]
+}

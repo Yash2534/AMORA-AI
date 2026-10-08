@@ -1,0 +1,151 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "AMORAA Senior Management Architecture",
+    "output": "docs/architecture/AMORAA_SENIOR_MANAGEMENT_ARCHITECTURE.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/Yash2534/AMORA-AI.git",
+      "provider": "github",
+      "link_mode": "web",
+      "revision": "3eece809667c4f62247b9cd055e94e965d2d4b7c"
+    }
+  },
+  "components": [
+    {
+      "id": "mobile",
+      "type": "frontend",
+      "label": "AMORAA Mobile App",
+      "sublabel": "Flutter customer experience",
+      "pos": [40, 300],
+      "size": [180, 72],
+      "sources": [
+        { "path": "lib/main.dart", "line": 68, "end_line": 81, "label": "main" },
+        { "path": "lib/features/discover/data/discover_api_service.dart", "line": 114, "end_line": 154, "label": "discover client" }
+      ]
+    },
+    {
+      "id": "auth",
+      "type": "security",
+      "label": "Authentication & Session",
+      "sublabel": "secure login, JWT, account state",
+      "pos": [40, 540],
+      "size": [180, 72],
+      "sources": [
+        { "path": "lib/core/auth/auth_service.dart", "line": 171, "end_line": 199, "label": "mobile session" },
+        { "path": "Backend/src/middleware/authMiddleware.js", "line": 4, "end_line": 30, "label": "JWT validation" }
+      ]
+    },
+    {
+      "id": "backend",
+      "type": "backend",
+      "label": "Node.js Backend",
+      "sublabel": "Express API + realtime runtime",
+      "pos": [320, 540],
+      "size": [180, 72],
+      "sources": [
+        { "path": "Backend/src/server.js", "line": 41, "end_line": 136, "label": "Express/HTTP server" },
+        { "path": "Backend/src/realtime/realtimeHub.js", "line": 76, "end_line": 160, "label": "Socket.IO runtime" }
+      ]
+    },
+    {
+      "id": "profileAccount",
+      "type": "backend",
+      "label": "Profile & Account",
+      "sublabel": "onboarding and account lifecycle",
+      "pos": [600, 300],
+      "size": [200, 72],
+      "sources": [
+        { "path": "Backend/src/controllers/onboardingController.js", "line": 10, "end_line": 24, "label": "onboarding" },
+        { "path": "Backend/src/controllers/accountController.js", "line": 56, "end_line": 205, "label": "account lifecycle" }
+      ]
+    },
+    {
+      "id": "discover",
+      "type": "backend",
+      "label": "Discover & Eligibility",
+      "sublabel": "who can be recommended",
+      "pos": [600, 540],
+      "size": [200, 72],
+      "sources": [
+        { "path": "Backend/src/controllers/discoverController.js", "line": 230, "end_line": 354, "label": "candidate eligibility" },
+        { "path": "Backend/src/services/discoverEligibilityPolicy.js", "line": 101, "end_line": 237, "label": "reciprocal policy" }
+      ]
+    },
+    {
+      "id": "matching",
+      "type": "backend",
+      "label": "Matching & Relationships",
+      "sublabel": "LOCAL ranking, likes, matches, chat",
+      "tag": "deterministic LOCAL",
+      "pos": [600, 780],
+      "size": [200, 72],
+      "sources": [
+        { "path": "Backend/src/controllers/discoverController.js", "line": 367, "end_line": 608, "label": "rank and match" },
+        { "path": "Backend/src/services/aiMatchProvider.js", "line": 38, "end_line": 65, "label": "LOCAL ranker" },
+        { "path": "Backend/src/controllers/messageController.js", "line": 134, "end_line": 161, "label": "chat send path" }
+      ]
+    },
+    {
+      "id": "mysql",
+      "type": "database",
+      "label": "MySQL Database",
+      "sublabel": "authoritative application state",
+      "pos": [600, 1020],
+      "size": [200, 72],
+      "sources": [
+        { "path": "Backend/src/config/db.js", "line": 23, "end_line": 38, "label": "database initialization" },
+        { "path": "Backend/src/models/index.js", "line": 30, "end_line": 80, "label": "runtime model graph" }
+      ]
+    },
+    {
+      "id": "integrations",
+      "type": "external",
+      "label": "External Integrations",
+      "sublabel": "Google, FCM, SMS, email, Razorpay",
+      "tag": "tracked defaults: unconfigured",
+      "pos": [320, 1020],
+      "size": [205, 88],
+      "sources": [
+        { "path": "Backend/.env.example", "line": 53, "end_line": 85, "label": "integration defaults" },
+        { "path": "Backend/src/services/firebasePushProvider.js", "line": 3, "end_line": 44, "label": "FCM" },
+        { "path": "Backend/src/services/razorpayProvider.js", "line": 15, "end_line": 53, "label": "payments" }
+      ]
+    }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "Customer device", "wraps": ["mobile", "auth"], "pad": 24 },
+    { "kind": "region", "label": "AMORAA backend runtime", "wraps": ["backend", "profileAccount", "discover", "matching"], "pad": 28 },
+    { "kind": "security-group", "label": "Public API surface", "wraps": ["backend"], "pad": 22 },
+    { "kind": "security-group", "label": "Private application data", "wraps": ["mysql"], "pad": 24 },
+    { "kind": "region", "label": "Credential-gated providers", "wraps": ["integrations"], "pad": 24 }
+  ],
+  "connections": [
+    { "id": "mobile-auth", "from": "mobile", "to": "auth", "label": "sign in", "variant": "emphasis" },
+    { "id": "auth-backend", "from": "auth", "to": "backend", "label": "session", "variant": "emphasis" },
+    { "id": "backend-discover", "from": "backend", "to": "discover", "label": "app request", "variant": "emphasis" },
+    { "id": "discover-matching", "from": "discover", "to": "matching", "label": "eligible profiles", "variant": "emphasis" },
+    { "id": "matching-mysql", "from": "matching", "to": "mysql", "label": "application data", "variant": "emphasis" },
+    { "id": "backend-profile", "from": "backend", "to": "profileAccount", "label": "profile / account", "variant": "dashed", "fromSide": "top", "toSide": "left", "via": [[410, 470], [550, 470], [550, 336]] },
+    { "id": "backend-integrations", "from": "backend", "to": "integrations", "label": "when configured", "variant": "dashed" }
+  ],
+  "cards": [
+    {
+      "dot": "violet",
+      "title": "Core business flow",
+      "items": [
+        "Mobile requests pass through authenticated backend APIs into eligibility and deterministic LOCAL matching, backed by MySQL.",
+        "Mutual likes create matches and conversations; chat and notifications run inside the same backend runtime."
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Integration readiness",
+      "items": [
+        "Google OAuth, Firebase/FCM, Twilio SMS, SMTP email, and Razorpay code paths exist.",
+        "Tracked configuration defaults leave all provider credentials disabled or blank; production activation is not provable from source alone."
+      ]
+    }
+  ]
+}

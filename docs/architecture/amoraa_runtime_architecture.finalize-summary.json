@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "ok": false,
+  "command": "finalize",
+  "status": "fail",
+  "type": "architecture",
+  "quality": "showcase",
+  "specification": {
+    "path": "D:\\Projects\\amora_ai\\docs\\architecture\\amoraa-runtime.architecture.json",
+    "sha256": "005d0ff4e4d058bc42948ecddc75d5936fb23c7120ce096212e0d3a65be1cb81",
+    "bytes": 14078
+  },
+  "artifact": {
+    "path": "D:\\Projects\\amora_ai\\docs\\architecture\\AMORAA_RUNTIME_ARCHITECTURE.html",
+    "sha256": "21a87acdfd8145d7edea56d195e8209d1ded4811fd7b6fc904e17dd4f206066d",
+    "bytes": 784533
+  },
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "fail"
+  },
+  "failedStage": "browser-check",
+  "diagnostics": [
+    {
+      "code": "viewer/browser-check-runtime",
+      "severity": "error",
+      "message": "browser-check could not complete its Chrome inspection.",
+      "subject": {
+        "artifact": "D:\\Projects\\amora_ai\\docs\\architecture\\AMORAA_RUNTIME_ARCHITECTURE.html"
+      },
+      "evidence": {
+        "reason": "Chrome DevTools read pipe failed: stream ended\nChrome process: still running.\nChrome stderr:\n[16420:15460:1002/133349.238:ERROR:chrome\\installer\\util\\google_update_settings_win.cc:270] Failed opening key Software\\Google\\Update\\ClientStateMedium\\{8A69D345-D564-463c-AFF1-A69D9E530F96} to set usagestats; result: 5\r\n[16420:18772:1002/133349.456:ERROR:content\\browser\\gpu\\gpu_process_host.cc:1130] GPU process exited unexpectedly: exit_code=-1073741790\r\n[16420:24100:1002/133349.457:ERROR:components\\viz\\host\\persistent_cache_sandboxed_file_factory.cc:153] Failed to open persistent cache files in directory \"C:\\Users\\YASHAN~1\\AppData\\Local\\Temp\\archify-visual-check-profile-sGEj1W\\GPUPersistentCache\\DawnGraphiteCache\\TLVJWQT6NJWKNBUVMWJ4BCR6DK7MJALX\", error: 0: The process cannot access the file because it is being used by another process. (0x20)\r\n[16420:18772:1002/133349.500:ERROR:content\\browser\\gpu\\gpu_process_host.cc:1130] GPU process exited unexpectedly: exit_code=-1073741790\r\n[16420:21728:1002/133349.536:ERROR:services\\device\\public\\cpp\\geolocation\\system_geolocation_source_win.cc:124] Failed to create IAppCapability: Access is denied. (0x80070005)\r\n[16420:18772:1002/133349.542:ERROR:content\\browser\\gpu\\gpu_process_host.cc:1130] GPU process exited unexpectedly: exit_code=-1073741790\r\n[16420:33824:1002/133349.544:ERROR:components\\viz\\host\\persistent_cache_sandboxed_file_factory.cc:153] Failed to open persistent cache files in directory \"C:\\Users\\YASHAN~1\\AppData\\Local\\Temp\\archify-visual-check-profile-sGEj1W\\GPUPersistentCache\\DawnGraphiteCache\\TLVJWQT6NJWKNBUVMWJ4BCR6DK7MJALX\", error: 0: The process cannot access the file because it is being used by another process. (0x20)\r\n[16420:18772:1002/133349.562:ERROR:content\\browser\\gpu\\gpu_process_host.cc:1130] GPU process exited unexpectedly: exit_code=-1073741790\r\n[16420:24100:1002/133349.566:ERROR:components\\viz\\host\\persistent_cache_sandboxed_file_factory.cc:153] Failed to open persistent cache files in directory \"C:\\Users\\YASHAN~1\\AppData\\Local\\Temp\\archify-visual-check-profile-sGEj1W\\GPUPersistentCache\\DawnGraphiteCache\\TLVJWQT6NJWKNBUVMWJ4BCR6DK7MJALX\", error: 0: The process cannot access the file because it is being used by another process. (0x20)\r\n[16420:18772:1002/133349.582:ERROR:content\\browser\\gpu\\gpu_process_host.cc:1130] GPU process exited unexpectedly: exit_code=-1073741790\r\n[16420:24100:1002/133349.583:ERROR:components\\viz\\host\\persistent_cache_sandboxed_file_factory.cc:153] Failed to open persistent cache files in directory \"C:\\Users\\YASHAN~1\\AppData\\Local\\Temp\\archify-visual-check-profile-sGEj1W\\GPUPersistentCache\\DawnGraphiteCache\\TLVJWQT6NJWKNBUVMWJ4BCR6DK7MJALX\", error: 0: The process cannot access the file because it is being used by another process. (0x20)\r\n[16420:18772:1002/133349.600:ERROR:content\\browser\\gpu\\gpu_process_host.cc:1130] GPU process exited unexpectedly: exit_code=-1073741790\r\n[16420:18772:1002/133349.600:FATAL:content\\browser\\gpu\\gpu_data_manager_impl_private.cc:417] GPU process isn't usable. Goodbye.\nChrome transport: Node v20.19.5, libuv 1.46.0, win32; pid=16420, exitCode=null, signalCode=null.\nChrome read pipe: readable=false, ended=true, destroyed=false, receivedBytes=1328, messages=3, bufferedBytes=0.\nChrome write pipe: writable=false, ended=true, destroyed=false, completedWrites=3, writtenBytes=255, bufferedBytes=0."
+      },
+      "supportedFixes": [
+        "resolve the reported Chrome inspection error, then rerun browser-check"
+      ]
+    }
+  ],
+  "diagnosticSummary": {
+    "total": 1,
+    "shown": 1,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "D:\\Projects\\amora_ai\\docs\\architecture\\amoraa_runtime_architecture.finalize.json",
+    "summaryReceipt": "D:\\Projects\\amora_ai\\docs\\architecture\\amoraa_runtime_architecture.finalize-summary.json",
+    "browserCheckReceipt": "D:\\Projects\\amora_ai\\docs\\architecture\\amoraa_runtime_architecture.browser-check.json"
+  },
+  "update": {
+    "status": "unavailable",
+    "installedVersion": null,
+    "availableVersion": null,
+    "releaseNotes": null,
+    "checkedAt": null,
+    "source": null,
+    "noticeRequired": false,
+    "noticeText": null,
+    "reason": "cache-unavailable"
+  },
+  "visualReview": "not-requested",
+  "durationMs": 3145
+}

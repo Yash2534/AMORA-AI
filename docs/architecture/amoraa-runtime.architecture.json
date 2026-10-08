@@ -1,0 +1,258 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "AMORAA High-Level Runtime Architecture",
+    "output": "docs/architecture/AMORAA_RUNTIME_ARCHITECTURE.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/Yash2534/AMORA-AI.git",
+      "provider": "github",
+      "link_mode": "web",
+      "revision": "3eece809667c4f62247b9cd055e94e965d2d4b7c"
+    }
+  },
+  "components": [
+    {
+      "id": "flutterApp",
+      "type": "frontend",
+      "label": "Flutter Mobile App",
+      "sublabel": "AMORAA user experience",
+      "tag": "Android / iOS",
+      "pos": [40, 340],
+      "size": [160, 72],
+      "sources": [
+        { "path": "lib/main.dart", "line": 68, "end_line": 81, "label": "main" },
+        { "path": "lib/features/discover/data/discover_api_service.dart", "line": 114, "end_line": 154, "label": "DiscoverApiService.getFeed" }
+      ]
+    },
+    {
+      "id": "session",
+      "type": "security",
+      "label": "Authentication / Session",
+      "sublabel": "secure tokens, refresh, Bearer JWT",
+      "tag": "JWT",
+      "pos": [310, 340],
+      "size": [180, 72],
+      "sources": [
+        { "path": "lib/core/auth/auth_service.dart", "line": 171, "end_line": 199, "label": "AuthService.initialize" },
+        { "path": "lib/core/auth/auth_service.dart", "line": 632, "end_line": 668, "label": "AuthService._refresh" },
+        { "path": "Backend/src/middleware/authMiddleware.js", "line": 4, "end_line": 34, "label": "authenticationMiddleware" }
+      ]
+    },
+    {
+      "id": "expressApi",
+      "type": "backend",
+      "label": "Node.js / Express API",
+      "sublabel": "HTTPS-facing REST + Socket.IO host",
+      "tag": "Express",
+      "pos": [610, 340],
+      "size": [180, 72],
+      "sources": [
+        { "path": "Backend/src/server.js", "line": 41, "end_line": 116, "label": "Express app and routes" },
+        { "path": "Backend/src/server.js", "line": 117, "end_line": 136, "label": "startServer/createHttpServer" }
+      ]
+    },
+    {
+      "id": "profileOnboarding",
+      "type": "backend",
+      "label": "Profile & Onboarding",
+      "sublabel": "profile completion, preferences, photos",
+      "pos": [610, 90],
+      "size": [190, 72],
+      "sources": [
+        { "path": "Backend/src/controllers/onboardingController.js", "line": 10, "end_line": 24, "label": "onboarding handlers" },
+        { "path": "Backend/src/controllers/profileController.js", "line": 52, "end_line": 119, "label": "own profile read/update" }
+      ]
+    },
+    {
+      "id": "eligibility",
+      "type": "backend",
+      "label": "Discover Eligibility",
+      "sublabel": "completion, status, block, reciprocal filters",
+      "tag": "confirmed",
+      "pos": [610, 570],
+      "size": [190, 72],
+      "sources": [
+        { "path": "Backend/src/controllers/discoverController.js", "line": 230, "end_line": 354, "label": "getFeed eligibility" },
+        { "path": "Backend/src/services/discoverEligibilityPolicy.js", "line": 101, "end_line": 237, "label": "eligibility policy" },
+        { "path": "Backend/src/routes/discoverRoutes.js", "line": 15, "end_line": 19, "label": "authenticated discover routes" }
+      ]
+    },
+    {
+      "id": "ranking",
+      "type": "backend",
+      "label": "Match Engine / LOCAL AI",
+      "sublabel": "deterministic compatibility + local ranking",
+      "tag": "provider: LOCAL",
+      "pos": [610, 800],
+      "size": [205, 72],
+      "sources": [
+        { "path": "Backend/src/controllers/discoverController.js", "line": 367, "end_line": 505, "label": "query, rank, respond" },
+        { "path": "Backend/src/services/aiMatchProvider.js", "line": 38, "end_line": 68, "label": "localAiMatch/rankCandidates" },
+        { "path": "Backend/src/services/compatibilityScoringService.js", "line": 81, "end_line": 128, "label": "scoreCompatibility" }
+      ]
+    },
+    {
+      "id": "relationships",
+      "type": "backend",
+      "label": "Likes, Matches & Conversations",
+      "sublabel": "mutual-like transaction creates match + chat",
+      "pos": [310, 1030],
+      "size": [205, 72],
+      "sources": [
+        { "path": "Backend/src/controllers/discoverController.js", "line": 545, "end_line": 608, "label": "swipe mutual-match transaction" },
+        { "path": "Backend/src/controllers/conversationController.js", "line": 99, "end_line": 134, "label": "match-gated conversation" }
+      ]
+    },
+    {
+      "id": "chatRealtime",
+      "type": "messagebus",
+      "label": "Chat / Realtime",
+      "sublabel": "persisted messages + Socket.IO events",
+      "tag": "WebSocket / polling",
+      "pos": [310, 1260],
+      "size": [190, 72],
+      "sources": [
+        { "path": "Backend/src/realtime/realtimeHub.js", "line": 76, "end_line": 160, "label": "attachRealtimeServer" },
+        { "path": "Backend/src/controllers/messageController.js", "line": 134, "end_line": 192, "label": "send/read messages" },
+        { "path": "lib/features/chat/data/chat_repository.dart", "line": 677, "end_line": 719, "label": "Flutter Socket.IO client" }
+      ]
+    },
+    {
+      "id": "notificationsOtp",
+      "type": "backend",
+      "label": "Notifications & OTP",
+      "sublabel": "in-app records, conditional push, SMS/email OTP",
+      "pos": [310, 1490],
+      "size": [190, 72],
+      "sources": [
+        { "path": "Backend/src/services/notificationService.js", "line": 26, "end_line": 82, "label": "deliverPush/createNotification" },
+        { "path": "Backend/src/services/otpService.js", "line": 13, "end_line": 86, "label": "OTP creation and delivery" },
+        { "path": "Backend/src/services/otpService.js", "line": 86, "end_line": 148, "label": "OTP verification" }
+      ]
+    },
+    {
+      "id": "mysql",
+      "type": "database",
+      "label": "MySQL Persistence",
+      "sublabel": "Sequelize models and transactions",
+      "tag": "private state",
+      "pos": [610, 1030],
+      "size": [205, 72],
+      "sources": [
+        { "path": "Backend/src/config/db.js", "line": 23, "end_line": 38, "label": "initializeDatabase" },
+        { "path": "Backend/src/models/index.js", "line": 30, "end_line": 90, "label": "initModels/associations" }
+      ]
+    },
+    {
+      "id": "externalServices",
+      "type": "external",
+      "label": "Third-Party Services",
+      "sublabel": "Google, FCM, Twilio, SMTP, Razorpay",
+      "tag": "repo defaults: unconfigured",
+      "pos": [310, 1720],
+      "size": [225, 88],
+      "sources": [
+        { "path": "Backend/.env.example", "line": 53, "end_line": 85, "label": "integration defaults" },
+        { "path": "Backend/src/controllers/authController.js", "line": 251, "end_line": 275, "label": "Google token verification" },
+        { "path": "Backend/src/services/razorpayProvider.js", "line": 15, "end_line": 51, "label": "Razorpay provider" }
+      ]
+    }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "User device / Flutter", "wraps": ["flutterApp", "session"], "pad": 24 },
+    { "kind": "security-group", "label": "Public HTTPS API", "wraps": ["expressApi"], "pad": 24 },
+    { "kind": "security-group", "label": "Trusted backend environment", "wraps": ["profileOnboarding", "eligibility", "ranking", "relationships", "chatRealtime", "notificationsOtp"], "pad": 28 },
+    { "kind": "security-group", "label": "MySQL / private persistence", "wraps": ["mysql"], "pad": 24 },
+    { "kind": "region", "label": "Third-party services", "wraps": ["externalServices"], "pad": 24 }
+  ],
+  "connections": [
+    { "id": "app-session", "from": "flutterApp", "to": "session", "label": "sign in / restore", "variant": "emphasis" },
+    { "id": "session-api", "from": "session", "to": "expressApi", "label": "HTTPS + Bearer JWT", "variant": "emphasis" },
+    { "id": "api-eligibility", "from": "expressApi", "to": "eligibility", "label": "GET /api/discover/feed", "variant": "emphasis" },
+    { "id": "eligibility-ranking", "from": "eligibility", "to": "ranking", "label": "eligible candidates", "variant": "emphasis" },
+    { "id": "ranking-mysql", "from": "ranking", "to": "mysql", "label": "SQL profiles + score", "variant": "emphasis", "fromSide": "bottom", "toSide": "top" },
+    { "id": "ranking-app", "from": "ranking", "to": "flutterApp", "label": "ranked profiles via API response", "variant": "emphasis", "fromSide": "bottom", "toSide": "bottom", "route": "orthogonal-v", "via": [[712.5, 950], [120, 950]] },
+    { "id": "api-profile", "from": "expressApi", "to": "profileOnboarding", "label": "profile / onboarding", "variant": "dashed" },
+    { "id": "relationships-chat", "from": "relationships", "to": "chatRealtime", "label": "active match unlocks chat" },
+    { "id": "chat-notifications", "from": "chatRealtime", "to": "notificationsOtp", "label": "message event", "variant": "dashed" },
+    { "id": "notifications-external", "from": "notificationsOtp", "to": "externalServices", "label": "only when configured", "variant": "dashed" }
+  ],
+  "cards": [
+    {
+      "dot": "rose",
+      "title": "Authentication/session",
+      "items": [
+        "Confirmed: Flutter stores access + refresh tokens in secure storage and refreshes through /api/auth/refresh-token — AuthService.initialize/_performRefresh (lib/core/auth/auth_service.dart:171-199, 648-668).",
+        "Confirmed: Express verifies JWT signature, tokenVersion, and active account state — authenticationMiddleware (Backend/src/middleware/authMiddleware.js:4-30)."
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Discover eligibility",
+      "items": [
+        "Confirmed: completed onboarding is required; candidates exclude self, prior actions, matches, blocks, and non-active accounts — getFeed (Backend/src/controllers/discoverController.js:238-354).",
+        "Confirmed: reciprocal age/gender/distance and profile-completion clauses are applied in SQL — reciprocalEligibilitySqlClauses/profileCompletionSqlClauses (Backend/src/services/discoverEligibilityPolicy.js:101-237)."
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Match ranking",
+      "items": [
+        "Confirmed: SQL compatibility scoring orders the normal feed; AI Matches ranks the full eligible set before slicing — getFeed (Backend/src/controllers/discoverController.js:367-485).",
+        "Confirmed: provider is LOCAL; deterministic weighted factors produce aiMatchScore/confidence — localAiMatch/rankCandidates (Backend/src/services/aiMatchProvider.js:38-68). No remote AI call is present on this path."
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Like -> Match",
+      "items": [
+        "Confirmed: swipe upserts DiscoverAction; a reciprocal like/super-like creates Match and a direct Conversation in one transaction — swipe (Backend/src/controllers/discoverController.js:545-592).",
+        "Confirmed: conversation creation independently requires an active match and no block — create (Backend/src/controllers/conversationController.js:99-134)."
+      ]
+    },
+    {
+      "dot": "orange",
+      "title": "Chat/realtime",
+      "items": [
+        "Confirmed: messages persist before message.created and conversation.updated Socket.IO events — send (Backend/src/controllers/messageController.js:134-161).",
+        "Confirmed: Socket.IO authenticates JWTs and checks active account/tokenVersion; presence and room subscription are in-process — attachRealtimeServer (Backend/src/realtime/realtimeHub.js:76-160)."
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Account lifecycle",
+      "items": [
+        "Confirmed: password re-auth deactivation invalidates sessions/devices; a signed 10-minute challenge can reactivate — deactivate/reactivate (Backend/src/controllers/accountController.js:56-86; Backend/src/controllers/authController.js:277-305).",
+        "Confirmed: OTP-confirmed deletion archives minimal data in DeletedUsers, removes relationship/profile state, anonymizes User, and increments tokenVersion — ImmediateAccountDeletionService.execute (Backend/src/services/immediateAccountDeletionService.js:11-132)."
+      ]
+    },
+    {
+      "dot": "slate",
+      "title": "OTP behavior",
+      "items": [
+        "Confirmed: OTPs are bcrypt-hashed, expire after 10 minutes, permit five attempts, and are consumed after success — createOtp/verifyOtp (Backend/src/services/otpService.js:43-139).",
+        "Confirmed: phone OTP uses SMS; password reset/account deletion can use email. Development may log OTPs when providers are absent — sendSms/sendEmail (Backend/src/utils/sendSms.js:1-15; Backend/src/utils/sendEmail.js:2-12)."
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "External integrations",
+      "items": [
+        "Google OAuth: implemented but disabled by tracked default GOOGLE_CLIENT_IDS=skip-for-now — authController.google (Backend/src/controllers/authController.js:251-275; Backend/.env.example:65-66).",
+        "Firebase/FCM: implemented, but tracked server credentials are blank and missing native config is tolerated — firebasePushProvider.configuration (Backend/src/services/firebasePushProvider.js:3-17; Backend/.env.example:68-73).",
+        "Twilio SMS, SMTP email, and Razorpay: implemented but tracked defaults are blank; each fails closed outside development when unconfigured — sendSms, getTransport, razorpayProvider (Backend/.env.example:53-63, 79-85)."
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Production configuration gaps",
+      "items": [
+        "Confirmed gap: release Flutter builds require AMORA_API_BASE_URL; repository code supplies only development localhost fallbacks — AmoraApiConfig.baseUrl (lib/core/config/amora_api_config.dart:12-38).",
+        "Confirmed gap: tracked integration defaults are unconfigured; actual deployment activation cannot be established without runtime secrets, which were intentionally not inspected — Backend/.env.example:53-85.",
+        "Risk: database startup auto-applies pending migrations — assertMigrationsApplied/initializeDatabase (Backend/src/config/db.js:4-38). This analysis did not run migrations."
+      ]
+    }
+  ]
+}

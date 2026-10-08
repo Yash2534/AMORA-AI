@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "5691cc2f-01b8-4f97-bae9-2a79419ae7e7",
+  "status": "current",
+  "command": "deliver",
+  "type": "architecture",
+  "input": "D:\\Projects\\amora_ai\\docs\\architecture\\amoraa-senior-management.architecture.json",
+  "output": "D:\\Projects\\amora_ai\\docs\\architecture\\AMORAA_SENIOR_MANAGEMENT_ARCHITECTURE.html",
+  "specification": {
+    "sha256": "ac05f2130e1c9697d08109514a5f4cb299f013f0cf5cfa3d121bb97db29f0e32",
+    "bytes": 6680
+  },
+  "artifact": {
+    "sha256": "997adc7de6dca15dffbba66da5afc8ffb2d01c9cbb4b8bb362296d9e33944bc4",
+    "bytes": 767226
+  }
+}

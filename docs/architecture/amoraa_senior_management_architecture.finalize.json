@@ -1,0 +1,391 @@
+{
+  "schemaVersion": 1,
+  "ok": false,
+  "command": "finalize",
+  "status": "fail",
+  "type": "architecture",
+  "quality": "showcase",
+  "startedAt": "2026-10-02T08:08:20.158Z",
+  "specification": {
+    "path": "D:\\Projects\\amora_ai\\docs\\architecture\\amoraa-senior-management.architecture.json",
+    "sha256": "ac05f2130e1c9697d08109514a5f4cb299f013f0cf5cfa3d121bb97db29f0e32",
+    "bytes": 6680
+  },
+  "artifact": {
+    "path": "D:\\Projects\\amora_ai\\docs\\architecture\\AMORAA_SENIOR_MANAGEMENT_ARCHITECTURE.html",
+    "sha256": "997adc7de6dca15dffbba66da5afc8ffb2d01c9cbb4b8bb362296d9e33944bc4",
+    "bytes": 767226
+  },
+  "stages": {
+    "validate": {
+      "status": "pass",
+      "exitCode": 0,
+      "durationMs": null,
+      "execution": "embedded-in-deliver",
+      "command": [
+        "C:\\nvm4w\\nodejs\\node.exe",
+        "C:\\Users\\Yash Andrapiya\\.agents\\skills\\archify\\bin\\archify.mjs",
+        "deliver",
+        "architecture",
+        "D:\\Projects\\amora_ai\\docs\\architecture\\amoraa-senior-management.architecture.json",
+        "D:\\Projects\\amora_ai\\docs\\architecture\\AMORAA_SENIOR_MANAGEMENT_ARCHITECTURE.html",
+        "--quality",
+        "showcase",
+        "--repo-root",
+        "D:\\Projects\\amora_ai",
+        "--json"
+      ],
+      "receipt": {
+        "schemaVersion": 1,
+        "ok": true,
+        "command": "validate",
+        "specification": {
+          "sha256": "ac05f2130e1c9697d08109514a5f4cb299f013f0cf5cfa3d121bb97db29f0e32",
+          "bytes": 6680
+        },
+        "validation": {
+          "checksPassed": 9,
+          "checkCount": 9,
+          "compositionProfile": "showcase",
+          "compositionStatus": "pass",
+          "errors": 0,
+          "warnings": 0
+        }
+      }
+    },
+    "deliver": {
+      "status": "pass",
+      "exitCode": 0,
+      "durationMs": 1225,
+      "command": [
+        "C:\\nvm4w\\nodejs\\node.exe",
+        "C:\\Users\\Yash Andrapiya\\.agents\\skills\\archify\\bin\\archify.mjs",
+        "deliver",
+        "architecture",
+        "D:\\Projects\\amora_ai\\docs\\architecture\\amoraa-senior-management.architecture.json",
+        "D:\\Projects\\amora_ai\\docs\\architecture\\AMORAA_SENIOR_MANAGEMENT_ARCHITECTURE.html",
+        "--quality",
+        "showcase",
+        "--repo-root",
+        "D:\\Projects\\amora_ai",
+        "--json"
+      ],
+      "receipt": {
+        "schemaVersion": 1,
+        "receiptId": "5691cc2f-01b8-4f97-bae9-2a79419ae7e7",
+        "ok": true,
+        "command": "deliver",
+        "type": "architecture",
+        "input": "D:\\Projects\\amora_ai\\docs\\architecture\\amoraa-senior-management.architecture.json",
+        "output": "D:\\Projects\\amora_ai\\docs\\architecture\\AMORAA_SENIOR_MANAGEMENT_ARCHITECTURE.html",
+        "specification": {
+          "sha256": "ac05f2130e1c9697d08109514a5f4cb299f013f0cf5cfa3d121bb97db29f0e32",
+          "bytes": 6680
+        },
+        "artifact": {
+          "sha256": "997adc7de6dca15dffbba66da5afc8ffb2d01c9cbb4b8bb362296d9e33944bc4",
+          "bytes": 767226
+        },
+        "validation": {
+          "checksPassed": 9,
+          "checkCount": 9,
+          "compositionProfile": "showcase",
+          "compositionStatus": "pass",
+          "errors": 0,
+          "warnings": 0
+        },
+        "evidence": {
+          "verified": true,
+          "repository": "https://github.com/Yash2534/AMORA-AI",
+          "revision": "3eece809667c4f62247b9cd055e94e965d2d4b7c",
+          "references": 18
+        },
+        "update": {
+          "status": "unavailable",
+          "installedVersion": null,
+          "availableVersion": null,
+          "releaseNotes": null,
+          "checkedAt": null,
+          "source": null,
+          "noticeRequired": false,
+          "noticeText": null,
+          "reason": "disabled"
+        }
+      }
+    },
+    "check": {
+      "status": "pass",
+      "exitCode": 0,
+      "durationMs": 357,
+      "command": [
+        "C:\\nvm4w\\nodejs\\node.exe",
+        "C:\\Users\\Yash Andrapiya\\.agents\\skills\\archify\\bin\\archify.mjs",
+        "check",
+        "D:\\Projects\\amora_ai\\docs\\architecture\\AMORAA_SENIOR_MANAGEMENT_ARCHITECTURE.html",
+        "--require-provenance"
+      ],
+      "receipt": {
+        "ok": true,
+        "file": "D:\\Projects\\amora_ai\\docs\\architecture\\AMORAA_SENIOR_MANAGEMENT_ARCHITECTURE.html",
+        "artifact": {
+          "sha256": "997adc7de6dca15dffbba66da5afc8ffb2d01c9cbb4b8bb362296d9e33944bc4",
+          "bytes": 767226
+        },
+        "checks": [
+          {
+            "name": "single_svg",
+            "ok": true,
+            "details": [
+              "found 1 <svg> block(s)"
+            ]
+          },
+          {
+            "name": "finite_svg",
+            "ok": true,
+            "details": []
+          },
+          {
+            "name": "orthogonal_arrows",
+            "ok": true,
+            "details": []
+          },
+          {
+            "name": "label_route_clearance",
+            "ok": true,
+            "details": []
+          },
+          {
+            "name": "relationship_crossings",
+            "ok": true,
+            "details": []
+          },
+          {
+            "name": "relationship_corridors",
+            "ok": true,
+            "details": []
+          },
+          {
+            "name": "container_border_runs",
+            "ok": true,
+            "details": []
+          },
+          {
+            "name": "route_rhythm",
+            "ok": true,
+            "details": []
+          },
+          {
+            "name": "legend_clearance",
+            "ok": true,
+            "details": []
+          }
+        ],
+        "composition": {
+          "schemaVersion": 1,
+          "profile": "showcase",
+          "status": "pass",
+          "summary": {
+            "errors": 0,
+            "warnings": 0
+          },
+          "metrics": {
+            "properCrossings": 0,
+            "resolvedCrossovers": 0,
+            "ambiguousCorridors": 0,
+            "arrowheadCollisions": 0,
+            "containerBorderRuns": 0,
+            "labelRouteClearanceIssues": 0,
+            "labelCanvasOverflowIssues": 0,
+            "minLabelRouteClearance": 86,
+            "desktopReadabilityIssues": 0,
+            "viewportHeightIssues": 0,
+            "minProjectedNodeTextPx": 8,
+            "maxBends": 3,
+            "routesOverSuggestedBends": 1,
+            "maxStretch": 1,
+            "routesOverSuggestedStretch": 0,
+            "minSegmentPx": 50,
+            "minInteriorSegmentPx": 134,
+            "shortSegmentCount": 0,
+            "shortEndpointSegmentCount": 0,
+            "shortInteriorSegmentCount": 0,
+            "microSegmentCount": 0
+          },
+          "suggestedLimits": {
+            "bendsPerRelationship": 2,
+            "stretch": 1.35,
+            "segmentPx": 16,
+            "microSegmentPx": 8
+          },
+          "routeReview": {
+            "crossings": [],
+            "detours": [
+              {
+                "relationship": {
+                  "id": "backend-profile",
+                  "from": "backend",
+                  "to": "profileAccount",
+                  "label": "profile / account",
+                  "collectionIndex": 5,
+                  "artifactIndex": 6
+                },
+                "bends": 3,
+                "stretch": 1
+              }
+            ]
+          },
+          "leadingSpace": {
+            "measured": true,
+            "emptyTopPx": 272,
+            "emptyTopRatio": 0.227,
+            "occupiedTop": 272,
+            "viewBoxTop": 0,
+            "canvasHeight": 1196,
+            "typicalNodeHeight": 72,
+            "reviewSuggested": true
+          },
+          "desktopReadability": {
+            "budgetBasis": "legacy-930",
+            "readerContract": "declared-wide-v1",
+            "availableDiagramWidth": 930,
+            "actualBudgetPx": 930,
+            "limit": "legacy",
+            "requestedTargetPx": 7.5,
+            "requestedTargetMet": true,
+            "hardFloorPx": 6,
+            "hardFloorMet": true,
+            "minimumOwner": {
+              "kind": "edge",
+              "id": "mobile-auth",
+              "from": "mobile",
+              "to": "auth"
+            },
+            "minimumSourceTextPx": 8,
+            "minimumProjectedTextPx": 8,
+            "semanticTextCount": 28
+          },
+          "issues": []
+        },
+        "provenance": "current",
+        "deliveryReceiptId": "5691cc2f-01b8-4f97-bae9-2a79419ae7e7"
+      }
+    },
+    "browser-check": {
+      "status": "fail",
+      "exitCode": 1,
+      "durationMs": 496,
+      "command": [
+        "C:\\nvm4w\\nodejs\\node.exe",
+        "C:\\Users\\Yash Andrapiya\\.agents\\skills\\archify\\bin\\archify.mjs",
+        "browser-check",
+        "D:\\Projects\\amora_ai\\docs\\architecture\\AMORAA_SENIOR_MANAGEMENT_ARCHITECTURE.html",
+        "--json",
+        "--require-provenance"
+      ],
+      "execution": "in-process",
+      "receipt": {
+        "schemaVersion": 1,
+        "ok": false,
+        "command": "browser-check",
+        "evidenceKind": "automated-browser",
+        "status": "fail",
+        "visualReview": "not-requested",
+        "provenance": "current",
+        "deliveryReceiptId": "5691cc2f-01b8-4f97-bae9-2a79419ae7e7",
+        "artifact": {
+          "path": "D:\\Projects\\amora_ai\\docs\\architecture\\AMORAA_SENIOR_MANAGEMENT_ARCHITECTURE.html",
+          "sha256": "997adc7de6dca15dffbba66da5afc8ffb2d01c9cbb4b8bb362296d9e33944bc4",
+          "bytes": 767226
+        },
+        "state": {
+          "detail": "read",
+          "motion": "still"
+        },
+        "chrome": {
+          "status": "available",
+          "executable": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
+        },
+        "diagnostics": [
+          {
+            "code": "viewer/browser-check-runtime",
+            "severity": "error",
+            "message": "browser-check could not complete its Chrome inspection.",
+            "subject": {
+              "artifact": "D:\\Projects\\amora_ai\\docs\\architecture\\AMORAA_SENIOR_MANAGEMENT_ARCHITECTURE.html"
+            },
+            "evidence": {
+              "reason": "Chrome DevTools read pipe failed: stream ended\nChrome process: still running.\nChrome stderr:\n[34672:30476:1002/133821.030:ERROR:chrome\\installer\\util\\google_update_settings_win.cc:270] Failed opening key Software\\Google\\Update\\ClientStateMedium\\{8A69D345-D564-463c-AFF1-A69D9E530F96} to set usagestats; result: 5\r\n[34672:34152:1002/133821.204:ERROR:content\\browser\\gpu\\gpu_process_host.cc:1130] GPU process exited unexpectedly: exit_code=-1073741790\r\n[34672:31516:1002/133821.204:ERROR:components\\viz\\host\\persistent_cache_sandboxed_file_factory.cc:153] Failed to open persistent cache files in directory \"C:\\Users\\YASHAN~1\\AppData\\Local\\Temp\\archify-visual-check-profile-VR54VG\\GPUPersistentCache\\DawnGraphiteCache\\TLVJWQT6NJWKNBUVMWJ4BCR6DK7MJALX\", error: 0: The process cannot access the file because it is being used by another process. (0x20)\r\n[34672:34152:1002/133821.248:ERROR:content\\browser\\gpu\\gpu_process_host.cc:1130] GPU process exited unexpectedly: exit_code=-1073741790\r\n[34672:32668:1002/133821.280:ERROR:services\\device\\public\\cpp\\geolocation\\system_geolocation_source_win.cc:124] Failed to create IAppCapability: Access is denied. (0x80070005)\r\n[34672:34152:1002/133821.287:ERROR:content\\browser\\gpu\\gpu_process_host.cc:1130] GPU process exited unexpectedly: exit_code=-1073741790\r\n[34672:17904:1002/133821.288:ERROR:components\\viz\\host\\persistent_cache_sandboxed_file_factory.cc:153] Failed to open persistent cache files in directory \"C:\\Users\\YASHAN~1\\AppData\\Local\\Temp\\archify-visual-check-profile-VR54VG\\GPUPersistentCache\\DawnGraphiteCache\\TLVJWQT6NJWKNBUVMWJ4BCR6DK7MJALX\", error: 0: The process cannot access the file because it is being used by another process. (0x20)\r\n[34672:34152:1002/133821.306:ERROR:content\\browser\\gpu\\gpu_process_host.cc:1130] GPU process exited unexpectedly: exit_code=-1073741790\r\n[34672:17904:1002/133821.321:ERROR:components\\viz\\host\\persistent_cache_sandboxed_file_factory.cc:153] Failed to open persistent cache files in directory \"C:\\Users\\YASHAN~1\\AppData\\Local\\Temp\\archify-visual-check-profile-VR54VG\\GPUPersistentCache\\DawnGraphiteCache\\TLVJWQT6NJWKNBUVMWJ4BCR6DK7MJALX\", error: 0: The process cannot access the file because it is being used by another process. (0x20)\r\n[34672:34152:1002/133821.328:ERROR:content\\browser\\gpu\\gpu_process_host.cc:1130] GPU process exited unexpectedly: exit_code=-1073741790\r\n[34672:17904:1002/133821.329:ERROR:components\\viz\\host\\persistent_cache_sandboxed_file_factory.cc:153] Failed to open persistent cache files in directory \"C:\\Users\\YASHAN~1\\AppData\\Local\\Temp\\archify-visual-check-profile-VR54VG\\GPUPersistentCache\\DawnGraphiteCache\\TLVJWQT6NJWKNBUVMWJ4BCR6DK7MJALX\", error: 0: The process cannot access the file because it is being used by another process. (0x20)\r\n[34672:34152:1002/133821.354:ERROR:content\\browser\\gpu\\gpu_process_host.cc:1130] GPU process exited unexpectedly: exit_code=-1073741790\r\n[34672:34152:1002/133821.354:FATAL:content\\browser\\gpu\\gpu_data_manager_impl_private.cc:417] GPU process isn't usable. Goodbye.\nChrome transport: Node v20.19.5, libuv 1.46.0, win32; pid=34672, exitCode=null, signalCode=null.\nChrome read pipe: readable=false, ended=true, destroyed=false, receivedBytes=1328, messages=3, bufferedBytes=0.\nChrome write pipe: writable=false, ended=true, destroyed=false, completedWrites=3, writtenBytes=255, bufferedBytes=0."
+            },
+            "supportedFixes": [
+              "resolve the reported Chrome inspection error, then rerun browser-check"
+            ]
+          }
+        ],
+        "containment": {
+          "status": "fail",
+          "policy": "fit-or-reader-declared-readable-vertical-scroll",
+          "viewports": []
+        },
+        "themeStates": {
+          "status": "fail",
+          "viewports": []
+        },
+        "readability": {
+          "status": "fail",
+          "minimumProjectedNodeTextPx": 6,
+          "viewports": []
+        },
+        "viewerChrome": {
+          "status": "fail",
+          "viewports": []
+        },
+        "captures": {
+          "status": "not-requested",
+          "screenshots": [],
+          "contactSheet": null
+        },
+        "sidecars": {
+          "receipt": "amoraa_senior_management_architecture.browser-check.json",
+          "files": []
+        },
+        "error": "Chrome DevTools read pipe failed: stream ended\nChrome process: still running.\nChrome stderr:\n[34672:30476:1002/133821.030:ERROR:chrome\\installer\\util\\google_update_settings_win.cc:270] Failed opening key Software\\Google\\Update\\ClientStateMedium\\{8A69D345-D564-463c-AFF1-A69D9E530F96} to set usagestats; result: 5\r\n[34672:34152:1002/133821.204:ERROR:content\\browser\\gpu\\gpu_process_host.cc:1130] GPU process exited unexpectedly: exit_code=-1073741790\r\n[34672:31516:1002/133821.204:ERROR:components\\viz\\host\\persistent_cache_sandboxed_file_factory.cc:153] Failed to open persistent cache files in directory \"C:\\Users\\YASHAN~1\\AppData\\Local\\Temp\\archify-visual-check-profile-VR54VG\\GPUPersistentCache\\DawnGraphiteCache\\TLVJWQT6NJWKNBUVMWJ4BCR6DK7MJALX\", error: 0: The process cannot access the file because it is being used by another process. (0x20)\r\n[34672:34152:1002/133821.248:ERROR:content\\browser\\gpu\\gpu_process_host.cc:1130] GPU process exited unexpectedly: exit_code=-1073741790\r\n[34672:32668:1002/133821.280:ERROR:services\\device\\public\\cpp\\geolocation\\system_geolocation_source_win.cc:124] Failed to create IAppCapability: Access is denied. (0x80070005)\r\n[34672:34152:1002/133821.287:ERROR:content\\browser\\gpu\\gpu_process_host.cc:1130] GPU process exited unexpectedly: exit_code=-1073741790\r\n[34672:17904:1002/133821.288:ERROR:components\\viz\\host\\persistent_cache_sandboxed_file_factory.cc:153] Failed to open persistent cache files in directory \"C:\\Users\\YASHAN~1\\AppData\\Local\\Temp\\archify-visual-check-profile-VR54VG\\GPUPersistentCache\\DawnGraphiteCache\\TLVJWQT6NJWKNBUVMWJ4BCR6DK7MJALX\", error: 0: The process cannot access the file because it is being used by another process. (0x20)\r\n[34672:34152:1002/133821.306:ERROR:content\\browser\\gpu\\gpu_process_host.cc:1130] GPU process exited unexpectedly: exit_code=-1073741790\r\n[34672:17904:1002/133821.321:ERROR:components\\viz\\host\\persistent_cache_sandboxed_file_factory.cc:153] Failed to open persistent cache files in directory \"C:\\Users\\YASHAN~1\\AppData\\Local\\Temp\\archify-visual-check-profile-VR54VG\\GPUPersistentCache\\DawnGraphiteCache\\TLVJWQT6NJWKNBUVMWJ4BCR6DK7MJALX\", error: 0: The process cannot access the file because it is being used by another process. (0x20)\r\n[34672:34152:1002/133821.328:ERROR:content\\browser\\gpu\\gpu_process_host.cc:1130] GPU process exited unexpectedly: exit_code=-1073741790\r\n[34672:17904:1002/133821.329:ERROR:components\\viz\\host\\persistent_cache_sandboxed_file_factory.cc:153] Failed to open persistent cache files in directory \"C:\\Users\\YASHAN~1\\AppData\\Local\\Temp\\archify-visual-check-profile-VR54VG\\GPUPersistentCache\\DawnGraphiteCache\\TLVJWQT6NJWKNBUVMWJ4BCR6DK7MJALX\", error: 0: The process cannot access the file because it is being used by another process. (0x20)\r\n[34672:34152:1002/133821.354:ERROR:content\\browser\\gpu\\gpu_process_host.cc:1130] GPU process exited unexpectedly: exit_code=-1073741790\r\n[34672:34152:1002/133821.354:FATAL:content\\browser\\gpu\\gpu_data_manager_impl_private.cc:417] GPU process isn't usable. Goodbye.\nChrome transport: Node v20.19.5, libuv 1.46.0, win32; pid=34672, exitCode=null, signalCode=null.\nChrome read pipe: readable=false, ended=true, destroyed=false, receivedBytes=1328, messages=3, bufferedBytes=0.\nChrome write pipe: writable=false, ended=true, destroyed=false, completedWrites=3, writtenBytes=255, bufferedBytes=0."
+      }
+    }
+  },
+  "diagnostics": [
+    {
+      "code": "viewer/browser-check-runtime",
+      "severity": "error",
+      "message": "browser-check could not complete its Chrome inspection.",
+      "subject": {
+        "artifact": "D:\\Projects\\amora_ai\\docs\\architecture\\AMORAA_SENIOR_MANAGEMENT_ARCHITECTURE.html"
+      },
+      "evidence": {
+        "reason": "Chrome DevTools read pipe failed: stream ended\nChrome process: still running.\nChrome stderr:\n[34672:30476:1002/133821.030:ERROR:chrome\\installer\\util\\google_update_settings_win.cc:270] Failed opening key Software\\Google\\Update\\ClientStateMedium\\{8A69D345-D564-463c-AFF1-A69D9E530F96} to set usagestats; result: 5\r\n[34672:34152:1002/133821.204:ERROR:content\\browser\\gpu\\gpu_process_host.cc:1130] GPU process exited unexpectedly: exit_code=-1073741790\r\n[34672:31516:1002/133821.204:ERROR:components\\viz\\host\\persistent_cache_sandboxed_file_factory.cc:153] Failed to open persistent cache files in directory \"C:\\Users\\YASHAN~1\\AppData\\Local\\Temp\\archify-visual-check-profile-VR54VG\\GPUPersistentCache\\DawnGraphiteCache\\TLVJWQT6NJWKNBUVMWJ4BCR6DK7MJALX\", error: 0: The process cannot access the file because it is being used by another process. (0x20)\r\n[34672:34152:1002/133821.248:ERROR:content\\browser\\gpu\\gpu_process_host.cc:1130] GPU process exited unexpectedly: exit_code=-1073741790\r\n[34672:32668:1002/133821.280:ERROR:services\\device\\public\\cpp\\geolocation\\system_geolocation_source_win.cc:124] Failed to create IAppCapability: Access is denied. (0x80070005)\r\n[34672:34152:1002/133821.287:ERROR:content\\browser\\gpu\\gpu_process_host.cc:1130] GPU process exited unexpectedly: exit_code=-1073741790\r\n[34672:17904:1002/133821.288:ERROR:components\\viz\\host\\persistent_cache_sandboxed_file_factory.cc:153] Failed to open persistent cache files in directory \"C:\\Users\\YASHAN~1\\AppData\\Local\\Temp\\archify-visual-check-profile-VR54VG\\GPUPersistentCache\\DawnGraphiteCache\\TLVJWQT6NJWKNBUVMWJ4BCR6DK7MJALX\", error: 0: The process cannot access the file because it is being used by another process. (0x20)\r\n[34672:34152:1002/133821.306:ERROR:content\\browser\\gpu\\gpu_process_host.cc:1130] GPU process exited unexpectedly: exit_code=-1073741790\r\n[34672:17904:1002/133821.321:ERROR:components\\viz\\host\\persistent_cache_sandboxed_file_factory.cc:153] Failed to open persistent cache files in directory \"C:\\Users\\YASHAN~1\\AppData\\Local\\Temp\\archify-visual-check-profile-VR54VG\\GPUPersistentCache\\DawnGraphiteCache\\TLVJWQT6NJWKNBUVMWJ4BCR6DK7MJALX\", error: 0: The process cannot access the file because it is being used by another process. (0x20)\r\n[34672:34152:1002/133821.328:ERROR:content\\browser\\gpu\\gpu_process_host.cc:1130] GPU process exited unexpectedly: exit_code=-1073741790\r\n[34672:17904:1002/133821.329:ERROR:components\\viz\\host\\persistent_cache_sandboxed_file_factory.cc:153] Failed to open persistent cache files in directory \"C:\\Users\\YASHAN~1\\AppData\\Local\\Temp\\archify-visual-check-profile-VR54VG\\GPUPersistentCache\\DawnGraphiteCache\\TLVJWQT6NJWKNBUVMWJ4BCR6DK7MJALX\", error: 0: The process cannot access the file because it is being used by another process. (0x20)\r\n[34672:34152:1002/133821.354:ERROR:content\\browser\\gpu\\gpu_process_host.cc:1130] GPU process exited unexpectedly: exit_code=-1073741790\r\n[34672:34152:1002/133821.354:FATAL:content\\browser\\gpu\\gpu_data_manager_impl_private.cc:417] GPU process isn't usable. Goodbye.\nChrome transport: Node v20.19.5, libuv 1.46.0, win32; pid=34672, exitCode=null, signalCode=null.\nChrome read pipe: readable=false, ended=true, destroyed=false, receivedBytes=1328, messages=3, bufferedBytes=0.\nChrome write pipe: writable=false, ended=true, destroyed=false, completedWrites=3, writtenBytes=255, bufferedBytes=0."
+      },
+      "supportedFixes": [
+        "resolve the reported Chrome inspection error, then rerun browser-check"
+      ]
+    }
+  ],
+  "evidence": {
+    "receipt": "D:\\Projects\\amora_ai\\docs\\architecture\\amoraa_senior_management_architecture.finalize.json",
+    "summaryReceipt": "D:\\Projects\\amora_ai\\docs\\architecture\\amoraa_senior_management_architecture.finalize-summary.json",
+    "browserCheckReceipt": "D:\\Projects\\amora_ai\\docs\\architecture\\amoraa_senior_management_architecture.browser-check.json"
+  },
+  "visualReview": "not-requested",
+  "failedStage": "browser-check",
+  "finishedAt": "2026-10-02T08:08:23.494Z",
+  "durationMs": 3336,
+  "update": {
+    "status": "unavailable",
+    "installedVersion": null,
+    "availableVersion": null,
+    "releaseNotes": null,
+    "checkedAt": null,
+    "source": null,
+    "noticeRequired": false,
+    "noticeText": null,
+    "reason": "cache-unavailable"
+  }
+}
