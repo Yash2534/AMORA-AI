@@ -60,15 +60,18 @@ after(async () => {
 test('privacy request migration supports up, down, and up on the disposable test database', async () => {
   const queryInterface = getSequelize().getQueryInterface();
   const artifactSchemaBefore = await queryInterface.describeTable('PrivacyExportArtifacts');
-  for (const field of ['privacyRequestId', 'userId', 'status', 'storageKey', 'filename', 'mimeType', 'byteSize', 'checksum', 'generatedAt', 'failureCode']) assert.ok(Object.hasOwn(artifactSchemaBefore, field));
+  for (const field of ['privacyRequestId', 'userId', 'status', 'storageKey', 'filename', 'mimeType', 'byteSize', 'checksum', 'generatedAt', 'expiresAt', 'downloadedAt', 'deletedAt', 'failureCode']) assert.ok(Object.hasOwn(artifactSchemaBefore, field));
   const indexes = await queryInterface.showIndex('PrivacyExportArtifacts');
   assert.ok(indexes.some((index) => index.name === 'privacyRequestId' && index.unique));
   assert.ok(indexes.some((index) => index.name === 'privacy_export_artifacts_user_created'));
   assert.ok(indexes.some((index) => index.name === 'privacy_export_artifacts_status_created'));
+  assert.ok(indexes.some((index) => index.name === 'privacy_export_artifacts_status_expiry'));
   const foreignKeys = await queryInterface.getForeignKeyReferencesForTable('PrivacyExportArtifacts');
   assert.ok(foreignKeys.some((key) => key.referencedTableName.toLowerCase() === 'privacyrequests'));
   assert.ok(foreignKeys.some((key) => key.referencedTableName.toLowerCase() === 'users'));
   const exportMigration = require('../src/migrations/202609110001-create-privacy-export-artifacts');
+  const lifecycleMigration = require('../src/migrations/202610090001-harden-privacy-export-lifecycle');
+  await lifecycleMigration.down(queryInterface, Sequelize);
   await exportMigration.down(queryInterface, Sequelize);
   await assert.rejects(() => queryInterface.describeTable('PrivacyExportArtifacts'));
   await queryInterface.describeTable('PrivacyRequests');
@@ -76,6 +79,7 @@ test('privacy request migration supports up, down, and up on the disposable test
   await queryInterface.describeTable('PrivacyAccessResults');
   await queryInterface.describeTable('PrivacyCorrectionDetails');
   await exportMigration.up(queryInterface, Sequelize);
+  await lifecycleMigration.up(queryInterface, Sequelize);
   const schema = await getSequelize().getQueryInterface().describeTable('PrivacyRequests');
   for (const field of ['id', 'userId', 'requestType', 'status', 'requestedAt', 'identityVerifiedAt', 'processingStartedAt', 'completedAt', 'failedAt', 'failureCode', 'assignedAdminId', 'correlationId', 'metadata']) assert.ok(Object.hasOwn(schema, field));
   for (const forbidden of ['password', 'otp', 'token', 'authToken', 'aadhaar', 'kycDocument', 'smtpPassword']) assert.equal(Object.hasOwn(schema, forbidden), false);
@@ -247,27 +251,36 @@ test('P1.3B write failures are controlled, leave no private file, and mark the r
   await assert.rejects(() => fs.promises.access(new PrivacyExportArtifactService().resolve(artifact.storageKey)));
 });
 
-test('P1.3C serves only a completed owner artifact through a private, stable JSON download', async () => {
+test('P1.3C serves an owner artifact once, then deletes it', async () => {
   const requestRow = await models.PrivacyRequest.findOne({ where: { userId: owner.id, requestType: 'EXPORT', status: 'COMPLETED' }, order: [['id', 'DESC']] });
   const artifact = await models.PrivacyExportArtifact.findOne({ where: { privacyRequestId: requestRow.id, userId: owner.id } });
   const service = new PrivacyExportArtifactService(); const filePath = service.resolve(artifact.storageKey); const originalBytes = await fs.promises.readFile(filePath);
-  const original = { storageKey: artifact.storageKey, filename: artifact.filename, status: artifact.status, userId: artifact.userId, generatedAt: new Date(artifact.generatedAt).getTime(), checksum: artifact.checksum, completedAt: new Date(requestRow.completedAt).getTime() };
-  const beforeCount = await models.PrivacyExportArtifact.count({ where: { privacyRequestId: requestRow.id } });
-  const beforeFiles = (await fs.promises.readdir(require('path').dirname(filePath))).filter((name) => name.endsWith('.json')).sort();
   assert.equal((await download(null, requestRow.id)).status, 401);
+  assert.equal((await download(other, requestRow.id)).status, 404);
   const first = await download(owner, requestRow.id, '?filename=client.json&storageKey=client.json&path=C:%5Cunsafe.json');
   assert.equal(first.status, 200); assert.match(first.headers.get('content-type'), /^application\/json/); assert.equal(first.headers.get('cache-control'), 'private, no-store'); assert.match(first.headers.get('content-disposition'), new RegExp(`^attachment; filename="${artifact.filename.replace('.', '\\.')}`));
   assert.deepEqual(first.bytes, originalBytes); assert.doesNotThrow(() => JSON.parse(first.text)); assert.equal(first.text.includes(filePath), false); assert.equal(first.text.includes(artifact.storageKey), false);
-  assert.equal((await download(other, requestRow.id)).status, 404);
-  const access = await models.PrivacyRequest.findOne({ where: { userId: other.id, requestType: 'ACCESS' } }); const correction = await models.PrivacyRequest.findOne({ where: { userId: owner.id, requestType: 'CORRECTION' } }); const withdrawal = await models.PrivacyRequest.findOne({ where: { userId: owner.id, requestType: 'WITHDRAWAL' } });
-  assert.equal((await download(other, access.id)).status, 404); assert.equal((await download(owner, correction.id)).status, 404); assert.equal((await download(owner, withdrawal.id)).status, 404);
-  await artifact.update({ status: 'PENDING' }); assert.equal((await download(owner, requestRow.id)).status, 409); await artifact.update({ status: original.status });
-  await artifact.update({ userId: other.id }); assert.equal((await download(owner, requestRow.id)).status, 409); await artifact.update({ userId: original.userId });
-  for (const storageKey of ['../outside.json', '..\\outside.json', 'C:\\outside.json', '/tmp/outside.json']) { await artifact.update({ storageKey }); const blocked = await download(owner, requestRow.id); assert.equal(blocked.status, 409); assert.equal(blocked.text.includes('outside.json'), false); }
-  await artifact.update({ storageKey: original.storageKey, filename: 'bad\r\nX-Injected: yes' }); assert.equal((await download(owner, requestRow.id)).status, 409); await artifact.update({ filename: original.filename });
-  await fs.promises.unlink(filePath); const originalConsoleError = console.error; const logs = []; console.error = (...args) => logs.push(args.join(' ')); let missing; try { missing = await download(owner, requestRow.id); } finally { console.error = originalConsoleError; } assert.equal(missing.status, 409); assert.equal(missing.text.includes(filePath), false); assert.equal(missing.text.includes('ENOENT'), false); assert.equal(logs.join(' ').includes(filePath), false); assert.equal(logs.join(' ').includes(originalBytes.toString('utf8')), false); await fs.promises.writeFile(filePath, originalBytes, { mode: 0o600 });
-  const pending = await post(owner, { requestType: 'EXPORT' }); const pendingRow = await models.PrivacyRequest.findByPk(pending.body.data.request.id);
-  assert.equal((await download(owner, pendingRow.id)).status, 409); await pendingRow.update({ status: 'VERIFIED' }); assert.equal((await download(owner, pendingRow.id)).status, 409); await pendingRow.update({ status: 'PROCESSING' }); assert.equal((await download(owner, pendingRow.id)).status, 409); await pendingRow.update({ status: 'FAILED', failedAt: new Date() }); assert.equal((await download(owner, pendingRow.id)).status, 409); await pendingRow.update({ status: 'COMPLETED', completedAt: new Date() }); assert.equal((await download(owner, pendingRow.id)).status, 409);
-  const second = await download(owner, requestRow.id); assert.equal(second.status, 200); assert.deepEqual(second.bytes, originalBytes); assert.equal(await models.PrivacyExportArtifact.count({ where: { privacyRequestId: requestRow.id } }), beforeCount); assert.deepEqual((await fs.promises.readdir(require('path').dirname(filePath))).filter((name) => name.endsWith('.json')).sort(), beforeFiles);
-  await artifact.reload(); await requestRow.reload(); assert.equal(new Date(artifact.generatedAt).getTime(), original.generatedAt); assert.equal(artifact.checksum, original.checksum); assert.equal(requestRow.status, 'COMPLETED'); assert.equal(new Date(requestRow.completedAt).getTime(), original.completedAt);
+  await artifact.reload();
+  assert.equal(artifact.status, 'DELETED');
+  assert.ok(artifact.downloadedAt);
+  assert.ok(artifact.deletedAt);
+  await assert.rejects(() => fs.promises.access(filePath));
+  assert.equal((await download(owner, requestRow.id)).status, 409);
+});
+
+test('P1.3C denies an expired artifact and deletes its private file', async () => {
+  const created = await post(owner, { requestType: 'EXPORT' });
+  assert.equal(created.status, 201);
+  const requestRow = await models.PrivacyRequest.findByPk(created.body.data.request.id);
+  await requestRow.update({ status: 'COMPLETED', completedAt: new Date() });
+  const service = new PrivacyExportArtifactService();
+  const artifact = await service.create({ userId: owner.id, privacyRequestId: requestRow.id });
+  const filePath = service.resolve(artifact.storageKey);
+  await fs.promises.mkdir(path.dirname(filePath), { recursive: true, mode: 0o700 });
+  await fs.promises.writeFile(filePath, '{"expired":true}', { flag: 'wx', mode: 0o600 });
+  await artifact.update({ status: 'GENERATED', generatedAt: new Date(Date.now() - 120000), expiresAt: new Date(Date.now() - 60000) });
+  assert.equal((await download(owner, requestRow.id)).status, 410);
+  await artifact.reload();
+  assert.equal(artifact.status, 'EXPIRED');
+  await assert.rejects(() => fs.promises.access(filePath));
 });

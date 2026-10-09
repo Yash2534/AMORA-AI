@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:amora_ai/core/constants/app_images.dart';
+import 'package:amora_ai/core/auth/auth_service.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/image_fallback.dart';
 import 'package:amora_ai/core/widgets/profile_photo_file_provider_stub.dart'
@@ -78,6 +79,25 @@ class _AmoraaAdaptiveImageState extends State<AmoraaAdaptiveImage> {
   ImageStreamListener? _ratioListener;
   double _resolvedRatio = 4 / 5;
   int _retryKey = 0;
+  String? _mediaAccessToken;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMediaCredential();
+  }
+
+  Future<void> _loadMediaCredential() async {
+    if (!(widget.source?.contains('/api/media/') ?? false)) return;
+    try {
+      final token = await AuthService.instance.mediaAccessToken();
+      if (mounted && token != _mediaAccessToken) {
+        setState(() => _mediaAccessToken = token);
+      }
+    } catch (_) {
+      // The fallback remains visible when secure storage is unavailable.
+    }
+  }
 
   double get _displayRatio {
     final ratio = switch (widget.aspectMode) {
@@ -111,6 +131,10 @@ class _AmoraaAdaptiveImageState extends State<AmoraaAdaptiveImage> {
   @override
   void didUpdateWidget(covariant AmoraaAdaptiveImage oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.source != widget.source) {
+      _mediaAccessToken = null;
+      _loadMediaCredential();
+    }
     if (oldWidget.source != widget.source ||
         oldWidget.assetPath != widget.assetPath ||
         !identical(oldWidget.bytes, widget.bytes) ||
@@ -226,7 +250,19 @@ class _AmoraaAdaptiveImageState extends State<AmoraaAdaptiveImage> {
     final source = widget.source?.trim() ?? '';
     final dataProvider = _dataUriProvider(source);
     if (dataProvider != null) return dataProvider;
-    if (_isRemote(source)) return NetworkImage(source);
+    if (_isRemote(source)) {
+      final protectedMedia = source.contains('/api/media/');
+      if (protectedMedia &&
+          (_mediaAccessToken == null || _mediaAccessToken!.isEmpty)) {
+        return null;
+      }
+      return NetworkImage(
+        source,
+        headers: protectedMedia
+            ? <String, String>{'Authorization': 'Bearer $_mediaAccessToken'}
+            : null,
+      );
+    }
 
     final localProvider = localProfilePhotoFileProvider(source);
     if (localProvider != null) return localProvider;

@@ -42,6 +42,7 @@ let terms;
 let privacy;
 const createdUserIds = [];
 const legalDocumentIds = [];
+const retiredBaselineDocuments = [];
 const hash = (value) => crypto.createHash('sha256').update(value).digest('hex');
 const legalDocuments = () => [
   { documentKey: 'TERMS_OF_SERVICE', documentVersionId: terms.id },
@@ -62,6 +63,12 @@ before(async () => {
   await initializeDatabase();
   models = getModels();
   const now = new Date(Date.now() - 1000);
+  retiredBaselineDocuments.push(...await models.LegalDocumentVersion.findAll({
+    where: { documentKey: ['TERMS_OF_SERVICE', 'PRIVACY_POLICY'], status: 'ACTIVE' },
+  }));
+  for (const document of retiredBaselineDocuments) {
+    await document.update({ status: 'RETIRED', retiredAt: now });
+  }
   terms = await models.LegalDocumentVersion.create({
     documentKey: 'TERMS_OF_SERVICE',
     version: `google-consent-${Date.now()}`,
@@ -91,6 +98,9 @@ after(async () => {
     await models.RefreshToken.destroy({ where: { userId: createdUserIds } });
     await models.User.destroy({ where: { id: createdUserIds } });
     await models.LegalDocumentVersion.destroy({ where: { id: legalDocumentIds } });
+    for (const document of retiredBaselineDocuments) {
+      await document.update({ status: 'ACTIVE', retiredAt: null });
+    }
   }
   try { await getSequelize().close(); } catch (_) {}
   if (originalGoogleLibrary) require.cache[googleLibraryPath] = originalGoogleLibrary;

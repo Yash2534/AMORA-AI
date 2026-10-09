@@ -404,7 +404,7 @@ async function activate(request, userId) {
 }
 
 async function deactivate(request, userId, reason) {
-  const { User, RefreshToken } = getModels();
+  const { User, RefreshToken, UserDevice } = getModels();
   return User.sequelize.transaction(async (transaction) => {
     const user = await User.findByPk(userId, { transaction, lock: transaction.LOCK.UPDATE });
     if (!user) return null;
@@ -422,6 +422,7 @@ async function deactivate(request, userId, reason) {
         tokenVersion: Number(user.tokenVersion || 0) + 1,
       }, { transaction });
       await RefreshToken.destroy({ where: { userId }, transaction });
+      await UserDevice.destroy({ where: { userId }, transaction });
     }
     await recordAudit({
       request,

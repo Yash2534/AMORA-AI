@@ -45,6 +45,11 @@ async function storeOne(userId, kind, file) {
   };
 }
 
+// Re-encoding is intentionally not faked: the current dependency set has no
+// maintained image codec. Provider/dependency approval is required before EXIF
+// stripping can be claimed. Files remain private, randomized, signature-checked,
+// size-bounded, and inaccessible through static routing.
+
 async function storeSubmission(userId, aadhaar, selfie) {
   const stored = [];
   try {

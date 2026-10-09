@@ -15,7 +15,9 @@ module.exports = {
   accountDeletionReauthLimiter: rateLimit(options(15 * 60 * 1000, 5, (req) => String(req.user?.sub || req.ip))),
   accountDeletionOtpLimiter: rateLimit(options(45 * 1000, 1, (req) => String(req.user?.sub || req.ip))),
   signupLimiter: rateLimit(options(15 * 60 * 1000, 10, (req) => req.ip)),
-  otpLimiter: rateLimit(options(45 * 1000, 1, normalizedIdentity)),
+  otpRequestLimiter: rateLimit(options(45 * 1000, 1, normalizedIdentity)),
+  otpVerificationLimiter: rateLimit(options(15 * 60 * 1000, 5, normalizedIdentity)),
+  passwordResetLimiter: rateLimit(options(15 * 60 * 1000, 5, normalizedIdentity)),
   photoUploadLimiter: rateLimit(options(15 * 60 * 1000, 20, (req) => String(req.user?.sub || req.ip))),
   discoverSwipeLimiter: rateLimit(options(5 * 60 * 1000, 120, (req) => String(req.user?.sub || req.ip))),
   reportCreateLimiter: rateLimit(options(60 * 60 * 1000, 5, (req) => String(req.user?.sub || req.ip))),
@@ -27,4 +29,7 @@ module.exports = {
   paymentWebhookLimiter: rateLimit(options(60 * 1000, 300, (req) => String(req.ip))),
   roseSendLimiter: rateLimit(options(5 * 60 * 1000, 30, (req) => String(req.user?.sub || req.ip))),
   identityVerificationLimiter: rateLimit(options(60 * 60 * 1000, 5, (req) => String(req.user?.sub || req.ip))),
+  mediaDownloadLimiter: rateLimit(options(60 * 1000, 120, (req) => String(req.user?.sub || req.ip))),
+  grievanceLimiter: rateLimit(options(60 * 60 * 1000, 10, (req) => String(req.user?.sub || req.ip))),
+  privacyRequestLimiter: rateLimit(options(15 * 60 * 1000, 60, (req) => String(req.user?.sub || req.ip))),
 };

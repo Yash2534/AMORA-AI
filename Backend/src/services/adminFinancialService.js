@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const logger = require('../utils/logger');
 const crypto = require('crypto');
 const { Op } = require('sequelize');
 const { getModels } = require('../models');
@@ -526,7 +527,7 @@ function loadOffersStore() {
       }
     }
   } catch (err) {
-    console.error('Failed reading offers_persistent_store.json:', err.message);
+    logger.error('Failed reading offers persistent store.', { errorCode: err.code || err.name });
   }
 
   const initial = [
@@ -588,7 +589,7 @@ function syncOffersToDisk(map) {
     }
     fs.writeFileSync(OFFERS_PERSISTENT_FILE, JSON.stringify(Array.from(map.values()), null, 2), 'utf8');
   } catch (err) {
-    console.error('Failed writing offers_persistent_store.json:', err.message);
+    logger.error('Failed writing offers persistent store.', { errorCode: err.code || err.name });
   }
 }
 

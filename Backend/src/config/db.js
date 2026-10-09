@@ -1,4 +1,19 @@
+const fs = require('fs');
+const path = require('path');
 const { Sequelize } = require('sequelize');
+
+function databaseDialectOptions(env = process.env) {
+  if (env.NODE_ENV !== 'production') return {};
+  const caFile = String(env.DB_SSL_CA_FILE || '').trim();
+  if (!caFile) throw new Error('Production requires DB_SSL_CA_FILE for verified database TLS.');
+  const resolved = path.resolve(caFile);
+  return {
+    ssl: {
+      ca: fs.readFileSync(resolved, 'utf8'),
+      rejectUnauthorized: true,
+    },
+  };
+}
 
 let sequelize;
 async function assertMigrationsApplied(connection) {
@@ -27,6 +42,7 @@ async function initializeDatabase() {
       host: process.env.DB_HOST,
       port: Number(process.env.DB_PORT),
       dialect: 'mysql',
+      dialectOptions: databaseDialectOptions(),
       logging: false,
     });
     await sequelize.authenticate();
@@ -54,4 +70,4 @@ async function initializeDatabase() {
   }
 }
 function getSequelize() { if (!sequelize) throw new Error('Database has not been initialized.'); return sequelize; }
-module.exports = { initializeDatabase, getSequelize };
+module.exports = { initializeDatabase, getSequelize, databaseDialectOptions };

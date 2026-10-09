@@ -76,6 +76,11 @@ function validateEnvironment(env = process.env) {
   // ---------------------------------------------------------------------------
 
   if (env.NODE_ENV === 'production') {
+    for (const key of ['DB_PASS', 'DB_SSL_CA_FILE']) {
+      if (!String(env[key] || '').trim()) {
+        throw new Error(`Production requires ${key}.`);
+      }
+    }
     const mfaKey = String(
       env.ADMIN_MFA_ENCRYPTION_KEY || '',
     ).trim();

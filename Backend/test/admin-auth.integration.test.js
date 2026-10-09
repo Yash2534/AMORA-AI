@@ -190,6 +190,19 @@ test('system settings are permission-bound, validated, audited, and enforced at 
   await role.addPermissions([view, update]);
   const login = await request('/api/admin/v1/auth/login', { method: 'POST', body: { email: administrator.email, password, rememberMe: false } });
   const accessToken = login.body.data.accessToken;
+  const enrollment = await request('/api/admin/v1/auth/mfa/enroll', { method: 'POST', accessToken });
+  assert.equal(enrollment.status, 201);
+  const confirmation = await request('/api/admin/v1/auth/mfa/confirm', {
+    method: 'POST',
+    accessToken,
+    body: { code: adminMfaService.totpFor(enrollment.body.data.secret, Math.floor(Date.now() / 30000)) },
+  });
+  assert.equal(confirmation.status, 200);
+  const stepUp = await request('/api/admin/v1/auth/mfa/step-up', {
+    method: 'POST', accessToken,
+    body: { recoveryCode: confirmation.body.data.recoveryCodes[0] },
+  });
+  assert.equal(stepUp.status, 200);
   const read = await request('/api/admin/v1/system-settings', { accessToken });
   assert.equal(read.status, 200);
   assert.equal(read.body.data.settings.length, 3);
@@ -217,6 +230,12 @@ test('system settings are permission-bound, validated, audited, and enforced at 
   const actions = (await AdminAuditLog.findAll({ where: { administratorId: administrator.id }, attributes: ['action'] })).map((entry) => entry.action);
   assert.ok(actions.includes('admin.system_settings.config_viewed'));
   assert.ok(actions.includes('admin.system_settings.config_updated'));
+  const disabledMfa = await request('/api/admin/v1/auth/mfa', {
+    method: 'DELETE',
+    accessToken,
+    body: { recoveryCode: confirmation.body.data.recoveryCodes[1] },
+  });
+  assert.equal(disabledMfa.status, 200);
   await getModels().AdminRefreshToken.destroy({ where: { administratorId: administrator.id }, force: true });
 });
 

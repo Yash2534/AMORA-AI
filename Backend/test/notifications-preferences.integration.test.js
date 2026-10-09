@@ -234,7 +234,7 @@ test('likes persist relational actors and receiver sees each current sender name
   const receivedLikes = receiverList.body.data.notifications.filter((item) => item.type === 'new_like');
   assert.equal(receivedLikes.length, 3);
   assert.deepEqual(new Set(receivedLikes.map((item) => item.actor.name)), new Set(['Priya', 'Ananya', 'Neha']));
-  assert.ok(receivedLikes.every((item) => item.actor.photoUrl.endsWith('/uploads/notification.jpg')));
+  assert.ok(receivedLikes.every((item) => item.actor.photoUrl.endsWith(`/api/media/profile/${item.actor.userId}/notification.jpg`)));
   assert.ok(receivedLikes.every((item) => String(item.data.targetUserId) === item.actor.userId), JSON.stringify(receivedLikes));
 
   await models.OnboardingProfile.update(
@@ -255,8 +255,8 @@ test('likes persist relational actors and receiver sees each current sender name
       .filter((item) => item.type === 'new_like')
       .map((item) => [item.actor.userId, item.actor.photoUrl]),
   );
-  assert.ok(byActor[String(candidate.id)].endsWith('/uploads/priya-current.jpg'));
-  assert.ok(byActor[String(other.id)].endsWith('/uploads/ananya-current.jpg'));
+  assert.ok(byActor[String(candidate.id)].endsWith(`/api/media/profile/${candidate.id}/priya-current.jpg`));
+  assert.ok(byActor[String(other.id)].endsWith(`/api/media/profile/${other.id}/ananya-current.jpg`));
   assert.equal(byActor[String(thirdSender.id)], null);
 
   for (const bearer of [candidateToken, otherToken, thirdSenderToken]) {

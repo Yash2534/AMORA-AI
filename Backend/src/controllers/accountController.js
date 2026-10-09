@@ -2,6 +2,7 @@ const { getModels } = require('../models');
 const accountDeletionService = require('../services/immediateAccountDeletionService');
 const photoStorage = require('../utils/photoStorage');
 const identityStorage = require('../utils/identityVerificationStorage');
+const logger = require('../utils/logger');
 const chatMediaStorage = require('../utils/chatMediaStorage');
 const {
   createEmailOtp,
@@ -12,14 +13,14 @@ const {
   verifyPhoneOtp,
 } = require('../services/otpService');
 const { ACCOUNT_DELETION_REASON_CODES } = require('../constants/accountDeletionReasons');
+const { verifyProviderReauthentication } = require('../services/providerReauthenticationService');
+const { recordAudit } = require('../services/adminAuditService');
+const { normalizeIndianMobile, phoneReference } = require('../utils/phoneNumber');
+const sendEmail = require('../utils/sendEmail');
 
 const ACCOUNT_DELETION_PURPOSE = 'account_deletion';
 const emailOf = (value) => String(value || '').trim().toLowerCase();
-const phoneOf = (value) => {
-  const digits = String(value || '').replace(/\D/g, '');
-  const national = digits.length === 12 && digits.startsWith('91') ? digits.slice(2) : digits;
-  return /^\d{10}$/.test(national) ? `+91${national}` : '';
-};
+const phoneOf = normalizeIndianMobile;
 const maskEmail = (email) => {
   const [local, domain] = email.split('@');
   if (!local || !domain) return '';
@@ -55,36 +56,183 @@ const ownProfile = (user) => ({ id: user.id, name: user.name, email: user.email,
 
 exports.deactivate = async (req, res, next) => {
   try {
-    const bcrypt = require('bcrypt');
     const { User, RefreshToken, UserDevice } = getModels();
     const userId = Number(req.user.sub);
+    const reauthentication = await verifyProviderReauthentication(req.authUser, req.body);
+    if (!reauthentication.ok) {
+      const incorrect = reauthentication.code === 'CURRENT_PASSWORD_INCORRECT';
+      return res.status(401).json({
+        success: false,
+        message: incorrect ? 'Incorrect password. Please try again.' : 'Sign in with your account provider again to continue.',
+        code: reauthentication.code,
+        errors: [],
+      });
+    }
     const outcome = await User.sequelize.transaction(async (transaction) => {
       const current = await User.findByPk(userId, {
         transaction,
         lock: transaction.LOCK.UPDATE,
       });
       if (!current || current.accountStatus !== 'active') return { unavailable: true };
-      if (current.authProvider !== 'local' || !current.passwordHash) return { passwordUnavailable: true };
-      if (!(await bcrypt.compare(req.body.password, current.passwordHash))) return { incorrectPassword: true };
+      if (current.authProvider !== req.authUser.authProvider) return { unavailable: true };
       current.accountStatus = 'deactivated';
       current.deactivatedAt = new Date();
       current.tokenVersion += 1;
       await current.save({ transaction });
       await RefreshToken.destroy({ where: { userId }, transaction });
       await UserDevice.destroy({ where: { userId }, transaction });
+      await recordAudit({
+        request: req,
+        action: 'user.account.deactivated',
+        targetType: 'user',
+        targetId: userId,
+        oldValue: { accountStatus: 'active' },
+        newValue: { accountStatus: 'deactivated' },
+        metadata: { actorType: 'user', actorUserId: userId, reauthenticationMethod: reauthentication.method },
+        transaction,
+      });
       return { user: current };
     });
     if (outcome.unavailable) {
       return res.status(409).json({ success: false, message: 'This account cannot be deactivated.', code: 'ACCOUNT_STATE_INVALID', errors: [] });
     }
-    if (outcome.passwordUnavailable) {
-      return res.status(409).json({ success: false, message: 'Password verification is not available for this account.', code: 'DEACTIVATION_REAUTH_UNAVAILABLE', errors: [] });
-    }
-    if (outcome.incorrectPassword) {
-      return res.status(401).json({ success: false, message: 'Incorrect password. Please try again.', code: 'CURRENT_PASSWORD_INCORRECT', errors: [] });
-    }
     return res.json({ success: true, message: 'Account deactivated.', data: { user: ownProfile(outcome.user) } });
   } catch (error) {
+    return next(error);
+  }
+};
+
+exports.requestPhoneChange = async (req, res, next) => {
+  const userId = Number(req.user.sub);
+  const phoneNumber = phoneOf(req.body.phoneNumber);
+  try {
+    const reauthentication = await verifyProviderReauthentication(req.authUser, req.body);
+    if (!reauthentication.ok) {
+      return res.status(401).json({
+        success: false,
+        message: reauthentication.code === 'CURRENT_PASSWORD_INCORRECT'
+          ? 'Incorrect password. Please try again.'
+          : 'Sign in with your account provider again to continue.',
+        code: reauthentication.code,
+        errors: [],
+      });
+    }
+    const { User, OtpToken } = getModels();
+    let pending;
+    const result = await User.sequelize.transaction(async (transaction) => {
+      const current = await User.findByPk(userId, { transaction, lock: transaction.LOCK.UPDATE });
+      if (!current || current.accountStatus !== 'active') return { unavailable: true };
+      if (current.phoneNumber === phoneNumber) return { unchanged: true };
+      const owner = await User.findOne({ where: { phoneNumber }, transaction, lock: transaction.LOCK.UPDATE });
+      if (owner && Number(owner.id) !== userId) {
+        await recordAudit({
+          request: req,
+          action: 'user.phone.duplicate_claim_blocked',
+          targetType: 'user',
+          targetId: userId,
+          metadata: { actorType: 'user', actorUserId: userId, phoneReference: phoneReference(phoneNumber), outcome: 'failed' },
+          transaction,
+        });
+        return { conflict: true };
+      }
+      await OtpToken.update(
+        { consumed: true },
+        { where: { userId, purpose: 'phone_change', consumed: false }, transaction },
+      );
+      pending = await createPhoneOtp(phoneNumber, 'phone_change', { userId, transaction, deliver: false });
+      return { ready: true, reauthenticationMethod: reauthentication.method };
+    });
+    if (result.unavailable) return res.status(409).json({ success: false, message: 'Phone change is unavailable for this account.', code: 'ACCOUNT_STATE_INVALID', errors: [] });
+    if (result.unchanged) return res.status(409).json({ success: false, message: 'This phone number is already assigned to your account.', code: 'PHONE_UNCHANGED', errors: [] });
+    if (result.conflict) return res.status(409).json({ success: false, message: 'This phone number is unavailable.', code: 'PHONE_UNAVAILABLE', errors: [] });
+    try {
+      await deliverPhoneOtp(phoneNumber, 'phone_change', pending.code, pending.expiresAt, { correlationId: req.adminCorrelationId });
+    } catch (error) {
+      await OtpToken.update({ consumed: true }, { where: { id: pending.otp.id } }).catch(() => {});
+      logger.error('Phone change OTP delivery failed.', { errorCode: error.code || error.name });
+      return res.status(503).json({ success: false, message: 'We could not send the verification code. Please try again.', code: 'OTP_DELIVERY_FAILED', errors: [] });
+    }
+    return res.json({
+      success: true,
+      message: 'Verification code sent to the new phone number.',
+      data: { expiresAt: pending.expiresAt },
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+exports.confirmPhoneChange = async (req, res, next) => {
+  const userId = Number(req.user.sub);
+  const phoneNumber = phoneOf(req.body.phoneNumber);
+  try {
+    const { User, RefreshToken, UserDevice } = getModels();
+    const outcome = await User.sequelize.transaction(async (transaction) => {
+      const current = await User.findByPk(userId, { transaction, lock: transaction.LOCK.UPDATE });
+      if (!current || current.accountStatus !== 'active') return { unavailable: true };
+      const checked = await verifyPhoneOtp(phoneNumber, req.body.code, 'phone_change', { userId, transaction, correlationId: req.adminCorrelationId });
+      if (checked.error) {
+        await recordAudit({
+          request: req,
+          action: 'user.phone.otp_failed',
+          targetType: 'user',
+          targetId: userId,
+          metadata: { actorType: 'user', actorUserId: userId, phoneReference: phoneReference(phoneNumber), outcome: 'failed', failureCode: checked.error[0] },
+          transaction,
+        });
+        return { checked };
+      }
+      const owner = await User.findOne({ where: { phoneNumber }, transaction, lock: transaction.LOCK.UPDATE });
+      if (owner && Number(owner.id) !== userId) return { conflict: true };
+      const priorReference = phoneReference(current.phoneNumber);
+      current.phoneNumber = phoneNumber;
+      current.isVerified = true;
+      current.tokenVersion = Number(current.tokenVersion || 0) + 1;
+      await current.save({ transaction });
+      await RefreshToken.destroy({ where: { userId }, transaction });
+      await UserDevice.destroy({ where: { userId }, transaction });
+      await recordAudit({
+        request: req,
+        action: 'user.phone.ownership_changed',
+        targetType: 'user',
+        targetId: userId,
+        oldValue: { phoneReference: priorReference },
+        newValue: { phoneReference: phoneReference(phoneNumber) },
+        metadata: { actorType: 'user', actorUserId: userId, sessionsRevoked: true },
+        transaction,
+      });
+      return { user: current, notificationEmail: current.email };
+    });
+    if (outcome.unavailable) return res.status(409).json({ success: false, message: 'Phone change is unavailable for this account.', code: 'ACCOUNT_STATE_INVALID', errors: [] });
+    if (outcome.checked?.error) return otpFailure(res, outcome.checked);
+    if (outcome.conflict) return res.status(409).json({ success: false, message: 'This phone number is unavailable.', code: 'PHONE_UNAVAILABLE', errors: [] });
+    if (outcome.notificationEmail) {
+      sendEmail(
+        outcome.notificationEmail,
+        'Your AMORAA phone number was changed',
+        '<p>The phone number on your AMORAA account was changed and existing sessions were signed out.</p><p>If this was not you, contact support through the approved account-recovery channel.</p>',
+        { purpose: 'phone_change_security_notice' },
+      ).catch((error) => logger.error('Phone change security notice delivery failed.', { errorCode: error.code || error.name }));
+    }
+    return res.json({ success: true, message: 'Phone number updated. Please sign in again.', data: { user: ownProfile(outcome.user), sessionsRevoked: true } });
+  } catch (error) {
+    const databaseCode = error.original?.code || error.parent?.code;
+    if (databaseCode === 'ER_LOCK_DEADLOCK' || databaseCode === 'ER_LOCK_WAIT_TIMEOUT') {
+      return res.status(409).json({ success: false, message: 'This phone number is unavailable or another ownership claim is in progress.', code: 'PHONE_OWNERSHIP_CONFLICT', errors: [] });
+    }
+    if (error.name === 'SequelizeUniqueConstraintError'
+      || error.name === 'SequelizeDatabaseError'
+      || databaseCode === 'ER_DUP_ENTRY') {
+      const owner = await getModels().User.findOne({ where: { phoneNumber } }).catch(() => null);
+      if (owner && Number(owner.id) !== userId) {
+        return res.status(409).json({ success: false, message: 'This phone number is unavailable.', code: 'PHONE_UNAVAILABLE', errors: [] });
+      }
+    }
+    logger.error('Phone ownership transaction failed.', {
+      errorName: error.name,
+      databaseCode,
+      sqlState: error.original?.sqlState || error.parent?.sqlState,
+    });
     return next(error);
   }
 };
@@ -144,7 +292,7 @@ exports.sendDeletionOtp = async (req, res, next) => {
     if (error.code === 'OTP_CONFIG_ERROR') {
       return res.status(502).json({ success: false, message: 'The verification provider is not configured.', code: 'OTP_PROVIDER_AUTH_ERROR', errors: [] });
     }
-    console.error(`[Account deletion] ${channel} OTP delivery failed:`, error.code || error.name);
+    logger.error('Account deletion OTP delivery failed.', { channel, errorCode: error.code || error.name });
     return res.status(503).json({
       success: false,
       message: 'We could not send the verification code. Please try again.',

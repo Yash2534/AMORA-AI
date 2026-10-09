@@ -110,18 +110,18 @@ router.post('/accept-invitation', recoveryLimiter, [
 ], validate, managementController.acceptInvitation);
 router.get('/me', requireAdminAuth, controller.me);
 router.get('/mfa', requireAdminAuth, controller.mfaStatus);
-router.post('/mfa/enroll', requireAdminAuth, controller.beginMfaEnrollment);
-router.post('/mfa/confirm', requireAdminAuth, [
+router.post('/mfa/enroll', mfaVerificationLimiter, requireAdminAuth, controller.beginMfaEnrollment);
+router.post('/mfa/confirm', mfaVerificationLimiter, requireAdminAuth, [
   body('code').matches(/^\d{6}$/).withMessage('A six-digit authentication code is required.'),
 ], validate, controller.confirmMfaEnrollment);
-router.post('/mfa/step-up', requireAdminAuth, [
+router.post('/mfa/step-up', mfaVerificationLimiter, requireAdminAuth, [
   body('code').optional().matches(/^\d{6}$/),
   body('recoveryCode').optional().matches(/^[A-Za-z0-9-]{8,9}$/),
   body().custom((value) => Boolean(value.code) !== Boolean(value.recoveryCode))
     .withMessage('Provide exactly one authentication code or recovery code.'),
 ], validate, controller.stepUpMfa);
 router.post('/mfa/recovery-codes', requireAdminAuth, requireRecentAdminMfa, controller.regenerateMfaRecoveryCodes);
-router.delete('/mfa', requireAdminAuth, [
+router.delete('/mfa', mfaVerificationLimiter, requireAdminAuth, [
   body('code').optional().matches(/^\d{6}$/),
   body('recoveryCode').optional().matches(/^[A-Za-z0-9-]{8,9}$/),
   body().custom((value) => Boolean(value.code) !== Boolean(value.recoveryCode))

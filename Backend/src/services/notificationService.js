@@ -1,4 +1,5 @@
 const { getModels } = require('../models');
+const logger = require('../utils/logger');
 const pushProvider = require('./firebasePushProvider');
 
 const preferenceField = {
@@ -75,7 +76,7 @@ async function createNotification({ userId, actorUserId = null, type, category, 
     await notification.update({ actorUserId }, { transaction });
   }
   if (created) {
-    const push = () => deliverPush(notification, preferences).catch((error) => console.error('[Push]', error.message));
+    const push = () => deliverPush(notification, preferences).catch((error) => logger.error('Push delivery failed.', { errorCode: error.code || error.name }));
     if (transaction) transaction.afterCommit(push);
     else await push();
   }

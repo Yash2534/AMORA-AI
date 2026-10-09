@@ -31,7 +31,6 @@ void main() {
         'android.permission.ACCESS_FINE_LOCATION',
         'android.permission.POST_NOTIFICATIONS',
         'android.permission.READ_MEDIA_IMAGES',
-        'android.permission.READ_MEDIA_VIDEO',
       });
       expect(manifest, isNot(contains('MANAGE_EXTERNAL_STORAGE')));
       expect(manifest, isNot(contains('ACCESS_BACKGROUND_LOCATION')));

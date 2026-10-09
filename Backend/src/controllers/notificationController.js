@@ -32,7 +32,7 @@ function actorPayload(req, actor) {
   return {
     userId: String(actor.id),
     name: actor.name,
-    photoUrl: publicUrl(req, primary),
+    photoUrl: publicUrl(req, primary, actor.id),
   };
 }
 

@@ -1,6 +1,7 @@
 const { compatibilityFor } = require('./compatibilityService');
 const { isRecentlyActive } = require('./discoverEligibilityPolicy');
 const { scoreCompatibility } = require('./matchEngineService');
+const { protectedPath } = require('../utils/photoStorage');
 
 const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -13,9 +14,16 @@ function ageFor(birthDate) {
   return age;
 }
 
-function publicUrl(req, value) {
-  if (value && /^https?:\/\//i.test(value)) return value;
-  return value ? `${req.protocol}://${req.get('host')}${value}` : null;
+function publicUrl(req, value, userId) {
+  const secured = protectedPath(userId, value);
+  return secured ? `${req.protocol}://${req.get('host')}${secured}` : null;
+}
+
+function coarseDistanceKm(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const precise = Number(value);
+  if (!Number.isFinite(precise) || precise < 0) return null;
+  return Math.max(5, Math.ceil(precise / 5) * 5);
 }
 
 function serializePublicProfile(req, user, profile, options = {}) {
@@ -40,10 +48,7 @@ function serializePublicProfile(req, user, profile, options = {}) {
   const recentlyActive = isRecentlyActive(user.lastActiveAt, {
     windowMinutes: options.recentActivityWindowMinutes,
   });
-  const preciseDistance = options.distanceKm === null || options.distanceKm === undefined
-    ? Number.NaN : Number(options.distanceKm);
-  const publicDistanceKm = Number.isFinite(preciseDistance) && preciseDistance >= 0
-    ? Math.round(preciseDistance) : null;
+  const publicDistanceKm = coarseDistanceKm(options.distanceKm);
   return {
     id: String(user.id),
     gender: profile.gender || '',
@@ -65,8 +70,8 @@ function serializePublicProfile(req, user, profile, options = {}) {
     status: recentlyActive ? 'Recently active' : null,
     bio: profile.bio || '',
     interests: list(profile.interests),
-    imageUrl: publicUrl(req, primary),
-    gallery: photos.map((photo) => publicUrl(req, photo)).filter(Boolean),
+    imageUrl: publicUrl(req, primary, user.id),
+    gallery: photos.map((photo) => publicUrl(req, photo, user.id)).filter(Boolean),
     languages: lifestyleLanguages.length ? lifestyleLanguages : list(profile.languages),
     verification: user.identityVerifiedAt ? 'Verified' : 'Unverified',
     premium,
@@ -90,4 +95,4 @@ function serializePublicProfile(req, user, profile, options = {}) {
   };
 }
 
-module.exports = { ageFor, publicUrl, serializePublicProfile };
+module.exports = { ageFor, publicUrl, coarseDistanceKm, serializePublicProfile };

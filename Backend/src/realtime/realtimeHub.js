@@ -3,6 +3,7 @@ const { Server } = require('socket.io');
 const { getModels } = require('../models');
 const { conversationAccess } = require('../services/conversationAccessService');
 const { areUsersBlocked } = require('../services/accessControlService');
+const { isSessionCurrent } = require('../policies/accountStatusPolicy');
 const { activeMatch } = require('../services/conversationAccessService');
 const { corsOrigin } = require('../config/originPolicy');
 
@@ -116,7 +117,7 @@ function attachRealtimeServer(httpServer) {
       const payload = jwt.verify(rawToken, process.env.JWT_SECRET);
       const { User } = getModels();
       const user = await User.findByPk(payload.sub, { attributes: ['id', 'accountStatus', 'tokenVersion'] });
-      if (!user || user.accountStatus !== 'active' || Number(payload.ver || 0) !== Number(user.tokenVersion || 0)) throw new Error('Realtime session is unavailable.');
+      if (!isSessionCurrent(user, payload)) throw new Error('Realtime session is unavailable.');
       socket.data.userId = Number(user.id);
       next();
     } catch (_) {

@@ -27,6 +27,7 @@ void main() {
   });
 
   tearDown(() async {
+    AuthService.instance.currentUser = null;
     AmoraSession.logOut();
     await profiles.resetForTesting(originalProfile);
     onboarding.resetForTesting();
@@ -213,6 +214,49 @@ void main() {
     expect(AmoraSession.isLoggedIn.value, isFalse);
     expect(find.text('Login'), findsOneWidget);
   });
+
+  testWidgets(
+    'Google deactivation uses provider step-up without requesting a password',
+    (tester) async {
+      AuthService.instance.currentUser = const AmoraUser(
+        id: 42,
+        name: 'Google Member',
+        email: 'google@example.test',
+        phoneNumber: '',
+        isVerified: true,
+        authProvider: 'google',
+      );
+      String? submittedPassword = 'not-called';
+      await pumpAction(
+        tester,
+        DeactivateAccountScreen(
+          onDeactivate: (password) async {
+            submittedPassword = password;
+            return true;
+          },
+        ),
+      );
+      await tapVisible(
+        tester,
+        find.byKey(const ValueKey('confirm-deactivate-account')),
+      );
+      await tester.tap(
+        find.byKey(const ValueKey('deactivate-confirmation-continue')),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Confirm with Google'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('deactivate-password-field')),
+        findsNothing,
+      );
+      await tapVisible(
+        tester,
+        find.byKey(const ValueKey('confirm-deactivate-account')),
+      );
+      expect(submittedPassword, isNull);
+      expect(AmoraSession.isLoggedIn.value, isFalse);
+    },
+  );
 
   testWidgets('Welcome Back activates explicitly without onboarding UI', (
     tester,

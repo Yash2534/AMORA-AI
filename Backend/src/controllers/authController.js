@@ -4,6 +4,8 @@ const { createPhoneOtp, createEmailOtp, deliverPhoneOtp, deliverEmailOtp, verify
 const { recordLoginEvent } = require('../services/userActivityService');
 const { runtimeConfiguration } = require('../services/platformSettingsService');
 const consentService = require('../services/consentService');
+const logger = require('../utils/logger');
+const { normalizeIndianMobile } = require('../utils/phoneNumber');
 const googleIds = (process.env.GOOGLE_CLIENT_IDS || '').split(',').map((id) => id.trim()).filter((id) => id && id !== 'skip-for-now');
 const googleClient = googleIds.length ? new OAuth2Client() : null;
 const OTP_RESEND_COOLDOWN_MS = 45 * 1000;
@@ -13,7 +15,7 @@ const otpCorrelationId = (req) => {
 };
 const profile = (user) => ({ id: user.id, name: user.name, email: user.email, phoneNumber: user.phoneNumber, isVerified: user.isVerified, accountStatus: user.accountStatus, authProvider: user.authProvider });
 const emailOf = (value) => String(value || '').trim().toLowerCase();
-const phoneOf = (value) => { const digits = String(value || '').replace(/\D/g, ''); const national = digits.length === 12 && digits.startsWith('91') ? digits.slice(2) : digits; return /^\d{10}$/.test(national) ? `+91${national}` : ''; };
+const phoneOf = normalizeIndianMobile;
 const refreshSelectorOf = (value) => {
   const selector = String(value || '').split('.', 1)[0];
   return /^[a-f0-9]{32}$/.test(selector) && String(value).includes('.') ? selector : null;
@@ -91,6 +93,7 @@ exports.signup = async (req, res, next) => {
       // OTP is deliberately created without delivery here; delivery below is
       // the acknowledgement gate for the successful signup response.
       pendingOtp = await createPhoneOtp(phoneNumber, 'account_verification', {
+        userId: user.id,
         transaction,
         deliver: false,
       });
@@ -118,7 +121,7 @@ exports.signup = async (req, res, next) => {
       await User.destroy({ where: { id: user.id }, transaction });
     }).catch(() => {});
     
-    console.error(`[OTP] Registration SMS delivery failed for ${phoneNumber}:`, error.message, error.code, error.status);
+    logger.error('[OTP] Registration SMS delivery failed.', { errorCode: error.code, status: error.status });
 
     if (error.code === 'OTP_CONFIG_ERROR') {
       return res.status(502).json({
@@ -167,7 +170,7 @@ exports.verifyAccount = async (req, res) => {
     order: [['createdAt', 'DESC']],
   });
   if (!user) return res.status(400).json({ success: false, message: 'Account not found.', code: 'OTP_INVALID', errors: [] });
-  const checked = await verifyPhoneOtp(phoneNumber, req.body.code, 'account_verification', { correlationId: otpCorrelationId(req) });
+  const checked = await verifyPhoneOtp(phoneNumber, req.body.code, 'account_verification', { userId: user.id, correlationId: otpCorrelationId(req) });
   if (checked.error) return res.status(400).json({ success: false, message: checked.error[1], code: checked.error[0], errors: checked.error[2] !== undefined ? [{ remainingAttempts: checked.error[2] }] : [] });
   user.isVerified = true;
   await user.save();
@@ -195,7 +198,7 @@ exports.resendVerification = async (req, res) => {
       transaction,
     });
     if (recentOtp) return;
-    pendingOtp = await createPhoneOtp(phoneNumber, 'account_verification', { transaction, deliver: false });
+    pendingOtp = await createPhoneOtp(phoneNumber, 'account_verification', { userId: user.id, transaction, deliver: false });
   });
 
   let deliveredCode;
@@ -205,7 +208,7 @@ exports.resendVerification = async (req, res) => {
       deliveredCode = pendingOtp.code;
     } catch (error) {
       await OtpToken.update({ consumed: true }, { where: { id: pendingOtp.otp.id } }).catch(() => {});
-      console.error(`[OTP] Verification resend delivery failed for ${phoneNumber}:`, error.message, error.code, error.status);
+      logger.error('[OTP] Verification resend delivery failed.', { errorCode: error.code, status: error.status });
 
       if (error.code === 'OTP_CONFIG_ERROR') {
         return res.status(502).json({
@@ -259,6 +262,7 @@ exports.google = async (req, res, next) => {
   let isNewUser = false;
   if (user?.accountStatus === 'deleted') return res.status(401).json({ success: false, message: 'This account is unavailable.', code: 'INVALID_CREDENTIALS', errors: [] });
   if (user && user.authProvider === 'local') return res.status(409).json({ success: false, message: 'An account with this email uses password login. Please log in with your password first.', code: 'INVALID_CREDENTIALS', errors: [] });
+  if (user?.googleId && user.googleId !== payload.sub) return res.status(401).json({ success: false, message: 'Google identity does not match this account.', code: 'TOKEN_INVALID', errors: [] });
   if (!user) {
     if (!(await runtimeConfiguration()).registration_enabled) return res.status(403).json({ success: false, message: 'New registrations are currently unavailable.', code: 'REGISTRATION_DISABLED', errors: [] });
     try {
@@ -335,7 +339,7 @@ exports.forgotPassword = async (req, res) => {
       deliveredCode = pendingOtp.code;
     } catch (error) {
       await OtpToken.update({ consumed: true }, { where: { id: pendingOtp.otp.id } }).catch(() => {});
-      console.error('[OTP] Password reset email delivery failed:', error.message);
+      logger.error('[OTP] Password reset email delivery failed.', { errorCode: error.code, status: error.status });
       return res.status(503).json({
         success: false,
         message: error.message || "We couldn't send the verification code. Please try again.",
@@ -376,7 +380,7 @@ exports.resetPassword = async (req, res) => {
 };
 exports.changePassword = async (req, res, next) => {
   try {
-    const { User } = getModels();
+    const { User, RefreshToken } = getModels();
     const result = await User.sequelize.transaction(async (transaction) => {
       const user = await User.findOne({
         where: { id: req.user.sub, authProvider: 'local', accountStatus: 'active' },
@@ -393,7 +397,9 @@ exports.changePassword = async (req, res, next) => {
         return 'NEW_PASSWORD_SAME_AS_CURRENT';
       }
       user.passwordHash = await bcrypt.hash(req.body.newPassword, 12);
+      user.tokenVersion = Number(user.tokenVersion || 0) + 1;
       await user.save({ transaction });
+      await RefreshToken.destroy({ where: { userId: user.id }, transaction });
       return 'UPDATED';
     });
     if (result === 'CURRENT_PASSWORD_INCORRECT') {
@@ -405,7 +411,7 @@ exports.changePassword = async (req, res, next) => {
     if (result === 'NEW_PASSWORD_SAME_AS_CURRENT') {
       return res.status(409).json({ success: false, message: 'New password cannot be the same as the current password.', code: 'NEW_PASSWORD_SAME_AS_CURRENT', errors: [] });
     }
-    return success(res, 'Password updated.', {});
+    return success(res, 'Password updated. Please log in again on this device.', {});
   } catch (error) { return next(error); }
 };
 exports.refreshToken = async (req, res) => {
@@ -446,4 +452,4 @@ exports.refreshToken = async (req, res) => {
 };
 exports.logout = async (req, res) => { const { RefreshToken } = getModels(); const selector = refreshSelectorOf(req.body.refreshToken); const candidates = await RefreshToken.findAll({ where: { userId: req.user.sub, ...(selector ? { tokenSelector: selector } : { tokenSelector: null }) } }); for (const item of candidates) if (await bcrypt.compare(req.body.refreshToken, item.tokenHash)) { await item.destroy(); break; } return success(res, 'Logged out', {}); };
 exports.me = async (req, res) => { const { User } = getModels(); const user = await User.findByPk(req.user.sub); if (!user) return res.status(404).json({ success: false, message: 'User not found.', code: 'TOKEN_INVALID', errors: [] }); return success(res, 'Profile retrieved.', { user: profile(user) }); };
-exports.logGoogleStatus = () => console.log(googleClient ? '[Google Auth] Active' : '[Google Auth] Disabled — set GOOGLE_CLIENT_IDS in .env to enable');
+exports.logGoogleStatus = () => logger.info(googleClient ? '[Google Auth] Active' : '[Google Auth] Disabled — set GOOGLE_CLIENT_IDS in .env to enable');

@@ -268,6 +268,8 @@ const keys = [
   'auditLogs.export.sensitiveFields',
   'auditLogs.export.largeRange',
   'auditLogs.accessHistory.view',
+  'privacy.grievances.view',
+  'privacy.grievances.manage',
 ];
 
 function words(value) {

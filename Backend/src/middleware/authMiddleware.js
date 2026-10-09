@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const { getModels } = require('../models');
+const { isActiveAccount } = require('../policies/accountStatusPolicy');
 
 function authenticationMiddleware() {
   return async (req, res, next) => {
@@ -15,10 +16,10 @@ function authenticationMiddleware() {
     try {
       const { User } = getModels();
       const user = await User.findByPk(payload.sub);
-      if (!user || user.accountStatus === 'deleted' || Number(payload.ver || 0) !== Number(user.tokenVersion || 0)) {
+      if (!user || Number(payload.ver || 0) !== Number(user.tokenVersion || 0)) {
         return res.status(401).json({ success: false, message: 'This session is no longer valid.', code: 'TOKEN_INVALID', errors: [] });
       }
-      if (user.accountStatus === 'deactivated') {
+      if (!isActiveAccount(user)) {
         return res.status(403).json({ success: false, message: 'This account is deactivated.', code: 'ACCOUNT_DEACTIVATED', errors: [] });
       }
       req.user = payload;

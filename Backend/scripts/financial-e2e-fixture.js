@@ -57,7 +57,8 @@ async function setup() {
     const permissions = await models.AdminPermission.findAll({ where: { key: permissionKeys } });
     if (permissions.length !== permissionKeys.length) throw new Error('Financial E2E permission catalog is incomplete.');
     await role.addPermissions(permissions);
-    const password = 'FinancialE2e!Admin2026';
+    const password = String(process.env.FINANCIAL_E2E_ADMIN_PASSWORD || '');
+    if (password.length < 14) throw new Error('FINANCIAL_E2E_ADMIN_PASSWORD must be explicitly supplied with at least 14 characters.');
     const administrator = await models.Administrator.create({
       name: 'Financial E2E Admin',
       email: 'financial-admin@e2e.test',

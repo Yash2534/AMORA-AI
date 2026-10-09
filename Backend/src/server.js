@@ -4,7 +4,6 @@ const express = require("express");
 const http = require("http");
 const helmet = require("helmet");
 const cors = require("cors");
-const path = require("path");
 const { initializeDatabase } = require("./config/db");
 const authRoutes = require("./routes/authRoutes");
 const onboardingRoutes = require("./routes/onboardingRoutes");
@@ -30,6 +29,7 @@ const deviceRoutes = require('./routes/deviceRoutes');
 const mePreferenceRoutes = require('./routes/mePreferenceRoutes');
 const locationRoutes = require('./routes/locationRoutes');
 const privacyRoutes = require('./routes/privacyRoutes');
+const mediaRoutes = require('./routes/mediaRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const publicMaintenance = require('./middleware/publicMaintenanceMiddleware');
 const { publicConfiguration } = require('./controllers/platformSettingsController');
@@ -37,9 +37,11 @@ const { attachRealtimeServer } = require("./realtime/realtimeHub");
 const errorHandler = require("./middleware/errorHandler");
 const { port } = require("./config/env");
 const { corsOrigin } = require('./config/originPolicy');
+const { resolveTrustProxy } = require('./config/trustProxy');
 const { logGoogleStatus } = require("./controllers/authController");
+const securityEventMiddleware = require('./middleware/securityEventMiddleware');
 const app = express();
-app.set("trust proxy", 1);
+app.set("trust proxy", resolveTrustProxy());
 if (process.env.NODE_ENV === "development" && !process.env.CORS_ORIGIN)
   console.warn(
     "[CORS] Development mode allows all origins. Configure CORS_ORIGIN before production.",
@@ -56,17 +58,10 @@ app.use(
     credentials: true,
   }),
 );
+app.use(securityEventMiddleware);
 app.use(express.json({ limit: "100kb", verify: (req, _res, buffer) => {
   if (req.originalUrl === "/api/payments/webhook") req.rawBody = Buffer.from(buffer);
 } }));
-// Profile uploads are addressed by their stored filename. Cache immutable
-// files at the client/CDN so moving among Discover, matches and conversations
-// does not re-download the same avatar after login.
-app.use('/uploads', express.static(path.join(__dirname, '../uploads'), {
-  maxAge: '7d',
-  immutable: true,
-  etag: true,
-}));
 app.get("/health", (_req, res) =>
   res.json({
     success: true,
@@ -100,6 +95,7 @@ app.use('/api/notification-preferences', publicMaintenance, notificationPreferen
 app.use('/api/notifications', publicMaintenance, notificationRoutes);
 app.use('/api/identity-verification', publicMaintenance, identityVerificationRoutes);
 app.use('/api/devices', publicMaintenance, deviceRoutes);
+app.use('/api/media', publicMaintenance, mediaRoutes);
 app.use('/api/v1/privacy', privacyRoutes);
 app.use('/api/privacy', privacyRoutes);
 app.use('/api/admin/v1', adminRoutes);

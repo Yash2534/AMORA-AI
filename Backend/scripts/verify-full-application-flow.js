@@ -16,7 +16,8 @@ if (process.env.DB_NAME !== 'amora_ai') {
   throw new Error(`This verification must use the normal amora_ai database, not '${process.env.DB_NAME}'.`);
 }
 
-const password = 'ProductionFlow123!';
+const password = String(process.env.FULL_FLOW_TEST_PASSWORD || '');
+if (password.length < 14) throw new Error('FULL_FLOW_TEST_PASSWORD must be explicitly supplied with at least 14 characters.');
 const userIds = [];
 const accountEmails = [];
 const accountPhoneNumbers = [];

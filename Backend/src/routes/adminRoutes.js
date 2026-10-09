@@ -5,6 +5,7 @@ const requireAdminAuth = require('../middleware/adminAuthMiddleware');
 const requireTrustedAdminOrigin = require('../middleware/adminOriginMiddleware');
 const auditContext = require('../middleware/adminAuditMiddleware');
 const { requireAdminPermission } = require('../middleware/adminRbacMiddleware');
+const requireRecentAdminMfa = require('../middleware/adminMfaMiddleware');
 const validate = require('../middleware/validateRequest');
 const catalog = require('../controllers/adminCatalogController');
 const dashboard = require('../controllers/adminDashboardController');
@@ -41,7 +42,7 @@ router.use('/', adminSafetyRoutes);
 router.use('/', adminDataIntegrityRoutes);
 router.use('/', adminSystemRoutes);
 router.get('/system-settings', requireAdminPermission('systemSettings.view'), platformSettings.settings);
-router.patch('/system-settings', [body('values').isObject(), body('expectedVersion').optional().isString().isLength({ min: 10, max: 100 })], validate, requireAdminPermission('systemSettings.update'), platformSettings.update);
+router.patch('/system-settings', [body('values').isObject(), body('expectedVersion').optional().isString().isLength({ min: 10, max: 100 })], validate, requireAdminPermission('systemSettings.update'), requireRecentAdminMfa, platformSettings.update);
 router.get('/media/:mediaId', requireAdminPermission('verifications.details.view'), require('../controllers/adminVerificationController').media);
 router.get('/dashboard/overview', [
   query('range').optional().isIn(['today', '7d', '30d', '90d']),
@@ -67,36 +68,36 @@ router.get('/audit-logs/:auditId', [
 ], validate, requireAdminPermission('auditLogs.details.view'), catalog.auditLog);
 
 // DPDP Grievances Management
-router.get('/privacy/grievances', privacyController.adminGetGrievances);
-router.put('/privacy/grievances/:id', privacyController.adminUpdateGrievance);
+router.get('/privacy/grievances', requireAdminPermission('privacy.grievances.view'), privacyController.adminGetGrievances);
+router.put('/privacy/grievances/:id', requireAdminPermission('privacy.grievances.manage'), requireRecentAdminMfa, privacyController.adminUpdateGrievance);
 
 const adminChat = require('../controllers/adminChatController');
 const adminEvent = require('../controllers/adminEventController');
 
 // Chat Moderation Routes
-router.get('/chat/conversations', adminChat.conversations);
-router.get('/chat/conversations/:id', adminChat.conversationDetail);
-router.get('/chat/conversations/:id/messages', adminChat.messages);
-router.get('/chat/messages', adminChat.messages);
-router.post('/chat/messages/search', adminChat.messageSearch);
-router.get('/chat/reports', adminChat.chatReports);
-router.get('/chat/reports/:id', adminChat.reportDetail);
+router.get('/chat/conversations', requireAdminPermission('chatModeration.conversations.view'), adminChat.conversations);
+router.get('/chat/conversations/:id', requireAdminPermission('chatModeration.conversations.view'), adminChat.conversationDetail);
+router.get('/chat/conversations/:id/messages', requireAdminPermission('chatModeration.messages.view'), adminChat.messages);
+router.get('/chat/messages', requireAdminPermission('chatModeration.messages.view'), adminChat.messages);
+router.post('/chat/messages/search', requireAdminPermission('chatModeration.messages.search'), adminChat.messageSearch);
+router.get('/chat/reports', requireAdminPermission('chatModeration.reports.view'), adminChat.chatReports);
+router.get('/chat/reports/:id', requireAdminPermission('chatModeration.reports.view'), adminChat.reportDetail);
 
 // Events Routes
-router.get('/events', adminEvent.events);
-router.get('/events/options', adminEvent.options);
-router.get('/events/cancellation-reasons', adminEvent.cancellationReasons);
-router.post('/events', adminEvent.createEvent);
-router.get('/events/:id', adminEvent.eventDetail);
-router.patch('/events/:id', adminEvent.updateEvent);
-router.post('/events/:id/publish', adminEvent.publishEvent);
-router.post('/events/:id/cancel', adminEvent.cancelEvent);
-router.post('/events/:id/capacity', adminEvent.capacityEvent);
-router.post('/events/:id/featured', adminEvent.featuredEvent);
-router.get('/events/:id/attendees', adminEvent.attendees);
-router.get('/events/:id/waitlist', adminEvent.waitlist);
-router.get('/events/:id/reminders', adminEvent.reminders);
-router.get('/events/:id/analytics', adminEvent.analytics);
+router.get('/events', requireAdminPermission('events.view'), adminEvent.events);
+router.get('/events/options', requireAdminPermission('events.view'), adminEvent.options);
+router.get('/events/cancellation-reasons', requireAdminPermission('events.view'), adminEvent.cancellationReasons);
+router.post('/events', requireAdminPermission('events.create'), requireRecentAdminMfa, adminEvent.createEvent);
+router.get('/events/:id', requireAdminPermission('events.details.view'), adminEvent.eventDetail);
+router.patch('/events/:id', requireAdminPermission('events.update'), requireRecentAdminMfa, adminEvent.updateEvent);
+router.post('/events/:id/publish', requireAdminPermission('events.publish'), requireRecentAdminMfa, adminEvent.publishEvent);
+router.post('/events/:id/cancel', requireAdminPermission('events.cancel'), requireRecentAdminMfa, adminEvent.cancelEvent);
+router.post('/events/:id/capacity', requireAdminPermission('events.capacity.manage'), requireRecentAdminMfa, adminEvent.capacityEvent);
+router.post('/events/:id/featured', requireAdminPermission('events.featured.manage'), requireRecentAdminMfa, adminEvent.featuredEvent);
+router.get('/events/:id/attendees', requireAdminPermission('events.attendees.view'), adminEvent.attendees);
+router.get('/events/:id/waitlist', requireAdminPermission('events.waitlist.view'), adminEvent.waitlist);
+router.get('/events/:id/reminders', requireAdminPermission('events.reminders.view'), adminEvent.reminders);
+router.get('/events/:id/analytics', requireAdminPermission('events.analytics.view'), adminEvent.analytics);
 
 // Safe Fallback Route Handlers for Optional Admin Modules
 const safeEmptyResponse = (req, res) => res.json({
@@ -116,28 +117,28 @@ const safeEmptyResponse = (req, res) => res.json({
   },
 });
 
-router.get('/analytics/configuration', analyticsController.configuration);
-router.get('/analytics/snapshot/:page', analyticsController.snapshot);
-router.get('/analytics/:page', (req, res, next) => {
+router.get('/analytics/configuration', requireAdminPermission('analytics.view'), analyticsController.configuration);
+router.get('/analytics/snapshot/:page', requireAdminPermission('analytics.view'), analyticsController.snapshot);
+router.get('/analytics/:page', requireAdminPermission('analytics.view'), (req, res, next) => {
   if (['users', 'memberships', 'events', 'notifications', 'revenue'].includes(req.params.page)) {
     return analyticsController.snapshot(req, res, next);
   }
   return safeEmptyResponse(req, res);
 });
-router.get('/analytics/*', safeEmptyResponse);
-router.get('/support/categories', safeEmptyResponse);
-router.get('/support/templates', safeEmptyResponse);
-router.get('/support/options', safeEmptyResponse);
-router.get('/content/faq-categories', safeEmptyResponse);
-router.get('/content/options', safeEmptyResponse);
-router.get('/content/faqs*', safeEmptyResponse);
-router.get('/content/documents*', safeEmptyResponse);
-router.get('/membership-reports', safeEmptyResponse);
-router.get('/payment-reports', safeEmptyResponse);
-router.get('/notification-templates*', safeEmptyResponse);
-router.get('/notification-variables*', safeEmptyResponse);
-router.get('/notification-campaigns*', safeEmptyResponse);
-router.get('/notification-segments*', safeEmptyResponse);
-router.get('/notification-deliveries*', safeEmptyResponse);
+router.get('/analytics/*', requireAdminPermission('analytics.view'), safeEmptyResponse);
+router.get('/support/categories', requireAdminPermission('support.categories.view'), safeEmptyResponse);
+router.get('/support/templates', requireAdminPermission('support.templates.view'), safeEmptyResponse);
+router.get('/support/options', requireAdminPermission('support.view'), safeEmptyResponse);
+router.get('/content/faq-categories', requireAdminPermission('content.faqs.view'), safeEmptyResponse);
+router.get('/content/options', requireAdminPermission('content.view'), safeEmptyResponse);
+router.get('/content/faqs*', requireAdminPermission('content.faqs.view'), safeEmptyResponse);
+router.get('/content/documents*', requireAdminPermission('content.view'), safeEmptyResponse);
+router.get('/membership-reports', requireAdminPermission('analytics.memberships.view'), safeEmptyResponse);
+router.get('/payment-reports', requireAdminPermission('analytics.revenue.view'), safeEmptyResponse);
+router.get('/notification-templates*', requireAdminPermission('notifications.templates.view'), safeEmptyResponse);
+router.get('/notification-variables*', requireAdminPermission('notifications.view'), safeEmptyResponse);
+router.get('/notification-campaigns*', requireAdminPermission('notifications.campaigns.view'), safeEmptyResponse);
+router.get('/notification-segments*', requireAdminPermission('notifications.view'), safeEmptyResponse);
+router.get('/notification-deliveries*', requireAdminPermission('notifications.deliveryLogs.view'), safeEmptyResponse);
 
 module.exports = router;
