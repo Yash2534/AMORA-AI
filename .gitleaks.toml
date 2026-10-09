@@ -1,0 +1,13 @@
+title = "AMORAA repository secret scanning"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Test-only domains and documented placeholder names; never real values"
+paths = [
+  '''Backend/.env.example''',
+  '''docs/.*''',
+  '''security-remediation/.*'''
+]
+
