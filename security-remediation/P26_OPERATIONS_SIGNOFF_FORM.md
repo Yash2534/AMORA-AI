@@ -16,8 +16,9 @@ Technical implementation evidence: Phase 5 report and regression record. This fo
 - [ ] Disputed ownership workflow approved
 - [ ] Recovery flow approved
 - [ ] Session revocation approved
-- [ ] Audit evidence approved
+- [ ] Audit trail approved
 - [ ] Escalation procedure approved
+- [ ] Privacy safeguards approved
 
 Required supporting evidence:
 

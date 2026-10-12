@@ -149,3 +149,13 @@ Status categories are mutually exclusive and use the established vocabulary: `CO
 - P-26 received a second explicit operations signoff form; every approver remains TBD/NOT SIGNED.
 - Status counts remain unchanged: 7 complete; P0 **6/29**, P1 **1/14**, P2 **0/1**; manual **5**, staging **3**, infrastructure **13**, operations/policy **1**, legal **10**, management **10**, VAPT **2**.
 - Production accessed: **NO**. Staging accessed: **NO**. No SDK package, signing key, credential or approval was created.
+
+## Phase 8 infrastructure/readiness reconciliation
+
+- Exact infrastructure-primary controls: **P-03, P-04, P-05, P-06, P-07, P-08, P-10, P-33, P-39, P-40, P-43, P-44 and P-45**.
+- Current source/config readiness was rechecked at commit `432950ddf974ee412760e147cf1219cc0b294f0f`. Verified local facts include fail-closed production DB TLS, release HTTPS/signing guards, authenticated/local-private media paths, privacy-export ownership/expiry/delete controls, audit-chain logic and defined CI security jobs.
+- These are supporting local facts only. No deployed TLS/DB/storage/KMS/backup/logging/monitoring/rate-limit/Git-host/deployment evidence was supplied, so all 13 infrastructure statuses remain unchanged.
+- Android SDK/ADB and platforms 34/35/36 are present, but no system image, AVD or connected Android device exists. Flutter lists Windows/web only.
+- Historical APK remains non-qualifying/debug-signed; signing variables and AAB are absent. No approved staging hostname, dummy user/admin roster or owner assignment exists.
+- Newly complete: **0**. Totals remain 7 complete; P0 **6/29**, P1 **1/14**, P2 **0/1**; manual **5**, staging **3**, infrastructure **13**, operations/policy **1**, legal **10**, management **10**, VAPT **2**.
+- Production/staging/customer data/cloud consoles/production credentials/private keys were not accessed. Phase 9 readiness is **BLOCKED**.

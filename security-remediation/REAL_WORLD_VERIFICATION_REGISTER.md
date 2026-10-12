@@ -8,6 +8,7 @@ No console, deployed endpoint, shared service, production identity, or customer 
 | P-04 | MySQL/storage/KMS | At-rest encryption, CA/hostname TLS, encrypted snapshots | DB provider console and isolated staging connection | Encryption/key export, TLS-required positive and plaintext-negative results, snapshot proof | Infrastructure + DB | BLOCKED |
 | P-05 | Backup/DR | Encrypted schedule, separate identity, retention, restore, RPO/RTO | Backup console and isolated recovery environment | Policy export, grants, restore log, integrity checks, measured recovery | DevOps + DB | BLOCKED |
 | P-06 | Media storage/CDN | Private access, encryption, app identity, lifecycle deletion, anonymous denial | Production/staging bucket, mount or object gateway | Bucket/ACL/IAM export, anonymous negative result, delete/lifecycle proof | Infrastructure + Backend | BLOCKED |
+| P-07 | Privacy export storage | Private encrypted owner-authorized artifacts, expiry/deletion and access logging | Staging export bucket/mount/object gateway, KMS and cleanup scheduler | ACL/IAM/KMS export, cross-user/public negative result, expiry/delete and log proof | Infrastructure + Privacy + Backend | BLOCKED |
 | P-08 | KMS/secrets manager | Ownership, separation, IAM, access audit, rotation and recovery | KMS/secrets/IAM consoles | Inventory, policies, access logs and rotation/recovery drill | Infrastructure + Security | BLOCKED |
 | P-09/P-42 | Mobile release/signing | Company signing and secret-free hardened binaries | Protected signing service, CI, signed APK/IPA | Signature/build metadata, manifest/entitlements, redacted binary scans | Mobile + Release + Security | BLOCKED |
 | P-10 | Secret operations | Environment separation, managed injection, history scan and rotation | Secret manager, Git host and CI | Sanitized inventory/policy, scans, exposure disposition and rotation references | DevOps + Security | BLOCKED |
@@ -44,4 +45,15 @@ No console, deployed endpoint, shared service, production identity, or customer 
 - The exact three staging-primary controls are P-11, P-31 and P-36; none was executed in Phase 7.
 
 Owners should use `STAGING_ACCESS_REQUIRED.md` and `PHASE7_HUMAN_EXECUTION_CHECKLIST.md` to supply genuine sanitized evidence. Discovery/setup documents do not close any row in this register.
+
+## Phase 8 infrastructure readiness reconciliation — 2026-10-12
+
+- The exact infrastructure-primary controls are P-03, P-04, P-05, P-06, P-07, P-08, P-10, P-33, P-39, P-40, P-43, P-44 and P-45.
+- Local source/config was rechecked at commit `432950ddf974ee412760e147cf1219cc0b294f0f`; supporting readiness improved, but no deployed/provider evidence was supplied.
+- P-07 now has its own explicit register row; this corrects register coverage without changing the 13-control ledger count or status.
+- No approved staging hostname, cloud/DB/storage/KMS/logging/monitoring console access, company-signed artifact, dummy account roster or real owner assignment exists.
+- Infrastructure controls newly verified complete: **0**. All 13 remain `IMPLEMENTED — INFRASTRUCTURE EVIDENCE REQUIRED`.
+- Production accessed: **NO**. No external endpoint was probed and no secret, key or customer data was used.
+
+Use `PHASE8_INFRASTRUCTURE_CONTROL_MATRIX.md`, `PHASE8_HUMAN_INFRASTRUCTURE_ACTIONS.md` and `evidence/infrastructure/` for the next authorized evidence collection.
 

@@ -61,3 +61,9 @@ The exact staging-primary controls are P-11, P-31 and P-36. Phase 7 found Androi
 ## Phase 4 gate note
 
 Backend regression is now 350/350 with the P-13 event matrix and persistence assertion passing. Exact P-06/P-07/P-16/P-22/P-25/P-31/P-36/P-37 evidence packs were generated, but none of their manual, staging, infrastructure, product, legal or management evidence was supplied. This does not change the current decision: **NOT PRODUCTION READY**; recommendation **READY FOR NEXT SECURITY VALIDATION STAGE**.
+
+## Phase 8 gate note
+
+Phase 8 identified the exact 13 infrastructure-primary controls and prepared staging, device, signing, account, owner, action and evidence packs. Local configuration confirms fail-closed production DB TLS, release HTTPS/signing guards, repository-side private media/export behavior, audit-chain logic and security workflow definitions. These facts do not prove deployed infrastructure.
+
+No approved staging hostname, Android image/AVD/device, company signing material or AAB, dummy user/admin/MFA roster, provider console evidence, restore drill, central sink, monitoring/on-call, shared rate-limit store, branch-ruleset export or deployment/rollback record exists. Newly complete: **0**. Counts and the production decision are unchanged. **Phase 9 prerequisites ready: NO.**

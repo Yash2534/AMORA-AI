@@ -2,11 +2,13 @@
 
 Complete Security Status Completed Work Pending Controls and Final Validation Roadmap
 
-**Date:** 9 October 2026  
+**Date:** 12 October 2026
 
 **Branch:** `security/amoraa-pending-remediation`  
 
 **Baseline commit:** `eeeee8165714976a4cdad7d5a1dd460907c9bbf9`  
+
+**Phase 8 reviewed commit:** `432950ddf974ee412760e147cf1219cc0b294f0f`
 
 **Status:** NOT PRODUCTION READY  
 
@@ -20,7 +22,7 @@ Complete Security Status Completed Work Pending Controls and Final Validation Ro
 |---|---|
 | Purpose | Give senior management one evidence-based view of completed controls, remaining launch gates, ownership and roadmap. |
 | Audience | Leadership, Engineering, Mobile, Backend, DevOps, Security, Legal/Privacy, Support/Operations and Admin teams. |
-| Scope | The 51 controls P-01 through P-51 and evidence produced through Phase 7. |
+| Scope | The 51 controls P-01 through P-51 and evidence/readiness work produced through Phase 8. |
 | Authority | AMORAA_ACTUAL_VERIFICATION_STATUS.md is the current control ledger. Phase reports are historical evidence. |
 | Evidence rule | A control is complete only when implementation, required verification, absence of conflicting paths and regression evidence are all satisfied. |
 | Confidentiality | Internal security governance. Do not add secrets, tokens, OTPs, customer data or private contacts. |
@@ -298,11 +300,11 @@ Historical failures are retained above. A corrected final pass does not erase th
 |---|---|---|---|---|---|---|
 | Discover prerequisites and prepare real execution. | SDK/device/artifact/account/staging inventory; AVD, staging and human packs. | P-11/P-31/P-36 plus manual controls | Discovery only; no external probes | 0 | No system image/AVD/device/staging/company artifacts/accounts | Phase 8 must close infrastructure and release prerequisites. |
 
-## Phase 8 NEXT
+## Phase 8 Infrastructure and release prerequisite closure
 
 | Goal | Work completed | Controls | Tests | New complete | Pending after phase | Why next phase |
 |---|---|---|---|---|---|---|
-| Infrastructure and release prerequisite closure. | Not yet executed. | Infrastructure, signing, staging and account prerequisites | Pending | 0 | All real owners/access required | Enables Phase 9 manual/staging revalidation. |
+| Infrastructure and release prerequisite closure. | Reconciled exact 13-control matrix; reviewed local TLS/DB/storage/export/rate-limit/audit/CI/release config; inventoried Android tooling/artifacts; created staging, accounts, AVD, signing, backup, KMS, storage, logging, monitoring, owner and human-action packs. | P-03/P-04/P-05/P-06/P-07/P-08/P-10/P-33/P-39/P-40/P-43/P-44/P-45 plus P-09/P-42 prerequisites | Source/tool discovery only; no external probes or target suite rerun | 0 | All 13 infrastructure controls; no staging/device/company artifact/accounts/owners | Phase 9 remains blocked until the prerequisite table in the Phase 8 report is satisfied. |
 
 # Manual Verification Pending
 
@@ -454,11 +456,11 @@ Expected scope: Android/iOS application, API, admin surface, authentication, OTP
 
 <!-- NARROW -->
 
-# Pending Security Phases
+# Remaining Security Phases and External Execution
 
 | Phase | Goal | Primary outputs |
 |---|---|---|
-| Phase 8 Infrastructure and Release Prerequisite Closure | Authorize staging/signing/accounts and prove TLS, DB, storage, backup, KMS, logging and monitoring | Sanitized external evidence and company-signed candidate |
+| Phase 8 external execution (readiness pack complete) | Management/DevOps must authorize staging/signing/accounts and supply real TLS, DB, storage, backup, KMS, logging and monitoring evidence | Sanitized external evidence and company-signed candidate; 0 controls closed by templates alone |
 | Phase 9 Manual and Staging Revalidation | Close P-09/P-16/P-22/P-25/P-37 and P-11/P-31/P-36 where all exit criteria pass | Device/UI/API/admin evidence packs |
 | Phase 10 Legal Management and Operations Closure | Close legal approvals, P-26 signoff, ownership, incident and moderation/support governance | Signed decisions, rosters and rehearsals |
 | Phase 11 Independent VAPT P-46 | Assess the exact release candidate independently | Signed VAPT report and finding register |
@@ -516,6 +518,9 @@ Current result: no release-gate approval. NOT PRODUCTION READY.
 | Phase 5 | AMORAA_PHASE5_REPOSITORY_GAP_REPORT.md | P-20/P-26 implementation and latest regressions |
 | Phase 6 | AMORAA_PHASE6_MANUAL_EVIDENCE_REPORT.md | Manual attempt and APK result |
 | Phase 7 | AMORAA_PHASE7_STAGING_DEVICE_VALIDATION_REPORT.md | Current prerequisite state |
+| Phase 8 | AMORAA_PHASE8_INFRASTRUCTURE_READINESS_REPORT.md | Infrastructure evidence requirements and Phase 9 readiness decision |
+| Phase 8 matrix | PHASE8_INFRASTRUCTURE_CONTROL_MATRIX.md | Exact 13 controls, local facts, owners and blockers |
+| Phase 8 human actions | PHASE8_HUMAN_INFRASTRUCTURE_ACTIONS.md | DevOps/DB/Security/Mobile/Management execution register |
 | Manual register | MANUAL_VERIFICATION_REGISTER.md | 31 broader human checks; all unverified |
 | Infrastructure | REAL_WORLD_VERIFICATION_REGISTER.md | External systems and proof |
 | Legal | LEGAL_VERIFICATION_REGISTER.md | Ten pending counsel decisions |
@@ -527,7 +532,7 @@ Current result: no release-gate approval. NOT PRODUCTION READY.
 
 - The initial repository final report recorded 0 complete because runtime execution had not yet occurred. It is historical and is superseded by the current 7-control ledger.
 
-- Phase 2 recorded 3 complete, Phase 3 recorded 5, Phase 4 recorded 6 and Phase 5 raised the current total to 7. Phase 6 and Phase 7 added no completions.
+- Phase 2 recorded 3 complete, Phase 3 recorded 5, Phase 4 recorded 6 and Phase 5 raised the current total to 7. Phases 6, 7 and 8 added no completions.
 
 - Backend totals progressed from a DB-blocked Phase 2 attempt to 347, 350 and finally 356 passing tests. The latest result is 356/356.
 
@@ -561,7 +566,8 @@ Current result: no release-gate approval. NOT PRODUCTION READY.
 | Latest backend tests | 356 passed; 0 failed; 0 blocked |
 | Latest Flutter tests | 659 passed; 0 failed; 14 skipped |
 | Production accessed | NO |
-| Next phase | Phase 8 Infrastructure and Release Prerequisite Closure |
+| Phase 9 prerequisites ready | NO — staging/device/signing/accounts/infrastructure evidence absent |
+| Next phase | Phase 9 Manual and Staging Revalidation, blocked pending prerequisites |
 | Recommendation | READY FOR NEXT SECURITY VALIDATION STAGE — NOT PRODUCTION READY |
 
 ## Top Five Management Actions
