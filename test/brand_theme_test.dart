@@ -10,7 +10,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test('approved Premium Plum brand colors remain exact', () {
-    expect(AppColors.primary, const Color(0xFF713F62));
+    expect(AppColors.primary, const Color(0xFF52254F));
     expect(AppColors.secondary, const Color(0xFFE8D4E5));
     expect(AppColors.tertiary, const Color(0xFFF3DCEB));
     expect(AppColors.background, const Color(0xFFFEFCFF));

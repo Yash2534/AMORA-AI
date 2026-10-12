@@ -5,9 +5,9 @@ import 'package:flutter/material.dart';
 /// Centralized brand color definitions based on official Amoraa design specs.
 abstract final class AppColors {
   // 1. FINAL AMORAA CORE COLOR PALETTE
-  static const Color primary = Color(0xFF713F62);
+  static const Color primary = Color(0xFF52254F);
   static const Color primaryDark = Color(0xFF4B1F45);
-  static const Color primaryLight = Color(0xFF8F5A88);
+  static const Color primaryLight = Color(0xFF753B72);
   static const Color plumBlack = Color(0xFF35152F);
   static const Color accentLavender = Color(0xFFE8D4E5);
   static const Color softLavender = Color(0xFFF3DCEB);
@@ -21,6 +21,7 @@ abstract final class AppColors {
   static const Color success = Color(0xFF5E806D);
   static const Color error = Color(0xFFC94F5A);
   static const Color premium = Color(0xFF8B2F8F);
+  static const Color verified = Color(0xFFD47094);
   
   static const Color transparent = Colors.transparent;
 
@@ -69,8 +70,8 @@ abstract final class AppColors {
   // Interaction.
   static const Color active = primary;
   static const Color onActive = white;
-  static const Color activeContainer = Color(0x14713F62);
-  static const Color selectedContainer = Color(0x14713F62);
+  static const Color activeContainer = Color(0x1452254F);
+  static const Color selectedContainer = Color(0x1452254F);
   static const Color focus = primary;
   static const Color hover = softLavender;
   static const Color pressed = primaryDark;
@@ -169,6 +170,7 @@ abstract final class AppColors {
   static const Color grey = secondaryText;
   static const Color borderGray = border;
   static const Color lightGray = pageBackground;
+  static const Color roseBerry = verified;
 }
 
 typedef AmoraaColors = AppColors;
