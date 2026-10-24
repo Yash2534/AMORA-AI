@@ -57,8 +57,10 @@ Branch at start: `security/amoraa-pending-remediation` @ `ea41d4ef50b3a3be2487fe
 - Count change 360 → 386 (+26): +22 because three files previously crashed at import (each counted as 1 failed test) and now run their 25 real tests; +4 new regression tests.
 
 ## PHASE 6 — Flutter validation
-- STATUS: IN PROGRESS
-- `flutter pub get` OK. `flutter analyze`: 44 issues in files untouched by this branch (unused imports/elements/params, 2× use_build_context_synchronously, 1 dead null-aware). Cleanup in progress.
+- STATUS: PASS
+- `flutter pub get` OK. `flutter analyze`: 44 → **0 issues**. Changes: dead code removed; `if (!mounted) return;` guards in my_events_screen and event_detail_screen; a dead `??` removed (field is non-nullable). 20 files, no `// ignore:`.
+- `flutter test`: **659 passed, 14 skipped, 0 failed**.
+- Release compile: `flutter build apk --release` PASS (QA-only signing key).
 
 ## PHASE 7 — API base URL review
 - STATUS: PASS (review only, no change)
@@ -67,5 +69,30 @@ Branch at start: `security/amoraa-pending-remediation` @ `ea41d4ef50b3a3be2487fe
 - Media: relative paths are prefixed with `AmoraApiConfig.baseUrl` (onboarding/profile repositories).
 - Android release signing requires `AMORAA_ANDROID_KEYSTORE_*` env vars (fails closed). Not present on this machine.
 
-## PHASES 8–25
-- STATUS: NOT STARTED
+## PHASE 8 — Reproducible git state
+- STATUS: PASS
+- Branch `deploy/client-qa-20261024`, commit `1bf2b3795db19e9fb12ad20afe3caab305785c41`, pushed to origin. 122 files reviewed. No .env, keys, builds, logs or dumps.
+- Intentionally left untracked (backed up): `docs/qa` (452 MB), `docs/staging` (133 MB), `docs/monetization`, `docs/production-readiness` (generated .docx/.xlsx/PDF), `android/.kotlin/` (build output).
+
+## PHASE 9 — Server safety inspection
+- STATUS: BLOCKED. `ssh root@195.35.23.132` → `Permission denied (publickey,password)`; this machine has no SSH key. Nothing on the server was touched.
+
+## PHASES 10–20 — Staging deploy, DB, env, migrations, PM2, nginx/TLS, health, OTP manual, QA accounts, smoke
+- STATUS: BLOCKED (SSH access; DNS `client-api.searchenginemonks.com` is NXDOMAIN; QA phone not provided)
+- Prepared: `Backend/deploy/client-staging/` (env template, PM2 config, nginx vhost, guarded deploy script) and `docs/client-release/STAGING_DEPLOYMENT_RUNBOOK.md`.
+
+## PHASE 21 — Android release build
+- STATUS: BLOCKED for client delivery (gated on staging smoke tests). Compile-verification build PASS:
+  `build\app\outputs\flutter-apk\app-release.apk`, 95,504,516 bytes, SHA-256 `7315978ca257f631d128264ca819a1a3d7e6b6e317031ed26c01f5366c4c6eab`, `com.example.amora_ai` 1.0.0+1, API = `https://client-api.searchenginemonks.com`, signed with the CLIENT QA ONLY key.
+
+## PHASE 22 — Device validation
+- STATUS: BLOCKED (no device; no staging backend)
+
+## PHASE 23 — Admin Web
+- STATUS: BLOCKED for deployment. Audited: `main` @ `d300aaf`, clean; `AMORAA_ADMIN_API_BASE_URL` dart-define; supports the MFA 202 challenge.
+
+## PHASE 24 — Report
+- STATUS: PASS. `docs/client-release/CLIENT_QA_RELEASE_REPORT.md`
+
+## PHASE 25 — Handoff
+- STATUS: FAIL. Classification is NOT READY FOR CLIENT QA.
