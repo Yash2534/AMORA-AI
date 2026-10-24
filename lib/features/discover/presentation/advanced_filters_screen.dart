@@ -2664,14 +2664,12 @@ class _OptionWrap extends StatelessWidget {
     required this.onToggle,
     this.icon,
     this.iconFor,
-    this.emojiFor,
   });
 
   final List<String> options;
   final Set<String> selected;
   final IconData? icon;
   final IconData? Function(String option)? iconFor;
-  final String? Function(String option)? emojiFor;
   final void Function(Set<String> selected, String option) onToggle;
 
   @override
@@ -2691,7 +2689,6 @@ class _OptionWrap extends StatelessWidget {
                   canonicalFilterIdentity(option),
             ),
             icon: iconFor?.call(option) ?? icon,
-            emoji: emojiFor?.call(option),
             onTap: () => onToggle(selected, option),
           ),
       ],
@@ -2759,14 +2756,12 @@ class _PremiumFilterChip extends StatelessWidget {
     required this.selected,
     required this.onTap,
     this.icon,
-    this.emoji,
   });
 
   final String label;
   final bool selected;
   final VoidCallback onTap;
   final IconData? icon;
-  final String? emoji;
 
   @override
   Widget build(BuildContext context) {
@@ -2794,15 +2789,13 @@ class _PremiumFilterChip extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (emoji case final value?)
-                  Text(value, style: const TextStyle(fontSize: 16))
-                else if (icon case final value?)
+                if (icon case final value?)
                   Icon(
                     value,
                     size: 17,
                     color: selected ? AppColors.surface : AppColors.primary,
                   ),
-                if (emoji != null || icon != null) const SizedBox(width: 7),
+                if (icon != null) const SizedBox(width: 7),
                 Flexible(
                   child: Text(
                     label,

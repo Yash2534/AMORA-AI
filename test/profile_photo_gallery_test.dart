@@ -2,7 +2,6 @@ import 'package:amora_ai/core/constants/app_images.dart';
 import 'package:amora_ai/core/theme/amora_theme.dart';
 import 'package:amora_ai/core/widgets/amora_profile_image.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
-import 'package:amora_ai/features/profile/presentation/profile_screen.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/profile_photo_gallery.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';

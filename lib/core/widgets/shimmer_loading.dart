@@ -1,5 +1,4 @@
 import 'package:amora_ai/core/theme/app_colors.dart';
-import 'package:amora_ai/core/widgets/premium_motion.dart';
 import 'package:flutter/material.dart';
 
 /// Reusable Apple-style Shimmer Skeleton widget for smooth loading states.

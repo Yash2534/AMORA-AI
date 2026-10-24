@@ -2,7 +2,7 @@ const crypto = require('crypto');
 
 class ProviderConfigurationError extends Error {
   constructor(message = 'Razorpay sandbox credentials are not configured.') {
-    super(message); this.code = 'PAYMENT_PROVIDER_NOT_CONFIGURED'; this.status = 503;
+    super(message); this.code = 'PAYMENT_PROVIDER_NOT_CONFIGURED'; this.status = 503; this.expose = true;
   }
 }
 

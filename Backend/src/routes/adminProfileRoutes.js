@@ -4,6 +4,7 @@ const validate = require('../middleware/validateRequest');
 const { requireAdminPermission } = require('../middleware/adminRbacMiddleware');
 const controller = require('../controllers/adminProfileController');
 const { upload } = require('../utils/photoStorage');
+const requireRecentAdminMfa = require('../middleware/adminMfaMiddleware');
 
 const profileId = () => param('profileId').isInt({ min: 1 }).withMessage('A valid profile ID is required.').toInt();
 const photoId = () => param('photoId').isString().matches(/^[A-Za-z0-9_-]{32}$/).withMessage('A valid photo ID is required.');
@@ -71,13 +72,13 @@ router.patch('/:profileId', [
   body('languageIds.*').optional().isString().matches(/^[A-Za-z0-9_-]{3,80}$/),
   body('interestIds').optional().isArray({ max: 20 }),
   body('interestIds.*').optional().isString().matches(/^[A-Za-z0-9_-]{3,80}$/),
-], validate, requireAdminPermission('profiles.edit'), controller.update);
+], validate, requireAdminPermission('profiles.edit'), requireRecentAdminMfa, controller.update);
 router.get('/:profileId/preview', [profileId()], validate, requireAdminPermission('profiles.preview'), controller.preview);
 router.get('/:profileId/photos', [profileId()], validate, requireAdminPermission('profiles.photos.view'), controller.photos);
-router.post('/:profileId/photos', [profileId()], validate, requireAdminPermission('profiles.photos.manage'), uploadOne, controller.uploadPhoto);
-router.patch('/:profileId/photos/reorder', [profileId(), body('photoIds').isArray({ min: 1, max: 6 })], validate, requireAdminPermission('profiles.photos.manage'), controller.reorderPhotos);
-router.delete('/:profileId/photos/:photoId', [profileId(), photoId()], validate, requireAdminPermission('profiles.photos.manage'), controller.removePhoto);
-router.patch('/:profileId/photos/:photoId', [profileId(), photoId(), body('isPrimary').isBoolean().custom((value) => value === true)], validate, requireAdminPermission('profiles.photos.manage'), controller.setPrimaryPhoto);
+router.post('/:profileId/photos', [profileId()], validate, requireAdminPermission('profiles.photos.manage'), requireRecentAdminMfa, uploadOne, controller.uploadPhoto);
+router.patch('/:profileId/photos/reorder', [profileId(), body('photoIds').isArray({ min: 1, max: 6 })], validate, requireAdminPermission('profiles.photos.manage'), requireRecentAdminMfa, controller.reorderPhotos);
+router.delete('/:profileId/photos/:photoId', [profileId(), photoId()], validate, requireAdminPermission('profiles.photos.manage'), requireRecentAdminMfa, controller.removePhoto);
+router.patch('/:profileId/photos/:photoId', [profileId(), photoId(), body('isPrimary').isBoolean().custom((value) => value === true)], validate, requireAdminPermission('profiles.photos.manage'), requireRecentAdminMfa, controller.setPrimaryPhoto);
 router.get('/:profileId/audit-history', [profileId(), ...page()], validate, requireAdminPermission('profiles.audit.view'), controller.audit);
 
 module.exports = router;

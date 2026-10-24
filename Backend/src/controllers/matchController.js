@@ -2,6 +2,7 @@ const { Op } = require('sequelize');
 const { getModels } = require('../models');
 const { activeAccountWhere, visibleMatchSql } = require('../services/accessControlService');
 const { serializePublicProfile } = require('../services/publicProfileService');
+const { pagination } = require('../utils/pagination');
 
 function matchIncludes(User, OnboardingProfile, Subscription) {
   const userInclude = (as) => ({
@@ -34,6 +35,7 @@ exports.list = async (req, res, next) => {
   try {
     const userId = Number(req.user.sub);
     const { Match, User, OnboardingProfile, Subscription } = getModels();
+    const page = pagination(req.query);
     const rows = await Match.findAll({
       where: {
         [Op.and]: [
@@ -43,10 +45,12 @@ exports.list = async (req, res, next) => {
       },
       include: matchIncludes(User, OnboardingProfile, Subscription),
       order: [['matchedAt', 'DESC'], ['id', 'DESC']],
+      limit: page.limit,
+      offset: page.offset,
       subQuery: false,
     });
     const viewerProfile = await OnboardingProfile.findOne({ where: { userId } });
-    return res.json({ success: true, message: rows.length ? 'Matches retrieved.' : 'No matches found.', data: { matches: rows.map((row) => serializeMatch(req, row, userId, viewerProfile)) } });
+    return res.json({ success: true, message: rows.length ? 'Matches retrieved.' : 'No matches found.', data: { matches: rows.map((row) => serializeMatch(req, row, userId, viewerProfile)), pagination: { page: page.page, limit: page.limit, hasMore: rows.length === page.limit } } });
   } catch (error) {
     return next(error);
   }

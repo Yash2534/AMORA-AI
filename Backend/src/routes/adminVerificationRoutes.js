@@ -3,6 +3,7 @@ const { body, header, param, query } = require('express-validator');
 const validate = require('../middleware/validateRequest');
 const { requireAdminPermission } = require('../middleware/adminRbacMiddleware');
 const controller = require('../controllers/adminVerificationController');
+const requireRecentAdminMfa = require('../middleware/adminMfaMiddleware');
 
 const verificationId = () => param('verificationId').isInt({ min: 1 }).withMessage('A valid verification ID is required.').toInt();
 const decisionValidation = () => [
@@ -35,8 +36,8 @@ router.get('/reasons', [
 ], validate, requireAdminPermission('verifications.view'), controller.reasons);
 router.get('/:verificationId', [verificationId()], validate, requireAdminPermission('verifications.details.view'), controller.details);
 router.get('/:verificationId/history', [verificationId()], validate, requireAdminPermission('verifications.history.view'), controller.history);
-router.post('/:verificationId/approve', decisionValidation(), validate, requireAdminPermission('verifications.approve'), controller.approve);
-router.post('/:verificationId/reject', decisionValidation(), validate, requireAdminPermission('verifications.reject'), controller.reject);
-router.post('/:verificationId/request-resubmission', decisionValidation(), validate, requireAdminPermission('verifications.resubmit'), controller.requestResubmission);
+router.post('/:verificationId/approve', decisionValidation(), validate, requireAdminPermission('verifications.approve'), requireRecentAdminMfa, controller.approve);
+router.post('/:verificationId/reject', decisionValidation(), validate, requireAdminPermission('verifications.reject'), requireRecentAdminMfa, controller.reject);
+router.post('/:verificationId/request-resubmission', decisionValidation(), validate, requireAdminPermission('verifications.resubmit'), requireRecentAdminMfa, controller.requestResubmission);
 
 module.exports = router;

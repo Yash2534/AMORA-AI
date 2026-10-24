@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/theme/amora_header_tokens.dart';
 import 'package:flutter/material.dart';
@@ -211,28 +209,9 @@ class _AmoraaMainPageHeaderActionState
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    final Color backgroundColor = isDark
-        ? const Color(0xFF1E1428).withValues(alpha: 0.48)
-        : Colors.white.withValues(alpha: 0.45);
-
-    final Color borderColor = isDark
-        ? Colors.white.withValues(alpha: 0.20)
-        : Colors.white.withValues(alpha: 0.65);
-
     final Color iconColor = isDark
         ? Colors.white.withValues(alpha: 0.90)
         : AppColors.primary;
-
-    final List<BoxShadow> shadows = [
-      BoxShadow(
-        color: isDark
-            ? Colors.black.withValues(alpha: 0.22)
-            : const Color(0xFF6B4E71).withValues(alpha: 0.08),
-        blurRadius: 10,
-        spreadRadius: 0,
-        offset: const Offset(0, 3),
-      ),
-    ];
 
     return Semantics(
       button: true,

@@ -81,6 +81,8 @@ jobs:
           cache: npm
           cache-dependency-path: Backend/package-lock.json
       - run: npm ci
+      - run: npm run db:migrate
+      - run: npm run test:r1-security
       - run: npm test
 
   flutter:

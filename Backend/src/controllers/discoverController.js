@@ -9,7 +9,7 @@ const { ensureDirectConversation } = require('../services/conversationAccessServ
 const { emitConversationEvent } = require('../realtime/realtimeHub');
 const { rankCandidates } = require('../services/aiMatchProvider');
 const matchEngineObservability = require('../services/matchEngineObservabilityService');
-const { sqlDistanceExpression, validCoordinates } = require('../utils/geoDistance');
+const { distanceBoundingBox, sqlDistanceExpression, validCoordinates } = require('../utils/geoDistance');
 const {
   MATCH_RANKING_VERSION,
   RecommendationCursorError,
@@ -31,6 +31,7 @@ const {
   reciprocalEligibilitySqlClauses,
   surfaceContract,
 } = require('../services/discoverEligibilityPolicy');
+const { aiCandidateWindow } = require('../config/scalability');
 
 const success = (res, message, data) => res.json({ success: true, message, data });
 const fail = (res, status, message, code, errors = []) => res.status(status).json({ success: false, message, code, errors });
@@ -336,9 +337,19 @@ exports.getFeed = async (req, res, next) => {
 
     const profileWhere = buildProfileWhere(filters);
     const preferenceClauses = discoveryPreferenceClauses(viewer);
-    const distanceClauses = distanceFilterActive ? [
-      where(col('OnboardingProfile.matchLatitude'), { [Op.between]: [-90, 90] }),
-      where(col('OnboardingProfile.matchLongitude'), { [Op.between]: [-180, 180] }),
+    const distanceBox = distanceFilterActive
+      ? distanceBoundingBox(viewer.matchLatitude, viewer.matchLongitude, filters.maxDistanceKm)
+      : null;
+    const distanceClauses = distanceBox ? [
+      where(col('OnboardingProfile.matchLatitude'), {
+        [Op.between]: [distanceBox.minimumLatitude, distanceBox.maximumLatitude],
+      }),
+      {
+        [Op.or]: distanceBox.longitudeRanges.map(([minimum, maximum]) => where(
+          col('OnboardingProfile.matchLongitude'),
+          { [Op.between]: [minimum, maximum] },
+        )),
+      },
     ] : [];
     const profileWhereWithoutDistance = {
       ...profileWhere,
@@ -390,10 +401,10 @@ exports.getFeed = async (req, res, next) => {
       order: surface.name === 'near_you'
         ? [[literal(distanceRankSql), 'ASC'], [literal(scoreSql), 'DESC'], ['id', 'ASC']]
         : [[literal(scoreSql), 'DESC'], ['id', 'ASC']],
-      // AI ranking must happen over the eligible set before page slicing.
-      // Never silently truncate eligibility at 500. Larger pools need a future
-      // versioned snapshot/cache, not independent per-page ranking.
-      ...(isAiMatches ? {} : { limit: limit + 1 }),
+      // AI ranking is deliberately bounded. The database first applies all
+      // eligibility/exclusion rules and a stable canonical order, then the
+      // provider re-ranks only this configured candidate window.
+      limit: isAiMatches ? aiCandidateWindow(process.env) : limit + 1,
       subQuery: false,
     });
     candidateCounts = await observableCandidateCounts({

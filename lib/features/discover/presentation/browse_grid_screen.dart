@@ -5,7 +5,6 @@ import 'dart:ui';
 import 'package:amora_ai/core/access/amora_access.dart';
 import 'package:amora_ai/core/api/phase_two_api_service.dart';
 import 'package:amora_ai/core/auth/auth_service.dart';
-import 'package:amora_ai/core/branding/amora_brand_assets.dart';
 import 'package:amora_ai/core/branding/amora_logo.dart';
 import 'package:amora_ai/core/constants/app_images.dart';
 import 'package:amora_ai/core/data/image_repository.dart';
@@ -1754,7 +1753,6 @@ class _DiscoverActionButton extends StatefulWidget {
     this.backgroundColor = AppColors.surface,
     this.borderColor = AppColors.border,
     this.iconColor = AppColors.primary,
-    this.gradient,
     this.dimension = 52.0,
     this.iconSize = 24.0,
     this.shadows,
@@ -1768,7 +1766,6 @@ class _DiscoverActionButton extends StatefulWidget {
   final Color backgroundColor;
   final Color borderColor;
   final Color iconColor;
-  final Gradient? gradient;
   final double dimension;
   final double iconSize;
   final List<BoxShadow>? shadows;
@@ -1821,12 +1818,9 @@ class _DiscoverActionButtonState extends State<_DiscoverActionButton>
           child: DecoratedBox(
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              gradient: enabled ? widget.gradient : null,
-              color: widget.gradient == null
-                  ? (enabled
-                        ? widget.backgroundColor
-                        : widget.backgroundColor.withValues(alpha: .5))
-                  : null,
+              color: enabled
+                  ? widget.backgroundColor
+                  : widget.backgroundColor.withValues(alpha: .5),
               boxShadow: enabled ? widget.shadows : null,
             ),
             child: Material(

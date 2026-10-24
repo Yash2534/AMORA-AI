@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 import 'package:amora_ai/core/constants/app_images.dart';
 import 'package:amora_ai/core/theme/amora_icon_sizes.dart';
 import 'package:amora_ai/core/theme/amora_shadows.dart';
@@ -44,9 +43,6 @@ class AmoraProfileCardStackState extends State<AmoraProfileCardStack>
     with SingleTickerProviderStateMixin {
   late AnimationController _animController;
   Offset _dragOffset = Offset.zero;
-  bool _isDragging = false;
-  double _swipeProgress = 0.0;
-  Offset _exitOffset = Offset.zero;
   bool _isExiting = false;
 
   @override
@@ -64,24 +60,15 @@ class AmoraProfileCardStackState extends State<AmoraProfileCardStack>
     super.dispose();
   }
 
-  void _onPanStart(DragStartDetails details) {
-    if (_isExiting) return;
-    setState(() {
-      _isDragging = true;
-    });
-  }
-
   void _onPanUpdate(DragUpdateDetails details) {
     if (_isExiting) return;
     setState(() {
       _dragOffset += details.delta;
-      _swipeProgress = (_dragOffset.dx / 140.0).clamp(-1.0, 1.0);
     });
   }
 
   void _onPanEnd(DragEndDetails details) {
     if (_isExiting) return;
-    _isDragging = false;
     final velocityX = details.velocity.pixelsPerSecond.dx;
     final velocityY = details.velocity.pixelsPerSecond.dy;
 
@@ -109,7 +96,6 @@ class AmoraProfileCardStackState extends State<AmoraProfileCardStack>
     void listener() {
       setState(() {
         _dragOffset = animation.value;
-        _swipeProgress = (_dragOffset.dx / 140.0).clamp(-1.0, 1.0);
       });
     }
 
@@ -158,7 +144,6 @@ class AmoraProfileCardStackState extends State<AmoraProfileCardStack>
       animation.removeListener(listener);
       _isExiting = false;
       _dragOffset = Offset.zero;
-      _swipeProgress = 0.0;
       onCompleteAction();
     });
   }
@@ -372,7 +357,6 @@ class AmoraProfileCardStackState extends State<AmoraProfileCardStack>
     final visibleInterests = ProfileInterestPolicy.visible(profile.interests);
 
     return GestureDetector(
-      onPanStart: _onPanStart,
       onPanUpdate: _onPanUpdate,
       onPanEnd: _onPanEnd,
       child: Transform.translate(

@@ -574,6 +574,7 @@ async function requestPasswordReset(request, userId) {
     const error = new Error('Password reset delivery failed. No reset code remains active.');
     error.status = 503;
     error.code = 'RESET_DELIVERY_FAILED';
+    error.expose = true;
     error.cause = cause;
     throw error;
   }

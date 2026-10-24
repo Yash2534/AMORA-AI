@@ -52,7 +52,7 @@ async function processWithdrawal({ userId, requestId }) {
   } catch (error) {
     if (error.code || error.status) throw error;
     await models.PrivacyRequest.update({ status: 'FAILED', failedAt: new Date(), failureCode: 'WITHDRAWAL_PROCESSING_FAILED' }, { where: { id: requestId, userId, requestType: 'WITHDRAWAL', status: ['VERIFIED', 'PROCESSING'] } });
-    throw invalid('WITHDRAWAL_PROCESSING_FAILED', 'Withdrawal could not be completed.', 500);
+    throw Object.assign(invalid('WITHDRAWAL_PROCESSING_FAILED', 'Withdrawal could not be completed.', 500), { expose: true });
   }
 }
 

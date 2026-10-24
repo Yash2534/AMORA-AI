@@ -369,6 +369,7 @@ exports.resetPassword = async (req, res) => {
     const user = await User.findOne({ where: { email, authProvider: 'local', accountStatus: { [Op.ne]: 'deleted' } }, transaction, lock: transaction.LOCK.UPDATE });
     if (!user) return false;
     user.passwordHash = await bcrypt.hash(req.body.newPassword, 12);
+    user.tokenVersion = Number(user.tokenVersion || 0) + 1;
     await user.save({ transaction });
     otp.recoveryUsedAt = new Date();
     await otp.save({ transaction });

@@ -1,10 +1,12 @@
 const { getModels } = require('../models');
 const { activeAccountWhere } = require('../services/accessControlService');
 const { serializePublicProfile } = require('../services/publicProfileService');
+const { pagination } = require('../utils/pagination');
 
 exports.list = async (req, res, next) => {
   try {
     const { Block, User, OnboardingProfile } = getModels();
+    const page = pagination(req.query);
     const rows = await Block.findAll({
       where: { blockerUserId: req.user.sub },
       include: [{
@@ -16,11 +18,13 @@ exports.list = async (req, res, next) => {
         include: [{ model: OnboardingProfile, required: true, where: { onboardingCompleted: true } }],
       }],
       order: [['createdAt', 'DESC'], ['id', 'DESC']],
+      limit: page.limit,
+      offset: page.offset,
     });
     return res.json({
       success: true,
       message: rows.length ? 'Blocked profiles retrieved.' : 'No blocked profiles found.',
-      data: { blocks: rows.map((row) => ({ id: String(row.id), blockedAt: row.createdAt, profile: serializePublicProfile(req, row.blockedUser, row.blockedUser.OnboardingProfile) })) },
+      data: { blocks: rows.map((row) => ({ id: String(row.id), blockedAt: row.createdAt, profile: serializePublicProfile(req, row.blockedUser, row.blockedUser.OnboardingProfile) })), pagination: { page: page.page, limit: page.limit, hasMore: rows.length === page.limit } },
     });
   } catch (error) {
     return next(error);

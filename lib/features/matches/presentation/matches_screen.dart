@@ -2829,14 +2829,12 @@ class _InlineFact extends StatelessWidget {
   const _InlineFact({
     required this.icon,
     required this.label,
-    this.smallIcon = false,
     this.maxLabelLines,
     this.maxLabelWidth,
   });
 
   final IconData icon;
   final String label;
-  final bool smallIcon;
   final int? maxLabelLines;
   final double? maxLabelWidth;
 
@@ -2845,7 +2843,7 @@ class _InlineFact extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, color: AppColors.secondary, size: smallIcon ? 9 : 16),
+        Icon(icon, color: AppColors.secondary, size: 16),
         const SizedBox(width: AmoraSpacing.space4),
         ConstrainedBox(
           constraints: BoxConstraints(

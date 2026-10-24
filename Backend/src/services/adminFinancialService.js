@@ -1,10 +1,8 @@
-const fs = require('fs');
-const path = require('path');
-const logger = require('../utils/logger');
 const crypto = require('crypto');
-const { Op } = require('sequelize');
+const { Op, fn, col, literal } = require('sequelize');
 const { getModels } = require('../models');
 const { recordAudit } = require('./adminAuditService');
+const { boundedDateRange } = require('../utils/boundedDateRange');
 
 function generateLedgerHash(record) {
   const payload = [
@@ -328,9 +326,8 @@ function transactionWhere(request) {
     where[Op.and] = [...(where[Op.and] || []), { status: { [Op.ne]: 'refunded' } }];
   }
   if (request.query.from || request.query.to) {
-    where.createdAt = {};
-    if (request.query.from) where.createdAt[Op.gte] = new Date(request.query.from);
-    if (request.query.to) where.createdAt[Op.lte] = new Date(request.query.to);
+    const range = boundedDateRange({ from: request.query.from, to: request.query.to, maximumDays: 366 });
+    where.createdAt = { [Op.gte]: range.from, [Op.lte]: range.to };
   }
   if (request.query.providerReference) {
     const reference = String(request.query.providerReference).trim();
@@ -515,87 +512,46 @@ async function transaction(request, transactionId) {
   });
 }
 
-const OFFERS_PERSISTENT_FILE = path.join(__dirname, '..', 'data', 'offers_persistent_store.json');
+const OFFERS_SETTING_KEY = 'financial.offers';
+const defaultOffers = require('../data/offers_persistent_store.json');
 
-function loadOffersStore() {
-  try {
-    if (fs.existsSync(OFFERS_PERSISTENT_FILE)) {
-      const raw = fs.readFileSync(OFFERS_PERSISTENT_FILE, 'utf8');
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return new Map(parsed.map(item => [item.id || item.offerId, item]));
-      }
-    }
-  } catch (err) {
-    logger.error('Failed reading offers persistent store.', { errorCode: err.code || err.name });
-  }
-
-  const initial = [
-    {
-      id: 'offer-welcome20',
-      offerId: 'offer-welcome20',
-      name: 'Welcome 20% Discount',
-      code: 'WELCOME20',
-      type: 'global_discount',
-      discountKind: 'percentage',
-      percentageDiscount: 20,
-      fixedDiscount: null,
-      fixedDiscountMinor: null,
-      status: 'active',
-      currency: 'INR',
-      startAt: new Date().toISOString(),
-      endAt: new Date(Date.now() + 365 * 86400000).toISOString(),
-      maxRedemptions: 1000,
-      currentRedemptions: 42,
-      minSubscriptionMonths: 1,
-      applicablePlanIds: [],
-      version: '1',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    },
-    {
-      id: 'offer-summer50',
-      offerId: 'offer-summer50',
-      name: 'Summer Special Coupon',
-      code: 'SUMMER50',
-      type: 'coupon_code',
-      discountKind: 'percentage',
-      percentageDiscount: 50,
-      fixedDiscount: null,
-      fixedDiscountMinor: null,
-      status: 'active',
-      currency: 'INR',
-      startAt: new Date().toISOString(),
-      endAt: new Date(Date.now() + 365 * 86400000).toISOString(),
-      maxRedemptions: 500,
-      currentRedemptions: 128,
-      minSubscriptionMonths: 3,
-      applicablePlanIds: [],
-      version: '1',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    },
-  ];
-  const map = new Map(initial.map(item => [item.id, item]));
-  syncOffersToDisk(map);
-  return map;
+function offerMap(value) {
+  const list = Array.isArray(value) ? value : defaultOffers;
+  return new Map(list.map((item) => [item.id || item.offerId, { ...item }]));
 }
 
-function syncOffersToDisk(map) {
-  try {
-    const dir = path.dirname(OFFERS_PERSISTENT_FILE);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-    fs.writeFileSync(OFFERS_PERSISTENT_FILE, JSON.stringify(Array.from(map.values()), null, 2), 'utf8');
-  } catch (err) {
-    logger.error('Failed writing offers persistent store.', { errorCode: err.code || err.name });
-  }
+async function readOffersStore(transaction = null, lock = false) {
+  const { PlatformSetting } = getModels();
+  const row = await PlatformSetting.findByPk(OFFERS_SETTING_KEY, {
+    transaction,
+    ...(lock && transaction ? { lock: transaction.LOCK.UPDATE } : {}),
+  });
+  return offerMap(row?.value);
 }
 
-const offersStore = loadOffersStore();
+async function mutateOffersStore(administratorId, mutate) {
+  const { PlatformSetting } = getModels();
+  return PlatformSetting.sequelize.transaction(async (transaction) => {
+    await PlatformSetting.findOrCreate({
+      where: { key: OFFERS_SETTING_KEY },
+      defaults: { key: OFFERS_SETTING_KEY, value: defaultOffers, version: 1, updatedByAdministratorId: administratorId },
+      transaction,
+    });
+    const row = await PlatformSetting.findByPk(OFFERS_SETTING_KEY, { transaction, lock: transaction.LOCK.UPDATE });
+    const map = offerMap(row.value);
+    const before = JSON.stringify(Array.from(map.values()));
+    const result = await mutate(map);
+    if (JSON.stringify(Array.from(map.values())) === before) return result;
+    row.value = Array.from(map.values());
+    row.version = Number(row.version || 0) + 1;
+    row.updatedByAdministratorId = administratorId;
+    await row.save({ transaction });
+    return result;
+  });
+}
 
 async function offers(request, page) {
+  const offersStore = await readOffersStore();
   let list = Array.from(offersStore.values());
   if (request.query.search) {
     const s = String(request.query.search).toLowerCase();
@@ -617,44 +573,40 @@ async function offers(request, page) {
 }
 
 async function offer(request, offerId) {
+  const offersStore = await readOffersStore();
   return offersStore.get(offerId) || null;
 }
 
 async function saveOffer(request, body, offerId = null) {
   const id = offerId || `offer-${Date.now().toString(36)}`;
-  const existing = offersStore.get(id);
-  const version = String(Number(existing?.version || '0') + 1);
-
-  const defaultEndAt = new Date(Date.now() + 365 * 86400000).toISOString();
-  const startAt = body.startAt || existing?.startAt || new Date().toISOString();
-  const endAt = body.endAt || existing?.endAt || defaultEndAt;
-
-  let status = body.status || existing?.status || 'active';
-
-  const item = {
-    id,
-    offerId: id,
-    name: body.name || existing?.name || 'Discount Offer',
-    code: body.code || existing?.code || `CODE${Date.now().toString(36).toUpperCase()}`,
-    type: body.type || existing?.type || 'global_discount',
-    discountKind: body.discountKind || existing?.discountKind || 'percentage',
-    percentageDiscount: body.percentageDiscount !== undefined ? body.percentageDiscount : (existing?.percentageDiscount ?? 20),
-    fixedDiscount: body.fixedDiscountMinor ? body.fixedDiscountMinor / 100 : (existing?.fixedDiscount ?? null),
-    fixedDiscountMinor: body.fixedDiscountMinor ?? existing?.fixedDiscountMinor ?? null,
-    status,
-    currency: body.currency || existing?.currency || 'INR',
-    startAt,
-    endAt,
-    maxRedemptions: body.maxRedemptions !== undefined ? body.maxRedemptions : (existing?.maxRedemptions ?? null),
-    currentRedemptions: existing?.currentRedemptions || 0,
-    minSubscriptionMonths: body.minSubscriptionMonths !== undefined ? body.minSubscriptionMonths : (existing?.minSubscriptionMonths ?? null),
-    applicablePlanIds: Array.isArray(body.applicablePlanIds) ? body.applicablePlanIds : (existing?.applicablePlanIds || []),
-    version,
-    createdAt: existing?.createdAt || new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
-  offersStore.set(id, item);
-  syncOffersToDisk(offersStore);
+  const item = await mutateOffersStore(request.admin.id, (offersStore) => {
+    const existing = offersStore.get(id);
+    const now = new Date().toISOString();
+    const value = {
+      id,
+      offerId: id,
+      name: body.name || existing?.name || 'Discount Offer',
+      code: body.code || existing?.code || `CODE${Date.now().toString(36).toUpperCase()}`,
+      type: body.type || existing?.type || 'global_discount',
+      discountKind: body.discountKind || existing?.discountKind || 'percentage',
+      percentageDiscount: body.percentageDiscount !== undefined ? body.percentageDiscount : (existing?.percentageDiscount ?? 20),
+      fixedDiscount: body.fixedDiscountMinor ? body.fixedDiscountMinor / 100 : (existing?.fixedDiscount ?? null),
+      fixedDiscountMinor: body.fixedDiscountMinor ?? existing?.fixedDiscountMinor ?? null,
+      status: body.status || existing?.status || 'active',
+      currency: body.currency || existing?.currency || 'INR',
+      startAt: body.startAt || existing?.startAt || now,
+      endAt: body.endAt || existing?.endAt || new Date(Date.now() + 365 * 86400000).toISOString(),
+      maxRedemptions: body.maxRedemptions !== undefined ? body.maxRedemptions : (existing?.maxRedemptions ?? null),
+      currentRedemptions: existing?.currentRedemptions || 0,
+      minSubscriptionMonths: body.minSubscriptionMonths !== undefined ? body.minSubscriptionMonths : (existing?.minSubscriptionMonths ?? null),
+      applicablePlanIds: Array.isArray(body.applicablePlanIds) ? body.applicablePlanIds : (existing?.applicablePlanIds || []),
+      version: String(Number(existing?.version || '0') + 1),
+      createdAt: existing?.createdAt || now,
+      updatedAt: now,
+    };
+    offersStore.set(id, value);
+    return value;
+  });
   await recordAudit({
     request,
     administratorId: request.admin.id,
@@ -667,16 +619,17 @@ async function saveOffer(request, body, offerId = null) {
 }
 
 async function activateOffer(request, offerId) {
-  const existing = offersStore.get(offerId);
+  const existing = await mutateOffersStore(request.admin.id, (offersStore) => {
+    const value = offersStore.get(offerId);
+    if (!value) return null;
+    value.status = 'active';
+    if (new Date(value.endAt).getTime() < Date.now()) value.endAt = new Date(Date.now() + 365 * 86400000).toISOString();
+    value.updatedAt = new Date().toISOString();
+    value.version = String(Number(value.version || '0') + 1);
+    offersStore.set(offerId, value);
+    return value;
+  });
   if (!existing) return null;
-  existing.status = 'active';
-  if (new Date(existing.endAt).getTime() < Date.now()) {
-    existing.endAt = new Date(Date.now() + 365 * 86400000).toISOString();
-  }
-  existing.updatedAt = new Date().toISOString();
-  existing.version = String(Number(existing.version || '0') + 1);
-  offersStore.set(offerId, existing);
-  syncOffersToDisk(offersStore);
   await recordAudit({
     request,
     administratorId: request.admin.id,
@@ -689,13 +642,16 @@ async function activateOffer(request, offerId) {
 }
 
 async function deactivateOffer(request, offerId) {
-  const existing = offersStore.get(offerId);
+  const existing = await mutateOffersStore(request.admin.id, (offersStore) => {
+    const value = offersStore.get(offerId);
+    if (!value) return null;
+    value.status = 'inactive';
+    value.updatedAt = new Date().toISOString();
+    value.version = String(Number(value.version || '0') + 1);
+    offersStore.set(offerId, value);
+    return value;
+  });
   if (!existing) return null;
-  existing.status = 'inactive';
-  existing.updatedAt = new Date().toISOString();
-  existing.version = String(Number(existing.version || '0') + 1);
-  offersStore.set(offerId, existing);
-  syncOffersToDisk(offersStore);
   await recordAudit({
     request,
     administratorId: request.admin.id,
@@ -708,10 +664,8 @@ async function deactivateOffer(request, offerId) {
 }
 
 async function deleteOffer(request, offerId) {
-  const existing = offersStore.get(offerId);
-  if (!existing) return false;
-  offersStore.delete(offerId);
-  syncOffersToDisk(offersStore);
+  const deleted = await mutateOffersStore(request.admin.id, (offersStore) => offersStore.delete(offerId));
+  if (!deleted) return false;
   await recordAudit({
     request,
     administratorId: request.admin.id,
@@ -1060,6 +1014,7 @@ async function processRefund(request, transactionId, body) {
 }
 
 async function offerUsage(request, offerId, page) {
+  const offersStore = await readOffersStore();
   const off = offersStore.get(offerId);
   if (!off) return { items: [], pagination: { page: page.page, pageSize: page.pageSize, totalItems: 0, totalPages: 0 } };
   const { Subscription, User, SubscriptionPlan } = getModels();
@@ -1141,6 +1096,7 @@ async function offerUsage(request, offerId, page) {
 }
 
 async function offerAnalytics(request, offerId) {
+  const offersStore = await readOffersStore();
   const off = offersStore.get(offerId);
   if (!off) return null;
 
@@ -1213,61 +1169,35 @@ async function revenueOverview(request) {
   } else if (queryRange === '90d') {
     from = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
   } else if (queryRange === 'custom' && request.query.from && request.query.to) {
-    from = new Date(request.query.from);
-    to = new Date(request.query.to);
+    ({ from, to } = boundedDateRange({ from: request.query.from, to: request.query.to, maximumDays: 366 }));
   }
 
   const wherePeriod = {
     createdAt: { [Op.gte]: from, [Op.lte]: to }
   };
 
-  let paidPayments = await Payment.findAll({
+  const paymentAggregates = await Payment.findAll({
+    attributes: [
+      'planId',
+      [fn('COUNT', col('id')), 'paymentCount'],
+      [fn('SUM', col('amountMinor')), 'paidMinor'],
+    ],
     where: { ...wherePeriod, status: { [Op.in]: ['paid', 'authorized'] } },
-    include: [
-      { model: User, as: 'user', attributes: ['id', 'name', 'email'] },
-      { model: SubscriptionPlan, as: 'plan', attributes: ['id', 'name', 'displayName', 'priceMinor', 'currency'] }
-    ]
+    group: ['planId'],
+    raw: true,
   });
+  const paymentByPlan = new Map(paymentAggregates.map((row) => [String(row.planId), row]));
+  const successfulPaymentsCount = paymentAggregates.reduce((sum, row) => sum + Number(row.paymentCount || 0), 0);
+  const paidRevenueMinor = paymentAggregates.reduce((sum, row) => sum + Number(row.paidMinor || 0), 0);
 
-  if (paidPayments.length === 0) {
-    paidPayments = await Payment.findAll({
-      where: { status: { [Op.in]: ['paid', 'authorized'] } },
-      include: [
-        { model: User, as: 'user', attributes: ['id', 'name', 'email'] },
-        { model: SubscriptionPlan, as: 'plan', attributes: ['id', 'name', 'displayName', 'priceMinor', 'currency'] }
-      ]
-    });
-  }
-
-  let failedPaymentsCount = await Payment.count({
+  const failedPaymentsCount = await Payment.count({
     where: { ...wherePeriod, status: 'failed' }
   });
-
-  let refundedPayments = await Payment.findAll({
-    where: { ...wherePeriod, status: 'refunded' }
-  });
-
-  if (refundedPayments.length === 0) {
-    refundedPayments = await Payment.findAll({ where: { status: 'refunded' } });
-  }
-
-  let grossRevenueMinor = 0;
-  let discountAmountMinor = 0;
-
-  for (const pay of paidPayments) {
-    const original = pay.plan?.priceMinor || pay.amountMinor || 0;
-    const paid = pay.amountMinor || 0;
-    const discount = Math.max(0, original - paid);
-    grossRevenueMinor += original;
-    discountAmountMinor += discount;
-  }
-
-  let refundAmountMinor = 0;
-  for (const ref of refundedPayments) {
-    refundAmountMinor += (ref.amountMinor || 0);
-  }
-
-  const netRevenueMinor = grossRevenueMinor - discountAmountMinor - refundAmountMinor;
+  const refundsCount = await Payment.count({ where: { ...wherePeriod, status: 'refunded' } });
+  const refundAmountMinor = Number(await Payment.sum('amountMinor', {
+    where: { ...wherePeriod, status: 'refunded' },
+  }) || 0);
+  const netRevenueMinor = paidRevenueMinor - refundAmountMinor;
 
   const activeSubscriptionsCount = await Subscription.count({
     where: { status: { [Op.in]: ['active', 'trialing'] } }
@@ -1276,15 +1206,13 @@ async function revenueOverview(request) {
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-  const todayPaid = await Payment.findAll({
-    where: { status: { [Op.in]: ['paid', 'authorized'] } }
-  });
-  const todayRevenueMinor = todayPaid.reduce((acc, p) => acc + (p.amountMinor || 0), 0);
+  const todayRevenueMinor = Number(await Payment.sum('amountMinor', {
+    where: { status: { [Op.in]: ['paid', 'authorized'] }, createdAt: { [Op.gte]: todayStart } },
+  }) || 0);
 
-  const monthPaid = await Payment.findAll({
-    where: { status: { [Op.in]: ['paid', 'authorized'] } }
-  });
-  const thisMonthRevenueMinor = monthPaid.reduce((acc, p) => acc + (p.amountMinor || 0), 0);
+  const thisMonthRevenueMinor = Number(await Payment.sum('amountMinor', {
+    where: { status: { [Op.in]: ['paid', 'authorized'] }, createdAt: { [Op.gte]: monthStart } },
+  }) || 0);
 
   const recentPayments = await Payment.findAll({
     limit: 20,
@@ -1382,28 +1310,31 @@ async function revenueOverview(request) {
     }
   }
 
-  const allPaidPayments = await Payment.findAll({ where: { status: { [Op.in]: ['paid', 'authorized'] } } });
-  const lifetimeSumFromDb = allPaidPayments.reduce((acc, p) => acc + (p.amountMinor || 0), 0);
+  const lifetimeSumFromDb = Number(await Payment.sum('amountMinor', { where: { status: { [Op.in]: ['paid', 'authorized'] } } }) || 0);
 
   const plansList = await SubscriptionPlan.findAll({ order: [['sortOrder', 'ASC']] });
+  const subscriptionAggregates = await Subscription.findAll({
+    attributes: [
+      'planId',
+      [fn('COUNT', col('id')), 'totalSubscriptions'],
+      [fn('SUM', literal("CASE WHEN `status` IN ('active', 'trialing') THEN 1 ELSE 0 END")), 'activeSubscriptions'],
+    ],
+    group: ['planId'],
+    raw: true,
+  });
+  const subscriptionsByPlan = new Map(subscriptionAggregates.map((row) => [String(row.planId), row]));
   let calculatedGrossMinor = 0;
   let calculatedNetMinor = 0;
   let calculatedDiscMinor = 0;
 
-  const planBreakdown = await Promise.all(plansList.map(async pl => {
-    let planPaid = paidPayments.filter(p => String(p.planId) === String(pl.id) || String(p.planId).toLowerCase() === String(pl.name).toLowerCase());
-    const activeSubs = await Subscription.count({ where: { planId: pl.id, status: { [Op.in]: ['active', 'trialing'] } } });
-    const totalSubs = await Subscription.count({ where: { planId: pl.id } });
-
-    let paymentsCount = planPaid.length;
-    let gross = planPaid.reduce((acc, p) => acc + (pl.priceMinor || p.amountMinor || 0), 0);
-    let paid = planPaid.reduce((acc, p) => acc + (p.amountMinor || 0), 0);
-
-    if (paymentsCount === 0 && activeSubs > 0) {
-      paymentsCount = activeSubs;
-      gross = activeSubs * (pl.priceMinor || 149900);
-      paid = Math.round(gross * 0.85);
-    }
+  const planBreakdown = plansList.map((pl) => {
+    const paymentAggregate = paymentByPlan.get(String(pl.id)) || paymentByPlan.get(String(pl.name));
+    const subscriptionAggregate = subscriptionsByPlan.get(String(pl.id)) || subscriptionsByPlan.get(String(pl.name));
+    const paymentsCount = Number(paymentAggregate?.paymentCount || 0);
+    const paid = Number(paymentAggregate?.paidMinor || 0);
+    const gross = paymentsCount * Number(pl.priceMinor || 0) || paid;
+    const activeSubs = Number(subscriptionAggregate?.activeSubscriptions || 0);
+    const totalSubs = Number(subscriptionAggregate?.totalSubscriptions || 0);
 
     const disc = Math.max(0, gross - paid);
     calculatedGrossMinor += gross;
@@ -1423,13 +1354,14 @@ async function revenueOverview(request) {
       refundAmountMinor: 0,
       netRevenueMinor: paid,
     };
-  }));
+  });
 
-  const totalLifetimeRevenueMinor = lifetimeSumFromDb > 0 ? lifetimeSumFromDb : calculatedNetMinor;
-  const finalGrossMinor = grossRevenueMinor > 0 ? grossRevenueMinor : calculatedGrossMinor;
-  const finalNetMinor = netRevenueMinor > 0 ? netRevenueMinor : calculatedNetMinor;
-  const finalDiscMinor = discountAmountMinor > 0 ? discountAmountMinor : calculatedDiscMinor;
+  const totalLifetimeRevenueMinor = lifetimeSumFromDb;
+  const finalGrossMinor = calculatedGrossMinor;
+  const finalNetMinor = netRevenueMinor;
+  const finalDiscMinor = calculatedDiscMinor;
 
+  const offersStore = await readOffersStore();
   const offersBreakdown = Array.from(offersStore.values()).map(off => {
     const redemptions = off.currentRedemptions || 0;
     const discountPerRedemption = off.percentageDiscount ? 39900 : (off.fixedDiscountMinor || 20000);
@@ -1450,7 +1382,7 @@ async function revenueOverview(request) {
     };
   });
 
-  const matchedCount = Math.max(paidPayments.length, activeSubscriptionsCount);
+  const matchedCount = successfulPaymentsCount;
   const reconciliation = {
     providerTotalMinor: finalNetMinor,
     databaseTotalMinor: finalNetMinor,
@@ -1475,11 +1407,11 @@ async function revenueOverview(request) {
       discountAmountMinor: finalDiscMinor,
       refundAmountMinor,
       netRevenueMinor: finalNetMinor,
-      todayRevenueMinor: Math.round(finalNetMinor * 0.12),
-      thisMonthRevenueMinor: finalNetMinor,
+      todayRevenueMinor,
+      thisMonthRevenueMinor,
       successfulPaymentsCount: matchedCount,
       failedPaymentsCount,
-      refundsCount: refundedPayments.length,
+      refundsCount,
       activeSubscriptionsCount,
       currency: 'INR',
     },
@@ -1622,9 +1554,8 @@ async function reconciliationList(request, paginationOptions = {}) {
     }
 
     if (fromDate || toDate) {
-      paymentWhere.createdAt = {};
-      if (fromDate) paymentWhere.createdAt[Op.gte] = fromDate;
-      if (toDate) paymentWhere.createdAt[Op.lte] = toDate;
+      const range = boundedDateRange({ from: fromDate, to: toDate, maximumDays: 366 });
+      paymentWhere.createdAt = { [Op.gte]: range.from, [Op.lte]: range.to };
     }
   }
 
@@ -1639,6 +1570,7 @@ async function reconciliationList(request, paginationOptions = {}) {
       { model: SubscriptionPlan, as: 'plan', attributes: ['id', 'name', 'displayName', 'priceMinor'], required: false },
     ],
     order: [['createdAt', 'DESC']],
+    limit: 1000,
   });
 
   const paymentRecords = payments.map((pay) => {
@@ -1685,6 +1617,7 @@ async function reconciliationList(request, paginationOptions = {}) {
       { model: SubscriptionPlan, as: 'plan', attributes: ['id', 'name', 'displayName', 'priceMinor'], required: false },
     ],
     order: [['createdAt', 'DESC']],
+    limit: 1000,
   });
 
   const orphanedSubRecords = [];

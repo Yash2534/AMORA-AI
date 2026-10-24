@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:collection';
 
 import 'package:amora_ai/core/auth/auth_service.dart';
 import 'package:amora_ai/core/config/amora_api_config.dart';
@@ -224,7 +225,13 @@ class ChatRepository extends ChangeNotifier {
   int _activeConversationSubscriptions = 0;
   bool _testingMode = false;
   bool _failNextForTesting = false;
-  final Map<String, Future<Uint8List>> _mediaCache = {};
+  static const int _mediaCacheMaxItems = 64;
+  static const int _mediaCacheMaxBytes = 32 * 1024 * 1024;
+  final LinkedHashMap<String, Future<Uint8List>> _mediaCache = LinkedHashMap();
+  final Map<String, int> _mediaCacheSizes = {};
+  int _mediaCacheBytes = 0;
+  final Set<String> _desiredConversationSubscriptions = {};
+  final Set<String> _activeRealtimeSubscriptions = {};
 
   List<ChatConversation> get conversations =>
       List<ChatConversation>.unmodifiable(_conversations);
@@ -418,7 +425,7 @@ class ChatRepository extends ChangeNotifier {
       nextMessageCursor: pagination['nextCursor']?.toString(),
     );
     _upsertConversation(next);
-    _socket?.emit('conversation.subscribe', {'conversationId': conversationId});
+    _subscribeConversation(conversationId);
     return next;
   }
 
@@ -590,10 +597,55 @@ class ChatRepository extends ChangeNotifier {
     if (current != null) _append(current, message, unread: 0);
   }
 
-  Future<Uint8List> mediaBytes(String path) => _mediaCache.putIfAbsent(
-    path,
-    () => AuthService.instance.authenticatedBytes(path),
-  );
+  Future<Uint8List> mediaBytes(String path) {
+    final existing = _mediaCache.remove(path);
+    if (existing != null) {
+      _mediaCache[path] = existing;
+      return existing;
+    }
+    late final Future<Uint8List> request;
+    request = AuthService.instance
+        .authenticatedBytes(path)
+        .then((bytes) {
+          if (identical(_mediaCache[path], request)) {
+            _mediaCacheSizes[path] = bytes.lengthInBytes;
+            _mediaCacheBytes += bytes.lengthInBytes;
+            _trimMediaCache();
+          }
+          return bytes;
+        })
+        .catchError((Object error) {
+          if (identical(_mediaCache[path], request)) {
+            _removeMediaCacheEntry(path);
+          }
+          throw error;
+        });
+    _mediaCache[path] = request;
+    _trimMediaCache();
+    return request;
+  }
+
+  void _trimMediaCache() {
+    while (_mediaCache.length > _mediaCacheMaxItems ||
+        _mediaCacheBytes > _mediaCacheMaxBytes) {
+      if (_mediaCache.isEmpty) break;
+      _removeMediaCacheEntry(_mediaCache.keys.first);
+    }
+  }
+
+  void _removeMediaCacheEntry(String path) {
+    _mediaCache.remove(path);
+    _mediaCacheBytes -= _mediaCacheSizes.remove(path) ?? 0;
+  }
+
+  void _subscribeConversation(String conversationId) {
+    _desiredConversationSubscriptions.add(conversationId);
+    if (!_realtimeConnected ||
+        !_activeRealtimeSubscriptions.add(conversationId)) {
+      return;
+    }
+    _socket?.emit('conversation.subscribe', {'conversationId': conversationId});
+  }
 
   Future<void> deleteMessage(String messageId) async {
     if (!_testingMode) {
@@ -664,6 +716,10 @@ class ChatRepository extends ChangeNotifier {
     _socket = null;
     _conversations = const [];
     _mediaCache.clear();
+    _mediaCacheSizes.clear();
+    _mediaCacheBytes = 0;
+    _desiredConversationSubscriptions.clear();
+    _activeRealtimeSubscriptions.clear();
     _error = null;
     notifyListeners();
   }
@@ -687,24 +743,29 @@ class ChatRepository extends ChangeNotifier {
             .disableAutoConnect()
             .setAuth({'token': token})
             .enableReconnection()
+            .setReconnectionDelay(1000)
+            .setReconnectionDelayMax(30000)
+            .setRandomizationFactor(0.5)
+            .setReconnectionAttempts(8)
             .build(),
       );
       _socket = socket;
       socket.onConnect((_) {
         _realtimeConnected = true;
+        _activeRealtimeSubscriptions.clear();
+        for (final conversationId in _desiredConversationSubscriptions) {
+          _subscribeConversation(conversationId);
+        }
         notifyListeners();
       });
       socket.onDisconnect((_) {
         _realtimeConnected = false;
+        _activeRealtimeSubscriptions.clear();
         notifyListeners();
       });
       socket.onConnectError((_) {
         _realtimeConnected = false;
         notifyListeners();
-        Future<void>.delayed(
-          const Duration(seconds: 2),
-          () => _connectRealtime(force: true),
-        );
       });
       socket.on('message.created', _handleMessageCreated);
       socket.on('message.deleted', _handleMessageDeleted);

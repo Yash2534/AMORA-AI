@@ -568,3 +568,53 @@ test('production Admin mutation CSRF boundary accepts explicitly trusted cross-s
     process.env.CORS_ORIGIN = previousOrigin;
   }
 });
+
+test('MFA enrollment upgrades only the confirming session and locks out other pre-enrollment sessions', async () => {
+  const { Administrator, AdminAuditLog, AdminRefreshToken } = getModels();
+  const suffix = crypto.randomUUID().replaceAll('-', '');
+  const enrolleePassword = `Enroll!${suffix}Aa1`;
+  const enrollee = await Administrator.create({
+    name: 'MFA Enrollment Session Test Admin',
+    email: `mfa.enroll.${suffix}@example.test`,
+    passwordHash: await bcrypt.hash(enrolleePassword, 12),
+  });
+  await enrollee.addRole(role);
+  try {
+    const confirming = await request('/api/admin/v1/auth/login', {
+      method: 'POST', body: { email: enrollee.email, password: enrolleePassword, rememberMe: false },
+    });
+    const parallel = await request('/api/admin/v1/auth/login', {
+      method: 'POST', body: { email: enrollee.email, password: enrolleePassword, rememberMe: false },
+    });
+    assert.equal(confirming.status, 200);
+    assert.equal(parallel.status, 200);
+
+    const enrollment = await request('/api/admin/v1/auth/mfa/enroll', {
+      method: 'POST', accessToken: confirming.body.data.accessToken,
+    });
+    assert.equal(enrollment.status, 201);
+    const confirmed = await request('/api/admin/v1/auth/mfa/confirm', {
+      method: 'POST',
+      accessToken: confirming.body.data.accessToken,
+      body: { code: adminMfaService.totpFor(enrollment.body.data.secret, Math.floor(Date.now() / 30000)) },
+    });
+    assert.equal(confirmed.status, 200);
+
+    const confirmingMe = await request('/api/admin/v1/auth/me', { accessToken: confirming.body.data.accessToken });
+    assert.equal(confirmingMe.status, 200);
+    const parallelMe = await request('/api/admin/v1/auth/me', { accessToken: parallel.body.data.accessToken });
+    assert.equal(parallelMe.status, 401);
+    assert.equal(parallelMe.body.code, 'TOKEN_REVOKED');
+
+    const passwordOnly = await request('/api/admin/v1/auth/login', {
+      method: 'POST', body: { email: enrollee.email, password: enrolleePassword, rememberMe: false },
+    });
+    assert.equal(passwordOnly.status, 202);
+    assert.equal(passwordOnly.body.data.accessToken, undefined);
+  } finally {
+    await AdminAuditLog.destroy({ where: { administratorId: enrollee.id } });
+    await AdminRefreshToken.destroy({ where: { administratorId: enrollee.id }, force: true });
+    await enrollee.setRoles([]);
+    await Administrator.destroy({ where: { id: enrollee.id } });
+  }
+});

@@ -177,7 +177,7 @@ class _NotificationOverlayEntry {
 }
 
 class _TopNotificationStackOverlay extends StatefulWidget {
-  const _TopNotificationStackOverlay({super.key});
+  const _TopNotificationStackOverlay();
 
   @override
   State<_TopNotificationStackOverlay> createState() =>

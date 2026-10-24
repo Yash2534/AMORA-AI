@@ -61,7 +61,7 @@ router.get('/audit-logs', [
   query('sortDirection').optional().isIn(['asc', 'desc', 'ASC', 'DESC']),
 ], validate, requireAdminPermission('auditLogs.view'), catalog.auditLogs);
 router.get('/audit-logs/metadata', requireAdminPermission('auditLogs.view'), catalog.auditMetadata);
-router.get('/audit-logs/verify-integrity', requireAdminPermission('auditLogs.view'), catalog.verifyIntegrity);
+router.get('/audit-logs/verify-integrity', requireAdminPermission('auditLogs.integrity.view'), catalog.verifyIntegrity);
 router.get('/audit-logs/:auditId', [
   require('express-validator').param('auditId').isInt({ min: 1 }).toInt(),
   query('include').optional(),

@@ -6,13 +6,23 @@ const { areUsersBlocked } = require('../services/accessControlService');
 const { isSessionCurrent } = require('../policies/accountStatusPolicy');
 const { activeMatch } = require('../services/conversationAccessService');
 const { corsOrigin } = require('../config/originPolicy');
+const { authenticateAccessToken } = require('../services/adminAuthService');
+const logger = require('../utils/logger');
 
 let io;
-const connections = new Map();
+class LocalConnectionRegistry {
+  constructor() { this.counts = new Map(); }
+  count(userId) { return this.counts.get(Number(userId)) || 0; }
+  connect(userId) { const before = this.count(userId); this.counts.set(Number(userId), before + 1); return before; }
+  disconnect(userId) { const remaining = Math.max(0, this.count(userId) - 1); if (remaining) this.counts.set(Number(userId), remaining); else this.counts.delete(Number(userId)); return remaining; }
+  clear() { this.counts.clear(); }
+  size() { return [...this.counts.values()].reduce((sum, count) => sum + count, 0); }
+}
+const connections = new LocalConnectionRegistry();
 
 const userRoom = (userId) => `user:${Number(userId)}`;
 const conversationRoom = (conversationId) => `conversation:${Number(conversationId)}`;
-const isUserOnline = (userId) => (connections.get(Number(userId)) || 0) > 0;
+const isUserOnline = (userId) => connections.count(userId) > 0;
 
 async function conversationUserIds(conversationId) {
   const { ConversationParticipant, User, OnboardingProfile } = getModels();
@@ -58,8 +68,8 @@ async function emitPresence(userId, online) {
   for (const recipient of recipients) io.to(userRoom(recipient)).emit('presence.updated', { userId: String(userId), online });
 }
 
-function emitAdminEvent(eventName, payload = {}, requiredPermission = null) {
-  if (!io) return;
+async function emitAdminEvent(eventName, payload = {}, requiredPermission = null) {
+  if (!io || !requiredPermission) return;
   const eventId = `evt_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
   const enrichedPayload = {
     eventId,
@@ -67,50 +77,42 @@ function emitAdminEvent(eventName, payload = {}, requiredPermission = null) {
     event: eventName,
     data: payload,
   };
-  if (requiredPermission) {
-    io.to(`admin:perm:${requiredPermission}`).emit(eventName, enrichedPayload);
-  } else {
-    io.to('admin:all').emit(eventName, enrichedPayload);
+  for (const socket of io.sockets.sockets.values()) {
+    if (!socket.data.isAdmin) continue;
+    try {
+      const access = await authenticateAccessToken(socket.data.adminAccessToken);
+      socket.data.permissions = access.permissions;
+      if (access.permissions.has(requiredPermission)) socket.emit(eventName, enrichedPayload);
+    } catch (error) {
+      socket.disconnect(true);
+      logger.warn('Revoked or invalid administrator realtime session disconnected.', {
+        adminId: socket.data.adminId,
+        code: error.code || 'AUTHENTICATION_FAILED',
+      });
+    }
   }
 }
 
-function attachRealtimeServer(httpServer) {
+function attachRealtimeServer(httpServer, { adapter } = {}) {
   if (io) return io;
   io = new Server(httpServer, {
     cors: { origin: corsOrigin, credentials: true },
     transports: ['websocket', 'polling'],
   });
+  if (adapter) io.adapter(adapter);
   io.use(async (socket, next) => {
     try {
       const rawToken = socket.handshake.auth?.token || socket.handshake.headers?.authorization?.replace(/^Bearer\s+/i, '');
       if (!rawToken) throw new Error('Token missing.');
 
-      // 1. Check if token is Admin access token
-      if (process.env.ADMIN_JWT_SECRET) {
-        try {
-          const adminPayload = jwt.verify(rawToken, process.env.ADMIN_JWT_SECRET);
-          if (adminPayload.typ === 'admin_access') {
-            const { Administrator, AdminRole, AdminPermission } = getModels();
-            const admin = await Administrator.findByPk(adminPayload.sub, {
-              include: [{
-                model: AdminRole,
-                as: 'roles',
-                where: { isActive: true },
-                required: false,
-                include: [{ model: AdminPermission, as: 'permissions' }],
-              }],
-            });
-            if (admin && admin.status === 'active') {
-              socket.data.isAdmin = true;
-              socket.data.adminId = Number(admin.id);
-              const perms = new Set((admin.roles || []).flatMap((r) => (r.permissions || []).map((p) => p.key)));
-              socket.data.permissions = perms;
-              return next();
-            }
-          }
-        } catch (_) {
-          // Not an admin token, fall through to user token verification
-        }
+      const decoded = jwt.decode(rawToken);
+      if (decoded?.typ === 'admin_access') {
+        const access = await authenticateAccessToken(rawToken);
+        socket.data.isAdmin = true;
+        socket.data.adminId = Number(access.administrator.id);
+        socket.data.adminAccessToken = rawToken;
+        socket.data.permissions = access.permissions;
+        return next();
       }
 
       // 2. User token verification
@@ -126,26 +128,35 @@ function attachRealtimeServer(httpServer) {
   });
   io.on('connection', async (socket) => {
     if (socket.data.isAdmin) {
-      socket.join('admin:all');
       if (socket.data.permissions) {
         for (const perm of socket.data.permissions) {
           socket.join(`admin:perm:${perm}`);
         }
       }
+      socket.use(async (_packet, next) => {
+        try {
+          const access = await authenticateAccessToken(socket.data.adminAccessToken);
+          socket.data.permissions = access.permissions;
+          return next();
+        } catch (_) {
+          socket.disconnect(true);
+          return next(new Error('AUTHENTICATION_FAILED'));
+        }
+      });
       return;
     }
 
     const userId = socket.data.userId;
     await getModels().User.update({ lastActiveAt: new Date() }, { where: { id: userId } });
     socket.join(userRoom(userId));
-    const previous = connections.get(userId) || 0;
-    connections.set(userId, previous + 1);
+    const previous = connections.connect(userId);
     if (previous === 0) await emitPresence(userId, true);
     socket.on('conversation.subscribe', async (value, acknowledge) => {
       try {
         const conversationId = Number(value?.conversationId);
         if (!conversationId || !(await conversationAccess(conversationId, userId))) throw new Error('Conversation unavailable.');
-        socket.join(conversationRoom(conversationId));
+        const room = conversationRoom(conversationId);
+        if (!socket.rooms.has(room)) await socket.join(room);
         if (typeof acknowledge === 'function') acknowledge({ success: true });
       } catch (_) {
         if (typeof acknowledge === 'function') acknowledge({ success: false, code: 'CONVERSATION_NOT_AVAILABLE' });
@@ -153,8 +164,7 @@ function attachRealtimeServer(httpServer) {
     });
     socket.on('disconnect', async () => {
       if (socket.data.isAdmin) return;
-      const remaining = Math.max(0, (connections.get(userId) || 1) - 1);
-      if (remaining) connections.set(userId, remaining); else connections.delete(userId);
+      const remaining = connections.disconnect(userId);
       if (remaining === 0) await emitPresence(userId, false);
       await getModels().User.update({ lastActiveAt: new Date() }, { where: { id: userId } });
     });
@@ -170,4 +180,5 @@ function closeRealtimeServer() {
   return new Promise((resolve) => current.close(resolve));
 }
 
-module.exports = { attachRealtimeServer, closeRealtimeServer, emitConversationEvent, emitAdminEvent, isUserOnline };
+function realtimeMetrics() { return { localSocketConnections: connections.size() }; }
+module.exports = { attachRealtimeServer, closeRealtimeServer, emitConversationEvent, emitAdminEvent, isUserOnline, realtimeMetrics, LocalConnectionRegistry };

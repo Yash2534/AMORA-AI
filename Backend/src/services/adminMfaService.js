@@ -256,6 +256,11 @@ async function confirmEnrollment(administrator, code, request) {
     if (counter == null) throw serviceError(401, 'MFA_CODE_INVALID', 'The authentication code is invalid.');
     const enabledAt = now();
     await credential.update({ enabledAt, lastUsedCounter: counter }, { transaction });
+    // The confirming session has just proven possession of the new factor, so it
+    // is the only pre-existing session that remains usable once MFA is enforced.
+    if (request?.adminSession && Number(request.adminSession.administratorId) === Number(administrator.id)) {
+      await request.adminSession.update({ mfaVerifiedAt: enabledAt }, { transaction });
+    }
     const recoveryCodes = await createRecoveryCodes(administrator.id, credential, transaction);
     await recordAudit({
       request, administratorId: administrator.id, action: 'admin.auth.mfa_enabled',

@@ -68,3 +68,4 @@ generated-secrets/
 Backend/private-uploads/
 Backend/private-exports/
 Backend/uploads/
+node_modules
