@@ -9,6 +9,20 @@ const testDatabase = `${baseTestDatabase}_consent`;
 if (testDatabase === applicationDatabase || !/test/i.test(testDatabase)) throw new Error('Consent tests require a separate TEST_DB_NAME containing "test".');
 process.env.DB_NAME = testDatabase;
 process.env.NODE_ENV = 'test';
+// Delivery providers are replaced test-locally before any module that captures
+// them is loaded, so this suite never needs live SMTP/Twilio credentials.
+const originalOtpSkipDelivery = process.env.TEST_OTP_SKIP_DELIVERY;
+process.env.TEST_OTP_SKIP_DELIVERY = 'false';
+const smsModule = require.resolve('../src/utils/sendSms');
+const emailModule = require.resolve('../src/utils/sendEmail');
+require(smsModule);
+require(emailModule);
+const originalSmsExport = require.cache[smsModule].exports;
+const originalEmailExport = require.cache[emailModule].exports;
+const sentSms = [];
+const sentEmails = [];
+require.cache[smsModule].exports = async (to, message, meta) => { sentSms.push({ to, message, meta }); };
+require.cache[emailModule].exports = async (to, subject, html, meta) => { sentEmails.push({ to, subject, html, meta }); };
 
 const { migrate } = require('../src/migrations/run');
 const { initializeDatabase, getSequelize } = require('../src/config/db');
@@ -38,6 +52,10 @@ before(async () => {
 });
 
 after(async () => {
+  require.cache[smsModule].exports = originalSmsExport;
+  require.cache[emailModule].exports = originalEmailExport;
+  if (originalOtpSkipDelivery === undefined) delete process.env.TEST_OTP_SKIP_DELIVERY;
+  else process.env.TEST_OTP_SKIP_DELIVERY = originalOtpSkipDelivery;
   if (server) await new Promise((resolve) => server.close(resolve));
   if (models) {
     await models.ConsentEvent.destroy({ where: {} });
@@ -113,6 +131,7 @@ test('email signup creates separate versioned legal events atomically', async ()
   assert.deepEqual(events.map((event) => event.action), ['ACCEPTED', 'ACKNOWLEDGED']);
   assert.deepEqual(events.map((event) => event.source), ['SIGNUP_EMAIL', 'SIGNUP_EMAIL']);
   assert.equal(created.termsAcceptedAt, null);
+  assert.equal(sentSms.filter((entry) => entry.to === created.phoneNumber && entry.meta?.purpose === 'account_verification').length, 1);
   const duplicate = await request('/api/auth/signup', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'Signup Consent', email, phoneNumber: `9${String(Date.now()).slice(-9)}`, password: 'StrongPass1!', confirmPassword: 'StrongPass1!', acceptedTerms: true, acceptedLegalDocuments: legalDocuments(), platform: 'WEB' }) });
   assert.equal(duplicate.status, 409);
   assert.equal(await models.ConsentEvent.count({ where: { userId: created.id } }), 2);

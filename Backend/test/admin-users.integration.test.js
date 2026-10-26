@@ -17,6 +17,20 @@ process.env.DB_NAME = testDatabase;
 process.env.NODE_ENV = 'test';
 const mediaTestRoot = path.join(os.tmpdir(), `amora-admin-users-media-${process.pid}`);
 process.env.AMORA_PRIVATE_UPLOAD_ROOT = mediaTestRoot;
+// Delivery providers are replaced test-locally before any module that captures
+// them is loaded, so this suite never needs live SMTP/Twilio credentials.
+const originalOtpSkipDelivery = process.env.TEST_OTP_SKIP_DELIVERY;
+process.env.TEST_OTP_SKIP_DELIVERY = 'false';
+const smsModule = require.resolve('../src/utils/sendSms');
+const emailModule = require.resolve('../src/utils/sendEmail');
+require(smsModule);
+require(emailModule);
+const originalSmsExport = require.cache[smsModule].exports;
+const originalEmailExport = require.cache[emailModule].exports;
+const sentSms = [];
+const sentEmails = [];
+require.cache[smsModule].exports = async (to, message, meta) => { sentSms.push({ to, message, meta }); };
+require.cache[emailModule].exports = async (to, subject, html, meta) => { sentEmails.push({ to, subject, html, meta }); };
 require('../src/config/env');
 const { migrate } = require('../src/migrations/run');
 const { initializeDatabase, getSequelize } = require('../src/config/db');
@@ -178,6 +192,10 @@ before(async () => {
 });
 
 after(async () => {
+  require.cache[smsModule].exports = originalSmsExport;
+  require.cache[emailModule].exports = originalEmailExport;
+  if (originalOtpSkipDelivery === undefined) delete process.env.TEST_OTP_SKIP_DELIVERY;
+  else process.env.TEST_OTP_SKIP_DELIVERY = originalOtpSkipDelivery;
   if (server) await new Promise((resolve) => server.close(resolve));
   const { AdminAuditLog, AdminRefreshToken, Administrator, AdminRole, RefreshToken, OnboardingProfile, IdentityVerification, User, Conversation, ConversationParticipant } = getModels();
   if (consumer) {
@@ -581,7 +599,7 @@ test('admin user reads and lifecycle mutations commit to the client-authoritativ
   assert.equal(clientAfter.status, 200);
   assert.equal(clientAfter.body.data.user.accountStatus, 'active');
 
-  const { RefreshToken } = getModels();
+  const { OtpToken, RefreshToken } = getModels();
   await RefreshToken.create({
     userId: consumer.id,
     tokenSelector: crypto.randomBytes(16).toString('hex'),
@@ -603,6 +621,9 @@ test('admin user reads and lifecycle mutations commit to the client-authoritativ
     method: 'POST', accessToken: adminToken,
   });
   assert.equal(reset.status, 200);
+  const resetEmails = sentEmails.filter((entry) => entry.to === consumer.email && entry.meta?.purpose === 'password_reset');
+  assert.equal(resetEmails.length, 1);
+  assert.equal(await OtpToken.count({ where: { email: consumer.email, purpose: 'password_reset', consumed: false } }), 1);
   const deleted = await request(`/api/admin/v1/users/${consumer.id}`, {
     method: 'DELETE',
     accessToken: adminToken,

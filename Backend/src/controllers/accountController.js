@@ -220,13 +220,10 @@ exports.confirmPhoneChange = async (req, res, next) => {
     if (databaseCode === 'ER_LOCK_DEADLOCK' || databaseCode === 'ER_LOCK_WAIT_TIMEOUT') {
       return res.status(409).json({ success: false, message: 'This phone number is unavailable or another ownership claim is in progress.', code: 'PHONE_OWNERSHIP_CONFLICT', errors: [] });
     }
-    if (error.name === 'SequelizeUniqueConstraintError'
-      || error.name === 'SequelizeDatabaseError'
-      || databaseCode === 'ER_DUP_ENTRY') {
-      const owner = await getModels().User.findOne({ where: { phoneNumber } }).catch(() => null);
-      if (owner && Number(owner.id) !== userId) {
-        return res.status(409).json({ success: false, message: 'This phone number is unavailable.', code: 'PHONE_UNAVAILABLE', errors: [] });
-      }
+    // The unique phone index is the authoritative ownership boundary. A concurrent
+    // verified claim that loses the race surfaces here; map it without a racy re-read.
+    if (error.name === 'SequelizeUniqueConstraintError' || databaseCode === 'ER_DUP_ENTRY') {
+      return res.status(409).json({ success: false, message: 'This phone number is unavailable.', code: 'PHONE_UNAVAILABLE', errors: [] });
     }
     logger.error('Phone ownership transaction failed.', {
       errorName: error.name,

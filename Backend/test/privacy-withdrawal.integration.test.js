@@ -56,8 +56,8 @@ async function legalEvidence(user) {
   const privacy = await models.LegalDocumentVersion.create({ documentKey: 'PRIVACY_POLICY', version: `withdraw-privacy-${Date.now()}-${documentIds.length}`, contentHash: 'b'.repeat(64), publishedAt: now, effectiveAt: now, status: 'ACTIVE' });
   documentIds.push(terms.id, privacy.id);
   await models.ConsentEvent.bulkCreate([
-    { userId: user.id, documentVersionId: terms.id, purpose: 'TERMS_OF_SERVICE_ACCEPTANCE', action: 'ACCEPTED', source: 'SIGNUP', platform: 'WEB', occurredAt: now },
-    { userId: user.id, documentVersionId: privacy.id, purpose: 'PRIVACY_POLICY_ACKNOWLEDGEMENT', action: 'ACKNOWLEDGED', source: 'SIGNUP', platform: 'WEB', occurredAt: now },
+    { userId: user.id, documentVersionId: terms.id, purpose: 'TERMS_OF_SERVICE_ACCEPTANCE', action: 'ACCEPTED', source: 'SIGNUP_EMAIL', platform: 'WEB', occurredAt: now },
+    { userId: user.id, documentVersionId: privacy.id, purpose: 'PRIVACY_POLICY_ACKNOWLEDGEMENT', action: 'ACKNOWLEDGED', source: 'SIGNUP_EMAIL', platform: 'WEB', occurredAt: now },
   ]);
   return { terms, privacy };
 }

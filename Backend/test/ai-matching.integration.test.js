@@ -284,7 +284,9 @@ test('dirty normalized compatibility is identical in Discover and AI Matches', a
     interests: [' Music ', 'music', '', 'Prefer not to say'],
     relationshipGoals: [' long term ', 'long term', 'Prefer not to say'],
     languages: [' ENGLISH ', 'english', '', 7],
-    communicationStyle: ' DIRECT ', city: ' AHMEDABAD ', smoking: ' NEVER ',
+    // communicationStyle is a strict MySQL ENUM; persist a valid value. Dirty style
+    // normalization is covered at the SQL-expression layer in discover.integration.test.js.
+    communicationStyle: 'calls', city: ' AHMEDABAD ', smoking: ' NEVER ',
   }, { where: { userId: candidate.id } });
   const discover = await request(`/api/discover/feed?profession=${profession}&minScore=0`, { headers: auth(viewer) });
   const ai = await request(`/api/discover/ai-matches?profession=${profession}&minScore=0`, { headers: auth(viewer) });

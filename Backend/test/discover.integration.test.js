@@ -17,6 +17,20 @@ if (
 
 process.env.DB_NAME = testDatabase;
 process.env.NODE_ENV = 'test';
+// Delivery providers are replaced test-locally before any module that captures
+// them is loaded, so this suite never needs live SMTP/Twilio credentials.
+const originalOtpSkipDelivery = process.env.TEST_OTP_SKIP_DELIVERY;
+process.env.TEST_OTP_SKIP_DELIVERY = 'false';
+const smsModule = require.resolve('../src/utils/sendSms');
+const emailModule = require.resolve('../src/utils/sendEmail');
+require(smsModule);
+require(emailModule);
+const originalSmsExport = require.cache[smsModule].exports;
+const originalEmailExport = require.cache[emailModule].exports;
+const sentSms = [];
+const sentEmails = [];
+require.cache[smsModule].exports = async (to, message, meta) => { sentSms.push({ to, message, meta }); };
+require.cache[emailModule].exports = async (to, subject, html, meta) => { sentEmails.push({ to, subject, html, meta }); };
 
 const { migrate } = require('../src/migrations/run');
 const { initializeDatabase, getSequelize } = require('../src/config/db');
@@ -139,6 +153,10 @@ before(async () => {
 });
 
 after(async () => {
+  require.cache[smsModule].exports = originalSmsExport;
+  require.cache[emailModule].exports = originalEmailExport;
+  if (originalOtpSkipDelivery === undefined) delete process.env.TEST_OTP_SKIP_DELIVERY;
+  else process.env.TEST_OTP_SKIP_DELIVERY = originalOtpSkipDelivery;
   if (server) await new Promise((resolve) => server.close(resolve));
   if (models && userIds.length) {
     await models.RoseTransaction.destroy({ where: { [Op.or]: [{ senderId: userIds }, { recipientId: userIds }] } });
@@ -719,6 +737,8 @@ test('SQL and JavaScript score and coverage agree across a deterministic 128-pro
     ['unrelated'], ['MUSIC', ' travel '], [false, 7, 'english'], ['   ', 'Prefer not to say'],
   ];
   const scalarValues = ['calls', ' CALLS ', 'different', '', null, 'Prefer not to say', 7, false];
+  // communicationStyle is a strict MySQL ENUM, so only valid values or null can be persisted.
+  const communicationStyleValues = ['calls', 'voice_notes', null, 'frequent_texting', 'calls', 'deep_conversations', null, 'light_fun_conversations'];
   const users = await models.User.bulkCreate(Array.from({ length: 128 }, (_, index) => ({
     name: `matrix-${index}`, email: `phase5-matrix-${Date.now()}-${index}@test.invalid`,
     phoneNumber: '', authProvider: 'local', isVerified: true, identityVerifiedAt: new Date(),
@@ -730,7 +750,7 @@ test('SQL and JavaScript score and coverage agree across a deterministic 128-pro
     relationshipGoals: listValues[(index + 1) % listValues.length], city: scalarValues[(index + 2) % scalarValues.length],
     photos: ['/uploads/one.jpg', '/uploads/two.jpg'], onboardingCompleted: true, stage: 'complete',
     interests: listValues[index % listValues.length], languages: listValues[(index + 3) % listValues.length],
-    communicationStyle: scalarValues[index % scalarValues.length], smoking: scalarValues[(index + 4) % scalarValues.length],
+    communicationStyle: communicationStyleValues[index % communicationStyleValues.length], smoking: scalarValues[(index + 4) % scalarValues.length],
     drinking: scalarValues[(index + 5) % scalarValues.length], weed: scalarValues[(index + 6) % scalarValues.length],
   }));
   const insertedProfiles = await models.OnboardingProfile.bulkCreate(candidates);
@@ -745,6 +765,31 @@ test('SQL and JavaScript score and coverage agree across a deterministic 128-pro
     assert.equal(Number(actual.get(Number(profile.id)).coverage), expected.coverage, `coverage profile ${profile.id}`);
   }
   assert.equal(rows.length, 128);
+});
+
+test('SQL and JavaScript normalize dirty communication styles identically without persisting invalid ENUM values', async () => {
+  const sequelize = models.User.sequelize;
+  const quote = (key) => sequelize.getQueryInterface().queryGenerator.quoteIdentifier(key);
+  const viewer = {
+    interests: ['music'], relationshipGoals: ['long_term'], communicationStyle: ' Calls ',
+    languages: ['English'], city: 'Pune', smoking: 'never', drinking: 'never', weed: 'never',
+  };
+  const dirtyStyles = ['calls', ' CALLS ', ' DIRECT ', 'different', '', null, 'Prefer not to say'];
+  // Candidate styles come from a column, so they are strings or null. Viewer styles are
+  // embedded by the SQL generator from JavaScript values, so non-strings are covered too.
+  const cases = [
+    ...dirtyStyles.map((communicationStyle) => ({ viewer, candidate: { ...viewer, communicationStyle } })),
+    ...[...dirtyStyles, 7, false].map((communicationStyle) => ({ viewer: { ...viewer, communicationStyle }, candidate: { ...viewer, communicationStyle: 'calls' } })),
+  ];
+  for (const { viewer: source, candidate } of cases) {
+    const expressions = sqlCompatibilityExpressions(sequelize, source);
+    const columns = Object.entries(candidate).map(([key, value]) => `${sequelize.escape(Array.isArray(value) ? JSON.stringify(value) : value)} AS ${quote(key)}`).join(', ');
+    const [rows] = await sequelize.query(`SELECT ${expressions.score} AS score, ${expressions.coverage} AS coverage FROM (SELECT ${columns}) AS OnboardingProfile`);
+    const expected = scoreCompatibility(source, candidate);
+    const label = `viewer ${JSON.stringify(source.communicationStyle)} candidate ${JSON.stringify(candidate.communicationStyle)}`;
+    assert.equal(Number(rows[0].score), expected.score, `score for ${label}`);
+    assert.equal(Number(rows[0].coverage), expected.coverage, `coverage for ${label}`);
+  }
 });
 
 test('minScore exact boundary and canonical dirty-data order use the returned score', async () => {
@@ -808,6 +853,8 @@ test('verification resend is non-enumerating and sends only to eligible users', 
   assert.equal(await models.OtpToken.count({ where: { phoneNumber: eligible.phoneNumber, purpose: 'account_verification' } }), 1);
   assert.equal(await models.OtpToken.count({ where: { phoneNumber: verifiedPhone, purpose: 'account_verification' } }), 0);
   assert.equal(await models.OtpToken.count({ where: { phoneNumber: missingPhone, purpose: 'account_verification' } }), 0);
+  const verificationSms = sentSms.filter((entry) => entry.meta?.purpose === 'account_verification');
+  assert.deepEqual(verificationSms.map((entry) => entry.to), [eligiblePhone]);
 
   const limited = await request('/api/auth/resend-verification-code', {
     method: 'POST',
