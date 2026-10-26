@@ -156,7 +156,32 @@ test('controlled persistence failure rolls back evidence and preference before s
   assert.equal((await models.NotificationPreference.findByPk(user.id)).offers, true); assert.equal(await models.ConsentEvent.count({ where: { userId: user.id, purpose: 'OFFERS_NOTIFICATIONS', action: 'WITHDRAWN' } }), 0); const row = await models.PrivacyRequest.findByPk(id); assert.equal(row.status, 'FAILED'); assert.notEqual(row.status, 'COMPLETED');
 });
 
+// Walks every key/value pair so identity checks are structural rather than numeric
+// substring matches, which collide with timestamps, correlation IDs and request IDs.
+function responseEntries(value, path = '$', entries = []) {
+  if (value && typeof value === 'object') {
+    for (const [key, child] of Object.entries(value)) {
+      entries.push({ path: `${path}.${key}`, key, value: child });
+      responseEntries(child, `${path}.${key}`, entries);
+    }
+  }
+  return entries;
+}
+
 test('withdrawal responses contain no confirmation hash, credentials, other-user state, or internal preference object', async () => {
-  const user = await createUser('redaction'); const other = await createUser('redaction-other'); const { id } = await verifiedWithdrawal(user); const result = await post(user, `/api/privacy-requests/${id}/withdrawal`); assert.equal(result.status, 200);
-  const serialized = JSON.stringify(result.body); for (const secret of ['WithdrawPass1!', 'passwordHash', 'tokenHash', 'confirmation', String(other.id), 'accessToken', 'refreshToken']) assert.equal(serialized.includes(secret), false, secret); assert.equal((await getConsentState(other)).body.data.consents.length, 1);
+  const user = await createUser('redaction'); const other = await createUser('redaction-other'); const { id, confirmation } = await verifiedWithdrawal(user); const result = await post(user, `/api/privacy-requests/${id}/withdrawal`); assert.equal(result.status, 200);
+  const serialized = JSON.stringify(result.body);
+  for (const secret of ['WithdrawPass1!', 'passwordHash', 'tokenHash', 'confirmation', confirmation, 'accessToken', 'refreshToken', other.email, other.name]) assert.equal(serialized.includes(secret), false, secret);
+  // Response projection is exactly the reviewed owner-scoped contract: no user, preference or secret objects.
+  assert.deepEqual(Object.keys(result.body.data).sort(), ['consents', 'request']);
+  assert.deepEqual(Object.keys(result.body.data.request).sort(), ['completedAt', 'correlationId', 'createdAt', 'failedAt', 'failureCode', 'id', 'identityVerifiedAt', 'processingStartedAt', 'requestType', 'requestedAt', 'status', 'updatedAt']);
+  assert.equal(result.body.data.request.id, String(id)); assert.equal(result.body.data.request.status, 'COMPLETED');
+  for (const consent of result.body.data.consents) assert.deepEqual(Object.keys(consent).sort(), ['purpose', 'status', 'withdrawable']);
+  const entries = responseEntries(result.body);
+  for (const { path, key } of entries) assert.doesNotMatch(key, /password|hash|token|secret|confirmation|preference|^(offers|newMatches)$/i, path);
+  for (const { path, key, value } of entries.filter(({ key }) => /user|owner|actor|account|member|recipient|sender|target/i.test(key))) {
+    assert.notEqual(String(value), String(other.id), path);
+    assert.equal(String(value), String(user.id), `${path} must be owner-scoped`);
+  }
+  assert.equal((await getConsentState(other)).body.data.consents.length, 1); assert.equal((await getConsentState(other)).body.data.consents[0].status, 'granted');
 });
