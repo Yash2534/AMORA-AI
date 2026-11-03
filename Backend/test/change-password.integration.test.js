@@ -33,7 +33,23 @@ async function request(path, { method = 'GET', token, body } = {}) {
     },
     ...(body ? { body: JSON.stringify(body) } : {}),
   });
-  return { status: response.status, body: await response.json() };
+  return {
+    status: response.status,
+    body: await response.json(),
+    correlationId: response.headers.get('x-correlation-id'),
+  };
+}
+
+async function waitForAudit(action, correlationId) {
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    const event = await models.AdminAuditLog.findOne({
+      where: { action, correlationId },
+      order: [['id', 'DESC']],
+    });
+    if (event) return event;
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  return null;
 }
 
 async function fixture() {
@@ -54,7 +70,7 @@ async function fixture() {
     body: { email: user.email, password: currentPassword },
   });
   assert.equal(login.status, 200, JSON.stringify(login.body));
-  return { user, currentPassword, token: login.body.data.accessToken };
+  return { user, currentPassword, token: login.body.data.accessToken, refreshToken: login.body.data.refreshToken };
 }
 
 before(async () => {
@@ -68,6 +84,7 @@ before(async () => {
 
 after(async () => {
   if (models && userIds.length) {
+    await models.AdminAuditLog.destroy({ where: { administratorId: null } });
     await models.RefreshToken.destroy({ where: { userId: userIds } });
     await models.User.destroy({ where: { id: userIds } });
   }
@@ -79,8 +96,9 @@ after(async () => {
   else process.env.NODE_ENV = originalNodeEnv;
 });
 
-test('correct current password changes to a valid different password', async () => {
-  const { user, currentPassword, token } = await fixture();
+test('correct current password changes the password and revokes the prior session', async () => {
+  const { user, currentPassword, token, refreshToken } = await fixture();
+  const originalTokenVersion = Number(user.tokenVersion || 0);
   const nextPassword = `${currentPassword}-new`;
   const result = await request('/api/auth/change-password', {
     method: 'POST',
@@ -91,6 +109,17 @@ test('correct current password changes to a valid different password', async () 
   await user.reload();
   assert.equal(await bcrypt.compare(nextPassword, user.passwordHash), true);
   assert.equal(await bcrypt.compare(currentPassword, user.passwordHash), false);
+  assert.equal(Number(user.tokenVersion), originalTokenVersion + 1);
+  assert.equal(await models.RefreshToken.count({ where: { userId: user.id } }), 0);
+  assert.equal((await request('/api/auth/me', { token })).status, 401);
+  assert.equal((await request('/api/auth/refresh-token', { method: 'POST', body: { refreshToken } })).status, 401);
+  const audit = await waitForAudit('user.auth.password_changed', result.correlationId);
+  assert.ok(audit, 'password-change security event was not persisted');
+  const metadata = typeof audit.metadata === 'string' ? JSON.parse(audit.metadata) : audit.metadata;
+  assert.equal(metadata.outcome, 'success');
+  assert.equal(Number(metadata.actorUserId), Number(user.id));
+  assert.equal(JSON.stringify(audit.toJSON()).includes(currentPassword), false);
+  assert.equal(JSON.stringify(audit.toJSON()).includes(nextPassword), false);
 });
 
 test('identical new password is rejected without mutating the hash', async () => {

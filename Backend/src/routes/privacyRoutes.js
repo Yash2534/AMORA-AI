@@ -3,6 +3,7 @@ const { body } = require('express-validator');
 const requireAuth = require('../middleware/authMiddleware');
 const validate = require('../middleware/validateRequest');
 const controller = require('../controllers/privacyController');
+const { grievanceLimiter } = require('../middleware/rateLimiter');
 
 // Public DPDP Notice
 router.get('/notice', controller.getPrivacyNotice);
@@ -10,6 +11,8 @@ router.get('/notice', controller.getPrivacyNotice);
 // Public/Optional User Grievance Submission
 router.post(
   '/grievances',
+  requireAuth,
+  grievanceLimiter,
   [
     body('name').trim().notEmpty().withMessage('name is required.'),
     body('email').isEmail().withMessage('valid email is required.'),
@@ -29,12 +32,12 @@ router.post(
 );
 
 // Track Grievance Status
-router.get('/grievances/:ticketNumber', controller.getGrievanceStatus);
+router.get('/grievances/:ticketNumber', requireAuth, grievanceLimiter, controller.getGrievanceStatus);
 
 // Authenticated Privacy Management
-router.get('/consents', requireAuth, controller.getConsents);
-router.post('/consents/update', requireAuth, controller.updateConsent);
-router.post('/consents/withdraw', requireAuth, controller.withdrawConsent);
-router.post('/data-export', requireAuth, controller.requestDataExport);
+router.all('/consents', requireAuth, controller.legacyPrivacyFlowDisabled);
+router.all('/consents/update', requireAuth, controller.legacyPrivacyFlowDisabled);
+router.all('/consents/withdraw', requireAuth, controller.legacyPrivacyFlowDisabled);
+router.all('/data-export', requireAuth, controller.legacyPrivacyFlowDisabled);
 
 module.exports = router;

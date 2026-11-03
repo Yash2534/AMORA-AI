@@ -14,7 +14,8 @@ if (!process.argv.includes('--confirm-development-db') || process.env.NODE_ENV =
 let server;
 let models;
 const userIds = [];
-const password = 'Membership-QA-2026!';
+const password = String(process.env.MEMBERSHIP_TEST_PASSWORD || '');
+if (password.length < 14) throw new Error('MEMBERSHIP_TEST_PASSWORD must be explicitly supplied with at least 14 characters.');
 
 async function createUser(name) {
   const suffix = `${Date.now()}_${Math.random().toString(36).slice(2)}`;

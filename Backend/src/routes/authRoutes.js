@@ -1,6 +1,7 @@
-const router = require('express').Router(); const { body } = require('express-validator'); const auth = require('../controllers/authController'); const validate = require('../middleware/validateRequest'); const requireAuth = require('../middleware/authMiddleware'); const { loginLimiter, reactivationLimiter, signupLimiter, otpLimiter, accountDeletionReauthLimiter } = require('../middleware/rateLimiter');
+const router = require('express').Router(); const { body } = require('express-validator'); const auth = require('../controllers/authController'); const validate = require('../middleware/validateRequest'); const requireAuth = require('../middleware/authMiddleware'); const { loginLimiter, reactivationLimiter, signupLimiter, otpRequestLimiter, otpVerificationLimiter, passwordResetLimiter, accountDeletionReauthLimiter } = require('../middleware/rateLimiter');
 const email = body('email').trim().isEmail().withMessage('A valid email is required.').normalizeEmail();
-const phoneNumber = body('phoneNumber').trim().matches(/^(?:\+91)?[6-9]\d{9}$/).withMessage('Phone number must be a valid Indian mobile number in national or +91 format.');
+const { normalizeIndianMobile } = require('../utils/phoneNumber');
+const phoneNumber = body('phoneNumber').customSanitizer(normalizeIndianMobile).matches(/^\+91[6-9]\d{9}$/).withMessage('Phone number must be a valid Indian mobile number.');
 const code = body('code').trim().matches(/^\d{6}$/).withMessage('Code must be a six-digit number.');
 const legalAcceptanceChecks = [
   body('acceptedLegalDocuments').optional().isArray({ min: 2, max: 2 }).withMessage('Required legal documents must be accepted.'),
@@ -12,14 +13,14 @@ const legalAcceptanceChecks = [
 const signupChecks = [body('name').trim().isLength({ min: 2 }).withMessage('Name must have at least 2 characters.'), email, phoneNumber, body('password').isLength({ min: 8 }).withMessage('Password must contain at least 8 characters.'), body('confirmPassword').custom((value, { req }) => value === req.body.password).withMessage('Passwords do not match.'), body('acceptedTerms').isBoolean().custom((value) => value === true).withMessage('You must accept the terms.'), ...legalAcceptanceChecks];
 router.get('/legal-documents/signup', auth.requiredSignupLegalDocuments);
 router.post('/signup', signupLimiter, signupChecks, validate, auth.signup);
-router.post('/verify-account', [phoneNumber, code], validate, auth.verifyAccount);
-router.post('/resend-verification-code', otpLimiter, [phoneNumber], validate, auth.resendVerification);
+router.post('/verify-account', otpVerificationLimiter, [phoneNumber, code], validate, auth.verifyAccount);
+router.post('/resend-verification-code', otpRequestLimiter, [phoneNumber], validate, auth.resendVerification);
 router.post('/login', loginLimiter, [email, body('password').notEmpty().withMessage('Password is required.')], validate, auth.login);
 router.post('/reactivate', reactivationLimiter, [body('reactivationToken').isString().notEmpty().withMessage('Reactivation authorization is required.')], validate, auth.reactivate);
 router.post('/google', [body('idToken').trim().notEmpty().withMessage('Google ID token is required.'), ...legalAcceptanceChecks], validate, auth.google);
-router.post('/forgot-password', otpLimiter, [email], validate, auth.forgotPassword);
-router.post('/verify-reset-code', [email, code], validate, auth.verifyResetCode);
-router.post('/reset-password', [email, body('recoveryToken').trim().notEmpty().withMessage('Recovery token is required.'), body('newPassword').isLength({ min: 8 }).withMessage('New password must contain at least 8 characters.')], validate, auth.resetPassword);
+router.post('/forgot-password', otpRequestLimiter, [email], validate, auth.forgotPassword);
+router.post('/verify-reset-code', otpVerificationLimiter, [email, code], validate, auth.verifyResetCode);
+router.post('/reset-password', passwordResetLimiter, [email, body('recoveryToken').trim().notEmpty().withMessage('Recovery token is required.'), body('newPassword').isLength({ min: 8 }).withMessage('New password must contain at least 8 characters.')], validate, auth.resetPassword);
 router.post('/change-password', requireAuth, accountDeletionReauthLimiter, [body('currentPassword').isString().notEmpty().withMessage('Current password is required.'), body('newPassword').isString().notEmpty().withMessage('New password is required.')], validate, auth.changePassword);
 router.post('/refresh-token', [body('refreshToken').trim().notEmpty().withMessage('Refresh token is required.')], validate, auth.refreshToken);
 router.post('/logout', requireAuth, [body('refreshToken').trim().notEmpty().withMessage('Refresh token is required.')], validate, auth.logout);

@@ -27,6 +27,70 @@ function authError(status, code, message) {
   return error;
 }
 
+async function authenticateAccessToken(token, options = {}) {
+  let payload;
+  try {
+    payload = jwt.verify(token, process.env.ADMIN_JWT_SECRET, {
+      algorithms: ['HS256'],
+      issuer: 'amoraa-backend',
+      audience: 'amoraa-admin-web',
+    });
+  } catch (error) {
+    throw authError(
+      401,
+      error.name === 'TokenExpiredError' ? 'TOKEN_EXPIRED' : 'TOKEN_INVALID',
+      error.name === 'TokenExpiredError'
+        ? 'Your administrator session has expired. Please sign in again.'
+        : 'Invalid administrator access token.',
+    );
+  }
+  if (payload.typ !== 'admin_access' || !payload.sub || !payload.sid) {
+    throw authError(401, 'TOKEN_INVALID', 'Invalid administrator access token.');
+  }
+
+  const { AdminRefreshToken } = options.models || getModels();
+  const loadAdministrator = options.loadAdministrator || administratorWithAccess;
+  const currentTime = options.now ? options.now() : now();
+  const [administrator, session] = await Promise.all([
+    loadAdministrator(payload.sub),
+    AdminRefreshToken.findOne({
+      where: {
+        administratorId: payload.sub,
+        selector: payload.sid,
+        revokedAt: null,
+        expiresAt: { [Op.gt]: currentTime },
+      },
+    }),
+  ]);
+  if (!administrator || !session || Number(payload.ver || 0) !== Number(administrator.tokenVersion || 0)) {
+    throw authError(401, 'TOKEN_REVOKED', 'This administrator session is no longer valid.');
+  }
+  if (administrator.status !== 'active') {
+    throw authError(
+      403,
+      administrator.status === 'disabled' ? 'ACCOUNT_DISABLED' : 'ACCESS_DENIED',
+      administrator.status === 'disabled'
+        ? 'This administrator account has been disabled.'
+        : 'This administrator account is suspended.',
+    );
+  }
+  if (!administrator.roles?.length) {
+    throw authError(403, 'ACCESS_DENIED', 'No active administrator role is assigned.');
+  }
+  const mfaEnabled = Boolean(
+    administrator.mfaCredential?.enabledAt && !administrator.mfaCredential?.disabledAt,
+  );
+  if (mfaEnabled && !session.mfaVerifiedAt) {
+    throw authError(401, 'TOKEN_REVOKED', 'This administrator session requires multi-factor authentication.');
+  }
+  return {
+    payload,
+    administrator,
+    session,
+    permissions: new Set(permissionsFor(administrator)),
+  };
+}
+
 async function administratorWithAccess(id, options = {}) {
   const { Administrator, AdminRole, AdminPermission, AdminMfaCredential } = getModels();
   return Administrator.findByPk(id, {
@@ -574,6 +638,7 @@ async function clearExpiredSessions() {
 
 module.exports = {
   authError,
+  authenticateAccessToken,
   administratorWithAccess,
   permissionsFor,
   serializeAdministrator,

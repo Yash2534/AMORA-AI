@@ -10,7 +10,6 @@ import 'package:amora_ai/core/theme/amora_shadows.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/widgets/amoraa_main_page_header.dart';
-import 'package:amora_ai/core/widgets/amoraa_identity_badge.dart';
 import 'package:amora_ai/core/widgets/app_primary_button.dart';
 import 'package:amora_ai/core/widgets/amora_dialog.dart';
 import 'package:amora_ai/core/widgets/floating_bottom_nav.dart';
@@ -20,18 +19,14 @@ import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/chat/data/chat_repository.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
 import 'package:amora_ai/features/profile/presentation/controllers/profile_relationship_controller.dart';
-import 'package:amora_ai/features/profile/domain/profile_completion_calculator.dart';
 import 'package:amora_ai/features/profile/domain/profile_form_options.dart';
 import 'package:amora_ai/features/profile/domain/profile_interest_policy.dart';
-import 'package:amora_ai/features/profile/presentation/kyc_verification_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_completion_metrics.dart';
 import 'package:amora_ai/features/profile/presentation/profile_completion_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_edit_screen.dart';
 import 'package:amora_ai/features/profile/presentation/profile_preview_screen.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/amoraa_profile_photo_view.dart';
-import 'package:amora_ai/features/profile/presentation/widgets/profile_photo_gallery.dart';
 import 'package:amora_ai/features/profile/presentation/widgets/profile_attribute_icons.dart';
-import 'package:amora_ai/features/settings/presentation/managed_profiles_screen.dart';
 import 'package:amora_ai/features/settings/presentation/likes_super_likes_screen.dart';
 import 'package:amora_ai/features/settings/presentation/profile_settings_screen.dart';
 import 'package:amora_ai/features/settings/presentation/safety_privacy_screen.dart';
@@ -791,118 +786,6 @@ class _InstaStatColumn extends StatelessWidget {
   }
 }
 
-class _ProfileStatCircle extends StatelessWidget {
-  const _ProfileStatCircle({
-    required this.value,
-    required this.label,
-    this.progress,
-    this.onTap,
-  });
-
-  final String value;
-  final String label;
-  final double? progress;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final hasProgress = progress != null;
-
-    final childWidget = AspectRatio(
-      aspectRatio: 1.0,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(99),
-        child: BackdropFilter(
-          filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-          child: Container(
-            decoration: BoxDecoration(
-              color: isDark
-                  ? const Color(0xFF281C34).withValues(alpha: 0.50)
-                  : Colors.white.withValues(alpha: 0.65),
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.14)
-                    : AppColors.primary.withValues(alpha: 0.12),
-                width: 1.0,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.primary.withValues(alpha: .05),
-                  blurRadius: 12,
-                  offset: const Offset(0, 3),
-                ),
-              ],
-            ),
-            child: Stack(
-              alignment: Alignment.center,
-              fit: StackFit.expand,
-              children: [
-                if (hasProgress)
-                  Padding(
-                    padding: const EdgeInsets.all(4.0),
-                    child: CustomPaint(
-                      painter: _CircularProgressPainter(
-                        progress: progress!.clamp(0.0, 1.0),
-                        trackColor: isDark
-                            ? Colors.white.withValues(alpha: 0.10)
-                            : AppColors.primary.withValues(alpha: 0.12),
-                        progressColor: AppColors.primary,
-                        strokeWidth: 3.0,
-                      ),
-                    ),
-                  ),
-                Material(
-                  color: Colors.transparent,
-                  shape: const CircleBorder(),
-                  child: InkWell(
-                    onTap: onTap,
-                    customBorder: const CircleBorder(),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          value,
-                          style: AmoraTextStyles.headlineSmall.copyWith(
-                            fontWeight: FontWeight.w800,
-                            fontSize: 15,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          label,
-                          style: AmoraTextStyles.labelMedium.copyWith(
-                            color: isDark ? Colors.white70 : Colors.black54,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-
-    if (onTap != null) {
-      return Semantics(
-        button: true,
-        label:
-            'Profile strength $value. Tap to view profile completion details.',
-        child: childWidget,
-      );
-    }
-
-    return childWidget;
-  }
-}
-
 class _CircularProgressPainter extends CustomPainter {
   _CircularProgressPainter({
     required this.progress,
@@ -1486,7 +1369,6 @@ class _LiveAnimatedMembershipBackgroundState
 
 class _CompleteProfileBannerCard extends StatelessWidget {
   const _CompleteProfileBannerCard({
-    super.key,
     required this.profile,
     required this.onTap,
   });
@@ -1670,7 +1552,6 @@ class _CompleteProfileBannerCard extends StatelessWidget {
 
 class _AuraPremiumBannerCard extends StatelessWidget {
   const _AuraPremiumBannerCard({
-    super.key,
     required this.onUpgrade,
     this.isPremium = false,
   });
@@ -2074,13 +1955,11 @@ class _ProfileMenuItemRow extends StatelessWidget {
   const _ProfileMenuItemRow({
     required this.icon,
     required this.title,
-    this.badgeText,
     required this.onTap,
   });
 
   final IconData icon;
   final String title;
-  final String? badgeText;
   final VoidCallback onTap;
 
   @override
@@ -2142,26 +2021,6 @@ class _ProfileMenuItemRow extends StatelessWidget {
                         ),
                       ),
                     ),
-                    if (badgeText != null && badgeText!.isNotEmpty) ...[
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          badgeText!,
-                          style: AmoraTextStyles.labelSmall.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                    ],
                     Icon(
                       Icons.chevron_right_rounded,
                       color: AppColors.textSecondary.withValues(alpha: 0.60),
@@ -2249,229 +2108,10 @@ class _SignOutButton extends StatelessWidget {
   }
 }
 
-class _ProfilePortrait extends StatelessWidget {
-  const _ProfilePortrait({required this.profile});
-
-  final LocalProfileDraft profile;
-
-  @override
-  Widget build(BuildContext context) {
-    final photos = LocalProfileRepository.instance.currentPhotos;
-    final primary =
-        photos.where((photo) => photo.isPrimary).firstOrNull ??
-        (photos.isEmpty
-            ? ProfilePhotoViewData(
-                id: 'profile-hero-fallback',
-                source: profile.primaryPhoto,
-                order: 0,
-                isPrimary: true,
-                uploadState: ProfilePhotoUploadState.bundled,
-              )
-            : photos.first);
-    return Hero(
-      tag: 'current-user-primary-photo',
-      child: Semantics(
-        image: true,
-        label: 'Primary profile photo for ${profile.name}',
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(
-              color: AppColors.tertiary.withValues(alpha: .86),
-              width: 2,
-            ),
-            boxShadow: AmoraShadows.level2,
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(3),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(20),
-              child: AmoraaProfilePhotoView(
-                photo: primary,
-                fit: BoxFit.cover,
-                alignment: const Alignment(0, -.1),
-                borderRadius: BorderRadius.circular(20),
-                semanticLabel: 'Primary profile photo for ${profile.name}',
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 extension _FirstOrNull<T> on Iterable<T> {
   T? get firstOrNull {
     final iterator = this.iterator;
     return iterator.moveNext() ? iterator.current : null;
-  }
-}
-
-class _HeroIdentity extends StatelessWidget {
-  const _HeroIdentity({
-    required this.profile,
-    required this.isAadhaarVerified,
-    required this.isPremium,
-    required this.onEdit,
-    required this.onPreview,
-    required this.onComplete,
-  });
-
-  final LocalProfileDraft profile;
-  final bool isAadhaarVerified;
-  final bool isPremium;
-  final VoidCallback onEdit;
-  final VoidCallback onPreview;
-  final VoidCallback onComplete;
-
-  @override
-  Widget build(BuildContext context) {
-    final city = ProfileFormOptions.normalizeCity(profile.location);
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          profile.name,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: AmoraTextStyles.headlineLarge.copyWith(
-            fontSize: 32,
-            fontWeight: FontWeight.w800,
-            letterSpacing: -.5,
-          ),
-        ),
-        if (resolveAmoraaIdentityBadge(
-              isAadhaarVerified: isAadhaarVerified,
-              isPremium: isPremium,
-            ) !=
-            AmoraaIdentityBadgeType.none) ...[
-          const SizedBox(height: 8),
-          AmoraaIdentityBadge(
-            isAadhaarVerified: isAadhaarVerified,
-            isPremium: isPremium,
-          ),
-        ],
-        const SizedBox(height: 6),
-        Text(
-          [
-            if (profile.age != null) '${profile.age}',
-            if (city.isNotEmpty) city,
-          ].join('  •  '),
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: AmoraTextStyles.bodyLarge.copyWith(
-            color: AppColors.text.withValues(alpha: .70),
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        const SizedBox(height: 14),
-        Text(
-          'Relationship intention',
-          style: AmoraTextStyles.labelSmall.copyWith(
-            color: AppColors.text.withValues(alpha: .58),
-            fontWeight: FontWeight.w700,
-            letterSpacing: .7,
-          ),
-        ),
-        const SizedBox(height: 7),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            _HeroPill(
-              icon: Icons.favorite_rounded,
-              text: ProfileFormOptions.normalizeDatingIntention(
-                profile.datingIntention,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 20),
-        ProfileCompletionCard(profile: profile, onComplete: onComplete),
-        const SizedBox(height: 16),
-        _HeroActions(onEdit: onEdit, onPreview: onPreview),
-      ],
-    );
-  }
-}
-
-class _HeroPill extends StatelessWidget {
-  const _HeroPill({required this.icon, required this.text});
-
-  final IconData icon;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(minHeight: 40),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.circular(99),
-        border: Border.all(color: AppColors.tertiary.withValues(alpha: .9)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: AppColors.secondary),
-          const SizedBox(width: 6),
-          Flexible(
-            child: Text(
-              text,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: AmoraTextStyles.labelMedium.copyWith(
-                color: AppColors.primary,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _HeroActions extends StatelessWidget {
-  const _HeroActions({required this.onEdit, required this.onPreview});
-
-  final VoidCallback onEdit;
-  final VoidCallback onPreview;
-
-  @override
-  Widget build(BuildContext context) {
-    final edit = AppPrimaryButton(
-      label: 'Edit Profile',
-      icon: Icons.edit_rounded,
-      onPressed: onEdit,
-    );
-    final preview = AppPrimaryButton(
-      label: 'Preview',
-      icon: Icons.visibility_rounded,
-      variant: AppPrimaryButtonVariant.outlined,
-      onPressed: onPreview,
-    );
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        if (constraints.maxWidth < 330) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [edit, const SizedBox(height: 10), preview],
-          );
-        }
-        return Row(
-          children: [
-            Expanded(child: edit),
-            const SizedBox(width: 10),
-            Expanded(child: preview),
-          ],
-        );
-      },
-    );
   }
 }
 
@@ -4045,29 +3685,4 @@ class _ProfileEmptyCard extends StatelessWidget {
       ),
     );
   }
-}
-
-String? _zodiacFor(String birthdate) {
-  final parts = birthdate
-      .split('/')
-      .map((part) => int.tryParse(part.trim()))
-      .toList(growable: false);
-  if (parts.length != 3 || parts[0] == null || parts[1] == null) return null;
-  final day = parts[0]!;
-  final month = parts[1]!;
-  return switch (month) {
-    1 => day >= 20 ? 'Aquarius' : 'Capricorn',
-    2 => day >= 19 ? 'Pisces' : 'Aquarius',
-    3 => day >= 21 ? 'Aries' : 'Pisces',
-    4 => day >= 20 ? 'Taurus' : 'Aries',
-    5 => day >= 21 ? 'Gemini' : 'Taurus',
-    6 => day >= 21 ? 'Cancer' : 'Gemini',
-    7 => day >= 23 ? 'Leo' : 'Cancer',
-    8 => day >= 23 ? 'Virgo' : 'Leo',
-    9 => day >= 23 ? 'Libra' : 'Virgo',
-    10 => day >= 23 ? 'Scorpio' : 'Libra',
-    11 => day >= 22 ? 'Sagittarius' : 'Scorpio',
-    12 => day >= 22 ? 'Capricorn' : 'Sagittarius',
-    _ => null,
-  };
 }

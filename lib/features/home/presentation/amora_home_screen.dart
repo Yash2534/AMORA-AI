@@ -7,7 +7,6 @@ import 'package:amora_ai/core/data/image_repository.dart';
 import 'package:amora_ai/core/theme/app_colors.dart';
 import 'package:amora_ai/core/theme/amora_icon_sizes.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';
-import 'package:amora_ai/core/theme/amora_shadows.dart';
 import 'package:amora_ai/core/theme/amora_text_styles.dart';
 import 'package:amora_ai/core/widgets/amora_profile_image.dart';
 import 'package:amora_ai/core/widgets/amora_filter_chip.dart';
@@ -1337,54 +1336,6 @@ class _VenueCard extends StatelessWidget {
   }
 }
 
-class _CircleAction extends StatelessWidget {
-  const _CircleAction({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-    this.emphasis = false,
-  });
-
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-  final bool emphasis;
-
-  @override
-  Widget build(BuildContext context) {
-    return Tooltip(
-      message: label,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(999),
-        child: Container(
-          width: emphasis ? 62 : 50,
-          height: emphasis ? 62 : 50,
-          decoration: BoxDecoration(
-            color: emphasis ? AppColors.primaryRose : AppColors.surface,
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: emphasis ? AppColors.primaryRose : AppColors.borderGray,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: (emphasis ? AppColors.primaryRose : AppColors.deepWine)
-                    .withValues(alpha: .20),
-                blurRadius: 20,
-                offset: const Offset(0, 10),
-              ),
-            ],
-          ),
-          child: Icon(
-            icon,
-            color: emphasis ? AppColors.surface : AppColors.deepWine,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _IconBubble extends StatelessWidget {
   const _IconBubble({
     required this.icon,
@@ -1408,49 +1359,6 @@ class _IconBubble extends StatelessWidget {
           backgroundColor: AppColors.surface,
           minimumSize: const Size(38, 38),
           padding: EdgeInsets.zero,
-        ),
-      ),
-    );
-  }
-}
-
-class _SolidOverlayBadge extends StatelessWidget {
-  const _SolidOverlayBadge({
-    required this.icon,
-    required this.label,
-    this.strong = false,
-    this.iconColor,
-  });
-
-  final IconData icon;
-  final String label;
-  final bool strong;
-  final Color? iconColor;
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: strong ? AppColors.primaryRose : AppColors.deepWine,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(
-          color: strong ? AppColors.primaryRose : AppColors.deepWine,
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 15, color: iconColor ?? AppColors.surface),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: AmoraTextStyles.labelMedium.copyWith(
-                color: AppColors.surface,
-              ),
-            ),
-          ],
         ),
       ),
     );

@@ -1,6 +1,7 @@
 const { getModels } = require('../models');
 
-// DPDP Notice Details as per Digital Personal Data Protection Act, 2023 & Rules 2025
+// Draft product notice content. Legal accuracy, statutory references, contacts,
+// versions, and effective dates require approval before production publication.
 const PRIVACY_NOTICE = {
   dataFiduciary: {
     name: 'Amoraa Technologies Pvt. Ltd.',
@@ -9,13 +10,14 @@ const PRIVACY_NOTICE = {
     dpoEmail: 'dpo@amoraa.app',
     grievanceOfficer: 'Data Protection Officer, Amoraa'
   },
-  noticeVersion: '2025.1-DPDP',
-  lastUpdated: '2025-01-01T00:00:00.000Z',
+  noticeVersion: 'DRAFT-LEGAL-REVIEW-REQUIRED',
+  lastUpdated: null,
+  legalReviewRequired: true,
   purposes: [
     {
       code: 'TERMS_AND_PRIVACY',
       title: 'Core Platform Account & Authentication',
-      description: 'Necessary for account creation, identity verification, and core service delivery under DPDP Act.',
+      description: 'Account creation, identity verification, security, and core service delivery.',
       isMandatory: true
     },
     {
@@ -43,15 +45,8 @@ const PRIVACY_NOTICE = {
       isMandatory: false
     }
   ],
-  rights: [
-    'Right to itemized notice and explicit consent',
-    'Right to 1-click withdrawal of consent at any time',
-    'Right to access your personal data and summary in machine-readable format',
-    'Right to correction, completion, and updating of personal data',
-    'Right to erasure / account deletion with full cascade purge',
-    'Right to grievance redressal through Data Protection Officer (DPO)',
-    'Right to nominate an individual in event of death or incapacity'
-  ]
+  rights: [],
+  legalDisclaimer: 'Rights, legal bases, contacts, effective dates, and regulatory wording are pending counsel approval.'
 };
 
 // GET /api/v1/privacy/notice
@@ -88,6 +83,8 @@ exports.getConsents = async (req, res, next) => {
 
 // POST /api/v1/privacy/consents/update
 exports.updateConsent = async (req, res, next) => {
+  return exports.legacyPrivacyFlowDisabled(req, res, next);
+  /* istanbul ignore next -- retained only for migration archaeology; unreachable */
   try {
     const { UserConsent } = getModels();
     const userId = req.user.id;
@@ -141,6 +138,8 @@ exports.updateConsent = async (req, res, next) => {
 
 // POST /api/v1/privacy/consents/withdraw (1-Click Withdrawal)
 exports.withdrawConsent = async (req, res, next) => {
+  return exports.legacyPrivacyFlowDisabled(req, res, next);
+  /* istanbul ignore next -- retained only for migration archaeology; unreachable */
   try {
     const { UserConsent } = getModels();
     const userId = req.user.id;
@@ -181,6 +180,8 @@ exports.withdrawConsent = async (req, res, next) => {
 
 // POST /api/v1/privacy/data-export (Right to Access - Section 11)
 exports.requestDataExport = async (req, res, next) => {
+  return exports.legacyPrivacyFlowDisabled(req, res, next);
+  /* istanbul ignore next -- retained only for migration archaeology; unreachable */
   try {
     const { User, OnboardingProfile, IdentityVerification, Subscription, Payment, UserConsent, DataAccessRequest } = getModels();
     const userId = req.user.id;
@@ -240,7 +241,7 @@ exports.requestDataExport = async (req, res, next) => {
 exports.submitGrievance = async (req, res, next) => {
   try {
     const { PrivacyGrievance } = getModels();
-    const userId = req.user ? req.user.id : null;
+    const userId = Number(req.user.sub);
     const { name, email, phoneNumber, category, subject, description } = req.body;
 
     if (!name || !email || !category || !subject || !description) {
@@ -287,7 +288,7 @@ exports.getGrievanceStatus = async (req, res, next) => {
     const { ticketNumber } = req.params;
 
     const grievance = await PrivacyGrievance.findOne({
-      where: { ticketNumber },
+      where: { ticketNumber, userId: Number(req.user.sub) },
       attributes: ['ticketNumber', 'category', 'subject', 'status', 'resolutionNotes', 'createdAt', 'resolvedAt']
     });
 
@@ -303,6 +304,13 @@ exports.getGrievanceStatus = async (req, res, next) => {
     next(err);
   }
 };
+
+exports.legacyPrivacyFlowDisabled = (_req, res) => res.status(410).json({
+  success: false,
+  message: 'This legacy privacy endpoint has been retired. Use /api/privacy-requests.',
+  code: 'LEGACY_PRIVACY_FLOW_RETIRED',
+  errors: [],
+});
 
 // ---------------------------------------------------------------------------
 // ADMIN / DPO CONTROLLERS (For Admin Web DPDP Management)

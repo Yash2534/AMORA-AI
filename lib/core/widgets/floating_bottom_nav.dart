@@ -208,7 +208,6 @@ class _BottomNavButton extends StatefulWidget {
 
 class _BottomNavButtonState extends State<_BottomNavButton> {
   bool _pressed = false;
-  bool _hovered = false;
   bool _focused = false;
 
   @override
@@ -252,7 +251,6 @@ class _BottomNavButtonState extends State<_BottomNavButton> {
               key: ValueKey('bottom-nav-${item.label}'),
               onTap: widget.onTap,
               onHighlightChanged: (value) => setState(() => _pressed = value),
-              onHover: (value) => setState(() => _hovered = value),
               onFocusChange: (value) => setState(() => _focused = value),
               focusColor: Colors.transparent,
               hoverColor: Colors.transparent,

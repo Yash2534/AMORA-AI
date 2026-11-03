@@ -4,8 +4,7 @@ const express = require("express");
 const http = require("http");
 const helmet = require("helmet");
 const cors = require("cors");
-const path = require("path");
-const { initializeDatabase } = require("./config/db");
+const { initializeDatabase, databaseReady } = require("./config/db");
 const authRoutes = require("./routes/authRoutes");
 const onboardingRoutes = require("./routes/onboardingRoutes");
 const discoverRoutes = require("./routes/discoverRoutes");
@@ -30,6 +29,7 @@ const deviceRoutes = require('./routes/deviceRoutes');
 const mePreferenceRoutes = require('./routes/mePreferenceRoutes');
 const locationRoutes = require('./routes/locationRoutes');
 const privacyRoutes = require('./routes/privacyRoutes');
+const mediaRoutes = require('./routes/mediaRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const publicMaintenance = require('./middleware/publicMaintenanceMiddleware');
 const { publicConfiguration } = require('./controllers/platformSettingsController');
@@ -37,9 +37,15 @@ const { attachRealtimeServer } = require("./realtime/realtimeHub");
 const errorHandler = require("./middleware/errorHandler");
 const { port } = require("./config/env");
 const { corsOrigin } = require('./config/originPolicy');
+const { resolveTrustProxy } = require('./config/trustProxy');
 const { logGoogleStatus } = require("./controllers/authController");
+const securityEventMiddleware = require('./middleware/securityEventMiddleware');
+const performanceMetricsMiddleware = require('./middleware/performanceMetricsMiddleware');
+const readiness = require('./services/serviceReadiness');
+const { createGracefulShutdown } = require('./services/gracefulShutdown');
+const { shutdownTimeout } = require('./config/env');
 const app = express();
-app.set("trust proxy", 1);
+app.set("trust proxy", resolveTrustProxy());
 if (process.env.NODE_ENV === "development" && !process.env.CORS_ORIGIN)
   console.warn(
     "[CORS] Development mode allows all origins. Configure CORS_ORIGIN before production.",
@@ -56,17 +62,11 @@ app.use(
     credentials: true,
   }),
 );
+app.use(securityEventMiddleware);
+app.use(performanceMetricsMiddleware);
 app.use(express.json({ limit: "100kb", verify: (req, _res, buffer) => {
   if (req.originalUrl === "/api/payments/webhook") req.rawBody = Buffer.from(buffer);
 } }));
-// Profile uploads are addressed by their stored filename. Cache immutable
-// files at the client/CDN so moving among Discover, matches and conversations
-// does not re-download the same avatar after login.
-app.use('/uploads', express.static(path.join(__dirname, '../uploads'), {
-  maxAge: '7d',
-  immutable: true,
-  etag: true,
-}));
 app.get("/health", (_req, res) =>
   res.json({
     success: true,
@@ -74,6 +74,17 @@ app.get("/health", (_req, res) =>
     data: {},
   }),
 );
+app.get('/health/live', (_req, res) => res.json({ success: true, message: 'Process is alive.', data: {} }));
+app.get('/health/ready', async (_req, res) => {
+  const state = readiness.snapshot();
+  const dbReady = state.initialized && !state.shuttingDown && await databaseReady();
+  const ready = state.initialized && !state.shuttingDown && dbReady;
+  return res.status(ready ? 200 : 503).json({
+    success: ready,
+    message: ready ? 'Service is ready.' : 'Service is not ready.',
+    data: { initialized: state.initialized, database: dbReady, shuttingDown: state.shuttingDown },
+  });
+});
 app.use("/api/auth", authRoutes);
 app.get('/api/app-config', publicConfiguration);
 app.use("/api/onboarding", publicMaintenance, onboardingRoutes);
@@ -100,6 +111,7 @@ app.use('/api/notification-preferences', publicMaintenance, notificationPreferen
 app.use('/api/notifications', publicMaintenance, notificationRoutes);
 app.use('/api/identity-verification', publicMaintenance, identityVerificationRoutes);
 app.use('/api/devices', publicMaintenance, deviceRoutes);
+app.use('/api/media', publicMaintenance, mediaRoutes);
 app.use('/api/v1/privacy', privacyRoutes);
 app.use('/api/privacy', privacyRoutes);
 app.use('/api/admin/v1', adminRoutes);
@@ -115,11 +127,13 @@ app.use((_req, res) =>
 );
 app.use(errorHandler);
 async function startServer() {
+  readiness.reset();
   await initializeDatabase();
   return new Promise((resolve) => {
     logGoogleStatus();
     const server = createHttpServer();
     server.listen(port, () => {
+      readiness.markInitialized(true);
       console.log(`[Server] Amora AI backend listening on port ${port}`);
       resolve(server);
     });
@@ -133,7 +147,11 @@ function createHttpServer() {
 }
 
 if (require.main === module) {
-  startServer().catch(() => process.exit(1));
+  startServer().then((server) => {
+    const shutdown = createGracefulShutdown({ server, timeoutMs: shutdownTimeout, exit: (code) => { process.exitCode = code; } });
+    process.once('SIGTERM', () => shutdown('SIGTERM'));
+    process.once('SIGINT', () => shutdown('SIGINT'));
+  }).catch(() => { process.exitCode = 1; });
 }
 
 module.exports = { app, startServer, createHttpServer };

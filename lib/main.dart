@@ -67,6 +67,9 @@ import 'package:amora_ai/core/widgets/amora_top_notification.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  PaintingBinding.instance.imageCache
+    ..maximumSize = 300
+    ..maximumSizeBytes = 100 * 1024 * 1024;
   await PushNotificationService.instance.initialize();
   await AuthService.instance.initialize();
   await AmoraSession.restore();

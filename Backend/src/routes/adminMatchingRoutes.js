@@ -5,6 +5,7 @@ const { requireAdminPermission } = require('../middleware/adminRbacMiddleware');
 const controller = require('../controllers/adminMatchingController');
 const discover = require('../controllers/adminDiscoverConfigurationController');
 const { actionPermission } = require('../services/adminMatchingService');
+const requireRecentAdminMfa = require('../middleware/adminMfaMiddleware');
 
 const matchId = () => param('matchId').isInt({ min: 1 }).toInt();
 const page = [query('page').optional().isInt({ min: 1, max: 100000 }).toInt(), query('pageSize').optional().isInt({ min: 1, max: 100 }).toInt()];
@@ -22,12 +23,12 @@ const actionAccess = (req, res, next) => {
 };
 
 router.get('/discover/settings', requireAdminPermission('discover.settings.view'), discover.settings);
-router.patch('/discover/settings', [body('expectedVersion').isString().isLength({ min: 10, max: 100 }), body('values').isObject()], validate, requireAdminPermission('discover.settings.manage'), discover.updateSettings);
+router.patch('/discover/settings', [body('expectedVersion').isString().isLength({ min: 10, max: 100 }), body('values').isObject()], validate, requireAdminPermission('discover.settings.manage'), requireRecentAdminMfa, discover.updateSettings);
 router.get('/discover/filter-configuration', [query('includeSensitive').optional().isBoolean()], validate, requireAdminPermission('discover.filters.view'), (req, res, next) => {
   if (req.query.includeSensitive === 'true' && !(req.adminPermissions || new Set()).has('matching.sensitiveFields.view')) return res.status(403).json({ success: false, message: 'Sensitive matching-field permission is required.', code: 'PERMISSION_DENIED', errors: [], meta: { requestId: req.adminCorrelationId || null } });
   return discover.filters(req, res, next);
 });
-router.patch('/discover/filter-configuration/:fieldId', [param('fieldId').matches(/^[a-z][a-z0-9_]{1,79}$/)], validate, requireAdminPermission('discover.filters.manage'), discover.updateFilter);
+router.patch('/discover/filter-configuration/:fieldId', [param('fieldId').matches(/^[a-z][a-z0-9_]{1,79}$/)], validate, requireAdminPermission('discover.filters.manage'), requireRecentAdminMfa, discover.updateFilter);
 
 router.get('/matching/actions', [
   query('type').isIn(['like', 'super_like', 'rose']), ...page,

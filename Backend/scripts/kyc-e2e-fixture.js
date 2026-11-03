@@ -56,7 +56,8 @@ async function setup() {
     if (permissions.length !== reviewerKeys.length) throw new Error('KYC E2E permission catalog is incomplete.');
     await reviewerRole.addPermissions(permissions);
     await viewerRole.addPermissions(permissions.filter((permission) => viewerKeys.includes(permission.key)));
-    const password = 'KycE2e!Admin2026';
+    const password = String(process.env.KYC_E2E_ADMIN_PASSWORD || '');
+    if (password.length < 14) throw new Error('KYC_E2E_ADMIN_PASSWORD must be explicitly supplied with at least 14 characters.');
     const [reviewer, viewer] = await Promise.all([
       models.Administrator.create({
         name: 'KYC E2E Reviewer', email: 'kyc-reviewer@e2e.test', passwordHash: await bcrypt.hash(password, 12),

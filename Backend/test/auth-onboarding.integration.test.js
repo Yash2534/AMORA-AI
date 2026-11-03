@@ -60,10 +60,12 @@ let phoneNumber;
 let email;
 let secondaryUser;
 let secondaryPhoneNumber;
+let firstProtectedPhotoPath;
 let termsDocument;
 let privacyDocument;
 const uploadedFiles = [];
 const legalDocumentIds = [];
+const retiredBaselineDocuments = [];
 const deliveryFailureUserIds = [];
 const deliveryFailureEmails = [];
 const deliveryFailurePhones = [];
@@ -96,11 +98,24 @@ async function request(pathname, {
   return { status: response.status, body: await response.json() };
 }
 
+async function rawRequest(pathname, token = accessToken) {
+  return fetch(`${baseUrl}${pathname}`, { headers: token ? { authorization: `Bearer ${token}` } : {} });
+}
+
 before(async () => {
   await migrate({ databaseName: testDatabase, quiet: true });
   await initializeDatabase();
   models = getModels();
   const now = new Date(Date.now() - 1000);
+  retiredBaselineDocuments.push(...await models.LegalDocumentVersion.findAll({
+    where: {
+      documentKey: ['TERMS_OF_SERVICE', 'PRIVACY_POLICY'],
+      status: 'ACTIVE',
+    },
+  }));
+  for (const document of retiredBaselineDocuments) {
+    await document.update({ status: 'RETIRED', retiredAt: now });
+  }
   termsDocument = await models.LegalDocumentVersion.create({
     documentKey: 'TERMS_OF_SERVICE',
     version: `auth-test-${Date.now()}`,
@@ -156,7 +171,12 @@ after(async () => {
     await models.OtpToken.destroy({ where: { phoneNumber: liveTestPhones } });
     await models.User.destroy({ where: { id: liveTestUserIds } });
   }
-  if (models) await models.LegalDocumentVersion.destroy({ where: { id: legalDocumentIds } });
+  if (models) {
+    await models.LegalDocumentVersion.destroy({ where: { id: legalDocumentIds } });
+    for (const document of retiredBaselineDocuments) {
+      await document.update({ status: 'ACTIVE', retiredAt: null });
+    }
+  }
   try { await getSequelize().close(); } catch (_) {}
   require.cache[otpModule].exports = originalOtpExport;
   require.cache[smsModule].exports = originalSmsExport;
@@ -252,6 +272,16 @@ test('restricted staging test signup skips SMS only for the allowlisted phone an
 });
 
 test('fresh account verifies, completes a persisted profile, reloads it, and logs out', async () => {
+  const preflight = await fetch(`${baseUrl}/api/auth/login`, {
+    method: 'OPTIONS',
+    headers: {
+      origin: process.env.CORS_ORIGIN,
+      'access-control-request-method': 'POST',
+      'access-control-request-headers': 'content-type',
+    },
+  });
+  assert.equal(preflight.status, 204);
+  assert.equal(preflight.headers.get('access-control-allow-origin'), process.env.CORS_ORIGIN);
   const suffix = `${Date.now()}${Math.floor(Math.random() * 1000)}`;
   phoneNumber = `+919${suffix.slice(-9)}`;
   email = `fresh-${suffix}@auth-flow.test`;
@@ -369,11 +399,17 @@ test('fresh account verifies, completes a persisted profile, reloads it, and log
   assert.equal(photos.status, 200);
   const photoUrls = photos.body.data.onboarding.photos;
   assert.equal(photoUrls.length, 2);
+  firstProtectedPhotoPath = `/api/media/profile/${user.id}/${path.basename(photoUrls[0])}`;
   uploadedFiles.push(...photoUrls.map((url) => path.basename(url)));
 
   const completed = await request('/api/onboarding/complete', { method: 'POST' });
   assert.equal(completed.status, 200);
   assert.equal(completed.body.data.onboarding.onboardingCompleted, true);
+  assert.equal((await rawRequest(firstProtectedPhotoPath, null)).status, 401);
+  const ownerMedia = await rawRequest(firstProtectedPhotoPath);
+  assert.equal(ownerMedia.status, 200);
+  assert.equal(ownerMedia.headers.get('cache-control'), 'private, no-store');
+  assert.equal((await rawRequest(`/api/media/profile/${user.id}/..%2Fsecret.png`)).status >= 400, true);
 
   const invalidCompletion = await request('/api/onboarding/profile-completion', {
     method: 'PUT',
@@ -515,8 +551,16 @@ test('fresh account verifies, completes a persisted profile, reloads it, and log
     body: { phoneNumber: secondaryPhoneNumber, code: verificationCode },
   });
   assert.equal(secondaryVerification.status, 200);
+  const secondaryAccessToken = secondaryVerification.body.data.accessToken;
+  assert.equal((await rawRequest(firstProtectedPhotoPath, secondaryAccessToken)).status, 200);
+  await models.Block.create({ blockerUserId: secondaryUser.id, blockedUserId: user.id });
+  assert.equal((await rawRequest(firstProtectedPhotoPath, secondaryAccessToken)).status, 404);
+  await models.Block.destroy({ where: { blockerUserId: secondaryUser.id, blockedUserId: user.id } });
+  await user.update({ accountStatus: 'deactivated', deactivatedAt: new Date() });
+  assert.equal((await rawRequest(firstProtectedPhotoPath, secondaryAccessToken)).status, 404);
+  await user.update({ accountStatus: 'active', deactivatedAt: null });
   const secondaryStatus = await request('/api/onboarding/status', {
-    token: secondaryVerification.body.data.accessToken,
+    token: secondaryAccessToken,
   });
   assert.equal(secondaryStatus.status, 200);
   assert.equal(secondaryStatus.body.data.onboarding.userId, secondaryUser.id);
@@ -676,7 +720,7 @@ test('resend and password-reset delivery failures return controlled errors and c
 
   await models.OtpToken.update(
     { createdAt: new Date(Date.now() - 46_000) },
-    { where: { email, purpose: 'password_reset' } },
+    { where: { email: resendEmail, purpose: 'password_reset' } },
   );
   const beforeFailures = sentEmails.length;
   emailDeliveryFailure = true;
@@ -685,7 +729,7 @@ test('resend and password-reset delivery failures return controlled errors and c
     forgot = await request('/api/auth/forgot-password', {
       method: 'POST',
       token: null,
-      body: { email },
+      body: { email: resendEmail },
       forwardedFor: '198.51.100.21',
     });
   } finally {
@@ -696,7 +740,7 @@ test('resend and password-reset delivery failures return controlled errors and c
   assert.equal(JSON.stringify(forgot.body).includes(verificationCode), false);
   assert.equal(sentEmails.length, beforeFailures);
   const failedResetOtp = await models.OtpToken.findOne({
-    where: { email, purpose: 'password_reset' },
+    where: { email: resendEmail, purpose: 'password_reset' },
     order: [['createdAt', 'DESC']],
   });
   assert.equal(failedResetOtp.consumed, true);

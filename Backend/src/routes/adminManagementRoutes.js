@@ -3,6 +3,7 @@ const { body, param, query } = require('express-validator');
 const controller = require('../controllers/adminManagementController');
 const validate = require('../middleware/validateRequest');
 const { requireAdminPermission, requireAllAdminPermissions } = require('../middleware/adminRbacMiddleware');
+const requireRecentAdminMfa = require('../middleware/adminMfaMiddleware');
 
 const adminId = param('adminId').isInt({ min: 1 }).toInt();
 const roleId = param('roleId').isInt({ min: 1 }).toInt();
@@ -51,7 +52,7 @@ router.post('/administrators', [
   body('timezone').isIn(['Asia/Kolkata']),
   body('sendInvitationNow').isBoolean().toBoolean(),
   body('invitationMessage').optional().trim().isLength({ min: 1, max: 500 }),
-], validate, requireAdminPermission('administrators.create'), controller.createAdministrator);
+], validate, requireAdminPermission('administrators.create'), requireRecentAdminMfa, controller.createAdministrator);
 router.get('/administrators/:adminId', [adminId], validate,
   requireAdminPermission('administrators.details.view'), controller.administrator);
 router.get('/administrators/:adminId/audit-history', [adminId], validate,
@@ -63,23 +64,23 @@ router.get('/administrators/:adminId/assignable-roles', [adminId], validate,
 router.post('/administrators/:adminId/role-change-preview', [adminId, ...roleIds], validate,
   requireAllAdminPermissions('administrators.assignRoles', 'roles.assign'), controller.previewRoles);
 router.patch('/administrators/:adminId/assign-roles', [adminId, ...roleIds], validate,
-  requireAllAdminPermissions('administrators.assignRoles', 'roles.assign'), controller.assignRoles);
+  requireAllAdminPermissions('administrators.assignRoles', 'roles.assign'), requireRecentAdminMfa, controller.assignRoles);
 router.post('/administrators/:adminId/suspend', [
   adminId,
   body('reasonCode').isIn(['security_incident', 'policy_violation', 'access_review', 'employment_change']),
   body('reasonDetail').optional().trim().isLength({ min: 1, max: 500 }),
   body('durationCode').optional().isIn(['indefinite']),
   body('revokeSessions').isBoolean().toBoolean(),
-], validate, requireAdminPermission('administrators.suspend'), controller.suspend);
+], validate, requireAdminPermission('administrators.suspend'), requireRecentAdminMfa, controller.suspend);
 router.post('/administrators/:adminId/reactivate', [adminId], validate,
-  requireAdminPermission('administrators.reactivate'), controller.reactivate);
+  requireAdminPermission('administrators.reactivate'), requireRecentAdminMfa, controller.reactivate);
 router.post('/administrators/:adminId/revoke-sessions', [adminId], validate,
-  requireAdminPermission('administrators.sessions.revoke'), controller.revokeSessions);
+  requireAdminPermission('administrators.sessions.revoke'), requireRecentAdminMfa, controller.revokeSessions);
 router.post('/administrators/bulk-action', [
   body('adminIds').isArray({ min: 1, max: 50 }),
   body('adminIds.*').isInt({ min: 1 }).toInt(),
   body('action').isIn(['reassign_roles', 'update_status', 'revoke_sessions']),
-], validate, requireAdminPermission('administrators.manage'), controller.bulkUpdateAdministrators);
+], validate, requireAdminPermission('administrators.manage'), requireRecentAdminMfa, controller.bulkUpdateAdministrators);
 
 
 router.get('/roles', roleListQuery, validate, requireAdminPermission('roles.view'), controller.roles);
@@ -87,24 +88,24 @@ router.post('/roles', [
   body('key').matches(/^[a-z][a-z0-9_]{2,79}$/),
   body('name').trim().isLength({ min: 2, max: 120 }),
   body('description').optional().trim().isLength({ min: 1, max: 500 }),
-  body('permissionIds').isArray({ min: 1, max: 263 }),
+  body('permissionIds').isArray({ min: 1, max: 300 }),
   body('permissionIds.*').isInt({ min: 1 }).toInt(),
-], validate, requireAllAdminPermissions('roles.manage', 'permissions.matrix.manage'), controller.createRole);
+], validate, requireAllAdminPermissions('roles.manage', 'permissions.matrix.manage'), requireRecentAdminMfa, controller.createRole);
 router.get('/roles/:roleId', [roleId], validate, requireAdminPermission('roles.details.view'), controller.role);
 router.post('/roles/:roleId/permissions/preview', [
   roleId,
-  body('updates').isArray({ min: 1, max: 263 }),
+  body('updates').isArray({ min: 1, max: 300 }),
   body('updates.*.roleId').isInt({ min: 1 }).toInt(),
   body('updates.*.permissionId').isInt({ min: 1 }).toInt(),
   body('updates.*.assigned').isBoolean().toBoolean(),
 ], validate, requireAdminPermission('permissions.matrix.manage'), controller.previewPermissions);
 router.patch('/roles/:roleId/permissions', [
   roleId,
-  body('updates').isArray({ min: 1, max: 263 }),
+  body('updates').isArray({ min: 1, max: 300 }),
   body('updates.*.roleId').isInt({ min: 1 }).toInt(),
   body('updates.*.permissionId').isInt({ min: 1 }).toInt(),
   body('updates.*.assigned').isBoolean().toBoolean(),
-], validate, requireAdminPermission('permissions.matrix.manage'), controller.savePermissions);
+], validate, requireAdminPermission('permissions.matrix.manage'), requireRecentAdminMfa, controller.savePermissions);
 
 router.get('/permissions', permissionQuery, validate,
   requireAdminPermission('permissions.view', 'permissions.catalog.view'), controller.permissions);

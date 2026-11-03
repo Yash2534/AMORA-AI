@@ -1,5 +1,7 @@
 const { getModels } = require('../models');
+const logger = require('../utils/logger');
 const pushProvider = require('./firebasePushProvider');
+const { areUsersBlocked } = require('./accessControlService');
 
 const preferenceField = {
   like: 'newMatches',
@@ -25,7 +27,16 @@ async function conversationIsMuted(userId, conversationId, transaction = null) {
 
 async function deliverPush(notification, preferences) {
   if (!preferences?.pushEnabled) return;
-  const { UserDevice, NotificationDelivery } = getModels();
+  const { UserDevice, NotificationDelivery, Notification: NotificationModel } = getModels();
+  const fresh = await NotificationModel.findByPk(notification.id, { attributes: ['id', 'deletedAt', 'userId', 'actorUserId', 'category', 'type'] });
+  if (!fresh || fresh.deletedAt) return;
+  if (fresh.actorUserId) {
+    if (await areUsersBlocked(fresh.userId, fresh.actorUserId)) return;
+    if (['message', 'messages'].includes(String(fresh.category).toLowerCase()) || fresh.type === 'new_message') {
+      const { activeMatch } = require('./conversationAccessService');
+      if (!(await activeMatch(fresh.userId, fresh.actorUserId))) return;
+    }
+  }
   const devices = await UserDevice.findAll({ where: { userId: notification.userId, active: true } });
   for (const device of devices) {
     const [delivery] = await NotificationDelivery.findOrCreate({
@@ -64,6 +75,11 @@ async function createNotification({ userId, actorUserId = null, type, category, 
   const { Notification, NotificationPreference, User } = getModels();
   const user = await User.findOne({ where: { id: userId, accountStatus: 'active' }, attributes: ['id'], transaction });
   if (!user || await conversationIsMuted(userId, conversationId, transaction)) return null;
+  if (actorUserId && await areUsersBlocked(userId, actorUserId, { transaction })) return null;
+  if (actorUserId && (['message', 'messages'].includes(String(category).trim().toLowerCase()) || type === 'new_message')) {
+    const { activeMatch } = require('./conversationAccessService');
+    if (!(await activeMatch(userId, actorUserId, { transaction }))) return null;
+  }
   const [preferences] = await NotificationPreference.findOrCreate({ where: { userId }, defaults: { userId }, transaction });
   const field = preferenceField[String(category).trim().toLowerCase()];
   if (field && preferences[field] === false) return null;
@@ -75,7 +91,7 @@ async function createNotification({ userId, actorUserId = null, type, category, 
     await notification.update({ actorUserId }, { transaction });
   }
   if (created) {
-    const push = () => deliverPush(notification, preferences).catch((error) => console.error('[Push]', error.message));
+    const push = () => deliverPush(notification, preferences).catch((error) => logger.error('Push delivery failed.', { errorCode: error.code || error.name }));
     if (transaction) transaction.afterCommit(push);
     else await push();
   }

@@ -350,7 +350,7 @@ test('exact 25/50/100 candidate pools use constant bulk query counts', async () 
   console.log(`[AI exact performance] ${JSON.stringify(measurements)}`);
 });
 
-test('all eligible candidates beyond 500 are globally ranked before pagination', async () => {
+test('AI ranking uses a deterministic hard-bounded 500-candidate SQL window', async () => {
   const tag = `GlobalPool${Date.now()}`;
   const members = await models.User.bulkCreate(Array.from({ length: 501 }, (_, index) => ({
     name: `Global ${index}`, email: `${tag}-${index}@ai-matching.test`, phoneNumber: '', authProvider: 'local', isVerified: true, identityVerifiedAt: new Date(), termsAcceptedAt: new Date(), accountStatus: 'active',
@@ -363,7 +363,10 @@ test('all eligible candidates beyond 500 are globally ranked before pagination',
   }));
   await models.OnboardingProfile.bulkCreate(profiles);
   const viewerProfile = await models.OnboardingProfile.findOne({ where: { userId: viewer.id } });
-  const expected = rankCandidates(viewerProfile, profiles.map((profile) => ({ userId: profile.userId, profile, compatibility: scoreCompatibility(viewerProfile, profile) }))).map((row) => String(row.userId));
+  const canonicalWindow = profiles.map((profile) => ({ userId: profile.userId, profile, compatibility: scoreCompatibility(viewerProfile, profile) }))
+    .sort((a, b) => b.compatibility.score - a.compatibility.score || Number(a.userId) - Number(b.userId))
+    .slice(0, 500);
+  const expected = rankCandidates(viewerProfile, canonicalWindow).map((row) => String(row.userId));
   assert.equal(expected[0], String(members[500].id)); // SQL score ties at 50; final candidate has more evidence.
   const actual = [];
   let cursor;
@@ -375,7 +378,8 @@ test('all eligible candidates beyond 500 are globally ranked before pagination',
     cursor = result.body.data.pagination.nextCursor;
   }
   assert.deepEqual(actual, expected);
-  assert.equal(new Set(actual).size, 501);
+  assert.equal(new Set(actual).size, 500);
+  assert.equal(actual.length, 500);
   const repeat = await request(`/api/discover/ai-matches?profession=${tag}&limit=30`, { headers: auth(viewer) });
   assert.deepEqual(ids(repeat.body), expected.slice(0, 30));
 });

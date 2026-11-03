@@ -1,6 +1,7 @@
 const { Op, QueryTypes } = require('sequelize');
 const { getModels } = require('../models');
 const adminFinancialService = require('../services/adminFinancialService');
+const { boundedDateRange } = require('../utils/boundedDateRange');
 
 exports.configuration = async (req, res, next) => {
   try {
@@ -62,8 +63,7 @@ exports.snapshot = async (req, res, next) => {
     const { User, Subscription, Payment, Event, Notification, IdentityVerification } = getModels();
 
     const now = new Date();
-    const from = req.query.from ? new Date(req.query.from) : new Date(now.getTime() - 30 * 86400000);
-    const to = req.query.to ? new Date(req.query.to) : now;
+    const { from, to } = boundedDateRange({ from: req.query.from, to: req.query.to, now });
 
     let metrics = [];
     let charts = [];

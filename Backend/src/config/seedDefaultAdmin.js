@@ -1,17 +1,34 @@
 const bcrypt = require('bcrypt');
 const { getModels } = require('../models');
+const logger = require('../utils/logger');
+
+function developmentSeedConfig(env = process.env) {
+  if (env.NODE_ENV !== 'development') return null;
+  const email = String(env.DEV_ADMIN_SEED_EMAIL || '').trim().toLowerCase();
+  const password = String(env.DEV_ADMIN_SEED_PASSWORD || '');
+  if (!email || !password) return null;
+  if (password.length < 14) {
+    throw new Error('DEV_ADMIN_SEED_PASSWORD must contain at least 14 characters.');
+  }
+  return { email, password };
+}
 
 async function ensureDefaultAdminAccount() {
-  if (process.env.NODE_ENV !== 'development') return;
+  const seed = developmentSeedConfig();
+  if (!seed) {
+    if (process.env.NODE_ENV === 'development') {
+      logger.info('[Database] Development administrator seed skipped: explicit seed configuration is absent.');
+    }
+    return;
+  }
 
   try {
     const { Administrator, AdminRole } = getModels();
-    const email = 'admin@amoraa.com';
-    const password = process.env.SEED_TEST_PASSWORD || 'Amora@TDS2026';
+    const { email, password } = seed;
 
     const superAdminRole = await AdminRole.findOne({ where: { key: 'super_admin' } });
     if (!superAdminRole) {
-      console.warn('[Database] Super Admin role not found. Skipping default admin seed.');
+      logger.warn('[Database] Super Admin role not found. Skipping development administrator seed.');
       return;
     }
 
@@ -26,7 +43,7 @@ async function ensureDefaultAdminAccount() {
         status: 'active',
       });
       await admin.addRole(superAdminRole);
-      console.log(`[Database] Seeded default development administrator: ${email} (Password: ${password})`);
+      logger.info('[Database] Seeded explicit development administrator.', { email });
     } else {
       await admin.update({
         passwordHash,
@@ -38,11 +55,14 @@ async function ensureDefaultAdminAccount() {
       if (!roles.some((r) => r.key === 'super_admin')) {
         await admin.addRole(superAdminRole);
       }
-      console.log(`[Database] Default development administrator verified: ${email} (Password: ${password})`);
+      logger.info('[Database] Verified explicit development administrator.', { email });
     }
   } catch (error) {
-    console.error('[Database] Failed to ensure default admin account:', error.message);
+    logger.error('[Database] Failed to ensure development administrator account.', {
+      errorName: error?.name,
+      errorCode: error?.code,
+    });
   }
 }
 
-module.exports = { ensureDefaultAdminAccount };
+module.exports = { ensureDefaultAdminAccount, developmentSeedConfig };

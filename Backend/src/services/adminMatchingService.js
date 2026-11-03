@@ -3,6 +3,8 @@ const { getModels } = require('../models');
 const { compatibilityFor } = require('./compatibilityService');
 const { pairKeyFor } = require('./conversationAccessService');
 const { recordAudit } = require('./adminAuditService');
+const { boundedDateRange } = require('../utils/boundedDateRange');
+const ADMIN_IN_MEMORY_RESULT_CAP = 1000;
 
 const actionPermission = Object.freeze({
   like: 'matching.likes.view',
@@ -46,10 +48,9 @@ const userInclude = (alias) => {
 
 function dateWhere(query) {
   if (!query.createdFrom && !query.createdTo) return undefined;
-  const value = {};
-  if (query.createdFrom) value[Op.gte] = new Date(query.createdFrom);
-  if (query.createdTo) value[Op.lte] = new Date(`${query.createdTo}T23:59:59.999Z`);
-  return value;
+  const end = query.createdTo ? new Date(`${query.createdTo}T23:59:59.999Z`) : new Date();
+  const range = boundedDateRange({ from: query.createdFrom, to: end, maximumDays: 366 });
+  return { [Op.gte]: range.from, [Op.lte]: range.to };
 }
 
 async function linkedMatch(firstId, secondId) {
@@ -153,7 +154,11 @@ async function actions(request, query) {
     const where = { actionType: query.type };
     if (query.failureCode) where.safeCode = query.failureCode.toUpperCase();
     if (dateWhere(query)) where.createdAt = dateWhere(query);
-    const rows = await getModels().MatchingActionFailure.findAll({ where, order: [['createdAt', direction], ['id', 'DESC']] });
+    const rows = await getModels().MatchingActionFailure.findAll({
+      where,
+      order: [['createdAt', direction], ['id', 'DESC']],
+      limit: ADMIN_IN_MEMORY_RESULT_CAP,
+    });
     let items = await Promise.all(rows.map((row) => failureActionJson(request, row)));
     if (query.search) {
       const needle = query.search.trim().toLocaleLowerCase('en-US');
@@ -194,6 +199,7 @@ async function actions(request, query) {
       include: [userInclude('actor'), userInclude('target')],
       order: [[query.sortBy === 'processedAt' ? 'updatedAt' : 'createdAt', direction], ['id', 'DESC']],
       subQuery: false,
+      limit: ADMIN_IN_MEMORY_RESULT_CAP,
     });
     const filtered = (await Promise.all(rows.map((row) => discoverActionJson(request, row)))).filter((item) => item.result === query.result);
     return { items: filtered.slice((page - 1) * pageSize, page * pageSize), pagination: pageData(page, pageSize, filtered.length) };
@@ -379,7 +385,11 @@ async function matchJson(request, row) {
 }
 
 async function matchRows() {
-  return getModels().Match.findAll({ include: [userInclude('userOne'), userInclude('userTwo')] });
+  return getModels().Match.findAll({
+    include: [userInclude('userOne'), userInclude('userTwo')],
+    order: [['matchedAt', 'DESC'], ['id', 'DESC']],
+    limit: ADMIN_IN_MEMORY_RESULT_CAP,
+  });
 }
 
 async function matches(request, query) {

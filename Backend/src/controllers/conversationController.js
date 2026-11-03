@@ -77,11 +77,14 @@ async function serializeRows(req, rows) {
           : !row.activeMatchId
             ? 'match_unavailable'
             : null;
+    if (availabilityReason) {
+      participant.online = false;
+    }
     return {
       id: String(row.id),
       participant,
       lastMessage,
-      unreadCount: Number(row.unreadCount || 0),
+      unreadCount: availabilityReason ? 0 : Number(row.unreadCount || 0),
       muted: Boolean(row.mutedAt) && (!row.mutedUntil || new Date(row.mutedUntil) > new Date()),
       mutedUntil: row.mutedUntil,
       updatedAt: row.lastMessageAt || row.updatedAt || row.createdAt,

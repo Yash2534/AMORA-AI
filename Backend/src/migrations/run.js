@@ -12,11 +12,19 @@ function migrationFiles() {
     .sort();
 }
 
-function databaseName(value = process.env.DB_NAME) {
+function databaseName(value = process.env.DB_NAME, env = process.env) {
   if (!/^[A-Za-z0-9_]+$/.test(value || '')) {
     throw new Error('DB_NAME may contain only letters, numbers, and underscores.');
   }
-  return value;
+  const name = String(value);
+  const testIntent = env.NODE_ENV === 'test' || Boolean(String(env.TEST_DB_NAME || '').trim());
+  if (testIntent && env.NODE_ENV !== 'test') {
+    throw new Error('Test database operations require NODE_ENV=test.');
+  }
+  if (testIntent && !/test/i.test(name)) {
+    throw new Error('Test database operations require a database name containing "test".');
+  }
+  return name;
 }
 
 async function ensureDatabase(name) {
@@ -133,4 +141,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createSequelize, migrate, undo, status, migrationFiles };
+module.exports = { createSequelize, migrate, undo, status, migrationFiles, databaseName };

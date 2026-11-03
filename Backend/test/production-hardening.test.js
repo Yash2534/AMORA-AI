@@ -7,7 +7,7 @@ const { _json } = require('../src/controllers/roseController');
 const { validateEnvironment } = require('../src/config/env');
 const { sendAdminPasswordReset } = require('../src/services/adminPasswordMailer');
 
-const productionEnv = () => ({ NODE_ENV: 'production', DB_HOST: 'db', DB_PORT: '3306', DB_NAME: 'db', DB_USER: 'user', JWT_SECRET: 'a'.repeat(32), JWT_REFRESH_SECRET: 'b'.repeat(32), ADMIN_JWT_SECRET: 'c'.repeat(32), ADMIN_MFA_ENCRYPTION_KEY: 'd'.repeat(64), EMAIL_HOST: 'smtp.example', EMAIL_USER: 'user', EMAIL_PASS: 'pass' });
+const productionEnv = () => ({ NODE_ENV: 'production', DB_HOST: 'db', DB_PORT: '3306', DB_NAME: 'db', DB_USER: 'user', DB_PASS: 'explicit-production-secret', DB_SSL_CA_FILE: '/secure/runtime/database-ca.pem', JWT_SECRET: 'a'.repeat(32), JWT_REFRESH_SECRET: 'b'.repeat(32), ADMIN_JWT_SECRET: 'c'.repeat(32), ADMIN_MFA_ENCRYPTION_KEY: 'd'.repeat(64), EMAIL_HOST: 'smtp.example', EMAIL_USER: 'user', EMAIL_PASS: 'pass' });
 
 test('production startup reports unavailable SMTP without blocking non-email features', () => {
   assert.equal(validateEnvironment(productionEnv()).smtpConfigured, true);

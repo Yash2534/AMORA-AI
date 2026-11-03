@@ -1,4 +1,3 @@
-import 'package:amora_ai/core/branding/amora_brand_assets.dart';
 import 'package:amora_ai/core/branding/amora_logo.dart';
 import 'package:amora_ai/core/theme/amora_shadows.dart';
 import 'package:amora_ai/core/theme/amora_spacing.dart';

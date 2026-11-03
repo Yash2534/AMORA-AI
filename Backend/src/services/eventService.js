@@ -150,7 +150,7 @@ function serializeEvent(req, event) {
           ? plain.organizer.OnboardingProfile.photos
           : [];
         const primaryPhotoIndex = Number(plain.organizer.OnboardingProfile?.primaryPhotoIndex || 0);
-        return publicUrl(req, photos[primaryPhotoIndex] || photos[0] || null);
+        return publicUrl(req, photos[primaryPhotoIndex] || photos[0] || null, plain.organizer.id);
       })(),
     } : null,
     participation,

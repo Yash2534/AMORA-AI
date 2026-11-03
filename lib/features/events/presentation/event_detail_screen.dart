@@ -499,6 +499,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                 try {
                   await _controller.cancelRemote(event);
                 } catch (error) {
+                  if (!mounted) return;
                   showAmoraSnackBar(
                     context,
                     message: userFacingErrorMessage(

@@ -8,10 +8,30 @@ const {
   ACCOUNT_DELETION_REASON_CODES,
   ACCOUNT_DELETION_REASON_TEXT_MAX_LENGTH,
 } = require('../constants/accountDeletionReasons');
+const { normalizeIndianMobile } = require('../utils/phoneNumber');
+
+const providerReauthentication = body().custom((_value, { req }) => {
+  const password = typeof req.body.password === 'string' && req.body.password.length > 0;
+  const providerIdToken = typeof req.body.providerIdToken === 'string' && req.body.providerIdToken.trim().length > 0;
+  if (!password && !providerIdToken) throw new Error('Current password or provider reauthentication is required.');
+  return true;
+});
+const newPhoneNumber = body('phoneNumber')
+  .customSanitizer(normalizeIndianMobile)
+  .matches(/^\+91[6-9]\d{9}$/)
+  .withMessage('Phone number must be a valid Indian mobile number.');
 
 router.post('/deactivate', requireAuth, accountDeletionReauthLimiter, [
-  body('password').isString().notEmpty().withMessage('Current password is required.'),
+  providerReauthentication,
 ], validate, controller.deactivate);
+router.post('/phone-change/request', requireAuth, accountDeletionReauthLimiter, [
+  newPhoneNumber,
+  providerReauthentication,
+], validate, controller.requestPhoneChange);
+router.post('/phone-change/confirm', requireAuth, accountDeletionReauthLimiter, [
+  newPhoneNumber,
+  body('code').isString().trim().matches(/^\d{6}$/).withMessage('code must contain six digits.'),
+], validate, controller.confirmPhoneChange);
 router.get('/delete/methods', requireAuth, controller.deletionMethods);
 router.post('/delete/send-otp', requireAuth, accountDeletionOtpLimiter, [
   body('channel').isIn(['EMAIL', 'PHONE']).withMessage('channel must be EMAIL or PHONE.'),

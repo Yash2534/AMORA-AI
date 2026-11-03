@@ -1,5 +1,6 @@
 const { body } = require('express-validator');
 const { COMMUNICATION_STYLE_VALUES } = require('../constants/communicationStyles');
+const { assertAdultBirthDate } = require('../policies/agePolicy');
 
 const allowed = new Set([
   'name', 'birthdate', 'gender', 'customGender', 'bio', 'profession', 'company', 'education',
@@ -32,14 +33,7 @@ const profileUpdateValidation = [
     return true;
   }),
   string('name', 100).notEmpty().withMessage('name cannot be empty.'),
-  body('birthdate').optional().isISO8601({ strict: true }).withMessage('birthdate must be a valid ISO date.').bail().custom((value) => {
-    const birthDate = new Date(`${value}T00:00:00.000Z`);
-    const cutoff = new Date();
-    cutoff.setUTCHours(0, 0, 0, 0);
-    cutoff.setUTCFullYear(cutoff.getUTCFullYear() - 18);
-    if (birthDate > cutoff) throw new Error('You must be at least 18 years old.');
-    return true;
-  }),
+  body('birthdate').optional().custom((value) => assertAdultBirthDate(value)),
   body('gender').optional().isIn(['Male', 'Female', 'Other']).withMessage('gender must be Male, Female, or Other.'),
   string('customGender', 100),
   string('bio', 2000),

@@ -63,6 +63,7 @@ const createdUserIds = [];
 const createdEmails = [];
 const createdPhones = [];
 const legalDocumentIds = [];
+const retiredBaselineDocuments = [];
 const documentHash = (value) => crypto.createHash('sha256').update(value).digest('hex');
 const signupLegalDocuments = () => [
   { documentKey: 'TERMS_OF_SERVICE', documentVersionId: termsDocument.id },
@@ -106,6 +107,12 @@ before(async () => {
   await initializeDatabase();
   models = getModels();
   const now = new Date(Date.now() - 1000);
+  retiredBaselineDocuments.push(...await models.LegalDocumentVersion.findAll({
+    where: { documentKey: ['TERMS_OF_SERVICE', 'PRIVACY_POLICY'], status: 'ACTIVE' },
+  }));
+  for (const document of retiredBaselineDocuments) {
+    await document.update({ status: 'RETIRED', retiredAt: now });
+  }
   termsDocument = await models.LegalDocumentVersion.create({
     documentKey: 'TERMS_OF_SERVICE',
     version: `fixed-otp-test-${Date.now()}`,
@@ -136,6 +143,9 @@ after(async () => {
     await models.OtpToken.destroy({ where: { email: createdEmails } });
     await models.User.destroy({ where: { id: createdUserIds } });
     await models.LegalDocumentVersion.destroy({ where: { id: legalDocumentIds } });
+    for (const document of retiredBaselineDocuments) {
+      await document.update({ status: 'ACTIVE', retiredAt: null });
+    }
   }
   if (server) {
     server.closeIdleConnections?.();

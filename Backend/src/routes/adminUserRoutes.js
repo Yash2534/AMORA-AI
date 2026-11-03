@@ -59,16 +59,16 @@ router.put('/:userId/notes/:noteId', [
 ], validate, requireAdminPermission('users.notes.manage'), controller.editNote);
 router.delete('/:userId/notes/:noteId', [userId(), noteId()], validate, requireAdminPermission('users.notes.manage'), controller.deleteNote);
 router.get('/:userId/timeline', [userId(), ...page()], validate, requireAdminPermission('users.timeline.view'), controller.timeline);
-router.post('/:userId/suspend', [userId(), body('reason').optional().isString().trim().isLength({ max: 500 })], validate, requireAdminPermission('users.suspend'), controller.suspend);
-router.post('/:userId/deactivate', [userId(), body('reason').optional().isString().trim().isLength({ max: 500 })], validate, requireAdminPermission('users.manage'), controller.deactivate);
-router.post('/:userId/activate', [userId()], validate, requireAdminPermission('users.activate'), controller.activate);
-router.post('/:userId/force-logout', [userId()], validate, requireAdminPermission('users.forceLogout'), controller.forceLogout);
+router.post('/:userId/suspend', [userId(), body('reason').optional().isString().trim().isLength({ max: 500 })], validate, requireAdminPermission('users.suspend'), requireRecentAdminMfa, controller.suspend);
+router.post('/:userId/deactivate', [userId(), body('reason').optional().isString().trim().isLength({ max: 500 })], validate, requireAdminPermission('users.manage'), requireRecentAdminMfa, controller.deactivate);
+router.post('/:userId/activate', [userId()], validate, requireAdminPermission('users.activate'), requireRecentAdminMfa, controller.activate);
+router.post('/:userId/force-logout', [userId()], validate, requireAdminPermission('users.forceLogout'), requireRecentAdminMfa, controller.forceLogout);
 router.delete('/:userId', [
   userId(),
   body('reason').isIn(deletionReasons).withMessage('A valid deletion reason is required.'),
   body('details').optional({ nullable: true }).isString().trim().isLength({ max: 240 }),
   body('details').if(body('reason').equals('other')).notEmpty().withMessage('Details are required when the reason is other.'),
-], validate, requireRecentAdminMfa, requireAdminPermission('users.delete'), controller.remove);
-router.post('/:userId/reset-password', [userId()], validate, requireRecentAdminMfa, requireAdminPermission('users.resetPassword'), controller.resetPassword);
+], validate, requireAdminPermission('users.delete'), requireRecentAdminMfa, controller.remove);
+router.post('/:userId/reset-password', [userId()], validate, requireAdminPermission('users.resetPassword'), requireRecentAdminMfa, controller.resetPassword);
 
 module.exports = router;

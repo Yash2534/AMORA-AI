@@ -199,11 +199,18 @@ class PhaseTwoApiService {
     return ((_data(response)['report'] as Map)['id']).toString();
   }
 
-  Future<void> deactivate(String password) async => _auth.authenticatedRequest(
-    'POST',
-    '/api/account/deactivate',
-    body: {'password': password},
-  );
+  Future<void> deactivate(String? password) async {
+    final googleAccount = _auth.currentUser?.authProvider == 'google';
+    final body = googleAccount
+        ? {'providerIdToken': await _auth.googleIdTokenForStepUp()}
+        : {'password': password ?? ''};
+    await _auth.authenticatedRequest(
+      'POST',
+      '/api/account/deactivate',
+      body: body,
+    );
+  }
+
   Future<List<AccountDeletionMethod>> accountDeletionMethods() async {
     final response = await _auth.authenticatedRequest(
       'GET',

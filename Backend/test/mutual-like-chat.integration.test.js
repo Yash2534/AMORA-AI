@@ -51,14 +51,17 @@ async function createUser(key) {
   });
   userIds.push(user.id);
   users[key] = user;
+  const isMale = ['b', 'd'].includes(key);
   await models.OnboardingProfile.create({
     userId: user.id,
     birthDate: '1997-05-12',
-    gender: 'Female',
-    interestedIn: ['Male'],
+    gender: isMale ? 'Male' : 'Female',
+    interestedIn: isMale ? ['Female'] : ['Male'],
     relationshipGoals: ['long_term'],
     city: 'Ahmedabad',
     photos: ['/uploads/mutual-chat.jpg', '/uploads/mutual-chat-two.jpg'],
+    matchLatitude: 23.0225,
+    matchLongitude: 72.5714,
     stage: 'complete',
     onboardingCompleted: true,
   });

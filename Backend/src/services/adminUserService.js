@@ -404,7 +404,7 @@ async function activate(request, userId) {
 }
 
 async function deactivate(request, userId, reason) {
-  const { User, RefreshToken } = getModels();
+  const { User, RefreshToken, UserDevice } = getModels();
   return User.sequelize.transaction(async (transaction) => {
     const user = await User.findByPk(userId, { transaction, lock: transaction.LOCK.UPDATE });
     if (!user) return null;
@@ -422,6 +422,7 @@ async function deactivate(request, userId, reason) {
         tokenVersion: Number(user.tokenVersion || 0) + 1,
       }, { transaction });
       await RefreshToken.destroy({ where: { userId }, transaction });
+      await UserDevice.destroy({ where: { userId }, transaction });
     }
     await recordAudit({
       request,
@@ -573,6 +574,7 @@ async function requestPasswordReset(request, userId) {
     const error = new Error('Password reset delivery failed. No reset code remains active.');
     error.status = 503;
     error.code = 'RESET_DELIVERY_FAILED';
+    error.expose = true;
     error.cause = cause;
     throw error;
   }

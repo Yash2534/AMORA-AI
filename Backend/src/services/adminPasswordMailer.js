@@ -1,4 +1,5 @@
 const { getTransport } = require('../config/mailer');
+const logger = require('../utils/logger');
 
 const escapeHtml = (value) => String(value)
   .replaceAll('&', '&amp;')
@@ -18,10 +19,7 @@ async function sendAdminPasswordReset({ email, token, expiresAt }) {
   url.searchParams.set('token', token);
   const transport = getTransport();
   if (!transport) {
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`[DEV MODE] Administrator password reset for ${email}: ${url.toString()} (expires ${expiresAt.toISOString()})`);
-      return;
-    }
+    logger.warn('[Admin auth] Password-reset delivery unavailable because SMTP is not configured.');
     throw new Error('Email is not configured for administrator password recovery.');
   }
   const safeUrl = escapeHtml(url.toString());

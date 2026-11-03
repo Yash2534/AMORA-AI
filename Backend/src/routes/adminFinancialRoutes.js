@@ -3,6 +3,7 @@ const { param, query } = require('express-validator');
 const validate = require('../middleware/validateRequest');
 const { requireAdminPermission } = require('../middleware/adminRbacMiddleware');
 const { failure } = require('../admin/responses');
+const requireRecentAdminMfa = require('../middleware/adminMfaMiddleware');
 const controller = require('../controllers/adminFinancialController');
 
 const page = () => [
@@ -48,10 +49,10 @@ router.get('/membership-plans/:planId', [
   param('planId').isString().trim().matches(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/),
 ], validate, requireAdminPermission('membership.plans.view'), controller.plan);
 
-router.post('/membership-plans', requireAdminPermission('membership.plans.create'), controller.createPlan);
-router.put('/membership-plans/:planId', requireAdminPermission('membership.plans.update'), controller.updatePlan);
-router.patch('/membership-plans/:planId/status', requirePlanStatusPermission, controller.updatePlanStatus);
-router.delete('/membership-plans/:planId', requireAdminPermission('membership.plans.delete'), controller.deletePlan);
+router.post('/membership-plans', requireAdminPermission('membership.plans.create'), requireRecentAdminMfa, controller.createPlan);
+router.put('/membership-plans/:planId', requireAdminPermission('membership.plans.update'), requireRecentAdminMfa, controller.updatePlan);
+router.patch('/membership-plans/:planId/status', requirePlanStatusPermission, requireRecentAdminMfa, controller.updatePlanStatus);
+router.delete('/membership-plans/:planId', requireAdminPermission('membership.plans.delete'), requireRecentAdminMfa, controller.deletePlan);
 
 router.get('/payment-transactions', [
   ...common(),
@@ -76,12 +77,12 @@ router.get('/membership-offers/:offerId', [
   param('offerId').isString().trim(),
 ], validate, requireAdminPermission('membership.offers.view'), controller.offer);
 
-router.post('/membership-offers', requireAdminPermission('membership.offers.create'), controller.createOffer);
-router.patch('/membership-offers/:offerId', requireAdminPermission('membership.offers.update'), controller.updateOffer);
-router.put('/membership-offers/:offerId', requireAdminPermission('membership.offers.update'), controller.updateOffer);
-router.post('/membership-offers/:offerId/activate', requireAdminPermission('membership.offers.activate'), controller.activateOffer);
-router.post('/membership-offers/:offerId/deactivate', requireAdminPermission('membership.offers.update'), controller.deactivateOffer);
-router.delete('/membership-offers/:offerId', requireAdminPermission('membership.offers.delete'), controller.deleteOffer);
+router.post('/membership-offers', requireAdminPermission('membership.offers.create'), requireRecentAdminMfa, controller.createOffer);
+router.patch('/membership-offers/:offerId', requireAdminPermission('membership.offers.update'), requireRecentAdminMfa, controller.updateOffer);
+router.put('/membership-offers/:offerId', requireAdminPermission('membership.offers.update'), requireRecentAdminMfa, controller.updateOffer);
+router.post('/membership-offers/:offerId/activate', requireAdminPermission('membership.offers.activate'), requireRecentAdminMfa, controller.activateOffer);
+router.post('/membership-offers/:offerId/deactivate', requireAdminPermission('membership.offers.update'), requireRecentAdminMfa, controller.deactivateOffer);
+router.delete('/membership-offers/:offerId', requireAdminPermission('membership.offers.delete'), requireRecentAdminMfa, controller.deleteOffer);
 
 router.get('/membership-subscriptions', [
   ...common(),
@@ -119,11 +120,17 @@ router.get('/analytics/revenue/trace/:targetId', [
 
 router.get('/finance/reconciliation', [
   ...page(),
+  query('range').optional().isIn(['today', '7d', '30d', '90d']),
+  query('from').optional().isISO8601(),
+  query('to').optional().isISO8601(),
+  query('provider').optional().isString().trim().isLength({ min: 1, max: 32 }),
+  query('status').optional().isIn(['MATCHED', 'MISMATCH', 'MISSING', 'PENDING']),
+  query('search').optional().isString().trim().isLength({ min: 1, max: 160 }),
 ], validate, requireAdminPermission('payments.audit.view'), controller.reconciliation);
 
 router.post('/finance/reconciliation/:transactionId/investigate', [
   param('transactionId').isString().trim(),
-], validate, requireAdminPermission('payments.audit.view'), controller.investigateMismatch);
+], validate, requireAdminPermission('payments.audit.view'), requireRecentAdminMfa, controller.investigateMismatch);
 
 module.exports = router;
 

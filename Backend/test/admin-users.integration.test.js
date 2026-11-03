@@ -218,6 +218,22 @@ test('admin user reads and lifecycle mutations commit to the client-authoritativ
   });
   assert.equal(login.status, 200);
   const adminToken = login.body.data.accessToken;
+  const enrollment = await request('/api/admin/v1/auth/mfa/enroll', {
+    method: 'POST', accessToken: adminToken,
+  });
+  assert.equal(enrollment.status, 201);
+  const confirmed = await request('/api/admin/v1/auth/mfa/confirm', {
+    method: 'POST',
+    accessToken: adminToken,
+    body: { code: adminMfaService.totpFor(enrollment.body.data.secret, Math.floor(Date.now() / 30000)) },
+  });
+  assert.equal(confirmed.status, 200);
+  const stepUp = await request('/api/admin/v1/auth/mfa/step-up', {
+    method: 'POST',
+    accessToken: adminToken,
+    body: { recoveryCode: confirmed.body.data.recoveryCodes[0] },
+  });
+  assert.equal(stepUp.status, 200);
 
   const users = await request(`/api/admin/v1/users?search=${consumer.id}&page=1&pageSize=20`, {
     accessToken: adminToken,
@@ -582,23 +598,6 @@ test('admin user reads and lifecycle mutations commit to the client-authoritativ
   assert.equal(await RefreshToken.count({ where: { userId: consumer.id } }), 0);
   const afterForceLogout = await request('/api/auth/me', { accessToken: currentClientToken });
   assert.equal(afterForceLogout.status, 401);
-
-  const enrollment = await request('/api/admin/v1/auth/mfa/enroll', {
-    method: 'POST', accessToken: adminToken,
-  });
-  assert.equal(enrollment.status, 201);
-  const confirmed = await request('/api/admin/v1/auth/mfa/confirm', {
-    method: 'POST',
-    accessToken: adminToken,
-    body: { code: adminMfaService.totpFor(enrollment.body.data.secret, Math.floor(Date.now() / 30000)) },
-  });
-  assert.equal(confirmed.status, 200);
-  const stepUp = await request('/api/admin/v1/auth/mfa/step-up', {
-    method: 'POST',
-    accessToken: adminToken,
-    body: { recoveryCode: confirmed.body.data.recoveryCodes[0] },
-  });
-  assert.equal(stepUp.status, 200);
 
   const reset = await request(`/api/admin/v1/users/${consumer.id}/reset-password`, {
     method: 'POST', accessToken: adminToken,

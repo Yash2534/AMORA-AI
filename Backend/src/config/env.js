@@ -11,10 +11,24 @@ const required = [
 const { resolveOtpTestConfig } = require('./otpTestConfig');
 const { resolveLiveTestOtpConfig } = require('./liveTestOtpConfig');
 const { configuredOrigins } = require('./originPolicy');
+const {
+  databasePoolConfig,
+  migrationStartupMode,
+  aiCandidateWindow,
+  shutdownTimeoutMs,
+  databaseQueryTimeoutMs,
+  requireDistributedRateLimit,
+} = require('./scalability');
 
 function validateEnvironment(env = process.env) {
   const otp = resolveOtpTestConfig(env);
   const liveTestOtp = resolveLiveTestOtpConfig(env);
+  const pool = databasePoolConfig(env);
+  const migrationMode = migrationStartupMode(env);
+  const candidateWindow = aiCandidateWindow(env);
+  const shutdownTimeout = shutdownTimeoutMs(env);
+  const queryTimeout = databaseQueryTimeoutMs(env);
+  const distributedRateLimitRequired = requireDistributedRateLimit(env);
 
   // Required backend configuration.
   for (const key of required) {
@@ -76,6 +90,11 @@ function validateEnvironment(env = process.env) {
   // ---------------------------------------------------------------------------
 
   if (env.NODE_ENV === 'production') {
+    for (const key of ['DB_PASS', 'DB_SSL_CA_FILE']) {
+      if (!String(env[key] || '').trim()) {
+        throw new Error(`Production requires ${key}.`);
+      }
+    }
     const mfaKey = String(
       env.ADMIN_MFA_ENCRYPTION_KEY || '',
     ).trim();
@@ -110,6 +129,9 @@ function validateEnvironment(env = process.env) {
     }
 
     configuredOrigins(env);
+    if (distributedRateLimitRequired) {
+      throw new Error('A distributed rate-limit store is required but no shared-store adapter is installed.');
+    }
   }
 
   if (liveTestOtp.enabled) {
@@ -122,6 +144,12 @@ function validateEnvironment(env = process.env) {
     smtpConfigured: smtp,
     otpTestConfig: otp,
     liveTestOtp,
+    pool,
+    migrationMode,
+    candidateWindow,
+    shutdownTimeout,
+    queryTimeout,
+    distributedRateLimitRequired,
   };
 }
 
@@ -129,6 +157,12 @@ const {
   smtpConfigured,
   otpTestConfig,
   liveTestOtp,
+  pool,
+  migrationMode,
+  candidateWindow,
+  shutdownTimeout,
+  queryTimeout,
+  distributedRateLimitRequired,
 } = validateEnvironment(process.env);
 
 module.exports = {
@@ -136,5 +170,11 @@ module.exports = {
   smtpConfigured,
   otpTestConfig,
   liveTestOtp,
+  pool,
+  migrationMode,
+  candidateWindow,
+  shutdownTimeout,
+  queryTimeout,
+  distributedRateLimitRequired,
   validateEnvironment,
 };

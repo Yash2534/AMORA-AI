@@ -43,7 +43,7 @@ class LogoutAccountScreen extends StatelessWidget {
   }
 }
 
-typedef AccountDeactivationCallback = Future<bool> Function(String password);
+typedef AccountDeactivationCallback = Future<bool> Function(String? password);
 
 class DeactivateAccountScreen extends StatefulWidget {
   const DeactivateAccountScreen({super.key, this.onDeactivate});
@@ -62,6 +62,9 @@ class _DeactivateAccountScreenState extends State<DeactivateAccountScreen> {
   bool _passwordStep = false;
   bool _submitting = false;
   String? _error;
+
+  bool get _usesGoogle =>
+      AuthService.instance.currentUser?.authProvider == 'google';
 
   @override
   void dispose() {
@@ -101,7 +104,7 @@ class _DeactivateAccountScreenState extends State<DeactivateAccountScreen> {
 
   Future<void> _deactivate() async {
     if (_submitting) return;
-    if (_passwordController.text.isEmpty) {
+    if (!_usesGoogle && _passwordController.text.isEmpty) {
       setState(() => _error = 'Password is required.');
       return;
     }
@@ -119,7 +122,9 @@ class _DeactivateAccountScreenState extends State<DeactivateAccountScreen> {
     });
     var deactivated = false;
     try {
-      deactivated = await callback(_passwordController.text);
+      deactivated = await callback(
+        _usesGoogle ? null : _passwordController.text,
+      );
     } on AuthException catch (error) {
       if (!mounted) return;
       setState(() {
@@ -166,7 +171,7 @@ class _DeactivateAccountScreenState extends State<DeactivateAccountScreen> {
       action: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (_passwordStep) ...[
+          if (_passwordStep && !_usesGoogle) ...[
             Text(
               'Confirm your password',
               style: AmoraTextStyles.titleMedium.copyWith(
@@ -195,6 +200,22 @@ class _DeactivateAccountScreenState extends State<DeactivateAccountScreen> {
               ),
             ),
           ],
+          if (_passwordStep && _usesGoogle) ...[
+            Text(
+              'Confirm with Google',
+              style: AmoraTextStyles.titleMedium.copyWith(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: AmoraSpacing.space8),
+            Text(
+              'Sign in with the Google account linked to AMORAA to deactivate your account.',
+              style: AmoraTextStyles.bodyMedium.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
           if (_error != null) _AccountActionError(message: _error!),
           const SizedBox(height: AmoraSpacing.space12),
           Semantics(
@@ -202,7 +223,9 @@ class _DeactivateAccountScreenState extends State<DeactivateAccountScreen> {
             label: 'Deactivate AMORAA account',
             child: AppPrimaryButton(
               key: const ValueKey('confirm-deactivate-account'),
-              label: 'Deactivate Account',
+              label: _passwordStep && _usesGoogle
+                  ? 'Continue with Google'
+                  : 'Deactivate Account',
               icon: Icons.pause_circle_outline_rounded,
               isLoading: _submitting,
               variant: AppPrimaryButtonVariant.outlined,

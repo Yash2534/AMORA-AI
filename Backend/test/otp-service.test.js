@@ -244,6 +244,33 @@ test('restricted staging test OTP still requires a valid, unused challenge', asy
   assert.equal(smsDeliveries, 1);
 });
 
+test('restricted staging test OTP cannot bypass a missing challenge, wrong purpose, or exhausted attempts', async () => {
+  setEnvironment({ nodeEnv: 'staging', enabled: 'false', fixedOtp: '', skipDelivery: 'false' });
+  process.env.LIVE_TEST_OTP_ENABLED = 'true';
+  process.env.LIVE_TEST_OTP_VALUE = '111111';
+  process.env.LIVE_TEST_OTP_PHONE_ALLOWLIST = '+919876543210';
+  process.env.LIVE_TEST_OTP_EXPIRES_AT = new Date(Date.now() + 60_000).toISOString();
+
+  const missing = await verifyPhoneOtp('+919876543210', '111111', 'account_verification');
+  assert.equal(missing.error[0], 'OTP_EXPIRED');
+
+  await makeChallenge({ phoneNumber: '+919876543210', purpose: 'forgot_password' });
+  const wrongPurpose = await verifyPhoneOtp('+919876543210', '111111', 'account_verification');
+  assert.equal(wrongPurpose.error[0], 'OTP_EXPIRED');
+  assert.equal(challenge.consumed, false);
+
+  const exhausted = await makeChallenge({ phoneNumber: '+919876543210', purpose: 'account_verification', attempts: 5 });
+  const limited = await verifyPhoneOtp('+919876543210', '111111', 'account_verification');
+  assert.equal(limited.error[0], 'OTP_MAX_ATTEMPTS');
+  assert.equal(exhausted.consumed, false);
+
+  process.env.LIVE_TEST_OTP_EXPIRES_AT = new Date(Date.now() - 1_000).toISOString();
+  const active = await makeChallenge({ phoneNumber: '+919876543210', purpose: 'account_verification' });
+  const elapsedConfig = await verifyPhoneOtp('+919876543210', '111111', 'account_verification');
+  assert.equal(elapsedConfig.error[0], 'OTP_INVALID');
+  assert.equal(active.attempts, 1);
+});
+
 test('test delivery skipping preserves success without calling SMS or email providers', async () => {
   const expiresAt = new Date(Date.now() + 60_000);
   const smsResult = await deliverPhoneOtp(

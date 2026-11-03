@@ -110,8 +110,8 @@ test('GET returns the complete editable canonical profile without private fields
   assert.equal(profile.birthdate, '03/04/1997');
   assert.equal(profile.customGender, '');
   assert.deepEqual(profile.photos, [
-    `${baseUrl}/uploads/own-one.jpg`,
-    `${baseUrl}/uploads/own-two.jpg`,
+    `${baseUrl}/api/media/profile/${owner.id}/own-one.jpg`,
+    `${baseUrl}/api/media/profile/${owner.id}/own-two.jpg`,
   ]);
   assert.deepEqual(profile.prompts, { 'A perfect day': 'Coffee and a long walk.' });
   assert.deepEqual(profile.interests, ['Music', 'Coffee', 'Travel', 'Reading', 'Fitness']);

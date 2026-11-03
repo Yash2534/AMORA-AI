@@ -67,7 +67,7 @@ function details(entry, granted, include) {
   const result = { event, reason: raw.reason || null, partialSections: [] };
 
   if (wants('changes')) {
-    if (granted.has('auditLogs.changes.view') || true) {
+    if (granted.has('auditLogs.changes.view')) {
       const allKeys = new Set([...Object.keys(raw.oldValue || {}), ...Object.keys(raw.newValue || {})]);
       result.changes = Array.from(allKeys).map((path, index) => ({
         path,
@@ -81,7 +81,7 @@ function details(entry, granted, include) {
   }
 
   if (wants('requestContext')) {
-    if (granted.has('auditLogs.requestContext.view') || true) {
+    if (granted.has('auditLogs.requestContext.view')) {
       result.requestContext = {
         requestId: raw.correlationId || 'N/A',
         correlationId: raw.correlationId || 'N/A',
@@ -97,7 +97,7 @@ function details(entry, granted, include) {
   }
 
   if (wants('metadata')) {
-    if (granted.has('auditLogs.metadata.view') || true) {
+    if (granted.has('auditLogs.metadata.view')) {
       result.metadata = raw.metadata || null;
     } else result.partialSections.push('metadata');
   }
@@ -222,10 +222,25 @@ exports.auditMetadata = async (_req, res, next) => {
 exports.auditLog = async (req, res, next) => {
   try {
     const { AdminAuditLog, Administrator } = getModels();
-    const entry = await AdminAuditLog.findByPk(req.params.auditId, { include: [{ model: Administrator, as: 'administrator', attributes: ['id', 'name', 'email'], required: false }] });
+    const granted = req.adminPermissions || new Set();
+    const canViewChanges = granted.has('auditLogs.changes.view');
+    const canViewMetadata = granted.has('auditLogs.metadata.view');
+    const canViewContext = granted.has('auditLogs.requestContext.view');
+    const canViewActor = granted.has('auditLogs.actorDetails.view');
+    const entry = await AdminAuditLog.findByPk(req.params.auditId, {
+      attributes: [
+        'id', 'administratorId', 'action', 'targetType', 'targetId', 'reason', 'createdAt',
+        ...(canViewChanges ? ['oldValue', 'newValue'] : []),
+        ...(canViewMetadata ? ['metadata'] : []),
+        ...(canViewContext ? ['ipAddress', 'userAgent', 'correlationId'] : []),
+      ],
+      include: canViewActor
+        ? [{ model: Administrator, as: 'administrator', attributes: ['id', 'name', 'email'], required: false }]
+        : [],
+    });
     if (!entry) return res.status(404).json({ success: false, code: 'NOT_FOUND', message: 'Audit event not found.', errors: [] });
     const include = new Set(Array.isArray(req.query.include) ? req.query.include : String(req.query.include || 'summary').split(','));
-    return res.json({ success: true, data: details(entry, req.adminPermissions || new Set(), include) });
+    return res.json({ success: true, data: details(entry, granted, include) });
   } catch (error) { return next(error); }
 };
 
@@ -236,3 +251,5 @@ exports.verifyIntegrity = async (req, res, next) => {
     return res.json({ success: true, data: result });
   } catch (error) { return next(error); }
 };
+
+exports._test = { details, summary };

@@ -16,6 +16,7 @@ const { migrate } = require('../src/migrations/run');
 const { initializeDatabase, getSequelize } = require('../src/config/db');
 const { getModels } = require('../src/models');
 const { app } = require('../src/server');
+const adminMfaService = require('../src/services/adminMfaService');
 
 let server;
 let baseUrl;
@@ -25,6 +26,8 @@ let actorRole;
 let limited;
 let limitedPassword;
 let limitedRole;
+let actorToken;
+let limitedToken;
 const createdAdministratorIds = [];
 const createdRoleIds = [];
 
@@ -42,6 +45,8 @@ async function request(path, options = {}) {
 }
 
 async function login(administrator, password) {
+  if (administrator.id === actor?.id && actorToken) return actorToken;
+  if (administrator.id === limited?.id && limitedToken) return limitedToken;
   const response = await request('/api/admin/v1/auth/login', {
     method: 'POST', body: { email: administrator.email, password, rememberMe: false },
   });
@@ -82,6 +87,25 @@ before(async () => {
   server = app.listen(0);
   await new Promise((resolve) => server.once('listening', resolve));
   baseUrl = `http://127.0.0.1:${server.address().port}`;
+  const actorLogin = await request('/api/admin/v1/auth/login', {
+    method: 'POST', body: { email: actor.email, password: actorPassword, rememberMe: false },
+  });
+  actorToken = actorLogin.body.data.accessToken;
+  const enrollment = await request('/api/admin/v1/auth/mfa/enroll', { method: 'POST', accessToken: actorToken });
+  const confirmation = await request('/api/admin/v1/auth/mfa/confirm', {
+    method: 'POST', accessToken: actorToken,
+    body: { code: adminMfaService.totpFor(enrollment.body.data.secret, Math.floor(Date.now() / 30000)) },
+  });
+  assert.equal(confirmation.status, 200, JSON.stringify(confirmation.body));
+  const stepUp = await request('/api/admin/v1/auth/mfa/step-up', {
+    method: 'POST', accessToken: actorToken,
+    body: { recoveryCode: confirmation.body.data.recoveryCodes[0] },
+  });
+  assert.equal(stepUp.status, 200, JSON.stringify(stepUp.body));
+  const limitedLogin = await request('/api/admin/v1/auth/login', {
+    method: 'POST', body: { email: limited.email, password: limitedPassword, rememberMe: false },
+  });
+  limitedToken = limitedLogin.body.data.accessToken;
 });
 
 after(async () => {

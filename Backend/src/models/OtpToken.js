@@ -6,7 +6,7 @@ return sequelize.define('OtpToken', {
   phoneNumber: { type: DataTypes.STRING, allowNull: true },
   email: { type: DataTypes.STRING, allowNull: true },
   codeHash: { type: DataTypes.STRING, allowNull: false },
-  purpose: { type: DataTypes.ENUM('account_verification', 'password_reset', 'account_deletion'), allowNull: false },
+  purpose: { type: DataTypes.ENUM('account_verification', 'password_reset', 'account_deletion', 'phone_change'), allowNull: false },
   expiresAt: { type: DataTypes.DATE, allowNull: false },
   attempts: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
   consumed: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },

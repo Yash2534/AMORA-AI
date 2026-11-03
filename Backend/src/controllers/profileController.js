@@ -5,15 +5,17 @@ const { serializePublicProfile } = require('../services/publicProfileService');
 const { COMMUNICATION_STYLE_VALUES } = require('../constants/communicationStyles');
 const { calculateProfileCompletion } = require('../services/profileCompletionService');
 const { validCoordinates } = require('../utils/geoDistance');
+const { protectedPath, filenameFromReference, storageReference } = require('../utils/photoStorage');
 
 const unavailable = (res) => res.status(404).json({ success: false, message: 'Profile is not available.', code: 'PROFILE_NOT_AVAILABLE', errors: [] });
 const list = (value) => (Array.isArray(value) ? value : []);
 
 function ownProfileJson(req, user, profile) {
   const photos = list(profile.photos);
-  const publicUrl = (value) => value && /^https?:\/\//i.test(value)
-    ? value
-    : value ? `${req.protocol}://${req.get('host')}${value}` : value;
+  const publicUrl = (value) => {
+    const secured = protectedPath(user.id, value);
+    return secured ? `${req.protocol}://${req.get('host')}${secured}` : null;
+  };
   const birthdate = profile.birthDate
     ? String(profile.birthDate).split('-').reverse().join('/')
     : '';
@@ -88,12 +90,18 @@ exports.updateOwnProfile = async (req, res, next) => {
       if (Object.prototype.hasOwnProperty.call(req.body, 'photos')) {
         const stored = list(profile.photos);
         const normalized = req.body.photos.map((value) => {
-          try { return new URL(value).pathname; } catch (_) { return value; }
+          const filename = filenameFromReference(value);
+          return filename ? storageReference(filename) : null;
+        });
+        const canonicalStored = stored.map((value) => {
+          const filename = filenameFromReference(value);
+          return filename ? storageReference(filename) : null;
         });
         const normalizedSet = new Set(normalized);
         if (normalized.length !== stored.length
           || normalizedSet.size !== normalized.length
-          || stored.some((value) => !normalizedSet.has(value))) {
+          || normalized.includes(null)
+          || canonicalStored.some((value) => !normalizedSet.has(value))) {
           const error = new Error('Profile photos must reference the current authenticated upload set.');
           error.status = 400;
           error.code = 'VALIDATION_ERROR';

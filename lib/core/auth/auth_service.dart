@@ -357,6 +357,20 @@ class AuthService {
     return _saveAuthentication(response);
   }
 
+  Future<String> googleIdTokenForStepUp() async {
+    final account = await GoogleSignIn(scopes: const ['email']).signIn();
+    if (account == null) {
+      throw const AuthException('Google sign-in was cancelled.');
+    }
+    final idToken = (await account.authentication).idToken;
+    if (idToken == null) {
+      throw const AuthException(
+        'Google did not return an ID token. Check the app OAuth configuration.',
+      );
+    }
+    return idToken;
+  }
+
   Future<void> forgotPassword(String email) async =>
       _post('/api/auth/forgot-password', {'email': email});
 
@@ -381,10 +395,13 @@ class AuthService {
   Future<void> changePassword(
     String currentPassword,
     String newPassword,
-  ) async => _post('/api/auth/change-password', {
-    'currentPassword': currentPassword,
-    'newPassword': newPassword,
-  }, authenticated: true);
+  ) async {
+    await _post('/api/auth/change-password', {
+      'currentPassword': currentPassword,
+      'newPassword': newPassword,
+    }, authenticated: true);
+    await clearSession();
+  }
 
   Future<AmoraUser> me() async {
     final response = await _request('GET', '/api/auth/me', authenticated: true);
@@ -395,6 +412,9 @@ class AuthService {
     await _request('GET', '/api/auth/me', authenticated: true);
     return _accessToken;
   }
+
+  Future<String?> mediaAccessToken() async =>
+      _accessToken ?? await _storage.read(_accessKey);
 
   Future<void> logout() async {
     try {

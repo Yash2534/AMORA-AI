@@ -1,4 +1,5 @@
 const EARTH_RADIUS_KM = 6371.0088;
+const KM_PER_LATITUDE_DEGREE = 111.32;
 
 function coordinate(value, { minimum, maximum, name }) {
   if (value === null || value === undefined || value === '' || typeof value === 'boolean') {
@@ -34,6 +35,44 @@ function distanceKm(viewerLatitude, viewerLongitude, candidateLatitude, candidat
   return EARTH_RADIUS_KM * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(Math.max(0, 1 - a)));
 }
 
+function distanceBoundingBox(viewerLatitude, viewerLongitude, maximumDistanceKm) {
+  const latitude = coordinate(viewerLatitude, { minimum: -90, maximum: 90, name: 'viewerLatitude' });
+  const longitude = coordinate(viewerLongitude, { minimum: -180, maximum: 180, name: 'viewerLongitude' });
+  const distance = Number(maximumDistanceKm);
+  if (!Number.isFinite(distance) || distance <= 0) {
+    throw new TypeError('maximumDistanceKm must be a positive finite number.');
+  }
+
+  const latitudeDelta = distance / KM_PER_LATITUDE_DEGREE;
+  const minimumLatitude = Math.max(-90, latitude - latitudeDelta);
+  const maximumLatitude = Math.min(90, latitude + latitudeDelta);
+  const cosine = Math.cos(latitude * Math.PI / 180);
+  const longitudeDelta = Math.abs(cosine) < 1e-12
+    ? 180
+    : Math.min(180, distance / (KM_PER_LATITUDE_DEGREE * Math.abs(cosine)));
+
+  if (longitudeDelta >= 180) {
+    return { minimumLatitude, maximumLatitude, longitudeRanges: [[-180, 180]] };
+  }
+  const minimumLongitude = longitude - longitudeDelta;
+  const maximumLongitude = longitude + longitudeDelta;
+  if (minimumLongitude < -180) {
+    return {
+      minimumLatitude,
+      maximumLatitude,
+      longitudeRanges: [[minimumLongitude + 360, 180], [-180, maximumLongitude]],
+    };
+  }
+  if (maximumLongitude > 180) {
+    return {
+      minimumLatitude,
+      maximumLatitude,
+      longitudeRanges: [[minimumLongitude, 180], [-180, maximumLongitude - 360]],
+    };
+  }
+  return { minimumLatitude, maximumLatitude, longitudeRanges: [[minimumLongitude, maximumLongitude]] };
+}
+
 function sqlDistanceExpression(sequelize, {
   viewerLatitude,
   viewerLongitude,
@@ -53,6 +92,7 @@ function sqlDistanceExpression(sequelize, {
 
 module.exports = {
   EARTH_RADIUS_KM,
+  distanceBoundingBox,
   distanceKm,
   sqlDistanceExpression,
   validCoordinates,

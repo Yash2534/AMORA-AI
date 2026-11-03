@@ -24,6 +24,11 @@ class AmoraApiConfig {
       if (uri == null || !uri.hasScheme || uri.host.isEmpty) {
         throw StateError('AMORA_API_BASE_URL must be an absolute URL.');
       }
+      if (kReleaseMode && uri.scheme.toLowerCase() != 'https') {
+        throw StateError(
+          'AMORA_API_BASE_URL must use HTTPS in release builds.',
+        );
+      }
       return configured;
     }
 

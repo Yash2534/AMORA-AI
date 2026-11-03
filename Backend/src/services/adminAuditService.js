@@ -1,15 +1,15 @@
 const crypto = require('crypto');
 const { getModels } = require('../models');
+const { sanitizeValue, REDACTED } = require('../utils/logger');
 
-const sensitiveKey = /(password|passwordhash|token|secret|otp|authorization|cookie|card|aadhaar|identitydocument|privatekey|cvv)/i;
+const sensitiveKey = /(password|passwordhash|passphrase|pwd|token|secret|otp|authorization|cookie|card|aadhaar|identitydocument|documentnumber|privatekey|cvv|apikey|refreshtoken|accesstoken|mfa|totp)/i;
 
 function sanitize(value, depth = 0) {
   if (value == null || depth > 5) return value;
   if (Array.isArray(value)) return value.slice(0, 100).map((item) => sanitize(item, depth + 1));
-  if (typeof value !== 'object') return typeof value === 'string' ? value.slice(0, 2000) : value;
+  if (typeof value !== 'object') return typeof value === 'string' ? sanitizeValue(value).slice(0, 2000) : value;
   return Object.fromEntries(Object.entries(value)
-    .filter(([key]) => !sensitiveKey.test(key))
-    .map(([key, item]) => [key, sanitize(item, depth + 1)]));
+    .map(([key, item]) => [key, sensitiveKey.test(key.replace(/[^a-z0-9]/gi, '')) ? REDACTED : sanitize(item, depth + 1)]));
 }
 
 function contextFrom(request) {

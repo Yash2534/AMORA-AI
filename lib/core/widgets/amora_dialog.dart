@@ -158,7 +158,7 @@ Future<T?> showAmoraGlassDialog<T>({
     barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
     barrierColor: barrierColor ?? AppColors.text.withValues(alpha: .36),
     transitionDuration: AmoraMotion.standard,
-    pageBuilder: (ctx, _, __) => builder(ctx),
+    pageBuilder: (ctx, _, _) => builder(ctx),
     transitionBuilder: (_, animation, _, child) {
       final curved = CurvedAnimation(
         parent: animation,

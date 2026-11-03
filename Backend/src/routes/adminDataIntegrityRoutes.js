@@ -1,8 +1,9 @@
 const router = require('express').Router();
 const { requireAdminPermission } = require('../middleware/adminRbacMiddleware');
 const controller = require('../controllers/adminDataIntegrityController');
+const requireRecentAdminMfa = require('../middleware/adminMfaMiddleware');
 
 router.get('/data-integrity', requireAdminPermission('systemSettings.view'), controller.overview);
-router.post('/data-integrity/run-check', requireAdminPermission('systemSettings.update'), controller.runCheck);
+router.post('/data-integrity/run-check', requireAdminPermission('systemSettings.update'), requireRecentAdminMfa, controller.runCheck);
 
 module.exports = router;

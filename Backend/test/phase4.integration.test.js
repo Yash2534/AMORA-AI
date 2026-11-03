@@ -59,8 +59,8 @@ test('events require authentication and return canonical organizer data', async 
   assert.equal(listed.status, 200);
   const value = listed.body.data.events.find((item) => item.id === String(event.id));
   assert.equal(value.organizer.name, organizer.name);
-  assert.match(value.organizer.imageUrl, /\/uploads\/event\.jpg$/);
-  assert.match(value.heroImageUrl, /^http:\/\/127\.0\.0\.1:\d+\/uploads\/e2e-test\/live_music\.png$/);
+  assert.match(value.organizer.imageUrl, new RegExp(`/api/media/profile/${organizer.id}/event\\.jpg$`));
+  assert.equal(value.heroImageUrl, null);
   assert.equal(value.seatsLeft, 1);
 });
 

@@ -20,26 +20,14 @@ function configuredOrigins(env = process.env) {
       );
     }
 
-    // -------------------------------------------------------------------------
-    // TEMPORARY HTTP EXCEPTION
-    //
-    // AMORAA Admin is currently hosted using the server IP over HTTP.
-    //
-    // Remove this exception when the Admin site is moved to an HTTPS domain.
-    // -------------------------------------------------------------------------
-
-    const temporaryAllowedHttpOrigins = new Set([
-      'http://195.35.23.132',
-    ]);
-
     for (const origin of origins) {
-      const isHttps =
-        /^https:\/\//i.test(origin);
-
-      const isTemporaryAllowedHttp =
-        temporaryAllowedHttpOrigins.has(origin);
-
-      if (!isHttps && !isTemporaryAllowedHttp) {
+      let parsed;
+      try {
+        parsed = new URL(origin);
+      } catch (_) {
+        throw new Error(`Production CORS_ORIGIN must contain valid origins: ${origin}`);
+      }
+      if (parsed.protocol !== 'https:' || parsed.username || parsed.password || parsed.pathname !== '/' || parsed.search || parsed.hash) {
         throw new Error(
           `Production CORS_ORIGIN must use HTTPS. HTTP origin is not approved: ${origin}`,
         );

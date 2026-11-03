@@ -23,6 +23,7 @@ const { initializeDatabase, getSequelize } = require('../src/config/db');
 const { getModels } = require('../src/models');
 const { app } = require('../src/server');
 const { absolutePathFor } = require('../src/utils/identityVerificationStorage');
+const adminMfaService = require('../src/services/adminMfaService');
 
 let server;
 let baseUrl;
@@ -84,6 +85,23 @@ async function login(administrator) {
   });
   assert.equal(response.status, 200);
   return response.body.data.accessToken;
+}
+
+async function enrollAndStepUp(accessToken) {
+  const enrollment = await request('/api/admin/v1/auth/mfa/enroll', { method: 'POST', accessToken });
+  assert.equal(enrollment.status, 201, JSON.stringify(enrollment.body));
+  const confirmation = await request('/api/admin/v1/auth/mfa/confirm', {
+    method: 'POST',
+    accessToken,
+    body: { code: adminMfaService.totpFor(enrollment.body.data.secret, Math.floor(Date.now() / 30000)) },
+  });
+  assert.equal(confirmation.status, 200, JSON.stringify(confirmation.body));
+  const stepUp = await request('/api/admin/v1/auth/mfa/step-up', {
+    method: 'POST',
+    accessToken,
+    body: { recoveryCode: confirmation.body.data.recoveryCodes[0] },
+  });
+  assert.equal(stepUp.status, 200, JSON.stringify(stepUp.body));
 }
 
 function decisionOptions(token, version, key, body = {}) {
@@ -176,6 +194,7 @@ after(async () => {
 test('KYC decisions enforce RBAC, transactions, idempotency, history, and consumer reflection', async () => {
   const reviewerToken = await login(reviewer);
   const viewerToken = await login(viewer);
+  await enrollAndStepUp(reviewerToken);
   const { IdentityVerificationDecisionEvent, AdminAuditLog } = getModels();
   const suffix = crypto.randomUUID().slice(0, 8);
   const rejected = await createVerification(`${suffix}-reject`);
