@@ -19,11 +19,12 @@ let envText = fs.existsSync(envPath) ? fs.readFileSync(envPath, 'utf8') : '';
 const placeholders = new Set(['', 'changeme', 'change-me', 'your-secret', 'replace-me']);
 let changed = false;
 
-for (const key of runtimeMode === 'development' ? ['JWT_SECRET', 'JWT_REFRESH_SECRET', 'ADMIN_JWT_SECRET'] : []) {
+for (const key of runtimeMode === 'development' ? ['JWT_SECRET', 'JWT_REFRESH_SECRET', 'ADMIN_JWT_SECRET', 'CURSOR_ENCRYPTION_SECRET'] : []) {
   const match = envText.match(new RegExp(`^${key}\\s*=\\s*(.*)$`, 'm'));
   const current = match ? match[1].trim().replace(/^['"]|['"]$/g, '') : '';
   if (!match || placeholders.has(current.toLowerCase())) {
-    const secret = crypto.randomBytes(64).toString('hex');
+    const bytes = key === 'CURSOR_ENCRYPTION_SECRET' ? 32 : 64;
+    const secret = crypto.randomBytes(bytes).toString('hex');
     envText = match
       ? envText.replace(new RegExp(`^${key}\\s*=.*$`, 'm'), `${key}=${secret}`)
       : `${envText.trimEnd()}\n${key}=${secret}\n`;

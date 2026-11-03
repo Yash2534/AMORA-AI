@@ -278,7 +278,7 @@ test('canonical completion excludes stale flags and restored required data becom
   assert.equal(restored.body.data.profiles.some((profile) => profile.id === String(created[0].user.id)), true);
 });
 
-test('Pass, Like, and Super Like exclude while Rose, Save, and Report alone do not', async () => {
+test('Pass, Like, Super Like, and Report exclude while Rose and Save alone do not', async () => {
   const viewerId = Number(jwt.decode(accessToken).sub);
   const byPolicy = {};
   for (const name of ['pass', 'like', 'superLike', 'rose', 'save', 'report']) {
@@ -307,7 +307,8 @@ test('Pass, Like, and Super Like exclude while Rose, Save, and Report alone do n
   assert.equal(result.status, 200, JSON.stringify(result.body));
   const ids = new Set(result.body.data.profiles.map((profile) => profile.id));
   for (const action of ['pass', 'like', 'superLike']) assert.equal(ids.has(String(byPolicy[action].id)), false, action);
-  for (const relationship of ['rose', 'save', 'report']) assert.equal(ids.has(String(byPolicy[relationship].id)), true, relationship);
+  for (const relationship of ['rose', 'save']) assert.equal(ids.has(String(byPolicy[relationship].id)), true, relationship);
+  assert.equal(ids.has(String(byPolicy.report.id)), false, 'report');
 });
 
 test('unsupported surfaces fail explicitly while location and AI surfaces use controlled contracts', async () => {
@@ -631,7 +632,14 @@ test('100-candidate Discover pagination is eligible-first, stable, ordered, tele
   const previousTelemetry = process.env.MATCH_ENGINE_TELEMETRY_ENABLED;
   const previousExperimentEnabled = process.env.MATCH_ENGINE_EXPERIMENT_ENABLED;
   const previousExperimentConfig = process.env.MATCH_ENGINE_EXPERIMENT_CONFIG;
-  const snapshot = (result) => result.body.data;
+  const snapshot = (result) => {
+    const data = JSON.parse(JSON.stringify(result.body.data));
+    if (data?.pagination?.nextCursor) {
+      assert.match(data.pagination.nextCursor, /^c2\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+$/);
+      data.pagination.nextCursor = '[AUTHENTICATED_ENCRYPTED_CURSOR]';
+    }
+    return data;
+  };
   try {
     process.env.MATCH_ENGINE_TELEMETRY_ENABLED = 'false';
     process.env.MATCH_ENGINE_EXPERIMENT_ENABLED = 'false';

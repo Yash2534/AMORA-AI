@@ -1,7 +1,7 @@
 const { Op, fn, col, where, cast, literal } = require('sequelize');
 const { getModels } = require('../models');
-const { scoreCompatibility, sqlCompatibilityExpressions } = require('../services/matchEngineService');
-const { areUsersBlocked, notBlockedUserSql } = require('../services/accessControlService');
+const { scoreCompatibility, sqlCompatibilityExpressions, normalizeProfile } = require('../services/matchEngineService');
+const { areUsersBlocked, areUsersReported, notBlockedUserSql, notReportedUserSql } = require('../services/accessControlService');
 const { serializePublicProfile } = require('../services/publicProfileService');
 const { defaults, effectiveDefaultsFor, filtersFor, updateFilters: persistFilters } = require('../services/discoverPreferenceService');
 const { createNotification } = require('../services/notificationService');
@@ -30,10 +30,27 @@ const {
   reciprocalPreferenceClauses,
   reciprocalEligibilitySqlClauses,
   surfaceContract,
+  validateSwipeEligibility,
 } = require('../services/discoverEligibilityPolicy');
 const { aiCandidateWindow } = require('../config/scalability');
 
+const CANDIDATE_USER_ATTRIBUTES = Object.freeze([
+  'id', 'name', 'identityVerifiedAt', 'lastActiveAt',
+]);
+
+const CANDIDATE_PROFILE_ATTRIBUTES = Object.freeze([
+  'id', 'userId', 'birthDate', 'gender', 'customGender', 'relationshipGoals',
+  'city', 'profession', 'education', 'bio', 'interests', 'photos',
+  'primaryPhotoIndex', 'languages', 'lifestyle', 'prompts', 'religion',
+  'community', 'height', 'smoking', 'drinking', 'weed', 'hometown',
+  'valuedQualities', 'pronouns', 'sexuality', 'preferredTalkingHours',
+  'loveLanguages', 'iceBreaker', 'communicationStyle',
+]);
+
 const success = (res, message, data) => res.json({ success: true, message, data });
+const REWIND_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+const REWIND_FUTURE_TOLERANCE_MS = 5 * 1000; // 5 seconds clock drift allowance
+
 const fail = (res, status, message, code, errors = []) => res.status(status).json({ success: false, message, code, errors });
 const list = (value) => (Array.isArray(value) ? value : []);
 const lower = comparisonString;
@@ -302,6 +319,7 @@ exports.getFeed = async (req, res, next) => {
       accountStatus: ACCOUNT_STATUS.eligible,
       [Op.and]: [
         notBlockedUserSql(sequelize, req.user.sub),
+        notReportedUserSql(sequelize, req.user.sub),
         where(col('User.id'), { [Op.notIn]: matchedTargets }),
       ],
     };
@@ -377,6 +395,7 @@ exports.getFeed = async (req, res, next) => {
     }
     const users = await User.findAll({
       where: userWhere,
+      attributes: CANDIDATE_USER_ATTRIBUTES,
       include: [{
         model: OnboardingProfile,
         required: true,
@@ -391,12 +410,13 @@ exports.getFeed = async (req, res, next) => {
             where(literal(scoreSql), { [Op.gte]: filters.minScore }),
           ],
         },
-        attributes: { include: [
+        attributes: [
+          ...CANDIDATE_PROFILE_ATTRIBUTES,
           [literal(scoreSql), 'compatibilityScore'],
           [literal(scoreExpressions.coverage), 'compatibilityCoverage'],
           ...(distanceSql ? [[literal(distanceSql), 'distanceKmPrecise']] : []),
           ...(surface.name === 'near_you' ? [[literal(distanceRankSql), 'distanceRank']] : []),
-        ] },
+        ],
       }, { model: Subscription, as: 'subscription', required: false, attributes: ['status', 'currentPeriodEnd'] }],
       order: surface.name === 'near_you'
         ? [[literal(distanceRankSql), 'ASC'], [literal(scoreSql), 'DESC'], ['id', 'ASC']]
@@ -419,11 +439,12 @@ exports.getFeed = async (req, res, next) => {
       distanceFilterActive,
     });
 
+    const normalizedViewer = normalizeProfile(viewer);
     const hasMore = !isAiMatches && users.length > limit;
     const selected = (hasMore ? users.slice(0, limit) : users)
       .map((user) => {
         const queried = user.OnboardingProfile?.getDataValue('compatibilityScore');
-        const canonicalCompatibility = scoreCompatibility(viewer, user.OnboardingProfile);
+        const canonicalCompatibility = scoreCompatibility(normalizedViewer, user.OnboardingProfile);
         const score = queried != null && Number.isFinite(Number(queried))
           ? Number(queried) : canonicalCompatibility.score;
         const queriedCoverage = user.OnboardingProfile?.getDataValue('compatibilityCoverage');
@@ -442,18 +463,22 @@ exports.getFeed = async (req, res, next) => {
         return { user, compatibility, distanceKm };
       });
     if (isAiMatches) {
-      const distanceByUserId = new Map(selected.map(({ user, distanceKm }) => [Number(user.id), distanceKm]));
-      const selectedByUserId = new Map(selected.map((item) => [Number(item.user.id), item]));
+
+
       // Compatibility is already calculated. Keep user/profile objects and
       // especially exact coordinates outside the AI provider boundary.
       const aiRankingStartedAt = Date.now();
-      const ranked = rankCandidates({}, selected.map(({ user, compatibility }) => ({
-        userId: user.id,
+      const candidateItems = selected.map(({ user, compatibility, distanceKm }) => ({
+        userId: Number(user.id),
+        user,
+        distanceKm,
         compatibility,
-      }))).map((item) => ({
-        ...item,
-        user: selectedByUserId.get(Number(item.userId)).user,
       }));
+
+      const ranked = rankCandidates({}, candidateItems);
+
+
+
       let continuation = ranked;
       if (cursorKeys) {
         const lastId = positiveCursorId(cursorKeys.id);
@@ -478,7 +503,7 @@ exports.getFeed = async (req, res, next) => {
       }) : null;
       const recommendations = pageItems.map((item) => ({
         id: String(item.user.id),
-        profile: profileData(req, item.user, item.user.OnboardingProfile || {}, viewer, item.compatibility, activityWindowMinutes, distanceByUserId.get(Number(item.user.id))),
+        profile: profileData(req, item.user, item.user.OnboardingProfile || {}, viewer, item.compatibility, activityWindowMinutes, item.distanceKm),
         compatibilityScore: item.compatibility.score,
         compatibilityCoverage: item.compatibility.coverage,
         aiMatchScore: item.aiMatchScore,
@@ -487,6 +512,7 @@ exports.getFeed = async (req, res, next) => {
         aiHighlights: item.aiHighlights,
         aiReasons: item.aiReasons,
       }));
+
       observe({ profiles: recommendations, aiRankingDurationMs: Date.now() - aiRankingStartedAt });
       return success(res, ranked.length ? 'AI recommendations retrieved.' : 'No AI recommendations found.', {
         provider: 'LOCAL',
@@ -537,16 +563,37 @@ exports.swipe = async (req, res, next) => {
         { field: 'targetUserId', message: 'Target user must be another user.' },
       ]);
     }
-    const target = await User.findOne({
-      where: { id: targetUserId, accountStatus: 'active' },
-      include: [{ model: OnboardingProfile, required: true, where: { onboardingCompleted: true } }],
+    const [target, viewerFilters, targetFilters, areBlocked, isReported] = await Promise.all([
+      User.findOne({
+        where: { id: targetUserId },
+        include: [{ model: OnboardingProfile, required: false }],
+      }),
+      filtersFor(req.user.sub),
+      filtersFor(targetUserId),
+      areUsersBlocked(req.user.sub, targetUserId),
+      areUsersReported(req.user.sub, targetUserId),
+    ]);
+
+    const eligibility = validateSwipeEligibility({
+      viewerProfile: viewer,
+      viewerFilters,
+      targetUser: target,
+      targetProfile: target?.OnboardingProfile,
+      targetFilters,
+      areBlocked,
+      isReported,
     });
-    if (!target) {
-      if (failureType) await require('../services/matchingActionFailureService').recordFailure({ actionType: failureType, actorUserId: req.user.sub, targetUserId, code: 'PROFILE_NOT_DISCOVERABLE', stage: 'eligibility' });
-      return fail(res, 404, 'Profile is not available for Discover.', 'PROFILE_NOT_DISCOVERABLE');
-    }
-    if (await areUsersBlocked(req.user.sub, targetUserId)) {
-      if (failureType) await require('../services/matchingActionFailureService').recordFailure({ actionType: failureType, actorUserId: req.user.sub, targetUserId, code: 'RELATIONSHIP_BLOCKED', stage: 'relationship' });
+
+    if (!eligibility.eligible) {
+      if (failureType) {
+        await require('../services/matchingActionFailureService').recordFailure({
+          actionType: failureType,
+          actorUserId: req.user.sub,
+          targetUserId,
+          code: eligibility.code,
+          stage: eligibility.stage,
+        });
+      }
       return fail(res, 404, 'Profile is not available for Discover.', 'PROFILE_NOT_DISCOVERABLE');
     }
     let match = null;
@@ -576,6 +623,7 @@ exports.swipe = async (req, res, next) => {
             action: { [Op.in]: ['like', 'superLike'] },
           },
           transaction,
+          lock: transaction.LOCK.UPDATE,
         });
         if (!reciprocal) {
           await createNotification({
@@ -634,18 +682,55 @@ exports.rewind = async (req, res, next) => {
   try {
     const viewer = await requireCompleted(res, req.user.sub);
     if (!viewer) return;
-    const { DiscoverAction } = getModels();
-    const action = await DiscoverAction.findOne({
-      where: { actorUserId: req.user.sub },
-      order: [['createdAt', 'DESC'], ['id', 'DESC']],
+    const { User, DiscoverAction, Match } = getModels();
+    let rewoundAction = null;
+    await User.sequelize.transaction(async (transaction) => {
+      const action = await DiscoverAction.findOne({
+        where: { actorUserId: req.user.sub },
+        order: [['createdAt', 'DESC'], ['id', 'DESC']],
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+      });
+      if (!action) {
+        const error = new Error('There is no swipe action to rewind.');
+        error.status = 404;
+        error.code = 'NOTHING_TO_REWIND';
+        throw error;
+      }
+      if (['like', 'superLike'].includes(action.action)) {
+        const userOneId = Math.min(Number(req.user.sub), Number(action.targetUserId));
+        const userTwoId = Math.max(Number(req.user.sub), Number(action.targetUserId));
+        const match = await Match.findOne({
+          where: { userOneId, userTwoId },
+          transaction,
+          lock: transaction.LOCK.UPDATE,
+        });
+        if (match) {
+          const error = new Error('A confirmed mutual match cannot be rewound.');
+          error.status = 409;
+          error.code = 'CANNOT_REWIND_MATCH';
+          throw error;
+        }
+      }
+      const actionTime = action.createdAt ? new Date(action.createdAt).getTime() : NaN;
+      const now = (process.env.NODE_ENV === 'test' && typeof req?._testNow === 'number') ? req._testNow : Date.now();
+      if (!Number.isFinite(actionTime) || actionTime > (now + REWIND_FUTURE_TOLERANCE_MS) || (now - actionTime) > REWIND_WINDOW_MS) {
+        const error = new Error('The 15-minute rewind window for this swipe has expired.');
+        error.status = 409;
+        error.code = 'REWIND_WINDOW_EXPIRED';
+        throw error;
+      }
+      rewoundAction = {
+        targetUserId: String(action.targetUserId),
+        action: action.action,
+      };
+      await action.destroy({ transaction });
     });
-    if (!action) return fail(res, 404, 'There is no swipe action to rewind.', 'NOTHING_TO_REWIND');
-    await action.destroy();
-    return success(res, 'Last swipe rewound.', {
-      targetUserId: String(action.targetUserId),
-      action: action.action,
-    });
+    return success(res, 'Last swipe rewound.', rewoundAction);
   } catch (error) {
+    if (error.status && error.code) {
+      return fail(res, error.status, error.message, error.code);
+    }
     return next(error);
   }
 };
@@ -676,4 +761,4 @@ exports.updateFilters = async (req, res, next) => {
   }
 };
 
-exports._test = { buildProfileWhere, discoveryPreferenceClauses, compatibilityScoreSql };
+exports._test = { buildProfileWhere, discoveryPreferenceClauses, compatibilityScoreSql, REWIND_WINDOW_MS, REWIND_FUTURE_TOLERANCE_MS };

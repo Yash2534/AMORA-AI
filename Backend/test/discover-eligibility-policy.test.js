@@ -4,8 +4,10 @@ const {
   ACCOUNT_STATUS,
   ageFor,
   EXCLUDING_DISCOVER_ACTIONS,
+  EXCLUDING_RELATIONSHIPS,
   HARD_FILTERS,
   NON_EXCLUDING_RELATIONSHIPS,
+  isReportExcluding,
   candidateAcceptsViewer,
   isDiscoverComplete,
   isRecentlyActive,
@@ -13,6 +15,7 @@ const {
   normalizeStoredFilterRanges,
   profileCompletionErrors,
   surfaceContract,
+  validateSwipeEligibility,
   viewerAcceptsCandidate,
 } = require('../src/services/discoverEligibilityPolicy');
 
@@ -32,7 +35,9 @@ test('canonical account and relationship policy is explicit', () => {
   assert.equal(ACCOUNT_STATUS.eligible, 'active');
   assert.deepEqual(ACCOUNT_STATUS.ineligible, ['deactivated', 'deleted']);
   assert.deepEqual(EXCLUDING_DISCOVER_ACTIONS, ['pass', 'like', 'superLike']);
-  assert.deepEqual(NON_EXCLUDING_RELATIONSHIPS, ['rose', 'save', 'report']);
+  assert.deepEqual(NON_EXCLUDING_RELATIONSHIPS, ['rose', 'save']);
+  assert.deepEqual(EXCLUDING_RELATIONSHIPS, ['block', 'report']);
+  assert.equal(isReportExcluding, true);
 });
 
 test('canonical completion rejects every stale required-field state', () => {
@@ -118,4 +123,150 @@ test('recent activity is a timestamp window, not presence', () => {
   assert.equal(isRecentlyActive('2026-09-29T11:56:00.000Z', { now, windowMinutes: 5 }), true);
   assert.equal(isRecentlyActive('2026-09-29T11:54:59.000Z', { now, windowMinutes: 5 }), false);
   assert.equal(isRecentlyActive(null, { now, windowMinutes: 5 }), false);
+});
+
+test('validateSwipeEligibility enforces reciprocal gender, age, distance, and safety', () => {
+  const now = new Date('2026-09-29T12:00:00.000Z');
+  const viewerProfile = completeProfile({
+    birthDate: '1996-01-01', // age 30
+    gender: 'female',
+    interestedIn: ['male'],
+    matchLatitude: 23.0225,
+    matchLongitude: 72.5714,
+  });
+  const targetUser = { id: 2, accountStatus: 'active' };
+  const targetProfile = completeProfile({
+    birthDate: '1994-01-01', // age 32
+    gender: 'male',
+    interestedIn: ['female'],
+    matchLatitude: 23.0300,
+    matchLongitude: 72.5800,
+  });
+  const viewerFilters = { minAge: 25, maxAge: 35, maxDistanceKm: 50 };
+  const targetFilters = { minAge: 25, maxAge: 35, maxDistanceKm: 50 };
+
+  // Eligible pair
+  const ok = validateSwipeEligibility({
+    viewerProfile, viewerFilters, targetUser, targetProfile, targetFilters, now,
+  });
+  assert.equal(ok.eligible, true);
+
+  // Inactive target
+  assert.equal(validateSwipeEligibility({
+    viewerProfile, viewerFilters, targetUser: { id: 2, accountStatus: 'deactivated' }, targetProfile, targetFilters, now,
+  }).eligible, false);
+
+  // Blocked
+  assert.equal(validateSwipeEligibility({
+    viewerProfile, viewerFilters, targetUser, targetProfile, targetFilters, areBlocked: true, now,
+  }).eligible, false);
+
+  // Reported
+  assert.equal(validateSwipeEligibility({
+    viewerProfile, viewerFilters, targetUser, targetProfile, targetFilters, isReported: true, now,
+  }).eligible, false);
+
+  // Incompatible target gender
+  assert.equal(validateSwipeEligibility({
+    viewerProfile, viewerFilters, targetUser, targetProfile: { ...targetProfile, gender: 'female' }, targetFilters, now,
+  }).eligible, false);
+
+  // Incompatible reciprocal interest (target does not want females)
+  assert.equal(validateSwipeEligibility({
+    viewerProfile, viewerFilters, targetUser, targetProfile: { ...targetProfile, interestedIn: ['male'] }, targetFilters, now,
+  }).eligible, false);
+
+  // Target age outside viewer range
+  assert.equal(validateSwipeEligibility({
+    viewerProfile, viewerFilters: { ...viewerFilters, maxAge: 31 }, targetUser, targetProfile, targetFilters, now,
+  }).eligible, false);
+
+  // Viewer age outside target range
+  assert.equal(validateSwipeEligibility({
+    viewerProfile, viewerFilters, targetUser, targetProfile, targetFilters: { ...targetFilters, minAge: 31 }, now,
+  }).eligible, false);
+
+  // Distance exceeded
+  assert.equal(validateSwipeEligibility({
+    viewerProfile, viewerFilters: { ...viewerFilters, maxDistanceKm: 0.1 }, targetUser, targetProfile, targetFilters, now,
+  }).eligible, false);
+
+  // VULN-P0-01: Filter definitions
+  const noDistFilters = { minAge: 25, maxAge: 35, maxDistanceKm: null };
+
+  // VULN-P0-01: Viewer coordinates missing with target distance restriction
+  const viewerNoCoords = { ...viewerProfile, matchLatitude: null, matchLongitude: null };
+  const resViewerMissing = validateSwipeEligibility({
+    viewerProfile: viewerNoCoords, viewerFilters, targetUser, targetProfile, targetFilters, now,
+  });
+  assert.equal(resViewerMissing.eligible, false);
+  assert.equal(resViewerMissing.reason, 'viewer_location_missing');
+
+  // VULN-P0-01: Viewer coordinates missing with viewer distance restriction but target has NO restriction
+  const resViewerMissingViewerRestriction = validateSwipeEligibility({
+    viewerProfile: viewerNoCoords, viewerFilters, targetUser, targetProfile, targetFilters: noDistFilters, now,
+  });
+  assert.equal(resViewerMissingViewerRestriction.eligible, false);
+  assert.equal(resViewerMissingViewerRestriction.reason, 'viewer_location_missing');
+
+  // VULN-P0-01: Target coordinates missing with viewer distance restriction
+  const targetNoCoords = { ...targetProfile, matchLatitude: null, matchLongitude: null };
+  const resTargetMissing = validateSwipeEligibility({
+    viewerProfile, viewerFilters, targetUser, targetProfile: targetNoCoords, targetFilters, now,
+  });
+  assert.equal(resTargetMissing.eligible, false);
+  assert.equal(resTargetMissing.reason, 'target_location_missing');
+
+  // VULN-P0-01: Target coordinates missing with target distance restriction but viewer has NO restriction
+  const resTargetMissingTargetRestriction = validateSwipeEligibility({
+    viewerProfile, viewerFilters: noDistFilters, targetUser, targetProfile: targetNoCoords, targetFilters, now,
+  });
+  assert.equal(resTargetMissingTargetRestriction.eligible, false);
+  assert.equal(resTargetMissingTargetRestriction.reason, 'target_location_missing');
+
+  // VULN-P0-01: Both missing coordinates with distance restriction configured
+  const resBothMissing = validateSwipeEligibility({
+    viewerProfile: viewerNoCoords, viewerFilters, targetUser, targetProfile: targetNoCoords, targetFilters, now,
+  });
+  assert.equal(resBothMissing.eligible, false);
+  assert.equal(resBothMissing.reason, 'location_required');
+
+  const resBothMissingTargetOnly = validateSwipeEligibility({
+    viewerProfile: viewerNoCoords, viewerFilters: noDistFilters, targetUser, targetProfile: targetNoCoords, targetFilters, now,
+  });
+  assert.equal(resBothMissingTargetOnly.eligible, false);
+  assert.equal(resBothMissingTargetOnly.reason, 'location_required');
+
+  // VULN-P0-01: No distance restriction configured (maxDistanceKm = null)
+  const resNoDistBothMissing = validateSwipeEligibility({
+    viewerProfile: viewerNoCoords, viewerFilters: noDistFilters, targetUser, targetProfile: targetNoCoords, targetFilters: noDistFilters, now,
+  });
+  assert.equal(resNoDistBothMissing.eligible, true);
+
+  // VULN-P0-01: Target missing coords but viewer has NO distance restriction
+  const resTargetMissingNoRestriction = validateSwipeEligibility({
+    viewerProfile, viewerFilters: noDistFilters, targetUser, targetProfile: targetNoCoords, targetFilters: noDistFilters, now,
+  });
+  assert.equal(resTargetMissingNoRestriction.eligible, true);
+
+  // VULN-P0-01: Viewer missing coords but target has NO distance restriction
+  const resViewerMissingNoRestriction = validateSwipeEligibility({
+    viewerProfile: viewerNoCoords, viewerFilters: noDistFilters, targetUser, targetProfile, targetFilters: noDistFilters, now,
+  });
+  assert.equal(resViewerMissingNoRestriction.eligible, true);
+
+  // VULN-P0-01: Boundary distance vs just outside boundary
+  // Distance between (23.0225, 72.5714) and (23.0300, 72.5800) is approx 1.22 km
+  const boundaryFilters = { minAge: 25, maxAge: 35, maxDistanceKm: 1.25 };
+  const resBoundary = validateSwipeEligibility({
+    viewerProfile, viewerFilters: boundaryFilters, targetUser, targetProfile, targetFilters: boundaryFilters, now,
+  });
+  assert.equal(resBoundary.eligible, true);
+
+  const outsideFilters = { minAge: 25, maxAge: 35, maxDistanceKm: 1.20 };
+  const resOutside = validateSwipeEligibility({
+    viewerProfile, viewerFilters: outsideFilters, targetUser, targetProfile, targetFilters: outsideFilters, now,
+  });
+  assert.equal(resOutside.eligible, false);
+  assert.equal(resOutside.reason, 'distance_exceeded');
 });

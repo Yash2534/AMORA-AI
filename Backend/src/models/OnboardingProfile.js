@@ -22,7 +22,7 @@ const jsonValue = (field, fallback) => ({
 });
 
 module.exports = (sequelize) => {
-  return sequelize.define(
+  const OnboardingProfile = sequelize.define(
     'OnboardingProfile',
     {
       id: {
@@ -206,4 +206,13 @@ module.exports = (sequelize) => {
       tableName: 'OnboardingProfiles',
     }
   );
+
+  OnboardingProfile.prototype.toJSON = function toJSON() {
+    const values = { ...this.get() };
+    delete values.matchLatitude;
+    delete values.matchLongitude;
+    return values;
+  };
+
+  return OnboardingProfile;
 };

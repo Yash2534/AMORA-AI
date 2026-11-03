@@ -1,9 +1,12 @@
 const { Op, col, fn, where, literal } = require('sequelize');
 const { DISCOVER_FILTER_RANGES } = require('../constants/discoverFilterRanges');
+const { distanceKm, validCoordinates } = require('../utils/geoDistance');
 
 const ACCOUNT_STATUS = Object.freeze({ eligible: 'active', ineligible: ['deactivated', 'deleted'] });
 const EXCLUDING_DISCOVER_ACTIONS = Object.freeze(['pass', 'like', 'superLike']);
-const NON_EXCLUDING_RELATIONSHIPS = Object.freeze(['rose', 'save', 'report']);
+const NON_EXCLUDING_RELATIONSHIPS = Object.freeze(['rose', 'save']);
+const EXCLUDING_RELATIONSHIPS = Object.freeze(['block', 'report']);
+const isReportExcluding = true;
 const UNIVERSAL_INTEREST_TOKENS = Object.freeze(['everyone', 'all', 'any', 'both']);
 const VALID_GENDERS = Object.freeze(['male', 'female', 'other']);
 const EVENT_REGISTRATION_STATUSES = Object.freeze(['registered']);
@@ -252,11 +255,101 @@ function surfaceContract(surface, { aiMatches = false } = {}) {
   return { name, ...(SURFACES[name] || { supported: false, reservedFor: 'unknown' }) };
 }
 
+function validateSwipeEligibility({
+  viewerProfile,
+  viewerFilters,
+  targetUser,
+  targetProfile,
+  targetFilters,
+  areBlocked = false,
+  isReported = false,
+  now = new Date(),
+}) {
+  if (!targetUser || targetUser.accountStatus !== 'active') {
+    return { eligible: false, code: 'PROFILE_NOT_DISCOVERABLE', stage: 'eligibility', reason: 'target_not_active' };
+  }
+
+  if (!isDiscoverComplete(targetProfile, { now })) {
+    return { eligible: false, code: 'PROFILE_NOT_DISCOVERABLE', stage: 'eligibility', reason: 'target_profile_incomplete' };
+  }
+
+  if (areBlocked) {
+    return { eligible: false, code: 'RELATIONSHIP_BLOCKED', stage: 'relationship', reason: 'blocked' };
+  }
+
+  if (isReported) {
+    return { eligible: false, code: 'PROFILE_NOT_DISCOVERABLE', stage: 'relationship', reason: 'reported' };
+  }
+
+  if (!viewerAcceptsCandidate(viewerProfile?.interestedIn, targetProfile?.gender)) {
+    return { eligible: false, code: 'PROFILE_NOT_DISCOVERABLE', stage: 'eligibility', reason: 'viewer_gender_incompatible' };
+  }
+
+  if (!candidateAcceptsViewer(targetProfile?.interestedIn, viewerProfile?.gender)) {
+    return { eligible: false, code: 'PROFILE_NOT_DISCOVERABLE', stage: 'eligibility', reason: 'candidate_gender_incompatible' };
+  }
+
+  const viewerAge = ageFor(viewerProfile?.birthDate, now);
+  const targetAge = ageFor(targetProfile?.birthDate, now);
+  if (viewerAge == null || targetAge == null) {
+    return { eligible: false, code: 'PROFILE_NOT_DISCOVERABLE', stage: 'eligibility', reason: 'invalid_birth_date' };
+  }
+
+  const effectiveViewerMinAge = viewerFilters?.minAge ?? DISCOVER_FILTER_RANGES.age.min;
+  const effectiveViewerMaxAge = viewerFilters?.maxAge ?? DISCOVER_FILTER_RANGES.age.max;
+  const effectiveTargetMinAge = targetFilters?.minAge ?? DISCOVER_FILTER_RANGES.age.min;
+  const effectiveTargetMaxAge = targetFilters?.maxAge ?? DISCOVER_FILTER_RANGES.age.max;
+
+  if (targetAge < effectiveViewerMinAge || targetAge > effectiveViewerMaxAge) {
+    return { eligible: false, code: 'PROFILE_NOT_DISCOVERABLE', stage: 'eligibility', reason: 'target_age_out_of_bounds' };
+  }
+
+  if (viewerAge < effectiveTargetMinAge || viewerAge > effectiveTargetMaxAge) {
+    return { eligible: false, code: 'PROFILE_NOT_DISCOVERABLE', stage: 'eligibility', reason: 'viewer_age_out_of_bounds' };
+  }
+
+  const viewerHasCoords = validCoordinates(viewerProfile?.matchLatitude, viewerProfile?.matchLongitude);
+  const targetHasCoords = validCoordinates(targetProfile?.matchLatitude, targetProfile?.matchLongitude);
+  const viewerHasDistanceRestriction = viewerFilters?.maxDistanceKm != null && Number(viewerFilters.maxDistanceKm) > 0;
+  const targetHasDistanceRestriction = targetFilters?.maxDistanceKm != null && Number(targetFilters.maxDistanceKm) > 0;
+
+  if (viewerHasCoords && targetHasCoords) {
+    const distance = distanceKm(
+      viewerProfile.matchLatitude,
+      viewerProfile.matchLongitude,
+      targetProfile.matchLatitude,
+      targetProfile.matchLongitude,
+    );
+    const viewerMaxDist = viewerHasDistanceRestriction ? Number(viewerFilters.maxDistanceKm) : Infinity;
+    const targetMaxDist = targetHasDistanceRestriction ? Number(targetFilters.maxDistanceKm) : Infinity;
+    const maxAllowedDistance = Math.min(viewerMaxDist, targetMaxDist);
+
+    if (Number.isFinite(maxAllowedDistance) && distance > maxAllowedDistance) {
+      return { eligible: false, code: 'PROFILE_NOT_DISCOVERABLE', stage: 'eligibility', reason: 'distance_exceeded' };
+    }
+  } else if (viewerHasCoords && !targetHasCoords) {
+    if (viewerHasDistanceRestriction || targetHasDistanceRestriction) {
+      return { eligible: false, code: 'PROFILE_NOT_DISCOVERABLE', stage: 'eligibility', reason: 'target_location_missing' };
+    }
+  } else if (!viewerHasCoords && targetHasCoords) {
+    if (viewerHasDistanceRestriction || targetHasDistanceRestriction) {
+      return { eligible: false, code: 'PROFILE_NOT_DISCOVERABLE', stage: 'eligibility', reason: 'viewer_location_missing' };
+    }
+  } else if (!viewerHasCoords && !targetHasCoords) {
+    if (viewerHasDistanceRestriction || targetHasDistanceRestriction) {
+      return { eligible: false, code: 'PROFILE_NOT_DISCOVERABLE', stage: 'eligibility', reason: 'location_required' };
+    }
+  }
+
+  return { eligible: true };
+}
+
 module.exports = {
   ACCOUNT_STATUS,
   DEFAULT_RECENT_ACTIVITY_WINDOW_MINUTES,
   EVENT_REGISTRATION_STATUSES,
   EXCLUDING_DISCOVER_ACTIONS,
+  EXCLUDING_RELATIONSHIPS,
   HARD_FILTERS,
   NON_EXCLUDING_RELATIONSHIPS,
   SURFACES,
@@ -270,6 +363,7 @@ module.exports = {
   interestedInVariants,
   isDiscoverComplete,
   isRecentlyActive,
+  isReportExcluding,
   jsonContainsAny,
   normalizedString,
   normalizedStringList,
@@ -281,5 +375,6 @@ module.exports = {
   reciprocalEligibilitySqlClauses,
   surfaceContract,
   usableStringList,
+  validateSwipeEligibility,
   viewerAcceptsCandidate,
 };

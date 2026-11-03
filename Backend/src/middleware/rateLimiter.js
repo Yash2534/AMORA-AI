@@ -33,6 +33,7 @@ function buildRateLimiters({ storeFactory } = {}) {
   passwordResetLimiter: rateLimit(options('password-reset', 15 * 60 * 1000, 5, normalizedIdentity, storeFactory)),
     photoUploadLimiter: rateLimit(options('photo-upload', 15 * 60 * 1000, 20, (req) => String(req.user?.sub || req.ip), storeFactory)),
     discoverSwipeLimiter: rateLimit(options('discover-swipe', 5 * 60 * 1000, 120, (req) => String(req.user?.sub || req.ip), storeFactory)),
+    discoverRewindLimiter: rateLimit(options('discover-rewind', 5 * 60 * 1000, 30, (req) => String(req.user?.sub || req.ip), storeFactory)),
     reportCreateLimiter: rateLimit(options('report-create', 60 * 60 * 1000, 5, (req) => String(req.user?.sub || req.ip), storeFactory)),
     chatMessageLimiter: rateLimit(options('chat-message', 60 * 1000, 60, (req) => String(req.user?.sub || req.ip), storeFactory)),
     chatMediaLimiter: rateLimit(options('chat-media', 15 * 60 * 1000, 20, (req) => String(req.user?.sub || req.ip), storeFactory)),

@@ -31,13 +31,16 @@ const overlap = (left, right, maximumItems = Number.POSITIVE_INFINITY) => {
 const clamp = (value) => Math.max(0, Math.min(100, Math.round(value + 1e-10)));
 
 function normalizeProfile(profile = {}) {
+  if (profile && profile._isNormalized) return profile;
   const source = profile || {};
-  return Object.fromEntries(MATCH_FACTORS.map((factor) => [
+  const normalized = Object.fromEntries(MATCH_FACTORS.map((factor) => [
     factor.key,
     factor.type === 'list'
       ? normalise(source[factor.key], factor.maxItems)
       : usableText(source[factor.key]),
   ]));
+  Object.defineProperty(normalized, '_isNormalized', { value: true, enumerable: false });
+  return normalized;
 }
 
 function listFactor(definition, viewer, candidate) {
@@ -154,18 +157,39 @@ function sqlCompatibilityExpressions(sequelize, viewer, { profileAlias = 'Onboar
   const quote = (value) => sequelize.getQueryInterface().queryGenerator.quoteIdentifier(value);
   const column = (name) => `${quote(profileAlias)}.${quote(name)}`;
   const normalizedViewer = normalizeProfile(viewer);
-  const components = MATCH_FACTORS.map((definition) => {
+
+  const netContributions = [];
+  const availableWeights = [];
+  const weightedAgreements = [];
+
+  for (const definition of MATCH_FACTORS) {
     const viewerValue = normalizedViewer[definition.key];
     if (definition.type === 'scalar') {
-      if (!viewerValue) return { weighted: '0', available: '0' };
+      if (!viewerValue) {
+        netContributions.push('0');
+        availableWeights.push('0');
+        weightedAgreements.push('0');
+        continue;
+      }
       const candidateValue = `LOWER(TRIM(${column(definition.key)}))`;
       const available = `(${column(definition.key)} IS NOT NULL AND ${candidateValue} NOT IN ('', 'prefer not to say'))`;
-      return {
-        weighted: `(CASE WHEN ${available} AND ${candidateValue} = ${sequelize.escape(viewerValue)} THEN ${definition.weight} ELSE 0 END)`,
-        available: `(CASE WHEN ${available} THEN ${definition.weight} ELSE 0 END)`,
-      };
+      const match = `${candidateValue} = ${sequelize.escape(viewerValue)}`;
+
+      // Scalar net contribution: +weight/2 if match, -weight/2 if mismatch, 0 if unavailable
+      netContributions.push(`(CASE WHEN ${available} THEN (CASE WHEN ${match} THEN ${definition.weight / 2} ELSE -${definition.weight / 2} END) ELSE 0 END)`);
+      availableWeights.push(`(CASE WHEN ${available} THEN ${definition.weight} ELSE 0 END)`);
+      weightedAgreements.push(`(CASE WHEN ${available} AND ${match} THEN ${definition.weight} ELSE 0 END)`);
+      continue;
     }
-    if (!viewerValue.length) return { weighted: '0', available: '0' };
+
+    // List factor
+    if (!viewerValue.length) {
+      netContributions.push('0');
+      availableWeights.push('0');
+      weightedAgreements.push('0');
+      continue;
+    }
+
     const source = `(CASE WHEN JSON_VALID(${column(definition.key)}) AND JSON_TYPE(${column(definition.key)}) = 'ARRAY' THEN ${column(definition.key)} ELSE JSON_ARRAY() END)`;
     const indexAlias = quote(`score_${definition.key}_indices`);
     const databaseMajor = Number.parseInt(String(sequelize.options?.databaseVersion || ''), 10);
@@ -182,19 +206,31 @@ function sqlCompatibilityExpressions(sequelize, viewer, { profileAlias = 'Onboar
     const item = `(CASE WHEN JSON_TYPE(${extracted}) = 'STRING' THEN LOWER(TRIM(JSON_UNQUOTE(${extracted}))) ELSE NULL END)`;
     const usable = `${item} IS NOT NULL AND ${item} NOT IN ('', 'prefer not to say')`;
     const boundedIndex = mariaDb ? '' : `${indexColumn} <= ${definition.maxItems} AND `;
-    const count = (extra = '') => `(SELECT COUNT(DISTINCT ${item}) FROM ${indexSource} AS ${indexAlias} WHERE ${boundedIndex}${usable}${extra})`;
-    const candidateCount = count();
-    const sharedCount = count(` AND ${item} IN (${viewerValue.map((value) => sequelize.escape(value)).join(', ')})`);
-    return {
-      weighted: `(${definition.weight} * (${sharedCount} / GREATEST(${viewerValue.length}, ${candidateCount})))`,
-      available: `(CASE WHEN ${candidateCount} > 0 THEN ${definition.weight} ELSE 0 END)`,
-    };
-  });
-  const weightedAgreement = components.map((component) => component.weighted).join(' + ');
-  const availableWeight = components.map((component) => component.available).join(' + ');
-  const rawScore = `(CASE WHEN (${availableWeight}) > 0 THEN 100 * (${weightedAgreement}) / (${availableWeight}) ELSE 50 END)`;
+    const viewerInList = viewerValue.map((value) => sequelize.escape(value)).join(', ');
+
+    // Single subquery for net contribution:
+    // Computes both sharedCount and candidateCount in ONE pass, and subtracts availableWeight/2
+    const netSubquery = `(SELECT ((${definition.weight} * (COUNT(DISTINCT CASE WHEN ${item} IN (${viewerInList}) THEN ${item} END) / GREATEST(${viewerValue.length}, COUNT(DISTINCT ${item})))) - (CASE WHEN COUNT(DISTINCT ${item}) > 0 THEN ${definition.weight / 2} ELSE 0 END)) FROM ${indexSource} AS ${indexAlias} WHERE ${boundedIndex}${usable})`;
+    netContributions.push(netSubquery);
+
+    // Single subquery for weightedAgreement (for callers needing weightedAgreement)
+    const weightedSubquery = `(SELECT (${definition.weight} * (COUNT(DISTINCT CASE WHEN ${item} IN (${viewerInList}) THEN ${item} END) / GREATEST(${viewerValue.length}, COUNT(DISTINCT ${item})))) FROM ${indexSource} AS ${indexAlias} WHERE ${boundedIndex}${usable})`;
+    weightedAgreements.push(weightedSubquery);
+
+    // Fast short-circuiting EXISTS for availableWeight
+    const availableExpr = `(CASE WHEN EXISTS (SELECT 1 FROM ${indexSource} AS ${indexAlias} WHERE ${boundedIndex}${usable}) THEN ${definition.weight} ELSE 0 END)`;
+    availableWeights.push(availableExpr);
+  }
+
+  const availableWeight = availableWeights.join(' + ');
+  const weightedAgreement = weightedAgreements.join(' + ');
+  const netSum = netContributions.join(' + ');
+
+  // Note: 50 + netSum = 50 + weightedAgreement - availableWeight/2
+  const score = `LEAST(100, GREATEST(0, ROUND(50 + (${netSum}))))`;
   const coverage = `LEAST(100, GREATEST(0, ROUND(100 * (${availableWeight}) / ${TOTAL_WEIGHT})))`;
-  const score = `LEAST(100, GREATEST(0, ROUND(50 + (${weightedAgreement}) - ((${availableWeight}) / 2))))`;
+  const rawScore = `(CASE WHEN (${availableWeight}) > 0 THEN 100 * (${weightedAgreement}) / (${availableWeight}) ELSE 50 END)`;
+
   return { score, rawScore, coverage, availableWeight: `(${availableWeight})`, weightedAgreement: `(${weightedAgreement})` };
 }
 

@@ -3,7 +3,7 @@
  * Ensures no plain-text PII (Emails, Phone numbers, Passwords, Tokens, Aadhaar) is written to logs.
  */
 
-const SENSITIVE_KEY = /(?:password|passphrase|pwd|otp|one.?time|token|authorization|cookie|secret|api.?key|refresh.?token|access.?token|mfa|totp|aadhaar|identity.?document|document.?number|private.?key|client.?secret)/i;
+const SENSITIVE_KEY = /(?:password|passphrase|pwd|otp|one.?time|token|authorization|cookie|secret|api.?key|refresh.?token|access.?token|mfa|totp|aadhaar|identity.?document|document.?number|private.?key|client.?secret|matchLatitude|matchLongitude|latitude|longitude|coordinates|exactDistance|distanceKmPrecise|distanceRank)/i;
 const REDACTED = '[REDACTED_SENSITIVE_FIELD]';
 
 function sanitizeValue(value, seen = new WeakSet()) {

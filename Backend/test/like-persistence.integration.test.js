@@ -71,6 +71,8 @@ async function createUser(key, gender, interestedIn) {
     smoking: 'No',
     drinking: 'Occasionally',
     weed: 'No',
+    matchLatitude: 23.0225,
+    matchLongitude: 72.5714,
     photos: ['/uploads/like-one.webp', '/uploads/like-two.webp'],
     stage: 'complete',
     onboardingCompleted: true,

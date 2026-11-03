@@ -147,10 +147,8 @@ function attachRealtimeServer(httpServer, { adapter } = {}) {
     }
 
     const userId = socket.data.userId;
-    await getModels().User.update({ lastActiveAt: new Date() }, { where: { id: userId } });
     socket.join(userRoom(userId));
-    const previous = connections.connect(userId);
-    if (previous === 0) await emitPresence(userId, true);
+
     socket.on('conversation.subscribe', async (value, acknowledge) => {
       try {
         const conversationId = Number(value?.conversationId);
@@ -162,12 +160,17 @@ function attachRealtimeServer(httpServer, { adapter } = {}) {
         if (typeof acknowledge === 'function') acknowledge({ success: false, code: 'CONVERSATION_NOT_AVAILABLE' });
       }
     });
+
     socket.on('disconnect', async () => {
       if (socket.data.isAdmin) return;
       const remaining = connections.disconnect(userId);
-      if (remaining === 0) await emitPresence(userId, false);
-      await getModels().User.update({ lastActiveAt: new Date() }, { where: { id: userId } });
+      if (remaining === 0) emitPresence(userId, false).catch(() => {});
+      getModels().User.update({ lastActiveAt: new Date() }, { where: { id: userId } }).catch(() => {});
     });
+
+    const previous = connections.connect(userId);
+    if (previous === 0) emitPresence(userId, true).catch(() => {});
+    getModels().User.update({ lastActiveAt: new Date() }, { where: { id: userId } }).catch(() => {});
   });
   return io;
 }
@@ -181,4 +184,31 @@ function closeRealtimeServer() {
 }
 
 function realtimeMetrics() { return { localSocketConnections: connections.size() }; }
-module.exports = { attachRealtimeServer, closeRealtimeServer, emitConversationEvent, emitAdminEvent, isUserOnline, realtimeMetrics, LocalConnectionRegistry };
+
+async function severRealtimePair(firstUserId, secondUserId, reason = 'blocked') {
+  if (!io) return;
+  const u1 = Number(firstUserId);
+  const u2 = Number(secondUserId);
+  const userOneId = Math.min(u1, u2);
+  const userTwoId = Math.max(u1, u2);
+  try {
+    const { Conversation } = getModels();
+    const conv = await Conversation.findOne({
+      where: { pairKey: `${userOneId}:${userTwoId}`, type: 'direct' },
+      attributes: ['id'],
+    });
+    const convRoom = conv ? conversationRoom(conv.id) : null;
+    for (const socket of io.sockets.sockets.values()) {
+      if (socket.data.userId === u1 || socket.data.userId === u2) {
+        if (convRoom) socket.leave(convRoom);
+      }
+    }
+    if (conv) {
+      io.to(userRoom(u1)).emit('conversation.severed', { conversationId: String(conv.id), reason: reason || 'blocked' });
+      io.to(userRoom(u2)).emit('conversation.severed', { conversationId: String(conv.id), reason: reason || 'blocked' });
+    }
+  } catch (error) {
+    logger.warn('severRealtimePair failed', { error: error.message });
+  }
+}
+module.exports = { attachRealtimeServer, closeRealtimeServer, emitConversationEvent, emitAdminEvent, isUserOnline, realtimeMetrics, LocalConnectionRegistry, severRealtimePair };
