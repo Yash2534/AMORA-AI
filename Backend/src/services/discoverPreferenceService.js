@@ -34,7 +34,7 @@ const defaults = {
   smoking: '',
   drinking: '',
   weed: '',
-  verifiedOnly: true,
+  verifiedOnly: false,
   onlineNow: false,
   hasPrompts: false,
   hasEventInterest: false,

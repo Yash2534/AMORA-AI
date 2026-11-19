@@ -129,7 +129,7 @@ exports.send = async (req, res, next) => {
           type: 'rose_received',
           category: 'Messages',
           title: 'You received a Rose',
-          message: `${req.authUser.name} sent you a Rose.`,
+          message: `${String(req.authUser?.name || 'Someone').replace(/[<>]/g, '')} sent you a Rose.`,
           data: {
             route: '/chat-detail',
             targetUserId: String(senderId),

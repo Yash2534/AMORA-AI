@@ -414,7 +414,7 @@ class LocalOnboardingRepository extends ChangeNotifier
   Future<void> _syncState(LocalOnboardingState state) async {
     switch (state.stage) {
       case OnboardingStage.age:
-        if (state.birthDate != null) {
+        if (state.birthDate != null && state.isAdult) {
           await _record('age', _api.saveAge(state.birthDate!));
         }
         break;

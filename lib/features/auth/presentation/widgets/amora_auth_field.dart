@@ -50,6 +50,9 @@ class AmoraAuthField extends StatefulWidget {
 
 class _AmoraAuthFieldState extends State<AmoraAuthField> {
   late final FocusNode _focusNode;
+  // Tracks whether the user has typed in this field at least once.
+  // Validation is only shown after the field has been dirtied.
+  bool _dirty = false;
 
   @override
   void initState() {
@@ -127,43 +130,82 @@ class _AmoraAuthFieldState extends State<AmoraAuthField> {
             borderRadius: BorderRadius.circular(18),
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-              child: TextFormField(
-                controller: widget.controller,
-                focusNode: _focusNode,
-                validator: widget.validator,
-                keyboardType: widget.keyboardType,
-                obscureText: widget.obscureText,
-                enabled: widget.enabled,
-                textInputAction: widget.textInputAction,
-                onChanged: widget.onChanged,
-                onFieldSubmitted: widget.onSubmitted,
-                autofillHints: widget.autofillHints,
-                inputFormatters: widget.inputFormatters,
-                maxLength: widget.maxLength,
-                style: AmoraTextStyles.bodyLarge,
-                cursorColor: AppColors.primary,
-                decoration: InputDecoration(
-                  hintText: widget.hint,
-                  prefixText: widget.prefixText,
-                  prefixIcon: widget.icon == null
-                      ? null
-                      : Icon(widget.icon, color: AppColors.primary, size: 21),
-                  suffixIcon: widget.suffix,
-                  counterText: '',
-                  border: InputBorder.none,
-                  enabledBorder: InputBorder.none,
-                  focusedBorder: InputBorder.none,
-                  disabledBorder: InputBorder.none,
-                  errorBorder: InputBorder.none,
-                  focusedErrorBorder: InputBorder.none,
-                  filled: false,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: AmoraSpacing.space16,
-                    vertical: 17,
-                  ),
-                  errorStyle: AmoraTextStyles.bodySmall.copyWith(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w600,
+              child: Semantics(
+                label: widget.label,
+                textField: true,
+                child: TextFormField(
+                  controller: widget.controller,
+                  focusNode: _focusNode,
+                  validator: widget.validator,
+                  keyboardType: widget.keyboardType,
+                  obscureText: widget.obscureText,
+                  enabled: widget.enabled,
+                  textInputAction: widget.textInputAction,
+                  autovalidateMode: _dirty
+                      ? AutovalidateMode.onUserInteraction
+                      : AutovalidateMode.disabled,
+                  onChanged: (v) {
+                    if (!_dirty) setState(() => _dirty = true);
+                    widget.onChanged?.call(v);
+                  },
+                  onFieldSubmitted: widget.onSubmitted,
+                  autofillHints: widget.autofillHints,
+                  inputFormatters: widget.inputFormatters,
+                  maxLength: widget.maxLength,
+                  style: AmoraTextStyles.bodyLarge,
+                  cursorColor: AppColors.primary,
+                  decoration: InputDecoration(
+                    hintText: widget.hint ?? widget.label,
+                    prefixIcon: widget.prefixText != null
+                        ? Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const SizedBox(width: AmoraSpacing.space16),
+                              if (widget.icon != null) ...[
+                                Icon(
+                                  widget.icon,
+                                  color: AppColors.primary,
+                                  size: 21,
+                                ),
+                                const SizedBox(width: AmoraSpacing.space8),
+                              ],
+                              Text(
+                                widget.prefixText!.trim(),
+                                style: AmoraTextStyles.bodyLarge.copyWith(
+                                  color: AppColors.text,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(width: AmoraSpacing.space8),
+                            ],
+                          )
+                        : (widget.icon == null
+                            ? null
+                            : Icon(
+                                widget.icon,
+                                color: AppColors.primary,
+                                size: 21,
+                              )),
+                    prefixIconConstraints: widget.prefixText != null
+                        ? const BoxConstraints(minWidth: 0, minHeight: 0)
+                        : null,
+                    suffixIcon: widget.suffix,
+                    counterText: '',
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    disabledBorder: InputBorder.none,
+                    errorBorder: InputBorder.none,
+                    focusedErrorBorder: InputBorder.none,
+                    filled: false,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: AmoraSpacing.space16,
+                      vertical: 17,
+                    ),
+                    errorStyle: AmoraTextStyles.bodySmall.copyWith(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ),

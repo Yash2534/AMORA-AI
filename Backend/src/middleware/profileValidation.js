@@ -32,7 +32,7 @@ const profileUpdateValidation = [
     }
     return true;
   }),
-  string('name', 100).notEmpty().withMessage('name cannot be empty.'),
+  string('name', 100).notEmpty().withMessage('name cannot be empty.').custom((val) => !/[<>]/.test(val)).withMessage('name cannot contain angle brackets or HTML tags.'),
   body('birthdate').optional().custom((value) => assertAdultBirthDate(value)),
   body('gender').optional().isIn(['Male', 'Female', 'Other']).withMessage('gender must be Male, Female, or Other.'),
   string('customGender', 100),
@@ -64,4 +64,4 @@ const profileUpdateValidation = [
   body('primaryPhotoIndex').optional().isInt({ min: 0, max: 5 }).withMessage('primaryPhotoIndex is invalid.').toInt(),
 ];
 
-module.exports = { profileUpdateValidation };
+module.exports = { profileUpdateValidation, array, string };

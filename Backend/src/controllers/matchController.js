@@ -82,7 +82,7 @@ exports.detail = async (req, res, next) => {
 exports.remove = async (req, res, next) => {
   try {
     const userId = Number(req.user.sub);
-    const { Match, User, Notification } = getModels();
+    const { Match, User, Notification, DiscoverAction } = getModels();
     let existing;
     let removed = false;
 
@@ -100,8 +100,20 @@ exports.remove = async (req, res, next) => {
       await existing.destroy({ transaction });
       removed = true;
 
-      // Soft-delete match/message notifications between the pair
       const otherUserId = Number(existing.userOneId) === userId ? Number(existing.userTwoId) : Number(existing.userOneId);
+
+      // Bilateral like cleanup: remove likes in both directions so unmatched user cannot force re-match (ASP-AI-BUG-003)
+      await DiscoverAction.destroy({
+        where: {
+          [Op.or]: [
+            { actorUserId: userId, targetUserId: otherUserId },
+            { actorUserId: otherUserId, targetUserId: userId },
+          ],
+        },
+        transaction,
+      });
+
+      // Soft-delete match/message notifications between the pair (ASP-AI-BUG-025)
       await Notification.update(
         { deletedAt: new Date() },
         {

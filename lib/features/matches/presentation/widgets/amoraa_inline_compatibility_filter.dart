@@ -8,7 +8,7 @@ import 'package:flutter/services.dart';
 const int minimumCompatibilityThreshold = 50;
 const int maximumCompatibilityThreshold = 95;
 const int compatibilityThresholdStep = 5;
-const int defaultCompatibilityThreshold = 70;
+const int defaultCompatibilityThreshold = 50;
 
 String compatibilityFilterLabel(int value) {
   final score = value.clamp(
@@ -179,7 +179,7 @@ class _AmoraaInlineCompatibilityFilterState
                     const SizedBox(width: AmoraSpacing.space4),
                     IconButton(
                       key: const ValueKey('compatibility-filter-reset'),
-                      tooltip: 'Reset compatibility to 70 percent',
+                      tooltip: 'Reset compatibility to $defaultCompatibilityThreshold percent',
                       onPressed: widget.onReset,
                       icon: const Icon(Icons.restart_alt_rounded, size: 20),
                       color: isDark ? AppColors.accentLavender : AppColors.primary,

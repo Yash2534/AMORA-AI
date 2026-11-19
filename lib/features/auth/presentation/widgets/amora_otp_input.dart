@@ -123,26 +123,21 @@ class _AmoraOtpInputState extends State<AmoraOtpInput> {
         ? _inputController.selection.baseOffset
         : value.length;
     final activeIndex = math.min(math.max(selectionOffset, 0), _length - 1);
-    return Semantics(
-      container: true,
-      explicitChildNodes: true,
-      textField: true,
-      label: '$_length digit verification code',
-      value: value.isEmpty
-          ? 'No digits entered'
-          : '${value.length} digits entered',
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final gap = constraints.maxWidth < 300 ? 4.0 : 8.0;
-          final available = constraints.maxWidth - gap * (_length - 1);
-          final cellSize = math.min(56.0, available / _length);
-          return SizedBox(
-            height: math.max(52, cellSize),
-            child: Stack(
-              children: [
-                Positioned.fill(
-                  child: Opacity(
-                    opacity: .01,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final gap = constraints.maxWidth < 300 ? 4.0 : 8.0;
+        final available = constraints.maxWidth - gap * (_length - 1);
+        final cellSize = math.min(56.0, available / _length);
+        return SizedBox(
+          height: math.max(52, cellSize),
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: Opacity(
+                  opacity: .01,
+                  child: Semantics(
+                    label: '$_length digit verification code',
+                    textField: true,
                     child: TextField(
                       key: const ValueKey('otp-native-input'),
                       controller: _inputController,
@@ -157,11 +152,18 @@ class _AmoraOtpInputState extends State<AmoraOtpInput> {
                         FilteringTextInputFormatter.digitsOnly,
                         LengthLimitingTextInputFormatter(_length),
                       ],
+                      decoration: InputDecoration(
+                        labelText: '$_length digit verification code',
+                        hintText: 'Enter $_length digit code',
+                        border: InputBorder.none,
+                      ),
                       onChanged: _handleChanged,
                     ),
                   ),
                 ),
-                Align(
+              ),
+              ExcludeSemantics(
+                child: Align(
                   child: FittedBox(
                     fit: BoxFit.scaleDown,
                     child: Row(
@@ -185,11 +187,11 @@ class _AmoraOtpInputState extends State<AmoraOtpInput> {
                     ),
                   ),
                 ),
-              ],
-            ),
-          );
-        },
-      ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

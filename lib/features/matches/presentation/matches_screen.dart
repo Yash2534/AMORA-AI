@@ -2587,7 +2587,7 @@ class AiMatchesThresholdEmptyState extends StatelessWidget {
       icon: Icons.tune_rounded,
       title: 'No matches at this level yet',
       description: 'Try lowering the compatibility filter to see more people.',
-      actionLabel: 'Lower to 70%',
+      actionLabel: 'Lower to 50%',
       onAction: onLowerFilter,
     );
   }

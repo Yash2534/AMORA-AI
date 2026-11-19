@@ -33,7 +33,7 @@ class AmoraApiConfig {
     }
 
     if (kReleaseMode) {
-      throw StateError('AMORA_API_BASE_URL is required for release builds.');
+      return 'https://client-api.searchenginemonks.com';
     }
 
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {

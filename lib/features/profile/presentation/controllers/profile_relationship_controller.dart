@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:amora_ai/core/data/image_repository.dart';
 import 'package:amora_ai/core/auth/auth_service.dart';
 import 'package:amora_ai/features/profile/data/public_profile_mapper.dart';
@@ -136,6 +137,7 @@ class ProfileRelationshipController extends ChangeNotifier {
       _likesHasMore = likesPage.$2;
       _superLikesNextPage = superLikesPage.$1;
       _superLikesHasMore = superLikesPage.$2;
+      unawaited(refreshReceivedLikes().catchError((_) {}));
     } on AuthException catch (exception) {
       error = exception.message;
     } catch (_) {

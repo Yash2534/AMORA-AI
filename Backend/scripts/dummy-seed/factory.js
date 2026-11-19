@@ -21,7 +21,7 @@ const MESSAGE_LINES = ['Hey! Your profile made me smile.', 'That place looks ama
 const MASTER_INTERESTS = ['Travel', 'Music', 'Movies', 'Fitness', 'Food', 'Photography', 'Technology'];
 
 const SCENARIOS = [
-  ['master', 'MASTER_TEST_ACCOUNT', 'AMORAA Demo', 'Male', 28, 'very-high'],
+  ['master', 'MASTER_TEST_ACCOUNT', 'AMORAA Demo', 'Female', 28, 'very-high'],
   ['candidate-a', 'UNTOUCHED_DISCOVER', 'Aarohi Desai', 'Female', 24, 'high'],
   ['candidate-b', 'HIGH_COMPATIBILITY', 'Kavya Shah', 'Female', 26, 'high'],
   ['candidate-c', 'MEDIUM_COMPATIBILITY', 'Meera Menon', 'Female', 28, 'medium'],
@@ -104,7 +104,7 @@ function buildSeedBlueprint(config) {
     return { ...scenario, sequence, completed, age, gender, city,
       email: scenario.email || `${slug(scenario.key)}.${slug(scenario.name)}@seed.amoraa.example.test`, phoneNumber: `+919991${String(sequence).padStart(6, '0')}`, birthDate: dateForAge(config.referenceDate, age, index % 300),
       profession: scenario.profession || PROFESSIONS[index % PROFESSIONS.length], company: ['Daylight Design', 'Bluebird Labs', 'Aster Health', 'Riverstone', 'Independent'][index % 5], education: scenario.education || EDUCATION[index % EDUCATION.length],
-      relationshipGoals: isMaster ? ['Long-Term Relationship'] : template.goals, interestedIn: scenario.interestedIn || (isMaster ? ['Female'] : ['Male']),
+      relationshipGoals: isMaster ? ['Long-Term Relationship'] : template.goals, interestedIn: scenario.interestedIn || (isMaster ? ['Male'] : ['Male']),
       bio: isMaster ? 'I enjoy travel, good food, music, fitness, photography and meaningful conversations. I am here to meet someone genuine and build a strong connection.' : (completed ? `${scenario.name.split(' ')[0]} enjoys ${interests.slice(0, 3).join(', ').toLowerCase()} and values honest conversation. Looking for a grounded connection with curiosity, laughter, and room to grow.` : 'Still finishing this profile.'),
       interests, languages, hometown: CITIES[index % 4], religion, heightCm,
       lifestyle: { Height: `${heightCm} cm`, Languages: languages.join(' & '), Religion: religion, Exercise: ['Daily', 'A few times a week', 'Occasionally'][index % 3], 'Food preference': ['Vegetarian', 'Vegan', 'Everything'][index % 3], Pets: ['Dog person', 'Cat person', 'Love all pets'][index % 3], 'Sleep habits': ['Early bird', 'Night owl', 'Flexible'][index % 3] },

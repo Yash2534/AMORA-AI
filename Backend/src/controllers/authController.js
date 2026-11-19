@@ -4,6 +4,7 @@ const { createPhoneOtp, createEmailOtp, deliverPhoneOtp, deliverEmailOtp, verify
 const { recordLoginEvent } = require('../services/userActivityService');
 const { runtimeConfiguration } = require('../services/platformSettingsService');
 const consentService = require('../services/consentService');
+const { disconnectUserSockets } = require('../realtime/realtimeHub');
 const logger = require('../utils/logger');
 const { normalizeIndianMobile } = require('../utils/phoneNumber');
 const googleIds = (process.env.GOOGLE_CLIENT_IDS || '').split(',').map((id) => id.trim()).filter((id) => id && id !== 'skip-for-now');
@@ -21,6 +22,7 @@ const refreshSelectorOf = (value) => {
   return /^[a-f0-9]{32}$/.test(selector) && String(value).includes('.') ? selector : null;
 };
 const REACTIVATION_ISSUER = 'amoraa-backend';
+const DUMMY_PASSWORD_HASH = '$2b$12$K8Z0eG.bW9tW0qF8h3V1h.vM1L3kX4t4F5w4Y2S0W1U3P2Q1O4Y6C';
 const REACTIVATION_AUDIENCE = 'amoraa-account-reactivation';
 const reactivationChallenge = (user) => jwt.sign({
   sub: String(user.id),
@@ -162,95 +164,126 @@ exports.signup = async (req, res, next) => {
     phoneNumber,
   }, pendingOtp.code);
 };
-exports.verifyAccount = async (req, res) => {
-  const { User } = getModels();
-  const phoneNumber = phoneOf(req.body.phoneNumber);
-  const user = await User.findOne({
-    where: { phoneNumber, authProvider: 'local', isVerified: false },
-    order: [['createdAt', 'DESC']],
-  });
-  if (!user) return res.status(400).json({ success: false, message: 'Account not found.', code: 'OTP_INVALID', errors: [] });
-  const checked = await verifyPhoneOtp(phoneNumber, req.body.code, 'account_verification', { userId: user.id, correlationId: otpCorrelationId(req) });
-  if (checked.error) return res.status(400).json({ success: false, message: checked.error[1], code: checked.error[0], errors: checked.error[2] !== undefined ? [{ remainingAttempts: checked.error[2] }] : [] });
-  user.isVerified = true;
-  await user.save();
-  const tokens = await issueTokens(user, req.ip);
-  return success(res, 'Account verified.', { ...tokens, user: profile(user) });
-};
-exports.resendVerification = async (req, res) => {
-  const phoneNumber = phoneOf(req.body.phoneNumber);
-  const { User, OtpToken } = getModels();
-  let pendingOtp = null;
-  await User.sequelize.transaction(async (transaction) => {
+exports.verifyAccount = async (req, res, next) => {
+  try {
+    const { User } = getModels();
+    const phoneNumber = phoneOf(req.body.phoneNumber);
     const user = await User.findOne({
       where: { phoneNumber, authProvider: 'local', isVerified: false },
-      transaction,
-      lock: transaction.LOCK.UPDATE,
-    });
-    if (!user) return;
-    const recentOtp = await OtpToken.findOne({
-      where: {
-        phoneNumber,
-        purpose: 'account_verification',
-        createdAt: { [Op.gte]: new Date(Date.now() - OTP_RESEND_COOLDOWN_MS) },
-      },
       order: [['createdAt', 'DESC']],
-      transaction,
     });
-    if (recentOtp) return;
-    pendingOtp = await createPhoneOtp(phoneNumber, 'account_verification', { userId: user.id, transaction, deliver: false });
-  });
-
-  let deliveredCode;
-  if (pendingOtp) {
-    try {
-      await deliverPhoneOtp(phoneNumber, 'account_verification', pendingOtp.code, pendingOtp.expiresAt, { correlationId: otpCorrelationId(req) });
-      deliveredCode = pendingOtp.code;
-    } catch (error) {
-      await OtpToken.update({ consumed: true }, { where: { id: pendingOtp.otp.id } }).catch(() => {});
-      logger.error('[OTP] Verification resend delivery failed.', { errorCode: error.code, status: error.status });
-
-      if (error.code === 'OTP_CONFIG_ERROR') {
-        return res.status(502).json({
-          success: false,
-          message: "SMS Provider is not configured on the server.",
-          code: 'OTP_PROVIDER_AUTH_ERROR',
-          errors: [],
-        });
-      }
-      if (error.status === 429) {
-        return res.status(429).json({
-          success: false,
-          message: "Too many attempts. Please try again later.",
-          code: 'RATE_LIMITED',
-          errors: [],
-        });
-      }
-      if (error.status === 400 && error.code === 21211) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid phone number.",
-          code: 'INVALID_PHONE_NUMBER',
-          errors: [],
-        });
-      }
-
-      return res.status(503).json({
-        success: false,
-        message: error.message || "We couldn't send the verification code. Please try again.",
-        code: 'OTP_DELIVERY_FAILED',
-        errors: [],
-      });
-    }
+    if (!user) return res.status(400).json({ success: false, message: 'Account not found.', code: 'OTP_INVALID', errors: [] });
+    const checked = await verifyPhoneOtp(phoneNumber, req.body.code, 'account_verification', { userId: user.id, correlationId: otpCorrelationId(req) });
+    if (checked.error) return res.status(400).json({ success: false, message: checked.error[1], code: checked.error[0], errors: checked.error[2] !== undefined ? [{ remainingAttempts: checked.error[2] }] : [] });
+    user.isVerified = true;
+    await user.save();
+    const tokens = await issueTokens(user, req.ip);
+    return success(res, 'Account verified.', { ...tokens, user: profile(user) });
+  } catch (error) {
+    return next(error);
   }
-  return success(
-    res,
-    'If an eligible account exists, a verification code has been sent.',
-    { phoneNumber },
-    deliveredCode,
-  );
 };
-exports.login = async (req, res) => { const { User } = getModels(); const user = await User.findOne({ where: { email: emailOf(req.body.email) } }); if (!user || user.authProvider !== 'local' || !(await bcrypt.compare(req.body.password, user.passwordHash || '')) || user.accountStatus === 'deleted') { if (user && user.accountStatus !== 'deleted') await recordLoginEvent({ userId: user.id, result: 'failed', authenticationMethod: 'password', failureCategory: 'invalid_credentials', request: req }); const provider = user && user.authProvider === 'google'; return res.status(401).json({ success: false, message: provider ? 'This account uses Google Sign-In. Please sign in with Google.' : 'Invalid email or password.', code: 'INVALID_CREDENTIALS', errors: [] }); } if (!user.isVerified) { await recordLoginEvent({ userId: user.id, result: 'failed', authenticationMethod: 'password', failureCategory: 'account_not_verified', request: req }); return res.status(403).json({ success: false, message: 'Please verify your account before logging in.', code: 'ACCOUNT_NOT_VERIFIED', errors: [] }); } if (user.accountStatus === 'deactivated') { await recordLoginEvent({ userId: user.id, result: 'successful', authenticationMethod: 'password', request: req }); return deactivatedResponse(res, user); } await recordLoginEvent({ userId: user.id, result: 'successful', authenticationMethod: 'password', request: req }); return success(res, 'Logged in.', { ...(await issueTokens(user, req.ip)), user: profile(user) }); };
+exports.resendVerification = async (req, res, next) => {
+  try {
+    const phoneNumber = phoneOf(req.body.phoneNumber);
+    const { User, OtpToken } = getModels();
+    let pendingOtp = null;
+    await User.sequelize.transaction(async (transaction) => {
+      const user = await User.findOne({
+        where: { phoneNumber, authProvider: 'local', isVerified: false },
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+      });
+      if (!user) return;
+      const recentOtp = await OtpToken.findOne({
+        where: {
+          phoneNumber,
+          purpose: 'account_verification',
+          createdAt: { [Op.gte]: new Date(Date.now() - OTP_RESEND_COOLDOWN_MS) },
+        },
+        order: [['createdAt', 'DESC']],
+        transaction,
+      });
+      if (recentOtp) return;
+      pendingOtp = await createPhoneOtp(phoneNumber, 'account_verification', { userId: user.id, transaction, deliver: false });
+    });
+
+    let deliveredCode;
+    if (pendingOtp) {
+      try {
+        await deliverPhoneOtp(phoneNumber, 'account_verification', pendingOtp.code, pendingOtp.expiresAt, { correlationId: otpCorrelationId(req) });
+        deliveredCode = pendingOtp.code;
+      } catch (error) {
+        await OtpToken.update({ consumed: true }, { where: { id: pendingOtp.otp.id } }).catch(() => {});
+        logger.error('[OTP] Verification resend delivery failed.', { errorCode: error.code, status: error.status });
+
+        if (error.code === 'OTP_CONFIG_ERROR') {
+          return res.status(502).json({
+            success: false,
+            message: "SMS Provider is not configured on the server.",
+            code: 'OTP_PROVIDER_AUTH_ERROR',
+            errors: [],
+          });
+        }
+        if (error.status === 429) {
+          return res.status(429).json({
+            success: false,
+            message: "Too many attempts. Please try again later.",
+            code: 'RATE_LIMITED',
+            errors: [],
+          });
+        }
+        if (error.status === 400 && error.code === 21211) {
+          return res.status(400).json({
+            success: false,
+            message: "Invalid phone number.",
+            code: 'INVALID_PHONE_NUMBER',
+            errors: [],
+          });
+        }
+
+        return res.status(503).json({
+          success: false,
+          message: error.message || "We couldn't send the verification code. Please try again.",
+          code: 'OTP_DELIVERY_FAILED',
+          errors: [],
+        });
+      }
+    }
+    return success(
+      res,
+      'If an eligible account exists, a verification code has been sent.',
+      { phoneNumber },
+      deliveredCode,
+    );
+  } catch (error) {
+    return next(error);
+  }
+};
+exports.login = async (req, res, next) => {
+  try {
+    const { User } = getModels();
+    const user = await User.findOne({ where: { email: emailOf(req.body.email) } });
+    const passwordMatch = await bcrypt.compare(req.body.password || '', user?.passwordHash || DUMMY_PASSWORD_HASH);
+    if (!user || user.authProvider !== 'local' || !passwordMatch || user.accountStatus === 'deleted') {
+      if (user && user.accountStatus !== 'deleted') await recordLoginEvent({ userId: user.id, result: 'failed', authenticationMethod: 'password', failureCategory: 'invalid_credentials', request: req });
+      const provider = user && user.authProvider === 'google';
+      return res.status(401).json({ success: false, message: provider ? 'This account uses Google Sign-In. Please sign in with Google.' : 'Invalid email or password.', code: 'INVALID_CREDENTIALS', errors: [] });
+    }
+    if (!user.isVerified) {
+      await recordLoginEvent({ userId: user.id, result: 'failed', authenticationMethod: 'password', failureCategory: 'account_not_verified', request: req });
+      return res.status(403).json({ success: false, message: 'Please verify your account before logging in.', code: 'ACCOUNT_NOT_VERIFIED', errors: [] });
+    }
+    if (user.accountStatus === 'deactivated') {
+      await recordLoginEvent({ userId: user.id, result: 'successful', authenticationMethod: 'password', request: req });
+      return deactivatedResponse(res, user);
+    }
+    await recordLoginEvent({ userId: user.id, result: 'successful', authenticationMethod: 'password', request: req });
+    return success(res, 'Logged in.', { ...(await issueTokens(user, req.ip)), user: profile(user) });
+  } catch (error) {
+    return next(error);
+  }
+};
 exports.google = async (req, res, next) => {
   if (!googleClient) return res.status(503).json({ success: false, message: 'Google Sign-In is not configured on this server yet.', code: 'GOOGLE_AUTH_NOT_CONFIGURED', errors: [] });
   let payload;
@@ -309,75 +342,88 @@ exports.reactivate = async (req, res, next) => {
     return success(res, 'Your account has been reactivated.', { ...outcome.tokens, user: profile(outcome.user) });
   } catch (error) { return next(error); }
 };
-exports.forgotPassword = async (req, res) => {
-  const email = emailOf(req.body.email);
-  const { User, OtpToken } = getModels();
-  let pendingOtp = null;
-  await User.sequelize.transaction(async (transaction) => {
-    const user = await User.findOne({
-      where: { email, authProvider: 'local', accountStatus: { [Op.ne]: 'deleted' } },
-      transaction,
-      lock: transaction.LOCK.UPDATE,
-    });
-    if (!user) return;
-    const recentOtp = await OtpToken.findOne({
-      where: {
-        email,
-        purpose: 'password_reset',
-        createdAt: { [Op.gte]: new Date(Date.now() - OTP_RESEND_COOLDOWN_MS) },
-      },
-      order: [['createdAt', 'DESC']],
-      transaction,
-    });
-    if (recentOtp) return;
-    pendingOtp = await createEmailOtp(email, 'password_reset', { transaction, deliver: false });
-  });
-  let deliveredCode;
-  if (pendingOtp) {
-    try {
-      await deliverEmailOtp(email, 'password_reset', pendingOtp.code, pendingOtp.expiresAt);
-      deliveredCode = pendingOtp.code;
-    } catch (error) {
-      await OtpToken.update({ consumed: true }, { where: { id: pendingOtp.otp.id } }).catch(() => {});
-      logger.error('[OTP] Password reset email delivery failed.', { errorCode: error.code, status: error.status });
-      return res.status(503).json({
-        success: false,
-        message: error.message || "We couldn't send the verification code. Please try again.",
-        code: 'OTP_DELIVERY_FAILED',
-        errors: [],
+exports.forgotPassword = async (req, res, next) => {
+  try {
+    const email = emailOf(req.body.email);
+    const { User, OtpToken } = getModels();
+    let pendingOtp = null;
+    await User.sequelize.transaction(async (transaction) => {
+      const user = await User.findOne({
+        where: { email, authProvider: 'local', accountStatus: { [Op.ne]: 'deleted' } },
+        transaction,
+        lock: transaction.LOCK.UPDATE,
       });
+      if (!user) return;
+      const recentOtp = await OtpToken.findOne({
+        where: {
+          email,
+          purpose: 'password_reset',
+          createdAt: { [Op.gte]: new Date(Date.now() - OTP_RESEND_COOLDOWN_MS) },
+        },
+        order: [['createdAt', 'DESC']],
+        transaction,
+      });
+      if (recentOtp) return;
+      pendingOtp = await createEmailOtp(email, 'password_reset', { transaction, deliver: false });
+    });
+    let deliveredCode;
+    if (pendingOtp) {
+      try {
+        await deliverEmailOtp(email, 'password_reset', pendingOtp.code, pendingOtp.expiresAt);
+        deliveredCode = pendingOtp.code;
+      } catch (error) {
+        await OtpToken.update({ consumed: true }, { where: { id: pendingOtp.otp.id } }).catch(() => {});
+        logger.error('[OTP] Password reset email delivery failed.', { errorCode: error.code, status: error.status });
+        return res.status(503).json({
+          success: false,
+          message: error.message || "We couldn't send the verification code. Please try again.",
+          code: 'OTP_DELIVERY_FAILED',
+          errors: [],
+        });
+      }
     }
+    return success(res, 'If an eligible account exists, a password reset code has been sent.', {}, deliveredCode);
+  } catch (error) {
+    return next(error);
   }
-  return success(res, 'If an eligible account exists, a password reset code has been sent.', {}, deliveredCode);
 };
-exports.verifyResetCode = async (req, res) => {
-  const email = emailOf(req.body.email);
-  const checked = await verifyEmailOtp(email, req.body.code, 'password_reset');
-  if (checked.error) return res.status(400).json({ success: false, message: checked.error[1], code: checked.error[0], errors: checked.error[2] !== undefined ? [{ remainingAttempts: checked.error[2] }] : [] });
-  const recoveryToken = jwt.sign({ email, otpId: checked.otp.id, purpose: 'password_reset' }, process.env.JWT_SECRET, { expiresIn: '10m' });
-  return success(res, 'Reset code verified.', { recoveryToken });
+exports.verifyResetCode = async (req, res, next) => {
+  try {
+    const email = emailOf(req.body.email);
+    const checked = await verifyEmailOtp(email, req.body.code, 'password_reset');
+    if (checked.error) return res.status(400).json({ success: false, message: checked.error[1], code: checked.error[0], errors: checked.error[2] !== undefined ? [{ remainingAttempts: checked.error[2] }] : [] });
+    const recoveryToken = jwt.sign({ email, otpId: checked.otp.id, purpose: 'password_reset' }, process.env.JWT_SECRET, { expiresIn: '10m' });
+    return success(res, 'Reset code verified.', { recoveryToken });
+  } catch (error) {
+    return next(error);
+  }
 };
-exports.resetPassword = async (req, res) => {
-  let payload;
-  try { payload = jwt.verify(req.body.recoveryToken, process.env.JWT_SECRET); } catch (e) { return res.status(401).json({ success: false, message: 'Invalid or expired recovery token.', code: e.name === 'TokenExpiredError' ? 'TOKEN_EXPIRED' : 'TOKEN_INVALID', errors: [] }); }
-  const email = emailOf(req.body.email);
-  if (payload.email !== email || !Number.isInteger(payload.otpId) || payload.purpose !== 'password_reset') return res.status(401).json({ success: false, message: 'Recovery token does not match this request.', code: 'TOKEN_INVALID', errors: [] });
-  const { User, RefreshToken, OtpToken } = getModels();
-  const result = await User.sequelize.transaction(async (transaction) => {
-    const otp = await OtpToken.findOne({ where: { id: payload.otpId, email, purpose: 'password_reset', consumed: true }, transaction, lock: transaction.LOCK.UPDATE });
-    if (!otp || otp.recoveryUsedAt) return false;
-    const user = await User.findOne({ where: { email, authProvider: 'local', accountStatus: { [Op.ne]: 'deleted' } }, transaction, lock: transaction.LOCK.UPDATE });
-    if (!user) return false;
-    user.passwordHash = await bcrypt.hash(req.body.newPassword, 12);
-    user.tokenVersion = Number(user.tokenVersion || 0) + 1;
-    await user.save({ transaction });
-    otp.recoveryUsedAt = new Date();
-    await otp.save({ transaction });
-    await RefreshToken.destroy({ where: { userId: user.id }, transaction });
-    return true;
-  });
-  if (!result) return res.status(401).json({ success: false, message: 'Invalid or already used recovery token.', code: 'TOKEN_INVALID', errors: [] });
-  return success(res, 'Password updated. Please log in again.', {});
+exports.resetPassword = async (req, res, next) => {
+  try {
+    let payload;
+    try { payload = jwt.verify(req.body.recoveryToken, process.env.JWT_SECRET); } catch (e) { return res.status(401).json({ success: false, message: 'Invalid or expired recovery token.', code: e.name === 'TokenExpiredError' ? 'TOKEN_EXPIRED' : 'TOKEN_INVALID', errors: [] }); }
+    const email = emailOf(req.body.email);
+    if (payload.email !== email || !Number.isInteger(payload.otpId) || payload.purpose !== 'password_reset') return res.status(401).json({ success: false, message: 'Recovery token does not match this request.', code: 'TOKEN_INVALID', errors: [] });
+    const { User, RefreshToken, OtpToken } = getModels();
+    const result = await User.sequelize.transaction(async (transaction) => {
+      const otp = await OtpToken.findOne({ where: { id: payload.otpId, email, purpose: 'password_reset', consumed: true }, transaction, lock: transaction.LOCK.UPDATE });
+      if (!otp || otp.recoveryUsedAt) return false;
+      const user = await User.findOne({ where: { email, authProvider: 'local', accountStatus: { [Op.ne]: 'deleted' } }, transaction, lock: transaction.LOCK.UPDATE });
+      if (!user) return false;
+      user.passwordHash = await bcrypt.hash(req.body.newPassword, 12);
+      user.tokenVersion = Number(user.tokenVersion || 0) + 1;
+      await user.save({ transaction });
+      otp.recoveryUsedAt = new Date();
+      await otp.save({ transaction });
+      await RefreshToken.destroy({ where: { userId: user.id }, transaction });
+      return user.id;
+    });
+    if (!result) return res.status(401).json({ success: false, message: 'Invalid or already used recovery token.', code: 'TOKEN_INVALID', errors: [] });
+    disconnectUserSockets(result);
+    return success(res, 'Password updated. Please log in again.', {});
+  } catch (error) {
+    return next(error);
+  }
 };
 exports.changePassword = async (req, res, next) => {
   try {
@@ -412,45 +458,75 @@ exports.changePassword = async (req, res, next) => {
     if (result === 'NEW_PASSWORD_SAME_AS_CURRENT') {
       return res.status(409).json({ success: false, message: 'New password cannot be the same as the current password.', code: 'NEW_PASSWORD_SAME_AS_CURRENT', errors: [] });
     }
+    disconnectUserSockets(req.user.sub);
     return success(res, 'Password updated. Please log in again on this device.', {});
   } catch (error) { return next(error); }
 };
-exports.refreshToken = async (req, res) => {
-  const { RefreshToken, User } = getModels();
-  const token = req.body.refreshToken;
-  const selector = refreshSelectorOf(token);
-  const candidates = await RefreshToken.findAll({
-    where: {
-      expiresAt: { [Op.gt]: new Date() },
-      ...(selector ? { tokenSelector: selector } : { tokenSelector: null }),
-    },
-  });
-  let candidateId;
-  for (const item of candidates) {
-    if (await bcrypt.compare(token, item.tokenHash)) {
-      candidateId = item.id;
-      break;
-    }
-  }
-  if (!candidateId) {
-    return res.status(401).json({ success: false, message: 'Invalid or expired refresh token.', code: 'TOKEN_INVALID', errors: [] });
-  }
-  const tokens = await User.sequelize.transaction(async (transaction) => {
-    const match = await RefreshToken.findByPk(candidateId, {
-      include: [User],
-      transaction,
-      lock: transaction.LOCK.UPDATE,
+exports.refreshToken = async (req, res, next) => {
+  try {
+    const { RefreshToken, User } = getModels();
+    const token = req.body.refreshToken;
+    const selector = refreshSelectorOf(token);
+    const candidates = await RefreshToken.findAll({
+      where: {
+        expiresAt: { [Op.gt]: new Date() },
+        ...(selector ? { tokenSelector: selector } : { tokenSelector: null }),
+      },
     });
-    if (!match || !match.User || match.expiresAt <= new Date() || match.User.accountStatus !== 'active') return null;
-    const user = match.User;
-    await match.destroy({ transaction });
-    return issueTokens(user, req.ip, { transaction });
-  });
-  if (!tokens) {
-    return res.status(401).json({ success: false, message: 'Invalid or expired refresh token.', code: 'TOKEN_INVALID', errors: [] });
+    let candidateId;
+    for (const item of candidates) {
+      if (await bcrypt.compare(token, item.tokenHash)) {
+        candidateId = item.id;
+        break;
+      }
+    }
+    if (!candidateId) {
+      return res.status(401).json({ success: false, message: 'Invalid or expired refresh token.', code: 'TOKEN_INVALID', errors: [] });
+    }
+    const tokens = await User.sequelize.transaction(async (transaction) => {
+      const match = await RefreshToken.findByPk(candidateId, {
+        include: [User],
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+      });
+      if (!match || !match.User || match.expiresAt <= new Date() || match.User.accountStatus !== 'active') return null;
+      const user = match.User;
+      await match.destroy({ transaction });
+      return issueTokens(user, req.ip, { transaction });
+    });
+    if (!tokens) {
+      return res.status(401).json({ success: false, message: 'Invalid or expired refresh token.', code: 'TOKEN_INVALID', errors: [] });
+    }
+    return success(res, 'Token refreshed.', tokens);
+  } catch (error) {
+    return next(error);
   }
-  return success(res, 'Token refreshed.', tokens);
 };
-exports.logout = async (req, res) => { const { RefreshToken } = getModels(); const selector = refreshSelectorOf(req.body.refreshToken); const candidates = await RefreshToken.findAll({ where: { userId: req.user.sub, ...(selector ? { tokenSelector: selector } : { tokenSelector: null }) } }); for (const item of candidates) if (await bcrypt.compare(req.body.refreshToken, item.tokenHash)) { await item.destroy(); break; } return success(res, 'Logged out', {}); };
-exports.me = async (req, res) => { const { User } = getModels(); const user = await User.findByPk(req.user.sub); if (!user) return res.status(404).json({ success: false, message: 'User not found.', code: 'TOKEN_INVALID', errors: [] }); return success(res, 'Profile retrieved.', { user: profile(user) }); };
+exports.logout = async (req, res, next) => {
+  try {
+    const { RefreshToken } = getModels();
+    const selector = refreshSelectorOf(req.body.refreshToken);
+    const candidates = await RefreshToken.findAll({ where: { userId: req.user.sub, ...(selector ? { tokenSelector: selector } : { tokenSelector: null }) } });
+    for (const item of candidates) {
+      if (await bcrypt.compare(req.body.refreshToken, item.tokenHash)) {
+        await item.destroy();
+        break;
+      }
+    }
+    disconnectUserSockets(req.user.sub);
+    return success(res, 'Logged out', {});
+  } catch (error) {
+    return next(error);
+  }
+};
+exports.me = async (req, res, next) => {
+  try {
+    const { User } = getModels();
+    const user = await User.findByPk(req.user.sub);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found.', code: 'TOKEN_INVALID', errors: [] });
+    return success(res, 'Profile retrieved.', { user: profile(user) });
+  } catch (error) {
+    return next(error);
+  }
+};
 exports.logGoogleStatus = () => logger.info(googleClient ? '[Google Auth] Active' : '[Google Auth] Disabled — set GOOGLE_CLIENT_IDS in .env to enable');

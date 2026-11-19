@@ -1,6 +1,7 @@
 const fs = require('fs');
 const { Op } = require('sequelize');
 const { getModels } = require('../models');
+const { hasEntitlement } = require('../services/entitlementService');
 const { conversationAccess } = require('../services/conversationAccessService');
 const { _summaryFor: conversationSummaryFor } = require('./conversationController');
 const { serializePublicProfile } = require('../services/publicProfileService');
@@ -16,26 +17,28 @@ const mediaFor = (message) => (message.media || []).map((item) => ({
   sizeBytes: item.sizeBytes,
   url: `/api/messages/${message.id}/media/${item.id}`,
 }));
-const messageJson = (message, viewerUserId, otherLastReadMessageId) => ({
-  id: String(message.id),
-  conversationId: String(message.conversationId),
-  senderId: String(message.senderId),
-  mine: Number(message.senderId) === Number(viewerUserId),
-  type: message.type,
-  roseTransactionId: message.roseTransactionId == null ? null : String(message.roseTransactionId),
-  text: message.deletedAt ? null : message.text,
-  context: message.deletedAt ? null : message.context,
-  deleted: Boolean(message.deletedAt),
-  createdAt: message.createdAt,
-  updatedAt: message.updatedAt,
-  status: message.status === 'read'
-    || (Number(message.senderId) === Number(viewerUserId) && Number(otherLastReadMessageId || 0) >= Number(message.id))
-    ? 'read'
-    : message.status === 'delivered' ? 'delivered' : 'sent',
-  deliveredAt: message.deliveredAt,
-  readAt: message.readAt,
-  media: message.deletedAt ? [] : mediaFor(message),
-});
+const messageJson = (message, viewerUserId, otherLastReadMessageId, canSeeReadReceipts = false) => {
+  const isMine = Number(message.senderId) === Number(viewerUserId);
+  const otherHasRead = Number(otherLastReadMessageId || 0) >= Number(message.id) || message.status === 'read';
+  const showRead = isMine ? (canSeeReadReceipts && otherHasRead) : (message.status === 'read');
+  return {
+    id: String(message.id),
+    conversationId: String(message.conversationId),
+    senderId: String(message.senderId),
+    mine: isMine,
+    type: message.type,
+    roseTransactionId: message.roseTransactionId == null ? null : String(message.roseTransactionId),
+    text: message.deletedAt ? null : message.text,
+    context: message.deletedAt ? null : message.context,
+    deleted: Boolean(message.deletedAt),
+    createdAt: message.createdAt,
+    updatedAt: message.updatedAt,
+    status: showRead ? 'read' : ((message.status === 'delivered' || (isMine && otherHasRead)) ? 'delivered' : 'sent'),
+    deliveredAt: message.deliveredAt,
+    readAt: (isMine && !canSeeReadReceipts) ? null : message.readAt,
+    media: message.deletedAt ? [] : mediaFor(message),
+  };
+};
 
 async function includedMessage(messageId, transaction) {
   const { Message, MessageMedia } = getModels();
@@ -98,6 +101,7 @@ exports.history = async (req, res, next) => {
         });
       }
     }
+    const canSeeReadReceipts = await hasEntitlement(userId, 'readReceipts');
     return res.json({
       success: true,
       message: pageRows.length ? 'Messages retrieved.' : 'No messages found.',
@@ -111,7 +115,7 @@ exports.history = async (req, res, next) => {
             && (!access.member.mutedUntil || new Date(access.member.mutedUntil) > new Date()),
           mutedUntil: access.member.mutedUntil,
         },
-        messages: pageRows.reverse().map((message) => messageJson(message, userId, access.other.lastReadMessageId)),
+        messages: pageRows.reverse().map((message) => messageJson(message, userId, access.other.lastReadMessageId, canSeeReadReceipts)),
         pagination: { limit, hasMore, nextCursor: hasMore ? String(pageRows[0].id) : null },
       },
     });
@@ -237,7 +241,7 @@ exports.remove = async (req, res, next) => {
     const userId = Number(req.user.sub);
     const { Message, Conversation, MessageMedia } = getModels();
     const message = await Message.findByPk(req.params.messageId, { include: [{ model: MessageMedia, as: 'media', required: false }] });
-    if (!message) return res.json({ success: true, message: 'Message was already unavailable.', data: { messageId: String(req.params.messageId), deleted: true } });
+    if (!message) return unavailable(res);
     const access = await conversationAccess(message.conversationId, userId);
     if (!access) return unavailable(res);
     if (Number(message.senderId) !== userId) return res.status(403).json({ success: false, message: 'Only the sender can delete this message.', code: 'MESSAGE_DELETE_FORBIDDEN', errors: [] });
@@ -249,6 +253,11 @@ exports.remove = async (req, res, next) => {
           const previous = await Message.findOne({ where: { conversationId: message.conversationId, deletedAt: null, id: { [Op.ne]: message.id } }, order: [['id', 'DESC']], transaction });
           await Conversation.update({ lastMessageId: previous?.id || null, lastMessageAt: previous?.createdAt || null }, { where: { id: message.conversationId }, transaction });
         }
+        const { Notification } = getModels();
+        await Notification.update(
+          { deletedAt: new Date(), message: 'This message was deleted.' },
+          { where: { dedupeKey: `message:${message.id}`, deletedAt: null }, transaction }
+        );
       });
       for (const media of message.media || []) {
         const file = absolutePathFor(media.storagePath);

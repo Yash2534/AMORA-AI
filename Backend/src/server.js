@@ -146,6 +146,10 @@ function createHttpServer() {
   return server;
 }
 
+process.on('unhandledRejection', (reason) => {
+  console.error('[Process] Unhandled Promise Rejection:', reason);
+});
+
 if (require.main === module) {
   startServer().then((server) => {
     const shutdown = createGracefulShutdown({ server, timeoutMs: shutdownTimeout, exit: (code) => { process.exitCode = code; } });

@@ -4,6 +4,9 @@ module.exports = (err, req, res, _next) => {
   const meta = String(req.originalUrl || '').startsWith('/api/admin/')
     ? { meta: { requestId: req.adminCorrelationId || null } }
     : {};
+  if (err.type === 'entity.parse.failed' || (err.status === 400 && err instanceof SyntaxError && 'body' in err)) {
+    return res.status(400).json({ success: false, message: 'Request body is not valid JSON.', code: 'MALFORMED_JSON', errors: [], ...meta });
+  }
   if (err instanceof UniqueConstraintError) return res.status(409).json({ success: false, message: 'A record with that value already exists.', code: 'CONFLICT', errors: err.errors.map((e) => ({ field: e.path, message: e.message })), ...meta });
   if (err instanceof ValidationError) return res.status(422).json({ success: false, message: 'Validation failed.', code: 'VALIDATION_ERROR', errors: err.errors.map((e) => ({ field: e.path, message: e.message })), ...meta });
   if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') return res.status(401).json({ success: false, message: 'Invalid or expired token.', code: err.name === 'TokenExpiredError' ? 'TOKEN_EXPIRED' : 'TOKEN_INVALID', errors: [], ...meta });
@@ -15,6 +18,6 @@ module.exports = (err, req, res, _next) => {
     return res.status(err.status).json({ success: false, message: err.message, code: err.code, errors: [], ...meta });
   }
   logger.error('[Request] Unexpected server error.', { error: err, requestId: req.adminCorrelationId || null });
-  const isAdminRequest = String(req.originalUrl || '').startsWith('/api/admin/');
-  return res.status(500).json({ success: false, message: process.env.NODE_ENV === 'production' || isAdminRequest ? 'An unexpected server error occurred.' : err.message, code: 'INTERNAL_ERROR', errors: [], ...meta });
+  const isDevOrTest = ['development', 'test'].includes(process.env.NODE_ENV);
+  return res.status(500).json({ success: false, message: isDevOrTest && !isAdminRequest ? err.message : 'An unexpected server error occurred.', code: 'INTERNAL_ERROR', errors: [], ...meta });
 };

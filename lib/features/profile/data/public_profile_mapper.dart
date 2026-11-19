@@ -1,5 +1,6 @@
 import 'package:amora_ai/core/data/image_repository.dart';
 import 'package:amora_ai/features/profile/domain/communication_style.dart';
+import 'package:amora_ai/features/profile/domain/profile_interest_policy.dart';
 
 class PublicRelationshipState {
   const PublicRelationshipState({
@@ -98,7 +99,7 @@ PublicProfileResult publicProfileFromJson(Map<String, dynamic> json) {
     status: json['status']?.toString() ?? '',
     recentlyActive: json['recentlyActive'] == true,
     bio: json['bio']?.toString() ?? '',
-    interests: strings(json['interests']),
+    interests: ProfileInterestPolicy.visible(strings(json['interests'])),
     imageUrl: imageUrl,
     gallery: gallery.isEmpty && imageUrl.isNotEmpty
         ? <String>[imageUrl]

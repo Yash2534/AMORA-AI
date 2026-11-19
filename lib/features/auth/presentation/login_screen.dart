@@ -63,7 +63,7 @@ class _LoginScreenState extends State<LoginScreen> {
       child: AutofillGroup(
         child: Form(
           key: _formKey,
-          autovalidateMode: AutovalidateMode.onUserInteraction,
+          autovalidateMode: AutovalidateMode.disabled,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [

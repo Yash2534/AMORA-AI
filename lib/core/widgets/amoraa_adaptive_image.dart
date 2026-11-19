@@ -298,25 +298,29 @@ class _AmoraaAdaptiveImageState extends State<AmoraaAdaptiveImage> {
       source.startsWith('blob:');
 
   Widget _fallbackAsset() {
-    final fallback = AppImages.resolveAsset(
-      widget.fallbackAsset,
-      fallback: AppImages.defaultAvatar,
-    );
-    return Image.asset(
-      fallback,
-      width: widget.aspectMode == AmoraaImageAspectMode.free
-          ? widget.width
-          : double.infinity,
-      height: widget.aspectMode == AmoraaImageAspectMode.free
-          ? widget.height
-          : double.infinity,
-      fit: widget.fit,
-      alignment: widget.alignment,
-      filterQuality: FilterQuality.medium,
-      cacheWidth: widget.cacheWidth,
-      cacheHeight: widget.cacheHeight,
-      errorBuilder: (_, _, _) => _gradientFallback(),
-    );
+    final candidate = widget.fallbackAsset?.trim() ?? '';
+    // Never fall back to realistic human stock portraits (ASP-AI-BUG-002)
+    if (candidate.isNotEmpty &&
+        candidate.startsWith('assets/') &&
+        !candidate.contains('profiles/')) {
+      final fallback = AppImages.resolveAsset(candidate);
+      return Image.asset(
+        fallback,
+        width: widget.aspectMode == AmoraaImageAspectMode.free
+            ? widget.width
+            : double.infinity,
+        height: widget.aspectMode == AmoraaImageAspectMode.free
+            ? widget.height
+            : double.infinity,
+        fit: widget.fit,
+        alignment: widget.alignment,
+        filterQuality: FilterQuality.medium,
+        cacheWidth: widget.cacheWidth,
+        cacheHeight: widget.cacheHeight,
+        errorBuilder: (_, _, _) => _gradientFallback(),
+      );
+    }
+    return _gradientFallback();
   }
 
   Widget _gradientFallback() {

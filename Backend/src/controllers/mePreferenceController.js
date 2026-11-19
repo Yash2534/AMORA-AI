@@ -1,4 +1,5 @@
 const { filtersFor, updateFilters } = require('../services/discoverPreferenceService');
+const { hasEntitlement } = require('../services/entitlementService');
 const { getModels } = require('../models');
 const { validCoordinates } = require('../utils/geoDistance');
 
@@ -27,6 +28,17 @@ exports.get = async (req, res, next) => {
 
 exports.update = async (req, res, next) => {
   try {
+    if (Array.isArray(req.body.datingIntentions) && req.body.datingIntentions.length > 0) {
+      const hasAdvanced = await hasEntitlement(req.user.sub, 'advancedDiscoverFilters');
+      if (!hasAdvanced) {
+        return res.status(403).json({
+          success: false,
+          message: 'Advanced intent filters require an active subscription.',
+          code: 'SUBSCRIPTION_REQUIRED',
+          errors: [{ field: 'datingIntentions', message: 'Upgrade to Plus or higher to filter by dating intentions.' }],
+        });
+      }
+    }
     const current = await filtersFor(req.user.sub, req.body);
     if (current.minAge > current.maxAge) {
       return res.status(400).json({

@@ -85,6 +85,9 @@ Future<void> main() async {
 }
 
 String resolveAmoraInitialRoute(String platformRoute) {
+  if (!AmoraSession.isLoggedIn.value) {
+    return LoginScreen.routeName;
+  }
   final hashIndex = platformRoute.indexOf('#');
   final normalized = hashIndex >= 0
       ? platformRoute.substring(hashIndex + 1)
@@ -95,6 +98,128 @@ String resolveAmoraInitialRoute(String platformRoute) {
   }
   return AmoraSplashScreen.routeName;
 }
+
+final Set<String> _publicRouteNames = {
+  AmoraSplashScreen.routeName,
+  OnboardingScreen.routeName,
+  LoginScreen.routeName,
+  WelcomeBackReactivationScreen.routeName,
+  SignupScreen.routeName,
+  ForgotPasswordScreen.routeName,
+  ResetPasswordScreen.routeName,
+  TermsConditionsScreen.routeName,
+  TermsConditionsScreen.legacyRouteName,
+  PrivacyPolicyScreen.routeName,
+  CommunityGuidelinesScreen.routeName,
+  FaqSupportScreen.routeName,
+  FaqSupportScreen.legacyRouteName,
+};
+
+final Map<String, WidgetBuilder> _routes = {
+  AmoraSplashScreen.routeName: (_) => AmoraSplashScreen(
+    resolveInitialRoute: () => AmoraSession.isLoggedIn.value
+        ? AmoraSession.authenticatedRecoveryRoute
+        : LoginScreen.routeName,
+  ),
+  OnboardingScreen.routeName: (_) => const OnboardingScreen(),
+  LoginScreen.routeName: (_) => const LoginScreen(),
+  WelcomeBackReactivationScreen.routeName: (_) =>
+      const WelcomeBackReactivationScreen(),
+  SignupScreen.routeName: (_) => const SignupScreen(),
+  ForgotPasswordScreen.routeName: (_) => ForgotPasswordScreen(
+    requestCode: AuthService.instance.forgotPassword,
+    verifyCode: AuthService.instance.verifyResetCode,
+  ),
+  ResetPasswordScreen.routeName: (_) =>
+      ResetPasswordScreen(onReset: AuthService.instance.resetPassword),
+  ChangePasswordScreen.routeName: (_) => const ChangePasswordScreen(),
+  AccountVerificationScreen.routeName: (_) =>
+      const AccountVerificationScreen(),
+  ProfileOnboardingFlow.routeName: (_) => const ProfileOnboardingFlow(),
+  ProfileCompletionScreen.routeName: (_) =>
+      const ProfileCompletionScreen(),
+  ProfilePreviewScreen.routeName: (_) => const ProfilePreviewScreen(),
+  ProfileBasicDetailsScreen.routeName: (_) =>
+      const ProfileBasicDetailsScreen(),
+  CompatibilityOnboardingScreen.routeName: (_) =>
+      const CompatibilityOnboardingScreen(),
+  ProfileSetupScreen.routeName: (_) => const ProfileSetupScreen(),
+  KycVerificationScreen.routeName: (_) => KycVerificationScreen(
+    verifyIdentity: IdentityVerificationRepository.instance.submit,
+    loadStatus: IdentityVerificationRepository.instance.status,
+  ),
+
+  // Primary app tabs and product flows.
+  MainShell.routeName: (_) => const MainShell(),
+  BrowseGridScreen.routeName: (_) => const BrowseGridScreen(),
+  AdvancedFiltersScreen.routeName: (_) => const AdvancedFiltersScreen(),
+  DiscoverScreen.routeName: (_) => const MainShell(),
+  ProfileScreen.routeName: (_) =>
+      const MainShell(initialTab: AmoraNavTab.profile),
+  ProfileDetailScreen.routeName: (_) =>
+      ProfileDetailScreen(api: PhaseTwoApiService.instance),
+  MatchesScreen.routeName: (_) =>
+      const MainShell(initialTab: AmoraNavTab.matches),
+  ChatListScreen.routeName: (_) =>
+      const MainShell(initialTab: AmoraNavTab.chats),
+  ChatDetailScreen.routeName: (_) => const ChatDetailScreen(),
+  NotificationsHubScreen.routeName: (_) =>
+      const NotificationsHubScreen(),
+  // Preserve the Events route while its normal frontend entry points
+  // are temporarily hidden.
+  EventsScreen.routeName: (_) =>
+      const EventsScreen(showNavigation: false),
+  EventDetailScreen.routeName: (_) => const EventDetailScreen(),
+  MyEventsScreen.routeName: (_) => const MyEventsScreen(),
+  AiIcebreakersScreen.routeName: (_) => const AiIcebreakersScreen(),
+  SubscriptionScreen.routeName: (_) => const SubscriptionScreen(),
+  SubscriptionScreen.membershipRoute: (_) => const SubscriptionScreen(),
+  SubscriptionScreen.manageRoute: (_) => const SubscriptionScreen(),
+  PaymentScreen.routeName: (_) => const PaymentScreen(),
+  ProfileSettingsScreen.routeName: (_) => const ProfileSettingsScreen(),
+  SavedProfilesScreen.routeName: (_) => const SavedProfilesScreen(),
+  BlockedProfilesScreen.routeName: (_) =>
+      BlockedProfilesScreen(api: PhaseTwoApiService.instance),
+  LikesSuperLikesScreen.routeName: (_) => const LikesSuperLikesScreen(),
+  SafetyPrivacyScreen.routeName: (_) => const SafetyPrivacyScreen(),
+  SafetyPrivacyScreen.legacyRouteName: (_) =>
+      const SafetyPrivacyScreen(),
+  FaqSupportScreen.routeName: (_) => const FaqSupportScreen(),
+  FaqSupportScreen.legacyRouteName: (_) => const FaqSupportScreen(),
+  SettingsScreen.routeName: (_) => const SettingsScreen(),
+  ReportFlowScreen.routeName: (_) =>
+      ReportFlowScreen(api: PhaseTwoApiService.instance),
+  PhotoManagerScreen.routeName: (_) => const PhotoManagerScreen(),
+  ProfileEditScreen.routeName: (_) => const ProfileEditScreen(),
+  WhyWeMatchedScreen.routeName: (_) => const WhyWeMatchedScreen(),
+  LikedYouPaywallScreen.routeName: (_) => const LikedYouPaywallScreen(),
+  LikedYouPaywallScreen.aliasRouteName: (_) =>
+      const LikedYouPaywallScreen(),
+  BioBuilderScreen.routeName: (_) => const BioBuilderScreen(),
+  DealbreakersScreen.routeName: (_) => const DealbreakersScreen(),
+  NotificationPreferencesScreen.routeName: (_) =>
+      const NotificationPreferencesScreen(),
+  DarkModeSettingsScreen.routeName: (_) =>
+      const DarkModeSettingsScreen(),
+  TermsConditionsScreen.routeName: (_) => const TermsConditionsScreen(),
+  TermsConditionsScreen.legacyRouteName: (_) =>
+      const TermsConditionsScreen(),
+  PrivacyPolicyScreen.routeName: (_) => const PrivacyPolicyScreen(),
+  CommunityGuidelinesScreen.routeName: (_) =>
+      const CommunityGuidelinesScreen(),
+  LogoutAccountScreen.routeName: (_) => const LogoutAccountScreen(),
+  DeactivateAccountScreen.routeName: (_) => DeactivateAccountScreen(
+    onDeactivate: (password) async {
+      await PhaseTwoApiService.instance.deactivate(password);
+      PushNotificationService.instance
+          .forgetCurrentDeviceRegistration();
+      await AuthService.instance.clearSession();
+      return true;
+    },
+  ),
+  DeleteAccountInformationScreen.routeName: (_) =>
+      const DeleteAccountInformationScreen(),
+};
 
 class MyApp extends StatefulWidget {
   const MyApp({super.key});
@@ -127,110 +252,38 @@ class _MyAppState extends State<MyApp> {
         initialRoute: resolveAmoraInitialRoute(
           WidgetsBinding.instance.platformDispatcher.defaultRouteName,
         ),
-        routes: {
-          AmoraSplashScreen.routeName: (_) => AmoraSplashScreen(
-            resolveInitialRoute: () => AmoraSession.isLoggedIn.value
-                ? AmoraSession.authenticatedRecoveryRoute
-                : LoginScreen.routeName,
-          ),
-          OnboardingScreen.routeName: (_) => const OnboardingScreen(),
-          LoginScreen.routeName: (_) => const LoginScreen(),
-          WelcomeBackReactivationScreen.routeName: (_) =>
-              const WelcomeBackReactivationScreen(),
-          SignupScreen.routeName: (_) => const SignupScreen(),
-          ForgotPasswordScreen.routeName: (_) => ForgotPasswordScreen(
-            requestCode: AuthService.instance.forgotPassword,
-            verifyCode: AuthService.instance.verifyResetCode,
-          ),
-          ResetPasswordScreen.routeName: (_) =>
-              ResetPasswordScreen(onReset: AuthService.instance.resetPassword),
-          ChangePasswordScreen.routeName: (_) => const ChangePasswordScreen(),
-          AccountVerificationScreen.routeName: (_) =>
-              const AccountVerificationScreen(),
-          ProfileOnboardingFlow.routeName: (_) => const ProfileOnboardingFlow(),
-          ProfileCompletionScreen.routeName: (_) =>
-              const ProfileCompletionScreen(),
-          ProfilePreviewScreen.routeName: (_) => const ProfilePreviewScreen(),
-          ProfileBasicDetailsScreen.routeName: (_) =>
-              const ProfileBasicDetailsScreen(),
-          CompatibilityOnboardingScreen.routeName: (_) =>
-              const CompatibilityOnboardingScreen(),
-          ProfileSetupScreen.routeName: (_) => const ProfileSetupScreen(),
-          KycVerificationScreen.routeName: (_) => KycVerificationScreen(
-            verifyIdentity: IdentityVerificationRepository.instance.submit,
-            loadStatus: IdentityVerificationRepository.instance.status,
-          ),
+        onGenerateRoute: (settings) {
+          final rawName = settings.name ?? '';
+          final hashIndex = rawName.indexOf('#');
+          final name = hashIndex >= 0 ? rawName.substring(hashIndex + 1) : rawName;
+          final normalized = name.startsWith('/') ? name : '/$name';
 
-          // Primary app tabs and product flows.
-          MainShell.routeName: (_) => const MainShell(),
-          BrowseGridScreen.routeName: (_) => const BrowseGridScreen(),
-          AdvancedFiltersScreen.routeName: (_) => const AdvancedFiltersScreen(),
-          DiscoverScreen.routeName: (_) => const MainShell(),
-          ProfileScreen.routeName: (_) =>
-              const MainShell(initialTab: AmoraNavTab.profile),
-          ProfileDetailScreen.routeName: (_) =>
-              ProfileDetailScreen(api: PhaseTwoApiService.instance),
-          MatchesScreen.routeName: (_) =>
-              const MainShell(initialTab: AmoraNavTab.matches),
-          ChatListScreen.routeName: (_) =>
-              const MainShell(initialTab: AmoraNavTab.chats),
-          ChatDetailScreen.routeName: (_) => const ChatDetailScreen(),
-          NotificationsHubScreen.routeName: (_) =>
-              const NotificationsHubScreen(),
-          // Preserve the Events route while its normal frontend entry points
-          // are temporarily hidden.
-          EventsScreen.routeName: (_) =>
-              const EventsScreen(showNavigation: false),
-          EventDetailScreen.routeName: (_) => const EventDetailScreen(),
-          MyEventsScreen.routeName: (_) => const MyEventsScreen(),
-          AiIcebreakersScreen.routeName: (_) => const AiIcebreakersScreen(),
-          SubscriptionScreen.routeName: (_) => const SubscriptionScreen(),
-          SubscriptionScreen.membershipRoute: (_) => const SubscriptionScreen(),
-          SubscriptionScreen.manageRoute: (_) => const SubscriptionScreen(),
-          PaymentScreen.routeName: (_) => const PaymentScreen(),
-          ProfileSettingsScreen.routeName: (_) => const ProfileSettingsScreen(),
-          SavedProfilesScreen.routeName: (_) => const SavedProfilesScreen(),
-          BlockedProfilesScreen.routeName: (_) =>
-              BlockedProfilesScreen(api: PhaseTwoApiService.instance),
-          LikesSuperLikesScreen.routeName: (_) => const LikesSuperLikesScreen(),
-          SafetyPrivacyScreen.routeName: (_) => const SafetyPrivacyScreen(),
-          SafetyPrivacyScreen.legacyRouteName: (_) =>
-              const SafetyPrivacyScreen(),
-          FaqSupportScreen.routeName: (_) => const FaqSupportScreen(),
-          FaqSupportScreen.legacyRouteName: (_) => const FaqSupportScreen(),
-          SettingsScreen.routeName: (_) => const SettingsScreen(),
-          ReportFlowScreen.routeName: (_) =>
-              ReportFlowScreen(api: PhaseTwoApiService.instance),
-          PhotoManagerScreen.routeName: (_) => const PhotoManagerScreen(),
-          ProfileEditScreen.routeName: (_) => const ProfileEditScreen(),
-          WhyWeMatchedScreen.routeName: (_) => const WhyWeMatchedScreen(),
-          LikedYouPaywallScreen.routeName: (_) => const LikedYouPaywallScreen(),
-          LikedYouPaywallScreen.aliasRouteName: (_) =>
-              const LikedYouPaywallScreen(),
-          BioBuilderScreen.routeName: (_) => const BioBuilderScreen(),
-          DealbreakersScreen.routeName: (_) => const DealbreakersScreen(),
-          NotificationPreferencesScreen.routeName: (_) =>
-              const NotificationPreferencesScreen(),
-          DarkModeSettingsScreen.routeName: (_) =>
-              const DarkModeSettingsScreen(),
-          TermsConditionsScreen.routeName: (_) => const TermsConditionsScreen(),
-          TermsConditionsScreen.legacyRouteName: (_) =>
-              const TermsConditionsScreen(),
-          PrivacyPolicyScreen.routeName: (_) => const PrivacyPolicyScreen(),
-          CommunityGuidelinesScreen.routeName: (_) =>
-              const CommunityGuidelinesScreen(),
-          LogoutAccountScreen.routeName: (_) => const LogoutAccountScreen(),
-          DeactivateAccountScreen.routeName: (_) => DeactivateAccountScreen(
-            onDeactivate: (password) async {
-              await PhaseTwoApiService.instance.deactivate(password);
-              PushNotificationService.instance
-                  .forgetCurrentDeviceRegistration();
-              await AuthService.instance.clearSession();
-              return true;
-            },
-          ),
-          DeleteAccountInformationScreen.routeName: (_) =>
-              const DeleteAccountInformationScreen(),
+          final builder = _routes[name] ?? _routes[normalized];
+          if (builder == null) {
+            return MaterialPageRoute<void>(
+              builder: (_) => AmoraSession.isLoggedIn.value
+                  ? const MainShell()
+                  : const LoginScreen(),
+              settings: settings,
+            );
+          }
+
+          final isPublic = _publicRouteNames.contains(name) ||
+              _publicRouteNames.contains(normalized);
+          if (!isPublic && !AmoraSession.isLoggedIn.value) {
+            return MaterialPageRoute<void>(
+              builder: (_) => const LoginScreen(),
+              settings: RouteSettings(
+                name: LoginScreen.routeName,
+                arguments: settings.arguments,
+              ),
+            );
+          }
+
+          return MaterialPageRoute<void>(
+            builder: builder,
+            settings: settings,
+          );
         },
         onUnknownRoute: (_) {
           return MaterialPageRoute<void>(

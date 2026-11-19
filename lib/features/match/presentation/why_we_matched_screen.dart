@@ -8,6 +8,7 @@ import 'package:amora_ai/core/widgets/premium_avatar.dart';
 import 'package:amora_ai/core/widgets/premium_card.dart';
 import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/ai_coach/presentation/ai_icebreakers_screen.dart';
+import 'package:amora_ai/features/profile/domain/profile_interest_policy.dart';
 import 'package:amora_ai/features/profile/presentation/profile_detail_screen.dart';
 import 'package:flutter/material.dart';
 
@@ -129,7 +130,8 @@ class WhyWeMatchedScreen extends StatelessWidget {
                                 .where((value) => value.trim().isNotEmpty)
                                 .join(' · '),
                             'score': profile.score,
-                            'interests': profile.interests,
+                            'interests':
+                                ProfileInterestPolicy.visible(profile.interests),
                             'imageUrl': profile.imageUrl,
                             'fallbackAsset': profile.fallbackAsset,
                           },

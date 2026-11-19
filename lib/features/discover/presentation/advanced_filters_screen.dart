@@ -121,7 +121,7 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
   final Set<String> _preferredTalkingHours = {};
   final Set<String> _loveLanguages = {};
   final Set<CommunicationStyle> _communicationStyles = {};
-  bool _verifiedOnly = true;
+  bool _verifiedOnly = false;
   bool _onlineNow = false;
   bool _hasPrompts = true;
   bool _eventInterest = false;
@@ -1163,8 +1163,8 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
             children: [
               _FilterSwitchTile(
                 icon: Icons.verified_rounded,
-                title: 'Verified profiles only',
-                description: 'Prioritize profiles with completed verification',
+                title: 'Show only verified profiles',
+                description: 'Show only profiles with completed verification',
                 value: _verifiedOnly,
                 onChanged: (value) => setState(() => _verifiedOnly = value),
               ),

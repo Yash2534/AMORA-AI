@@ -77,6 +77,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         );
       }
+      unawaited(
+        ProfileRelationshipController.instance.refreshReceivedLikes().catchError(
+          (_) {},
+        ),
+      );
     }
   }
 
@@ -1636,8 +1641,8 @@ class _AuraPremiumBannerCard extends StatelessWidget {
                   const SizedBox(height: 12),
                   Text(
                     isPremium
-                        ? 'Enjoy unlimited likes, weekly boosts, incognito mode and AI premium picks.'
-                        : 'Unlimited likes, weekly boosts, incognito\nmode and AI premium picks.',
+                        ? 'Enjoy see who liked you, unlimited likes, and exclusive premium discovery.'
+                        : 'See who liked you, unlimited likes,\nand exclusive premium discovery.',
                     style: AmoraTextStyles.bodyMedium.copyWith(
                       color: Colors.white.withValues(alpha: .85),
                       fontSize: 14,
@@ -1668,7 +1673,7 @@ class _AuraPremiumBannerCard extends StatelessWidget {
                       child: Text(
                         isPremium
                             ? 'Manage Membership'
-                            : 'Upgrade from ₹699/mo',
+                            : 'Upgrade from ₹1,199/mo',
                         style: AmoraTextStyles.labelLarge.copyWith(
                           color: const Color(0xFF3B1D3F),
                           fontWeight: FontWeight.w800,

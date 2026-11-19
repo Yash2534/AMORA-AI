@@ -281,7 +281,7 @@ class AmoraProfileCardStackState extends State<AmoraProfileCardStack>
                   children: [
                     AmoraProfileImage(
                       imageUrl: profile.imageUrl,
-                      assetPath: profile.fallbackAsset ?? AppImages.fallbackProfile,
+                      assetPath: profile.fallbackAsset ?? '',
                       initials: profile.initials ?? AppImages.initialsForName(profile.name),
                       fit: BoxFit.cover,
                       alignment: Alignment.topCenter,
@@ -383,7 +383,7 @@ class AmoraProfileCardStackState extends State<AmoraProfileCardStack>
                       children: [
                         AmoraProfileImage(
                           imageUrl: profile.imageUrl,
-                          assetPath: profile.fallbackAsset ?? AppImages.fallbackProfile,
+                          assetPath: profile.fallbackAsset ?? '',
                           initials: profile.initials ?? AppImages.initialsForName(profile.name),
                           fit: BoxFit.cover,
                           alignment: Alignment.topCenter,

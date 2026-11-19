@@ -1,5 +1,6 @@
 const { Op } = require('sequelize');
 const { getModels } = require('../models');
+const { disconnectUserSockets } = require('../realtime/realtimeHub');
 
 const DELETION_MECHANISM = 'USER_INITIATED_OTP';
 
@@ -110,7 +111,13 @@ class ImmediateAccountDeletionService {
     });
     await models.Notification.destroy({ where: { userId }, transaction });
     await models.Notification.update(
-      { actorUserId: null }, { where: { actorUserId: userId }, transaction },
+      {
+        actorUserId: null,
+        title: 'Deleted Member',
+        message: 'Content from this member is no longer available.',
+        deletedAt,
+      },
+      { where: { actorUserId: userId }, transaction },
     );
     await models.MatchingActionFailure.update(
       { actorUserId: null }, { where: { actorUserId: userId }, transaction },
@@ -129,6 +136,7 @@ class ImmediateAccountDeletionService {
       isVerified: false, lastActiveAt: null, identityVerifiedAt: null,
     });
     await user.save({ transaction });
+    disconnectUserSockets(userId);
     return { completed: true, archive, storageCleanup };
   }
 }

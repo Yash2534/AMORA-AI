@@ -4,6 +4,7 @@ const { scoreCompatibility, sqlCompatibilityExpressions, normalizeProfile } = re
 const { areUsersBlocked, areUsersReported, notBlockedUserSql, notReportedUserSql } = require('../services/accessControlService');
 const { serializePublicProfile } = require('../services/publicProfileService');
 const { defaults, effectiveDefaultsFor, filtersFor, updateFilters: persistFilters } = require('../services/discoverPreferenceService');
+const { hasEntitlement } = require('../services/entitlementService');
 const { createNotification } = require('../services/notificationService');
 const { ensureDirectConversation } = require('../services/conversationAccessService');
 const { emitConversationEvent } = require('../realtime/realtimeHub');
@@ -563,6 +564,32 @@ exports.swipe = async (req, res, next) => {
         { field: 'targetUserId', message: 'Target user must be another user.' },
       ]);
     }
+    if (req.body.action === 'superLike') {
+      const isPremium = await hasEntitlement(req.user.sub, 'premium');
+      if (!isPremium) {
+        if (failureType) await require('../services/matchingActionFailureService').recordFailure({ actionType: failureType, actorUserId: req.user.sub, targetUserId, code: 'SUBSCRIPTION_REQUIRED', stage: 'entitlement' });
+        return fail(res, 403, 'Super Likes require an active subscription.', 'SUBSCRIPTION_REQUIRED', [
+          { field: 'action', message: 'Upgrade to Plus or Platinum to send Super Likes.' },
+        ]);
+      }
+      const hasUnlimited = await hasEntitlement(req.user.sub, 'unlimitedSuperLikes');
+      if (!hasUnlimited) {
+        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        const weeklyCount = await DiscoverAction.count({
+          where: {
+            actorUserId: req.user.sub,
+            action: 'superLike',
+            createdAt: { [Op.gte]: sevenDaysAgo },
+          },
+        });
+        if (weeklyCount >= 3) {
+          if (failureType) await require('../services/matchingActionFailureService').recordFailure({ actionType: failureType, actorUserId: req.user.sub, targetUserId, code: 'QUOTA_EXCEEDED', stage: 'entitlement' });
+          return fail(res, 403, 'You have used all 3 Super Likes for this week.', 'QUOTA_EXCEEDED', [
+            { field: 'action', message: 'Weekly Super Like limit reached.' },
+          ]);
+        }
+      }
+    }
     const [target, viewerFilters, targetFilters, areBlocked, isReported] = await Promise.all([
       User.findOne({
         where: { id: targetUserId },
@@ -749,6 +776,14 @@ exports.updateFilters = async (req, res, next) => {
   try {
     const viewer = await requireCompleted(res, req.user.sub);
     if (!viewer) return;
+    if (Array.isArray(req.body.datingIntentions) && req.body.datingIntentions.length > 0) {
+      const hasAdvanced = await hasEntitlement(req.user.sub, 'advancedDiscoverFilters');
+      if (!hasAdvanced) {
+        return fail(res, 403, 'Advanced intent filters require an active subscription.', 'SUBSCRIPTION_REQUIRED', [
+          { field: 'datingIntentions', message: 'Upgrade to Plus or higher to filter by dating intentions.' },
+        ]);
+      }
+    }
     const filters = await filtersFor(req.user.sub, req.body);
     if (filters.minAge > filters.maxAge) {
       return fail(res, 400, 'Minimum age cannot exceed maximum age.', 'VALIDATION_ERROR', [

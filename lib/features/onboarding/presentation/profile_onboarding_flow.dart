@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:amora_ai/core/theme/amora_spacing.dart';
@@ -497,8 +498,11 @@ class _BirthDateQuestionState extends State<_BirthDateQuestion> {
     );
   }
 
+  Timer? _debounceTimer;
+
   @override
   void dispose() {
+    _debounceTimer?.cancel();
     _dayController.dispose();
     _monthController.dispose();
     _yearController.dispose();
@@ -738,7 +742,7 @@ class _BirthDateQuestionState extends State<_BirthDateQuestion> {
 
   void _selectDay(int index) {
     setState(() => _selectedDay = index + 1);
-    _commitSelection();
+    _scheduleCommit();
   }
 
   void _selectMonth(int index) {
@@ -747,7 +751,7 @@ class _BirthDateQuestionState extends State<_BirthDateQuestion> {
       _selectedDay = math.min(_selectedDay, _dayCount);
     });
     _syncDayWheel();
-    _commitSelection();
+    _scheduleCommit();
   }
 
   void _selectYear(int index) {
@@ -756,7 +760,7 @@ class _BirthDateQuestionState extends State<_BirthDateQuestion> {
       _selectedDay = math.min(_selectedDay, _dayCount);
     });
     _syncDayWheel();
-    _commitSelection();
+    _scheduleCommit();
   }
 
   void _syncDayWheel() {
@@ -766,7 +770,15 @@ class _BirthDateQuestionState extends State<_BirthDateQuestion> {
     }
   }
 
+  void _scheduleCommit() {
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 500), () {
+      if (mounted) _commitSelection();
+    });
+  }
+
   void _commitSelection() {
+    _debounceTimer?.cancel();
     widget.onChanged(
       widget.state.copyWith(
         birthDate: DateTime(_selectedYear, _selectedMonth, _selectedDay),

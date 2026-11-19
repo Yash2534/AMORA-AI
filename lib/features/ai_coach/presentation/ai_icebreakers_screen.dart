@@ -9,6 +9,7 @@ import 'package:amora_ai/core/widgets/responsive_mobile_frame.dart';
 import 'package:amora_ai/features/chat/presentation/chat_detail_screen.dart';
 import 'package:amora_ai/features/chat/data/chat_repository.dart';
 import 'package:amora_ai/features/monetization/presentation/widgets/monetization_widgets.dart';
+import 'package:amora_ai/features/profile/domain/profile_interest_policy.dart';
 import 'package:flutter/material.dart';
 
 class AiIcebreakersScreen extends StatefulWidget {
@@ -287,10 +288,11 @@ class _IcebreakerProfile {
           fallbackAsset: args['fallbackAsset']?.toString() ?? '',
           initials: args['initials']?.toString() ?? 'AM',
           score: (args['score'] as num?)?.round().clamp(0, 100) ?? 0,
-          interests: ((args['interests'] as List?) ?? const <dynamic>[])
-              .map((value) => value.toString().trim())
-              .where((value) => value.isNotEmpty)
-              .toList(growable: false),
+          interests: ProfileInterestPolicy.visible(
+            ((args['interests'] as List?) ?? const <dynamic>[])
+                .map((value) => value.toString().trim())
+                .where((value) => value.isNotEmpty),
+          ),
         );
       }
     }

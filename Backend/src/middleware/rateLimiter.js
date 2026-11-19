@@ -31,6 +31,8 @@ function buildRateLimiters({ storeFactory } = {}) {
   otpRequestLimiter: rateLimit(options('otp-request', 45 * 1000, 1, normalizedIdentity, storeFactory)),
   otpVerificationLimiter: rateLimit(options('otp-verification', 15 * 60 * 1000, 5, normalizedIdentity, storeFactory)),
   passwordResetLimiter: rateLimit(options('password-reset', 15 * 60 * 1000, 5, normalizedIdentity, storeFactory)),
+  refreshTokenLimiter: rateLimit(options('refresh-token', 15 * 60 * 1000, 60, (req) => String(req.ip), storeFactory)),
+  googleAuthLimiter: rateLimit(options('google-auth', 15 * 60 * 1000, 30, (req) => String(req.ip), storeFactory)),
     photoUploadLimiter: rateLimit(options('photo-upload', 15 * 60 * 1000, 20, (req) => String(req.user?.sub || req.ip), storeFactory)),
     discoverSwipeLimiter: rateLimit(options('discover-swipe', 5 * 60 * 1000, 120, (req) => String(req.user?.sub || req.ip), storeFactory)),
     discoverRewindLimiter: rateLimit(options('discover-rewind', 5 * 60 * 1000, 30, (req) => String(req.user?.sub || req.ip), storeFactory)),

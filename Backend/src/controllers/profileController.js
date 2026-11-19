@@ -4,7 +4,7 @@ const { activeAccountWhere, areUsersBlocked, matchPairWhere } = require('../serv
 const { serializePublicProfile } = require('../services/publicProfileService');
 const { COMMUNICATION_STYLE_VALUES } = require('../constants/communicationStyles');
 const { calculateProfileCompletion } = require('../services/profileCompletionService');
-const { validCoordinates } = require('../utils/geoDistance');
+const { validCoordinates, distanceKm } = require('../utils/geoDistance');
 const { protectedPath, filenameFromReference, storageReference } = require('../utils/photoStorage');
 
 const unavailable = (res) => res.status(404).json({ success: false, message: 'Profile is not available.', code: 'PROFILE_NOT_AVAILABLE', errors: [] });
@@ -154,10 +154,32 @@ exports.getPublicProfile = async (req, res, next) => {
       matchId: match ? String(match.id) : null,
       saved: Boolean(saved),
     };
+    let computedDistanceKm = null;
+    if (
+      viewer?.matchLatitude != null && viewer?.matchLongitude != null &&
+      target.OnboardingProfile?.matchLatitude != null && target.OnboardingProfile?.matchLongitude != null
+    ) {
+      try {
+        computedDistanceKm = distanceKm(
+          viewer.matchLatitude,
+          viewer.matchLongitude,
+          target.OnboardingProfile.matchLatitude,
+          target.OnboardingProfile.matchLongitude,
+        );
+      } catch (_) {
+        computedDistanceKm = null;
+      }
+    }
     return res.json({
       success: true,
       message: 'Public profile retrieved.',
-      data: { profile: serializePublicProfile(req, target, target.OnboardingProfile, { viewer, relationship }) },
+      data: {
+        profile: serializePublicProfile(req, target, target.OnboardingProfile, {
+          viewer,
+          relationship,
+          distanceKm: computedDistanceKm,
+        }),
+      },
     });
   } catch (error) {
     return next(error);

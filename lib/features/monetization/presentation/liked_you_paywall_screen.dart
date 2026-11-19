@@ -111,7 +111,7 @@ class _LikedYouPaywallScreenState extends State<LikedYouPaywallScreen> {
                               ? 'No one has liked your profile yet.'
                               : unlocked
                               ? '$total ${total == 1 ? 'person' : 'people'} liked you.'
-                              : '$total ${total == 1 ? 'person' : 'people'} liked you. Unlock Gold to see every admirer.',
+                              : '$total ${total == 1 ? 'person' : 'people'} liked you. Unlock Plus to see every admirer.',
                           style: AmoraTextStyles.titleLarge.copyWith(
                             color: AppColors.deepWine,
                           ),
@@ -144,7 +144,7 @@ class _LikedYouPaywallScreenState extends State<LikedYouPaywallScreen> {
                       if (total > 0 && !unlocked) ...[
                         const SizedBox(height: AmoraSpacing.space16),
                         AppPrimaryButton(
-                          label: 'Unlock With Gold',
+                          label: 'Unlock With Plus',
                           icon: Icons.workspace_premium_rounded,
                           onPressed: () => Navigator.of(
                             context,
@@ -219,7 +219,7 @@ class _LockedProfileCard extends StatelessWidget {
                         ),
                         const SizedBox(width: AmoraSpacing.space4),
                         Text(
-                          'Gold',
+                          'Plus',
                           style: AmoraTextStyles.labelMedium.copyWith(
                             color: AppColors.surface,
                           ),

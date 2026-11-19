@@ -772,9 +772,10 @@ class _UnifiedMobileNumberFieldState extends State<_UnifiedMobileNumberField> {
                         textAlignVertical: TextAlignVertical.center,
                         cursorColor: AppColors.secondary,
                         decoration: InputDecoration(
+                          labelText: 'Mobile number',
                           filled: false,
                           isDense: true,
-                          hintText: '10 digits',
+                          hintText: '10 digit mobile number',
                           hintStyle: AmoraTextStyles.bodyLarge.copyWith(
                             color: AppColors.text.withValues(alpha: .48),
                           ),

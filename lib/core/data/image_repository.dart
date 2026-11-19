@@ -190,9 +190,7 @@ class DummyProfile {
   final int? aiMatchScore;
   final List<String> aiReasons;
 
-  String get fallbackAsset => gender == Gender.female
-      ? AppImages.femaleProfileFallback
-      : AppImages.maleProfileFallback;
+  String get fallbackAsset => '';
   String get initials => AppImages.initialsForName(name);
   String get compatibility => '$score%';
   bool get verified {

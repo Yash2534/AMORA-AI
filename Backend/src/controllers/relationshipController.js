@@ -2,6 +2,7 @@ const { Op } = require('sequelize');
 const { getModels } = require('../models');
 const { activeAccountWhere, areUsersBlocked, notBlockedUserSql } = require('../services/accessControlService');
 const { serializePublicProfile } = require('../services/publicProfileService');
+const { hasEntitlement } = require('../services/entitlementService');
 
 const fail = (res, status, message, code) => res.status(status).json({ success: false, message, code, errors: [] });
 const pagination = (req) => ({ page: Number(req.query.page || 1), limit: Number(req.query.limit || 20) });
@@ -146,12 +147,21 @@ exports.listReceivedLikes = async (req, res, next) => {
   try {
     const userId = Number(req.user.sub);
     const { page, limit } = pagination(req);
-    const { DiscoverAction, User, OnboardingProfile, Subscription } = getModels();
+    const { DiscoverAction, User, OnboardingProfile, Subscription, Match } = getModels();
+    const activeMatches = await Match.findAll({
+      where: { [Op.or]: [{ userOneId: userId }, { userTwoId: userId }] },
+      attributes: ['userOneId', 'userTwoId'],
+    });
+    const matchedUserIds = activeMatches.map((m) =>
+      (m.userOneId === userId ? m.userTwoId : m.userOneId)
+    );
+    const baseWhere = {
+      targetUserId: userId,
+      action: { [Op.in]: ['like', 'superLike'] },
+      ...(matchedUserIds.length ? { actorUserId: { [Op.notIn]: matchedUserIds } } : {}),
+    };
     const rows = await DiscoverAction.findAll({
-      where: {
-        targetUserId: userId,
-        action: { [Op.in]: ['like', 'superLike'] },
-      },
+      where: baseWhere,
       include: [{
         model: User,
         as: 'actor',
@@ -174,10 +184,7 @@ exports.listReceivedLikes = async (req, res, next) => {
     const selected = hasMore ? rows.slice(0, limit) : rows;
     const viewer = await viewerProfile(userId);
     const total = await DiscoverAction.count({
-      where: {
-        targetUserId: userId,
-        action: { [Op.in]: ['like', 'superLike'] },
-      },
+      where: baseWhere,
       include: [{
         model: User,
         as: 'actor',
@@ -190,14 +197,36 @@ exports.listReceivedLikes = async (req, res, next) => {
       }],
       distinct: true,
     });
+    const isPremium = await hasEntitlement(userId, 'premium');
+    const profiles = isPremium
+      ? selected.map((row) => serializePublicProfile(req, row.actor, row.actor.OnboardingProfile, {
+        viewer,
+        relationship: { receivedLike: true, receivedSuperLike: row.action === 'superLike' },
+      }))
+      : selected.map((row) => ({
+        id: null,
+        name: 'Amoraa Member',
+        age: null,
+        gender: '',
+        city: '',
+        profession: '',
+        education: '',
+        bio: '',
+        interests: [],
+        photos: [],
+        gallery: [],
+        imageUrl: null,
+        blurred: true,
+        isBlurred: true,
+        verification: 'Unverified',
+        relationship: { receivedLike: true, receivedSuperLike: row.action === 'superLike' },
+      }));
+
     return res.json({
       success: true,
       message: selected.length ? 'Received likes retrieved.' : 'No received likes found.',
       data: {
-        profiles: selected.map((row) => serializePublicProfile(req, row.actor, row.actor.OnboardingProfile, {
-          viewer,
-          relationship: { receivedLike: true, receivedSuperLike: row.action === 'superLike' },
-        })),
+        profiles,
         total,
         pagination: { page, limit, hasMore, nextPage: hasMore ? page + 1 : null },
       },

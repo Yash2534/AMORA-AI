@@ -163,7 +163,7 @@ module.exports = {
         smoking: { type: Sequelize.STRING, allowNull: true },
         drinking: { type: Sequelize.STRING, allowNull: true },
         weed: { type: Sequelize.STRING, allowNull: true },
-        verifiedOnly: { type: Sequelize.BOOLEAN, allowNull: false, defaultValue: true },
+        verifiedOnly: { type: Sequelize.BOOLEAN, allowNull: false, defaultValue: false },
         onlineNow: { type: Sequelize.BOOLEAN, allowNull: false, defaultValue: false },
         hasPrompts: { type: Sequelize.BOOLEAN, allowNull: false, defaultValue: false },
         hasEventInterest: { type: Sequelize.BOOLEAN, allowNull: false, defaultValue: false },

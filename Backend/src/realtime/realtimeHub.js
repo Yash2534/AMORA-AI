@@ -121,6 +121,7 @@ function attachRealtimeServer(httpServer, { adapter } = {}) {
       const user = await User.findByPk(payload.sub, { attributes: ['id', 'accountStatus', 'tokenVersion'] });
       if (!isSessionCurrent(user, payload)) throw new Error('Realtime session is unavailable.');
       socket.data.userId = Number(user.id);
+      socket.data.tokenPayload = payload;
       next();
     } catch (_) {
       next(new Error('AUTHENTICATION_FAILED'));
@@ -148,6 +149,21 @@ function attachRealtimeServer(httpServer, { adapter } = {}) {
 
     const userId = socket.data.userId;
     socket.join(userRoom(userId));
+
+    socket.use(async (_packet, next) => {
+      try {
+        const { User } = getModels();
+        const user = await User.findByPk(userId, { attributes: ['id', 'accountStatus', 'tokenVersion'] });
+        if (!isSessionCurrent(user, socket.data.tokenPayload)) {
+          socket.disconnect(true);
+          return next(new Error('SESSION_REVOKED'));
+        }
+        return next();
+      } catch (_) {
+        socket.disconnect(true);
+        return next(new Error('SESSION_REVOKED'));
+      }
+    });
 
     socket.on('conversation.subscribe', async (value, acknowledge) => {
       try {
@@ -211,4 +227,25 @@ async function severRealtimePair(firstUserId, secondUserId, reason = 'blocked') 
     logger.warn('severRealtimePair failed', { error: error.message });
   }
 }
-module.exports = { attachRealtimeServer, closeRealtimeServer, emitConversationEvent, emitAdminEvent, isUserOnline, realtimeMetrics, LocalConnectionRegistry, severRealtimePair };
+
+function disconnectUserSockets(userId) {
+  if (!io) return;
+  const uid = Number(userId);
+  try {
+    io.in(userRoom(uid)).disconnectSockets(true);
+  } catch (error) {
+    logger.warn('disconnectUserSockets failed', { userId: uid, error: error.message });
+  }
+}
+
+module.exports = {
+  attachRealtimeServer,
+  closeRealtimeServer,
+  emitConversationEvent,
+  emitAdminEvent,
+  isUserOnline,
+  realtimeMetrics,
+  LocalConnectionRegistry,
+  severRealtimePair,
+  disconnectUserSockets,
+};

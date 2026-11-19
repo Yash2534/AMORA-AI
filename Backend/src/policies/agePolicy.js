@@ -16,6 +16,8 @@ function adultBirthDate(value, now = new Date()) {
   if (!birthDate) return { allowed: false, reason: 'INVALID_DATE' };
   const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
   if (birthDate > today) return { allowed: false, reason: 'FUTURE_DATE' };
+  const maxAgeCutoff = new Date(Date.UTC(today.getUTCFullYear() - 100, today.getUTCMonth(), today.getUTCDate()));
+  if (birthDate < maxAgeCutoff) return { allowed: false, reason: 'OVER_MAX_AGE' };
   const cutoff = new Date(Date.UTC(today.getUTCFullYear() - 18, today.getUTCMonth(), today.getUTCDate()));
   return birthDate <= cutoff
     ? { allowed: true, birthDate }
@@ -25,8 +27,14 @@ function adultBirthDate(value, now = new Date()) {
 function assertAdultBirthDate(value, now = new Date()) {
   const result = adultBirthDate(value, now);
   if (!result.allowed) {
-    const error = new Error(result.reason === 'UNDER_18' ? 'You must be at least 18 years old.' : 'Date of birth must be a valid non-future ISO date.');
-    error.code = result.reason === 'UNDER_18' ? 'AGE_RESTRICTION' : 'INVALID_BIRTH_DATE';
+    const error = new Error(
+      result.reason === 'UNDER_18'
+        ? 'You must be at least 18 years old.'
+        : result.reason === 'OVER_MAX_AGE'
+        ? 'Age cannot exceed 100 years.'
+        : 'Date of birth must be a valid non-future ISO date.'
+    );
+    error.code = (result.reason === 'UNDER_18' || result.reason === 'OVER_MAX_AGE') ? 'AGE_RESTRICTION' : 'INVALID_BIRTH_DATE';
     throw error;
   }
   return true;

@@ -1,5 +1,6 @@
 const { getModels } = require('../models');
 const { publicUrl } = require('../services/publicProfileService');
+const { hasEntitlement } = require('../services/entitlementService');
 
 const allowedDataFields = ['route', 'targetUserId', 'conversationId', 'eventId', 'roseTransactionId', 'imageUrl', 'initials'];
 
@@ -36,7 +37,13 @@ function actorPayload(req, actor) {
   };
 }
 
-function payload(req, row) {
+function payload(req, row, isPremium = false) {
+  const isLikeNotification = row.type === 'new_like' || row.type === 'new_super_like';
+  const shouldObfuscate = isLikeNotification && !isPremium;
+  const data = safeData(row.data);
+  if (shouldObfuscate) {
+    delete data.targetUserId;
+  }
   return {
     id: String(row.id),
     type: row.type,
@@ -46,8 +53,8 @@ function payload(req, row) {
     isRead: Boolean(row.isRead),
     readAt: row.readAt,
     createdAt: row.createdAt,
-    data: safeData(row.data),
-    actor: actorPayload(req, row.actor),
+    data,
+    actor: shouldObfuscate ? null : actorPayload(req, row.actor),
   };
 }
 
@@ -66,7 +73,7 @@ exports.list = async (req, res, next) => {
     const where = { userId: req.user.sub, deletedAt: null };
     if (req.query.unread === 'true') where.isRead = false;
     if (req.query.category) where.category = req.query.category;
-    const [rows, unreadCount] = await Promise.all([
+    const [rows, unreadCount, isPremium] = await Promise.all([
       Notification.findAll({
         where,
         order: [['createdAt', 'DESC'], ['id', 'DESC']],
@@ -75,13 +82,14 @@ exports.list = async (req, res, next) => {
         include: actorInclude(),
       }),
       Notification.count({ where: { userId: req.user.sub, deletedAt: null, isRead: false } }),
+      hasEntitlement(req.user.sub, 'premium'),
     ]);
     const hasMore = rows.length > limit;
     return res.json({
       success: true,
       message: rows.length ? 'Notifications retrieved.' : 'No notifications found.',
       data: {
-        notifications: rows.slice(0, limit).map((row) => payload(req, row)),
+        notifications: rows.slice(0, limit).map((row) => payload(req, row, isPremium)),
         unreadCount,
         pagination: { page, limit, hasMore, nextPage: hasMore ? page + 1 : null },
       },
@@ -101,8 +109,11 @@ exports.read = async (req, res, next) => {
       await row.update({ isRead: true, readAt: new Date() });
       await row.reload({ include: actorInclude() });
     }
-    const unreadCount = await Notification.count({ where: { userId: req.user.sub, deletedAt: null, isRead: false } });
-    return res.json({ success: true, message: 'Notification marked as read.', data: { notification: payload(req, row), unreadCount } });
+    const [unreadCount, isPremium] = await Promise.all([
+      Notification.count({ where: { userId: req.user.sub, deletedAt: null, isRead: false } }),
+      hasEntitlement(req.user.sub, 'premium'),
+    ]);
+    return res.json({ success: true, message: 'Notification marked as read.', data: { notification: payload(req, row, isPremium), unreadCount } });
   } catch (error) { return next(error); }
 };
 

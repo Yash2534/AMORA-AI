@@ -143,7 +143,7 @@ class _SignupScreenState extends State<SignupScreen> {
       child: AutofillGroup(
         child: Form(
           key: _formKey,
-          autovalidateMode: AutovalidateMode.onUserInteraction,
+          autovalidateMode: AutovalidateMode.disabled,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -174,6 +174,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 key: const ValueKey('signup-phone-field'),
                 controller: _phoneController,
                 label: 'Phone number',
+                hint: '98765 43210',
                 icon: Icons.phone_iphone_rounded,
                 prefixText: '+91 ',
                 keyboardType: TextInputType.phone,
