@@ -12,18 +12,75 @@ function migrationFiles() {
     .sort();
 }
 
+function isLoopbackHost(host) {
+  const normalized = String(host || '').trim().toLowerCase();
+  return normalized === '127.0.0.1' || normalized === 'localhost' || normalized === '::1';
+}
+
+function validateTestMigrationSafety(databaseNameValue, env = process.env) {
+  const testIntent =
+    env.NODE_ENV === 'test'
+    || Boolean(String(env.TEST_DB_NAME || '').trim());
+
+  if (!testIntent) return String(databaseNameValue || '');
+
+  if (env.NODE_ENV !== 'test') {
+    throw new Error(
+      'TEST_MIGRATION_BLOCKED: Test migrations require NODE_ENV=test.',
+    );
+  }
+
+  if (!isLoopbackHost(env.DB_HOST)) {
+    throw new Error(
+      'TEST_MIGRATION_BLOCKED: Test migrations require a loopback DB_HOST (127.0.0.1, localhost, or ::1).',
+    );
+  }
+
+  const configuredTestName = String(env.TEST_DB_NAME || '').trim();
+  if (!configuredTestName) {
+    throw new Error(
+      'TEST_MIGRATION_BLOCKED: Test migrations require an explicit TEST_DB_NAME.',
+    );
+  }
+
+  const name = String(databaseNameValue || '').trim();
+  if (!name) {
+    throw new Error(
+      'TEST_MIGRATION_BLOCKED: Test migrations require an explicit test database name.',
+    );
+  }
+  if (!/test/i.test(name)) {
+    throw new Error(
+      'TEST_MIGRATION_BLOCKED: Test database names must contain "test".',
+    );
+  }
+  if (
+    name !== configuredTestName
+    && !name.startsWith(`${configuredTestName}_`)
+  ) {
+    throw new Error(
+      'TEST_MIGRATION_BLOCKED: Migration database name must match TEST_DB_NAME or be one of its explicitly suffixed test databases.',
+    );
+  }
+
+  const applicationName =
+    String(env.APPLICATION_DB_NAME || env.DB_NAME || '').trim();
+  if (applicationName && name.toLowerCase() === applicationName.toLowerCase()) {
+    throw new Error(
+      'TEST_MIGRATION_BLOCKED: Test database name must differ from the development/application database name.',
+    );
+  }
+
+  return name;
+}
+
 function databaseName(value = process.env.DB_NAME, env = process.env) {
   if (!/^[A-Za-z0-9_]+$/.test(value || '')) {
     throw new Error('DB_NAME may contain only letters, numbers, and underscores.');
   }
-  const name = String(value);
+  let name = String(value);
   const testIntent = env.NODE_ENV === 'test' || Boolean(String(env.TEST_DB_NAME || '').trim());
-  if (testIntent && env.NODE_ENV !== 'test') {
-    throw new Error('Test database operations require NODE_ENV=test.');
-  }
-  if (testIntent && !/test/i.test(name)) {
-    throw new Error('Test database operations require a database name containing "test".');
-  }
+  if (testIntent) name = validateTestMigrationSafety(name, env);
   return name;
 }
 
@@ -141,4 +198,13 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createSequelize, migrate, undo, status, migrationFiles, databaseName };
+module.exports = {
+  createSequelize,
+  migrate,
+  undo,
+  status,
+  migrationFiles,
+  databaseName,
+  isLoopbackHost,
+  validateTestMigrationSafety,
+};

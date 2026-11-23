@@ -127,7 +127,7 @@ exports.send = async (req, res, next) => {
           userId: recipientId,
           actorUserId: senderId,
           type: 'rose_received',
-          category: 'Messages',
+          category: 'Roses',
           title: 'You received a Rose',
           message: `${String(req.authUser?.name || 'Someone').replace(/[<>]/g, '')} sent you a Rose.`,
           data: {

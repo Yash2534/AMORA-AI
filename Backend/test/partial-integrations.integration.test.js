@@ -18,6 +18,7 @@ const { getModels } = require('../src/models');
 const { app } = require('../src/server');
 
 let server; let baseUrl; let models; let viewer; let recent; let eventUser; let old; let token;
+let premiumTestPlan;
 const userIds = [];
 
 async function user(name, values = {}, profileValues = {}) {
@@ -41,6 +42,38 @@ before(async () => {
   recent = await user('Recently Active', { lastActiveAt: new Date() });
   eventUser = await user('Event Interested', { lastActiveAt: new Date() });
   old = await user('Inactive', { lastActiveAt: new Date(Date.now() - 60 * 60 * 1000) });
+  premiumTestPlan = await models.SubscriptionPlan.create({
+    id: `partial-premium-${Date.now()}-${viewer.id}`,
+    name: 'premium',
+    displayName: 'Partial Integration Premium',
+    description: 'Premium plan for partial integration tests.',
+    priceMinor: 0,
+    currency: 'INR',
+    billingPeriod: 'month',
+    billingInterval: 1,
+    features: [],
+    entitlements: {
+      premium: true,
+      unlimitedSuperLikes: true,
+    },
+    trialDays: 0,
+    active: true,
+    sortOrder: 0,
+  });
+  const subscriptionStart = new Date();
+  await models.Subscription.create({
+    userId: viewer.id,
+    planId: premiumTestPlan.id,
+    status: 'active',
+    provider: 'razorpay',
+    startedAt: subscriptionStart,
+    currentPeriodStart: subscriptionStart,
+    currentPeriodEnd: new Date(
+      subscriptionStart.getTime() + 30 * 24 * 60 * 60 * 1000,
+    ),
+    autoRenew: false,
+    cancelAtPeriodEnd: false,
+  });
   token = jwt.sign({ sub: viewer.id, ver: 0 }, process.env.JWT_SECRET, { expiresIn: '15m' });
   const event = await models.Event.create({ title: 'Partial Event', description: 'Integration fixture', category: 'Social', city: 'Ahmedabad', venueName: 'Venue', startDateTime: new Date(Date.now() + 86400000), endDateTime: new Date(Date.now() + 90000000), capacity: 20, status: 'published', visibility: 'public', organizerId: viewer.id });
   await models.EventRegistration.create({ eventId: event.id, userId: eventUser.id, status: 'registered', registeredAt: new Date() });
@@ -51,6 +84,12 @@ before(async () => {
 
 after(async () => {
   if (server) await new Promise((resolve) => server.close(resolve));
+  await models.Subscription.destroy({ where: { userId: userIds } });
+  if (premiumTestPlan) {
+    await models.SubscriptionPlan.destroy({
+      where: { id: premiumTestPlan.id },
+    });
+  }
   await models.SavedProfile.destroy({ where: { [Op.or]: [{ userId: userIds }, { savedUserId: userIds }] } });
   await models.NotificationPreference.destroy({ where: { userId: userIds } });
   await models.EventRegistration.destroy({ where: { userId: userIds } });

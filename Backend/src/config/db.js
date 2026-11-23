@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { Sequelize } = require('sequelize');
 const { databasePoolConfig, databaseQueryTimeoutMs, migrationStartupMode } = require('./scalability');
+const { validateTestMigrationSafety } = require('../migrations/run');
 
 async function rawQuery(connection, sql) {
   if (typeof connection.promise === 'function') return connection.promise().query(sql);
@@ -59,6 +60,9 @@ async function assertMigrationsApplied(connection, env = process.env) {
 async function initializeDatabase() {
   try {
     const dbName = process.env.DB_NAME;
+    if (process.env.NODE_ENV === 'test' || String(process.env.TEST_DB_NAME || '').trim()) {
+      validateTestMigrationSafety(dbName, process.env);
+    }
     const pool = databasePoolConfig(process.env);
     const queryTimeout = databaseQueryTimeoutMs(process.env);
     const metricsEnabled = String(process.env.ENABLE_PERFORMANCE_METRICS || '').toLowerCase() === 'true';

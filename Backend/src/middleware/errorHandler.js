@@ -18,6 +18,7 @@ module.exports = (err, req, res, _next) => {
     return res.status(err.status).json({ success: false, message: err.message, code: err.code, errors: [], ...meta });
   }
   logger.error('[Request] Unexpected server error.', { error: err, requestId: req.adminCorrelationId || null });
-  const isDevOrTest = ['development', 'test'].includes(process.env.NODE_ENV);
+  const isAdminRequest = String(req.originalUrl || '').startsWith('/api/admin/');
+const isDevOrTest = ['development', 'test'].includes(process.env.NODE_ENV);
   return res.status(500).json({ success: false, message: isDevOrTest && !isAdminRequest ? err.message : 'An unexpected server error occurred.', code: 'INTERNAL_ERROR', errors: [], ...meta });
 };

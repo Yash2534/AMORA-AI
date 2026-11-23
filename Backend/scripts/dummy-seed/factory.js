@@ -21,7 +21,7 @@ const MESSAGE_LINES = ['Hey! Your profile made me smile.', 'That place looks ama
 const MASTER_INTERESTS = ['Travel', 'Music', 'Movies', 'Fitness', 'Food', 'Photography', 'Technology'];
 
 const SCENARIOS = [
-  ['master', 'MASTER_TEST_ACCOUNT', 'AMORAA Demo', 'Female', 28, 'very-high'],
+  ['master', 'MASTER_TEST_ACCOUNT', 'AMORAA Demo', 'Male', 28, 'very-high'],
   ['candidate-a', 'UNTOUCHED_DISCOVER', 'Aarohi Desai', 'Female', 24, 'high'],
   ['candidate-b', 'HIGH_COMPATIBILITY', 'Kavya Shah', 'Female', 26, 'high'],
   ['candidate-c', 'MEDIUM_COMPATIBILITY', 'Meera Menon', 'Female', 28, 'medium'],
@@ -48,7 +48,16 @@ const SCENARIOS = [
   ['candidate-x', 'INACTIVE_EXCLUDED', 'Vanya Singh', 'Male', 28, 'high'],
 ].map(([key, role, name, gender, age, scoreBand]) => ({ key, role, name, gender, age, scoreBand }));
 
-Object.assign(SCENARIOS[0], { email: 'demo.walkthrough@amoraa.test', city: 'Ahmedabad', profession: 'Product Designer', education: 'Graduate', premium: true, identityVerified: true, heightCm: 178 });
+Object.assign(SCENARIOS[0], {
+  email: 'demo.walkthrough@amoraa.test',
+  city: 'Ahmedabad',
+  profession: 'Product Designer',
+  education: 'Graduate',
+  interestedIn: ['Female'],
+  premium: true,
+  identityVerified: true,
+  heightCm: 178,
+});
 Object.assign(SCENARIOS[15], { interestedIn: ['Female'] });
 Object.assign(SCENARIOS[17], { completed: false });
 Object.assign(SCENARIOS[18], { identityVerified: true });

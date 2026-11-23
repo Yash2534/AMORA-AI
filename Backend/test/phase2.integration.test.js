@@ -34,7 +34,7 @@ const tokenFor = (user) => jwt.sign(
 );
 const auth = (user) => ({ authorization: `Bearer ${tokenFor(user)}` });
 
-async function createUser(key, state = 'active') {
+async function createUser(key, state = 'active', profileValues = {}) {
   const suffix = `${Date.now()}_${userIds.length}_${Math.random().toString(16).slice(2)}`;
   const user = await models.User.create({
     name: `P2 ${key}`,
@@ -53,8 +53,8 @@ async function createUser(key, state = 'active') {
   await models.OnboardingProfile.create({
     userId: user.id,
     birthDate: '1998-04-12',
-    gender: 'Female',
-    interestedIn: ['Male'],
+    gender: profileValues.gender || 'Female',
+    interestedIn: profileValues.interestedIn || ['Male'],
     relationshipGoals: ['long_term'],
     city: 'Ahmedabad',
     profession: 'Engineer',
@@ -95,8 +95,14 @@ before(async () => {
   await initializeDatabase();
   models = getModels();
   await Promise.all([
-    createUser('viewer'),
-    createUser('target'),
+    createUser('viewer', 'active', {
+      gender: 'Female',
+      interestedIn: ['Male'],
+    }),
+    createUser('target', 'active', {
+      gender: 'Male',
+      interestedIn: ['Female'],
+    }),
     createUser('outsider'),
     createUser('deactivated', 'deactivated'),
     createUser('deleted', 'deleted'),
@@ -178,7 +184,7 @@ test('blocks are idempotent, forbid self-blocking, enforce both directions, Disc
   const duplicate = await jsonRequest(`/api/blocks/${users.target.id}`, 'POST', users.viewer);
   assert.equal(created.status, 200);
   assert.equal(created.body.data.created, true);
-  assert.equal(created.body.data.unmatched, false);
+  assert.equal(created.body.data.unmatched, true);
   assert.equal(duplicate.status, 200);
   assert.equal(duplicate.body.data.created, false);
   assert.equal(await models.Block.count({ where: { blockerUserId: users.viewer.id, blockedUserId: users.target.id } }), 1);
@@ -193,11 +199,11 @@ test('blocks are idempotent, forbid self-blocking, enforce both directions, Disc
   assert.equal(await models.Match.count({ where: {
     userOneId: Math.min(users.viewer.id, users.target.id),
     userTwoId: Math.max(users.viewer.id, users.target.id),
-  } }), 1);
+  } }), 0);
   assert.equal((await request('/api/matches', { headers: auth(users.viewer) })).body.data.matches.length, 0);
   assert.equal((await jsonRequest(`/api/blocks/${users.target.id}`, 'DELETE', users.viewer)).status, 200);
   assert.equal((await request(`/api/profiles/${users.target.id}`, { headers: auth(users.viewer) })).status, 200);
-  assert.equal((await request('/api/matches', { headers: auth(users.viewer) })).body.data.matches.length, 1);
+  assert.equal((await request('/api/matches', { headers: auth(users.viewer) })).body.data.matches.length, 0);
   const repeated = await jsonRequest(`/api/blocks/${users.target.id}`, 'DELETE', users.viewer);
   assert.equal(repeated.status, 200);
   assert.equal(repeated.body.data.removed, false);

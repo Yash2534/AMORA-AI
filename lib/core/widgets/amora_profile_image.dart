@@ -1,6 +1,5 @@
 import 'dart:typed_data';
 
-import 'package:amora_ai/core/constants/app_images.dart';
 import 'package:amora_ai/core/widgets/premium_image.dart';
 import 'package:flutter/material.dart';
 
@@ -39,7 +38,8 @@ class AmoraProfileImage extends StatelessWidget {
     final cacheHeight = height == null
         ? null
         : (height! * devicePixelRatio).round();
-    final fallbackAsset = (assetPath.trim().startsWith('assets/') &&
+    final fallbackAsset =
+        (assetPath.trim().startsWith('assets/') &&
             !assetPath.contains('profiles/'))
         ? assetPath
         : '';

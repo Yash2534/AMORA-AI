@@ -203,9 +203,32 @@ function readCursor(cursor, { viewerId, surface, context }, options = {}) {
     throw new RecommendationCursorError('The pagination cursor version is no longer supported.', 'PAGINATION_CURSOR_EXPIRED');
   }
 
-  if (!BASE64URL_REGEX.test(ivB64) || !BASE64URL_REGEX.test(ciphertextB64) || !BASE64URL_REGEX.test(tagB64)) {
-    throw new RecommendationCursorError('The pagination cursor components are malformed.', 'PAGINATION_CURSOR_INVALID');
+
+  if (
+    !BASE64URL_REGEX.test(ivB64)
+    || !BASE64URL_REGEX.test(ciphertextB64)
+    || !BASE64URL_REGEX.test(tagB64)
+  ) {
+    throw new RecommendationCursorError(
+      'The pagination cursor components are malformed.',
+      'PAGINATION_CURSOR_INVALID',
+    );
   }
+
+  // Reject non-canonical Base64URL encodings.
+  // This prevents alternate final characters from decoding
+  // to the same bytes and bypassing tampering detection.
+  const encodedComponents = [ivB64, ciphertextB64, tagB64];
+
+  for (const component of encodedComponents) {
+    if (Buffer.from(component, 'base64url').toString('base64url') !== component) {
+      throw new RecommendationCursorError(
+        'The pagination cursor components are malformed.',
+        'PAGINATION_CURSOR_INVALID',
+      );
+    }
+  }
+
 
   const { keys } = getKeyRing(options);
   const key = keys.get(kid);

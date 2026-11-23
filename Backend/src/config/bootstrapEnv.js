@@ -38,3 +38,7 @@ if (changed) {
 }
 
 if (fs.existsSync(envPath)) require('dotenv').config({ path: envPath });
+
+if (!process.env.APPLICATION_DB_NAME && process.env.DB_NAME) {
+  process.env.APPLICATION_DB_NAME = process.env.DB_NAME;
+}
