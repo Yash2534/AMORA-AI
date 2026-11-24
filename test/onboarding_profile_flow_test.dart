@@ -720,6 +720,7 @@ void main() {
     await tester.tap(find.byKey(const Key('birthdate-year-wheel')));
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
     await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 600));
 
     expect(onboarding.state.birthDate, isNotNull);
     expect(onboarding.state.birthDate!.year, DateTime.now().year - 25);

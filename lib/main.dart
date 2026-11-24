@@ -133,14 +133,11 @@ final Map<String, WidgetBuilder> _routes = {
   ResetPasswordScreen.routeName: (_) =>
       ResetPasswordScreen(onReset: AuthService.instance.resetPassword),
   ChangePasswordScreen.routeName: (_) => const ChangePasswordScreen(),
-  AccountVerificationScreen.routeName: (_) =>
-      const AccountVerificationScreen(),
+  AccountVerificationScreen.routeName: (_) => const AccountVerificationScreen(),
   ProfileOnboardingFlow.routeName: (_) => const ProfileOnboardingFlow(),
-  ProfileCompletionScreen.routeName: (_) =>
-      const ProfileCompletionScreen(),
+  ProfileCompletionScreen.routeName: (_) => const ProfileCompletionScreen(),
   ProfilePreviewScreen.routeName: (_) => const ProfilePreviewScreen(),
-  ProfileBasicDetailsScreen.routeName: (_) =>
-      const ProfileBasicDetailsScreen(),
+  ProfileBasicDetailsScreen.routeName: (_) => const ProfileBasicDetailsScreen(),
   CompatibilityOnboardingScreen.routeName: (_) =>
       const CompatibilityOnboardingScreen(),
   ProfileSetupScreen.routeName: (_) => const ProfileSetupScreen(),
@@ -163,12 +160,10 @@ final Map<String, WidgetBuilder> _routes = {
   ChatListScreen.routeName: (_) =>
       const MainShell(initialTab: AmoraNavTab.chats),
   ChatDetailScreen.routeName: (_) => const ChatDetailScreen(),
-  NotificationsHubScreen.routeName: (_) =>
-      const NotificationsHubScreen(),
+  NotificationsHubScreen.routeName: (_) => const NotificationsHubScreen(),
   // Preserve the Events route while its normal frontend entry points
   // are temporarily hidden.
-  EventsScreen.routeName: (_) =>
-      const EventsScreen(showNavigation: false),
+  EventsScreen.routeName: (_) => const EventsScreen(showNavigation: false),
   EventDetailScreen.routeName: (_) => const EventDetailScreen(),
   MyEventsScreen.routeName: (_) => const MyEventsScreen(),
   AiIcebreakersScreen.routeName: (_) => const AiIcebreakersScreen(),
@@ -182,8 +177,7 @@ final Map<String, WidgetBuilder> _routes = {
       BlockedProfilesScreen(api: PhaseTwoApiService.instance),
   LikesSuperLikesScreen.routeName: (_) => const LikesSuperLikesScreen(),
   SafetyPrivacyScreen.routeName: (_) => const SafetyPrivacyScreen(),
-  SafetyPrivacyScreen.legacyRouteName: (_) =>
-      const SafetyPrivacyScreen(),
+  SafetyPrivacyScreen.legacyRouteName: (_) => const SafetyPrivacyScreen(),
   FaqSupportScreen.routeName: (_) => const FaqSupportScreen(),
   FaqSupportScreen.legacyRouteName: (_) => const FaqSupportScreen(),
   SettingsScreen.routeName: (_) => const SettingsScreen(),
@@ -193,26 +187,21 @@ final Map<String, WidgetBuilder> _routes = {
   ProfileEditScreen.routeName: (_) => const ProfileEditScreen(),
   WhyWeMatchedScreen.routeName: (_) => const WhyWeMatchedScreen(),
   LikedYouPaywallScreen.routeName: (_) => const LikedYouPaywallScreen(),
-  LikedYouPaywallScreen.aliasRouteName: (_) =>
-      const LikedYouPaywallScreen(),
+  LikedYouPaywallScreen.aliasRouteName: (_) => const LikedYouPaywallScreen(),
   BioBuilderScreen.routeName: (_) => const BioBuilderScreen(),
   DealbreakersScreen.routeName: (_) => const DealbreakersScreen(),
   NotificationPreferencesScreen.routeName: (_) =>
       const NotificationPreferencesScreen(),
-  DarkModeSettingsScreen.routeName: (_) =>
-      const DarkModeSettingsScreen(),
+  DarkModeSettingsScreen.routeName: (_) => const DarkModeSettingsScreen(),
   TermsConditionsScreen.routeName: (_) => const TermsConditionsScreen(),
-  TermsConditionsScreen.legacyRouteName: (_) =>
-      const TermsConditionsScreen(),
+  TermsConditionsScreen.legacyRouteName: (_) => const TermsConditionsScreen(),
   PrivacyPolicyScreen.routeName: (_) => const PrivacyPolicyScreen(),
-  CommunityGuidelinesScreen.routeName: (_) =>
-      const CommunityGuidelinesScreen(),
+  CommunityGuidelinesScreen.routeName: (_) => const CommunityGuidelinesScreen(),
   LogoutAccountScreen.routeName: (_) => const LogoutAccountScreen(),
   DeactivateAccountScreen.routeName: (_) => DeactivateAccountScreen(
     onDeactivate: (password) async {
       await PhaseTwoApiService.instance.deactivate(password);
-      PushNotificationService.instance
-          .forgetCurrentDeviceRegistration();
+      PushNotificationService.instance.forgetCurrentDeviceRegistration();
       await AuthService.instance.clearSession();
       return true;
     },
@@ -255,20 +244,18 @@ class _MyAppState extends State<MyApp> {
         onGenerateRoute: (settings) {
           final rawName = settings.name ?? '';
           final hashIndex = rawName.indexOf('#');
-          final name = hashIndex >= 0 ? rawName.substring(hashIndex + 1) : rawName;
+          final name = hashIndex >= 0
+              ? rawName.substring(hashIndex + 1)
+              : rawName;
           final normalized = name.startsWith('/') ? name : '/$name';
 
           final builder = _routes[name] ?? _routes[normalized];
           if (builder == null) {
-            return MaterialPageRoute<void>(
-              builder: (_) => AmoraSession.isLoggedIn.value
-                  ? const MainShell()
-                  : const LoginScreen(),
-              settings: settings,
-            );
+            return null;
           }
 
-          final isPublic = _publicRouteNames.contains(name) ||
+          final isPublic =
+              _publicRouteNames.contains(name) ||
               _publicRouteNames.contains(normalized);
           if (!isPublic && !AmoraSession.isLoggedIn.value) {
             return MaterialPageRoute<void>(
@@ -280,10 +267,7 @@ class _MyAppState extends State<MyApp> {
             );
           }
 
-          return MaterialPageRoute<void>(
-            builder: builder,
-            settings: settings,
-          );
+          return MaterialPageRoute<void>(builder: builder, settings: settings);
         },
         onUnknownRoute: (_) {
           return MaterialPageRoute<void>(

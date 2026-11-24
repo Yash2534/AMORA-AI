@@ -5,7 +5,7 @@ const { after, before, test } = require('node:test');
 require('../src/config/bootstrapEnv');
 const applicationDatabase = process.env.DB_NAME;
 const baseTestDatabase = process.env.TEST_DB_NAME || `${applicationDatabase}_test`;
-const testDatabase = `${baseTestDatabase}_account_deletion_otp`;
+const testDatabase = baseTestDatabase;
 if (!testDatabase || testDatabase === applicationDatabase || !/test/i.test(testDatabase)) {
   throw new Error('Account-deletion OTP tests require an isolated test database.');
 }

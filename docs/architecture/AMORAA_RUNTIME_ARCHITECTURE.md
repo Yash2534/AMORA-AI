@@ -15,7 +15,7 @@ The “LOCAL AI” label is literal repository behavior, not a claim that a host
 ## Trust boundaries
 
 - **User device / Flutter:** UI, API clients, secure access/refresh-token storage, Google client sign-in, Firebase Messaging client, and Razorpay checkout SDK.
-- **Public HTTPS API:** the deployment-facing Express interface. The repository requires an absolute `AMORA_API_BASE_URL` in Flutter release mode but does not contain a production URL.
+- **Public HTTPS API:** the deployment-facing Express interface. Flutter release builds default to `https://api.searchenginemonks.com`; an explicit `AMORA_API_BASE_URL` can select another HTTPS deployment such as staging.
 - **Trusted backend environment:** authenticated Express handlers, eligibility/ranking logic, account lifecycle, notification orchestration, and the in-process Socket.IO hub.
 - **MySQL / private persistence:** Sequelize-backed authoritative state for users, profiles, preferences, actions, matches, conversations, messages, notifications, devices, OTPs, sessions, payments, and deletion archives.
 - **Third-party services:** Google OAuth, Firebase/FCM, Twilio SMS, SMTP, and Razorpay. Code paths exist, but the tracked configuration defaults are disabled or blank.
@@ -96,14 +96,14 @@ The real deployed activation state cannot be proved from committed source alone 
 
 ## Inferred architecture
 
-- **HTTPS termination is inferred as deployment infrastructure, not implemented in this repository.** Express enables production HSTS and the Flutter release build expects an absolute API URL, but no reverse proxy, load balancer, container deployment, or TLS certificate configuration is committed (`Backend/src/server.js`, Express security setup, lines 42-58; `lib/core/config/amora_api_config.dart`, `AmoraApiConfig.baseUrl`, lines 12-38).
+- **HTTPS termination is inferred as deployment infrastructure, not implemented in this repository.** Express enables production HSTS and Flutter release builds use the configured HTTPS API URL, but no reverse proxy, load balancer, container deployment, or TLS certificate configuration is committed (`Backend/src/server.js`, Express security setup, lines 42-58; `lib/core/config/amora_api_config.dart`, `AmoraApiConfig.baseUrl`, lines 12-42).
 - **The backend is effectively a modular monolith.** REST handlers, ranking, Socket.IO, notification orchestration, and account lifecycle share one Node process and one Sequelize model graph (`Backend/src/server.js`, route registration and `createHttpServer`; `Backend/src/models/index.js`, `initModels`). This is a structural inference from composition, not an explicit deployment declaration.
 - **MySQL is expected to be private.** The code connects directly through `DB_HOST`/`DB_PORT`, and no public database interface is exposed. Network isolation itself is not configured in this repository (`Backend/src/config/db.js`, `initializeDatabase`, lines 23-38).
 - **Socket.IO presence is instance-local.** Connection counts live in an in-memory `Map`, and no Redis adapter/message bus is configured (`Backend/src/realtime/realtimeHub.js`, module state and `attachRealtimeServer`, lines 9-14 and 76-160). Horizontal scaling would therefore require additional coordination not present in source.
 
 ## Production configuration gaps and risks
 
-- A Flutter release build throws unless `AMORA_API_BASE_URL` is supplied; the repository contains only development localhost fallbacks (`lib/core/config/amora_api_config.dart`, `AmoraApiConfig.baseUrl`, lines 12-38).
+- A Flutter release build defaults to `https://api.searchenginemonks.com`. Staging builds must explicitly set `AMORA_API_BASE_URL=https://client-api.searchenginemonks.com`; release overrides must use HTTPS (`lib/core/config/amora_api_config.dart`, `AmoraApiConfig.baseUrl`, lines 12-42).
 - The tracked configuration leaves Google OAuth, Firebase server push, Twilio, SMTP, and Razorpay credentials disabled or blank (`Backend/.env.example`, lines 53-85).
 - The source does not contain deployment manifests, TLS termination, a reverse proxy, secret-manager wiring, or a production API hostname. Their existence cannot be confirmed from source.
 - Database startup checks `SequelizeMeta` and auto-applies pending migrations (`Backend/src/config/db.js`, `assertMigrationsApplied`, lines 4-20; `initializeDatabase`, lines 23-38). This is runtime behavior and an operational risk. No migrations were run during this analysis.

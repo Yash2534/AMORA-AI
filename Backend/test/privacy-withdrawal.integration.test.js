@@ -6,7 +6,7 @@ const { Sequelize } = require('sequelize');
 
 require('../src/config/bootstrapEnv');
 const base = process.env.TEST_DB_NAME || `${process.env.DB_NAME}_test`;
-const databaseName = `${base}_privacy_withdrawal`;
+const databaseName = base;
 process.env.DB_NAME = databaseName;
 process.env.NODE_ENV = 'test';
 const { migrate } = require('../src/migrations/run');
@@ -24,6 +24,7 @@ const request = async (path, options = {}) => { const response = await fetch(`${
 const post = (user, path, body = {}, extraHeaders = {}) => request(path, { method: 'POST', headers: headers(user, extraHeaders), body: JSON.stringify(body) });
 const createWithdrawal = (user, purposes = ['OFFERS_NOTIFICATIONS'], extra = {}) => post(user, '/api/privacy-requests', { requestType: 'WITHDRAWAL', purposes, ...extra });
 const getConsentState = (user) => request('/api/privacy-requests/withdrawable-consents', { headers: headers(user) });
+const preferenceFor = (userId) => models.NotificationPreference.findOne({ where: { userId } });
 
 async function createUser(label, { offers = true } = {}) {
   const user = await models.User.create({ name: label, email: `withdraw-${label.replace(/\W/g, '')}-${Date.now()}-${userIds.length}@test.invalid`, phoneNumber: '', authProvider: 'local', passwordHash: await bcrypt.hash('WithdrawPass1!', 4), isVerified: true });
@@ -120,7 +121,7 @@ test('owner scope and client lifecycle tampering fail closed', async () => {
   const a = await createUser('owner-a'); const b = await createUser('owner-b'); const { id } = await verifiedWithdrawal(a);
   assert.equal((await request(`/api/privacy-requests/${id}`, { headers: headers(b) })).status, 404); assert.equal((await post(b, `/api/privacy-requests/${id}/withdrawal`, { userId: b.id, status: 'COMPLETED' })).status, 404);
   const tampered = await post(a, `/api/privacy-requests/${id}/withdrawal`, { status: 'COMPLETED', completedAt: '2000-01-01', userId: b.id, correlationId: 'client', action: 'ACCEPTED', occurredAt: '2000-01-01' }); assert.equal(tampered.status, 200, JSON.stringify(tampered.body));
-  const row = await models.PrivacyRequest.findByPk(id); assert.equal(row.userId, a.id); assert.equal(row.status, 'COMPLETED'); assert.notEqual(new Date(row.completedAt).getFullYear(), 2000); assert.equal((await models.NotificationPreference.findByPk(a.id)).offers, false); assert.equal((await models.NotificationPreference.findByPk(b.id)).offers, true);
+  const row = await models.PrivacyRequest.findByPk(id); assert.equal(row.userId, a.id); assert.equal(row.status, 'COMPLETED'); assert.notEqual(new Date(row.completedAt).getFullYear(), 2000); assert.equal((await preferenceFor(a.id)).offers, false); assert.equal((await preferenceFor(b.id)).offers, true);
 });
 
 test('completed withdrawal is idempotent and a consumed confirmation cannot authorize another request', async () => {
@@ -138,7 +139,7 @@ test('current consent state is append-only evidence first with truthful legacy p
 test('withdrawal suppresses the real offer-notification path without disabling unrelated preferences', async () => {
   const user = await createUser('notification'); const before = await createNotification({ userId: user.id, type: 'offer', category: 'offer', title: 'Offer', message: 'before' }); assert.ok(before);
   const { id } = await verifiedWithdrawal(user); assert.equal((await post(user, `/api/privacy-requests/${id}/withdrawal`)).status, 200); assert.equal(await createNotification({ userId: user.id, type: 'offer', category: 'offer', title: 'Offer', message: 'after' }), null);
-  const unrelated = await createNotification({ userId: user.id, type: 'like', category: 'likes', title: 'Like', message: 'unrelated' }); assert.ok(unrelated); const preference = await models.NotificationPreference.findByPk(user.id); assert.equal(preference.offers, false); assert.equal(preference.newMatches, true);
+  const unrelated = await createNotification({ userId: user.id, type: 'like', category: 'likes', title: 'Like', message: 'unrelated' }); assert.ok(unrelated); const preference = await preferenceFor(user.id); assert.equal(preference.offers, false); assert.equal(preference.newMatches, true);
 });
 
 test('historical terms and privacy evidence remains immutable and withdrawal does not delete the account', async () => {
@@ -147,13 +148,13 @@ test('historical terms and privacy evidence remains immutable and withdrawal doe
 });
 
 test('concurrent real processing produces one preference transition and one withdrawal event', async () => {
-  const user = await createUser('concurrent'); const { id } = await verifiedWithdrawal(user); const results = await Promise.all([post(user, `/api/privacy-requests/${id}/withdrawal`), post(user, `/api/privacy-requests/${id}/withdrawal`)]); assert.ok(results.every((result) => result.status === 200), JSON.stringify(results)); assert.equal(await models.ConsentEvent.count({ where: { userId: user.id, purpose: 'OFFERS_NOTIFICATIONS', action: 'WITHDRAWN' } }), 1); assert.equal((await models.NotificationPreference.findByPk(user.id)).offers, false); assert.equal((await models.PrivacyRequest.findByPk(id)).status, 'COMPLETED');
+  const user = await createUser('concurrent'); const { id } = await verifiedWithdrawal(user); const results = await Promise.all([post(user, `/api/privacy-requests/${id}/withdrawal`), post(user, `/api/privacy-requests/${id}/withdrawal`)]); assert.ok(results.every((result) => result.status === 200), JSON.stringify(results)); assert.equal(await models.ConsentEvent.count({ where: { userId: user.id, purpose: 'OFFERS_NOTIFICATIONS', action: 'WITHDRAWN' } }), 1); assert.equal((await preferenceFor(user.id)).offers, false); assert.equal((await models.PrivacyRequest.findByPk(id)).status, 'COMPLETED');
 });
 
 test('controlled persistence failure rolls back evidence and preference before safe failure state', async () => {
   const user = await createUser('rollback'); const { id } = await verifiedWithdrawal(user); const original = models.ConsentEvent.create; models.ConsentEvent.create = async () => { throw new Error('controlled persistence failure'); };
   try { const result = await post(user, `/api/privacy-requests/${id}/withdrawal`); assert.equal(result.status, 500); assert.equal(result.body.code, 'WITHDRAWAL_PROCESSING_FAILED'); } finally { models.ConsentEvent.create = original; }
-  assert.equal((await models.NotificationPreference.findByPk(user.id)).offers, true); assert.equal(await models.ConsentEvent.count({ where: { userId: user.id, purpose: 'OFFERS_NOTIFICATIONS', action: 'WITHDRAWN' } }), 0); const row = await models.PrivacyRequest.findByPk(id); assert.equal(row.status, 'FAILED'); assert.notEqual(row.status, 'COMPLETED');
+  assert.equal((await preferenceFor(user.id)).offers, true); assert.equal(await models.ConsentEvent.count({ where: { userId: user.id, purpose: 'OFFERS_NOTIFICATIONS', action: 'WITHDRAWN' } }), 0); const row = await models.PrivacyRequest.findByPk(id); assert.equal(row.status, 'FAILED'); assert.notEqual(row.status, 'COMPLETED');
 });
 
 test('withdrawal responses contain no confirmation hash, credentials, other-user state, or internal preference object', async () => {

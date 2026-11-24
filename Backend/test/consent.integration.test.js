@@ -5,7 +5,7 @@ const crypto = require('crypto');
 require('../src/config/bootstrapEnv');
 const applicationDatabase = process.env.DB_NAME;
 const baseTestDatabase = process.env.TEST_DB_NAME || `${applicationDatabase}_test`;
-const testDatabase = `${baseTestDatabase}_consent`;
+const testDatabase = baseTestDatabase;
 if (testDatabase === applicationDatabase || !/test/i.test(testDatabase)) throw new Error('Consent tests require a separate TEST_DB_NAME containing "test".');
 process.env.DB_NAME = testDatabase;
 process.env.NODE_ENV = 'test';

@@ -57,6 +57,8 @@ async function createUser(key, state = 'active', profileValues = {}) {
     interestedIn: profileValues.interestedIn || ['Male'],
     relationshipGoals: ['long_term'],
     city: 'Ahmedabad',
+    matchLatitude: 23.0225,
+    matchLongitude: 72.5714,
     profession: 'Engineer',
     education: 'Graduate',
     hometown: 'Ahmedabad',
@@ -234,6 +236,7 @@ test('reports validate reasons, persist optional notes, and deduplicate abuse', 
   });
   assert.equal(content.status, 201);
   assert.equal(content.body.data.report.targetType, 'event');
+  await models.Report.destroy({ where: { id: reportId } });
 });
 
 test('account deactivation requires password and explicit challenge reactivation', async () => {
@@ -295,7 +298,7 @@ test('legacy deletion-request endpoints are no longer part of the runtime API', 
   assert.equal(await models.AccountDeletionRequest.count({ where: { userId: users.deleteMe.id } }), 0);
 });
 
-test('matches use the existing table, enforce membership/visibility, and unmatch idempotently', async () => {
+test('matches use the existing table, enforce membership/visibility, and safely reject repeated unmatch', async () => {
   const first = Math.min(users.viewer.id, users.target.id);
   const second = Math.max(users.viewer.id, users.target.id);
   await models.DiscoverAction.upsert({
@@ -307,7 +310,7 @@ test('matches use the existing table, enforce membership/visibility, and unmatch
     targetUserId: users.target.id,
     action: 'like',
   });
-  assert.equal(swipe.status, 200);
+  assert.equal(swipe.status, 200, JSON.stringify(swipe.body));
   assert.equal(swipe.body.data.matched, true);
   await jsonRequest('/api/discover/swipe', 'POST', users.viewer, {
     targetUserId: users.target.id,
@@ -349,6 +352,6 @@ test('matches use the existing table, enforce membership/visibility, and unmatch
   assert.equal(removed.status, 200);
   assert.equal(removed.body.data.removed, true);
   const repeated = await jsonRequest(`/api/matches/${match.id}`, 'DELETE', users.viewer);
-  assert.equal(repeated.status, 200);
-  assert.equal(repeated.body.data.removed, false);
+  assert.equal(repeated.status, 404);
+  assert.equal(repeated.body.code, 'MATCH_NOT_AVAILABLE');
 });

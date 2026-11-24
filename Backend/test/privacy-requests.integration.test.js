@@ -10,7 +10,7 @@ const { Sequelize } = require('sequelize');
 require('../src/config/bootstrapEnv');
 const applicationDatabase = process.env.DB_NAME;
 const baseTestDatabase = process.env.TEST_DB_NAME || `${applicationDatabase}_test`;
-const testDatabase = `${baseTestDatabase}_privacy_requests`;
+const testDatabase = baseTestDatabase;
 if (testDatabase === applicationDatabase || !/test/i.test(testDatabase)) throw new Error('Privacy request tests require a separate TEST_DB_NAME containing "test".');
 process.env.DB_NAME = testDatabase;
 process.env.NODE_ENV = 'test';

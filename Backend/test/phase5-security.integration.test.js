@@ -5,7 +5,7 @@ const bcrypt = require('bcrypt');
 require('../src/config/bootstrapEnv');
 const applicationDatabase = process.env.DB_NAME;
 const baseTestDatabase = process.env.TEST_DB_NAME || `${applicationDatabase}_test`;
-const testDatabase = `${baseTestDatabase}_phase5_security`;
+const testDatabase = baseTestDatabase;
 if (!testDatabase || testDatabase === applicationDatabase || !/test/i.test(testDatabase)) {
   throw new Error('Phase 5 security tests require an isolated TEST_DB_NAME containing "test".');
 }

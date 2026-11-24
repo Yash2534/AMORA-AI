@@ -512,26 +512,27 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
         ? error.code
         : null;
     return switch (code) {
-      'INVALID_PHONE_NUMBER' =>
-        'Please enter a valid phone number.',
+      'INVALID_PHONE_NUMBER' => 'Please enter a valid phone number.',
       'OTP_INVALID' => "Incorrect code. That code doesn't match. Try again.",
       'OTP_EXPIRED' => 'Code expired. Request a new verification code.',
       'OTP_ATTEMPTS_EXCEEDED' ||
       'OTP_MAX_ATTEMPTS' => 'Too many attempts. Please request a new code.',
-      'RATE_LIMITED' => 'Too many attempts. Please wait a moment and try again.',
+      'RATE_LIMITED' =>
+        'Too many attempts. Please wait a moment and try again.',
       'NETWORK_ERROR' =>
         resend
             ? "Unable to connect. Please check your internet connection and try again."
             : 'Unable to connect. Please check your internet connection and try again.',
       'SERVICE_UNAVAILABLE' =>
         'Verification unavailable. Please try again shortly.',
-      _ => error is AuthException 
-          ? error.userMessage 
-          : (sending
-              ? (resend
-                    ? "Couldn't resend the code. Please try again."
-                    : "Couldn't send the code. Please try again.")
-              : 'Verification unavailable. Please try again shortly.'),
+      _ =>
+        error is AuthException
+            ? error.userMessage
+            : (sending
+                  ? (resend
+                        ? "Couldn't resend the code. Please try again."
+                        : "Couldn't send the code. Please try again.")
+                  : 'Verification unavailable. Please try again shortly.'),
     };
   }
 }
@@ -772,7 +773,6 @@ class _UnifiedMobileNumberFieldState extends State<_UnifiedMobileNumberField> {
                         textAlignVertical: TextAlignVertical.center,
                         cursorColor: AppColors.secondary,
                         decoration: InputDecoration(
-                          labelText: 'Mobile number',
                           filled: false,
                           isDense: true,
                           hintText: '10 digit mobile number',

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:amora_ai/core/access/amora_access.dart';
 import 'package:amora_ai/core/media/amora_media_picker.dart';
 import 'package:amora_ai/core/theme/amora_theme.dart';
 import 'package:amora_ai/features/profile/data/local_profile_repository.dart';
@@ -21,6 +22,7 @@ void main() {
   late UserProfile originalProfile;
 
   setUp(() async {
+    AmoraSession.isLoggedIn.value = true;
     SharedPreferences.setMockInitialValues({});
     await repository.resetForTesting();
     originalProfile = repository.profile;
@@ -28,6 +30,8 @@ void main() {
 
   tearDown(() async {
     await repository.resetForTesting(originalProfile);
+    AmoraSession.isLoggedIn.value = false;
+    AmoraSession.user.value = null;
   });
 
   test('profile-completion hash resolves to the dedicated route', () {

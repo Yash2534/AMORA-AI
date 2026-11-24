@@ -5,6 +5,9 @@ import 'package:flutter/foundation.dart';
 /// Set AMORA_API_BASE_URL to an HTTPS deployment or the development machine's
 /// LAN URL when running on a physical device.
 ///
+/// Production releases default to the production API. Staging builds should
+/// pass their staging URL with AMORA_API_BASE_URL.
+///
 /// Android emulators use the host loopback alias 10.0.2.2.
 class AmoraApiConfig {
   const AmoraApiConfig._();
@@ -33,7 +36,7 @@ class AmoraApiConfig {
     }
 
     if (kReleaseMode) {
-      return 'https://client-api.searchenginemonks.com';
+      return 'https://api.searchenginemonks.com';
     }
 
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {

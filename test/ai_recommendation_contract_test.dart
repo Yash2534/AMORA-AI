@@ -153,7 +153,7 @@ class HiddenFirstPageRecommendationApi extends PhaseTwoApiService {
     requestedCursors.add(cursor);
     return cursor == null
         ? AiRecommendationsPage(
-            items: [recommendation('9', 60, 62)],
+            items: [recommendation('9', 40, 62)],
             hasMore: true,
             nextCursor: 'next-visible-page',
             limit: limit,

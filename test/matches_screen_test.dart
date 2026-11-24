@@ -65,12 +65,10 @@ void main() {
       find.byKey(const ValueKey('minimum-compatibility-slider')),
       findsOneWidget,
     );
-    expect(find.text('70%+'), findsOneWidget);
-    expect(find.text('Recommended Matches'), findsOneWidget);
+    expect(find.text('50%+'), findsOneWidget);
+    expect(find.text('Open Matches'), findsOneWidget);
     expect(
-      find.text(
-        'Showing recommended matches with 70% compatibility or higher.',
-      ),
+      find.text('Showing open matches with 50% compatibility or higher.'),
       findsOneWidget,
     );
     expect(find.byType(BottomSheet), findsNothing);
@@ -152,7 +150,7 @@ void main() {
     expect(minimumCompatibilityThreshold, 50);
     expect(maximumCompatibilityThreshold, 95);
     expect(compatibilityThresholdStep, 5);
-    expect(defaultCompatibilityThreshold, 70);
+    expect(defaultCompatibilityThreshold, 50);
 
     expect(compatibilityFilterLabel(50), 'Open Matches');
     expect(compatibilityFilterLabel(59), 'Open Matches');
@@ -241,7 +239,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('compact reset returns to 70 percent and hides at default', (
+  testWidgets('compact reset returns to 50 percent and hides at default', (
     tester,
   ) async {
     await pumpMatches(tester);
@@ -264,7 +262,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('compatibility-filter-reset')));
     await tester.pumpAndSettle();
 
-    expect(find.text('70%+'), findsOneWidget);
+    expect(find.text('50%+'), findsOneWidget);
     expect(
       find.byKey(const ValueKey('compatibility-filter-reset')),
       findsNothing,
@@ -272,7 +270,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('empty threshold state offers the required 70 percent CTA', (
+  testWidgets('empty threshold state offers the minimum compatibility CTA', (
     tester,
   ) async {
     var lowered = false;
@@ -291,7 +289,7 @@ void main() {
       find.text('Try lowering the compatibility filter to see more people.'),
       findsOneWidget,
     );
-    await tester.tap(find.text('Lower to 70%'));
+    await tester.tap(find.text('Lower to 50%'));
     expect(lowered, isTrue);
   });
 
@@ -455,11 +453,16 @@ void main() {
     final sliderFinder = find.byKey(
       const ValueKey('minimum-compatibility-slider'),
     );
-    await tester.tap(sliderFinder);
+    final sliderRect = tester.getRect(sliderFinder);
+    await tester.tapAt(Offset(sliderRect.left + 12, sliderRect.center.dy));
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
     await tester.pumpAndSettle();
 
-    expect(find.text('75%+'), findsOneWidget);
+    expect(find.text('55%+'), findsOneWidget);
+    expect(
+      tester.widget<Slider>(sliderFinder).value,
+      defaultCompatibilityThreshold + compatibilityThresholdStep,
+    );
     expect(tester.takeException(), isNull);
   });
 
@@ -470,7 +473,7 @@ void main() {
       await pumpMatches(tester, size: Size(width, width >= 600 ? 900 : 760));
 
       expect(find.byType(AmoraaInlineCompatibilityFilter), findsOneWidget);
-      expect(find.text('70%+'), findsOneWidget);
+      expect(find.text('50%+'), findsOneWidget);
       expect(find.byType(FeaturedAiMatchCard), findsOneWidget);
       expect(
         tester

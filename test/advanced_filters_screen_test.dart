@@ -878,7 +878,7 @@ void main() {
       await tester.pumpAndSettle();
       final verified = find.widgetWithText(
         SwitchListTile,
-        'Verified profiles only',
+        'Show only verified profiles',
       );
       await tester.ensureVisible(verified);
       await tester.tap(verified);

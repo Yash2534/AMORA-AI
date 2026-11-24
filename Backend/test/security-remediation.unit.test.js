@@ -180,7 +180,7 @@ test('production database configuration requires verified TLS material', () => {
 
 test('test database operations require NODE_ENV=test and a test-only database name', () => {
   assert.equal(
-    databaseName('amoraa_security_test', { NODE_ENV: 'test', TEST_DB_NAME: 'amoraa_security_test' }),
+    databaseName('amoraa_security_test', { NODE_ENV: 'test', DB_HOST: '127.0.0.1', TEST_DB_NAME: 'amoraa_security_test' }),
     'amoraa_security_test',
   );
   assert.throws(
@@ -188,8 +188,8 @@ test('test database operations require NODE_ENV=test and a test-only database na
     /NODE_ENV=test/,
   );
   assert.throws(
-    () => databaseName('amoraa', { NODE_ENV: 'test', TEST_DB_NAME: 'amoraa_security_test' }),
-    /containing "test"/,
+    () => databaseName('amoraa', { NODE_ENV: 'test', DB_HOST: '127.0.0.1', TEST_DB_NAME: 'amoraa_security_test' }),
+    /must contain "test"/,
   );
   assert.equal(databaseName('amoraa', { NODE_ENV: 'development' }), 'amoraa');
 });

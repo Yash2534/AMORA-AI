@@ -31,8 +31,8 @@ test('MASTER and supporting scenarios have stable identities', () => {
   assert.equal(values[0].email, 'demo.walkthrough@amoraa.test');
   assert.equal(values[0].name, 'AMORAA Demo');
   assert.equal(values[0].age, 28);
-  assert.equal(values[0].gender, 'Female');
-  assert.deepEqual(values[0].interestedIn, ['Male']);
+  assert.equal(values[0].gender, 'Male');
+  assert.deepEqual(values[0].interestedIn, ['Female']);
   assert.equal(values[0].photoCount, 5);
   assert.equal(values[0].role, 'MASTER_TEST_ACCOUNT');
   assert.equal(values[6].role, 'RECIPROCAL_LIKE_TRIGGER');

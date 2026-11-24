@@ -26,6 +26,7 @@ const { scoreCompatibility, normalizeProfile } = require('../src/services/compat
 let server;
 let baseUrl;
 let models;
+let createdGoldPlan = false;
 const createdUserIds = [];
 
 function birthDateForAge(age) {
@@ -157,6 +158,9 @@ before(async () => {
 after(async () => {
   if (createdUserIds.length) {
     await cleanupUsers(createdUserIds);
+  }
+  if (createdGoldPlan) {
+    await models.SubscriptionPlan.destroy({ where: { id: 'amoraa_gold_monthly' } });
   }
   if (server) server.close();
   await closeDatabase();
@@ -346,6 +350,26 @@ test('8. Subscription association is projected with lean attributes (status, cur
 
   const cand = await createTestUser('CandB8');
   await createCandidateProfile(cand, { gender: 'Female', interestedIn: ['Male'], city: 'City_B8' });
+
+  const existingGoldPlan = await models.SubscriptionPlan.findByPk('amoraa_gold_monthly');
+  if (!existingGoldPlan) {
+    await models.SubscriptionPlan.create({
+      id: 'amoraa_gold_monthly',
+      name: 'AMORAA Gold',
+      displayName: 'AMORAA Gold Monthly',
+      description: 'Premium candidate-materialization test fixture.',
+      priceMinor: 199900,
+      currency: 'INR',
+      billingPeriod: 'month',
+      billingInterval: 1,
+      features: ['Priority recommendations'],
+      entitlements: { premium: true },
+      trialDays: 0,
+      active: true,
+      sortOrder: 20,
+    });
+    createdGoldPlan = true;
+  }
 
   await models.Subscription.create({
     userId: cand.id,

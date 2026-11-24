@@ -442,15 +442,11 @@ void main() {
       await tester.pump();
       expect(controllers.map((item) => item.text).join(), '123456');
       expect(pasted, '123456');
-      for (var index = 0; index < 6; index++) {
-        final digitSemantics = tester.getSemantics(
-          find.byKey(ValueKey('otp-cell-$index')),
-        );
-        expect(
-          digitSemantics.label,
-          contains('Verification digit ${index + 1} of 6'),
-        );
-      }
+      final inputSemantics = tester.getSemantics(
+        find.byKey(const ValueKey('otp-native-input')),
+      );
+      expect(inputSemantics.label, contains('6 digit verification code'));
+      expect(inputSemantics.flagsCollection.isTextField, isTrue);
       semantics.dispose();
     });
 

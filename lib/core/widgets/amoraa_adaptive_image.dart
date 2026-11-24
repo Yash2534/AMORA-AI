@@ -298,7 +298,7 @@ class _AmoraaAdaptiveImageState extends State<AmoraaAdaptiveImage> {
       source.startsWith('blob:');
 
   Widget _fallbackAsset() {
-    final candidate = widget.fallbackAsset.trim() ?? '';
+    final candidate = widget.fallbackAsset.trim();
     // Never fall back to realistic human stock portraits (ASP-AI-BUG-002)
     if (candidate.isNotEmpty &&
         candidate.startsWith('assets/') &&

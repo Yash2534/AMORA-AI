@@ -173,6 +173,11 @@ void main() {
   testWidgets('profile information keeps all questions on one page', (
     tester,
   ) async {
+    AmoraSession.isLoggedIn.value = true;
+    addTearDown(() {
+      AmoraSession.isLoggedIn.value = false;
+      AmoraSession.user.value = null;
+    });
     await tester.binding.setSurfaceSize(const Size(390, 844));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(const MyApp());
@@ -214,16 +219,15 @@ void main() {
     await tester.pumpWidget(const MyApp());
     await tester.pump();
 
-    final navigator = tester.state<NavigatorState>(find.byType(Navigator));
-    navigator.pushReplacementNamed('/login');
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 300));
-
-    await tester.enterText(find.byType(TextFormField).at(0), 'member@amoraa.ai');
+    await tester.enterText(
+      find.byType(TextFormField).at(0),
+      'member@amoraa.ai',
+    );
     await tester.enterText(find.byType(TextFormField).at(1), 'Amora123!');
-    await tester.ensureVisible(find.text('Sign in'));
+    final submitButton = find.byKey(const ValueKey('login-submit'));
+    await tester.ensureVisible(submitButton);
     await tester.pump();
-    await tester.tap(find.text('Sign in'));
+    await tester.tap(submitButton);
     await tester.pump(const Duration(milliseconds: 700));
     await tester.pump(const Duration(milliseconds: 400));
 
@@ -257,9 +261,10 @@ void main() {
     final checkboxes = find.byType(Checkbox);
     await tester.ensureVisible(checkboxes.at(0));
     await tester.tap(checkboxes.at(0));
-    await tester.ensureVisible(find.text('Create account'));
+    final submitButton = find.widgetWithText(FilledButton, 'Create account');
+    await tester.ensureVisible(submitButton);
     await tester.pump();
-    await tester.tap(find.text('Create account'));
+    await tester.tap(submitButton);
     await tester.pump(const Duration(milliseconds: 750));
     await tester.pump(const Duration(milliseconds: 400));
 

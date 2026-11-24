@@ -83,7 +83,8 @@ They are not part of the app source. Do not edit them.
   goes to `/profile-onboarding`; otherwise `/main`.
 - API base URL is set at compile time with `--dart-define=AMORA_API_BASE_URL`:
   - Debug default is `http://localhost:5000`, or `http://10.0.2.2:5000` on the Android emulator.
-  - **Release builds throw** if the URL is unset or not HTTPS.
+  - Release builds default to `https://api.searchenginemonks.com` and reject non-HTTPS overrides.
+  - Staging builds must explicitly set `AMORA_API_BASE_URL=https://client-api.searchenginemonks.com`.
 
 ## 5. Backend structure (`Backend/src`)
 
